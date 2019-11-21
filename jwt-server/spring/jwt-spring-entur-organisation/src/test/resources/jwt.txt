@@ -1,0 +1,21 @@
+{
+  "jti": "a-b-c",
+  "exp": 1573733802,
+  "nbf": 0,
+  "iat": 1573733202,
+  "iss": "https://my.mock",
+  "aud": "account",
+  "sub": "d-e-f",
+  "typ": "Bearer",
+  "azp": "neti-frontend",
+  "auth_time": 1573733076,
+  "session_state": "x-y-z",
+  "roles": [
+    "{\"r\":\"adminEditRouteData\",\"o\":\"RB\"}",
+    "{\"r\":\"editOrganisation\",\"o\":\"RB\"}",
+    "{\"r\":\"editStops\",\"o\":\"NSB\",\"e\":{\"StopPlaceType\":[\"*\"]}}",
+    "{\"r\":\"deleteStops\",\"o\":\"RB\",\"e\":{\"EntityType\":[\"StopPlace\"]}}",
+    "{\"r\":\"editStops\",\"o\":\"RB\",\"e\":{\"EntityType\":[\"*\"]}}",
+    "{\"r\":\"deleteStops\",\"o\":\"RB\"}"
+  ]
+}

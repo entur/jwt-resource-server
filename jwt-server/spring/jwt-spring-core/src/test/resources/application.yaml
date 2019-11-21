@@ -1,0 +1,19 @@
+entur:
+  jwt:
+    enabled: true
+    claims:
+      expires-at-leeway: 15
+      issued-at-leeway: 5
+      audiences:
+        - mock.my.audience
+    mdc:
+      enabled: true
+      mappings:
+      - from: issuer
+        to: issuer
+    jwk:
+      health-indicator:
+        enabled: true
+  cors:
+    enabled: true
+    mode: api

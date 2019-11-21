@@ -1,0 +1,23 @@
+entur:
+  jwt:
+    enabled: true
+    claims:
+      expires-at-leeway: 15
+      issued-at-leeway: 5
+      audiences:
+        - https://my.audience
+    mdc:
+      enabled: true
+      mappings:
+      - from: iss
+        to: issuer
+      - from: azp
+        to: azp
+    jwk:
+      health-indicator:
+        enabled: true
+  cors:
+    enabled: true
+    mode: api
+    hosts:
+    - https://my.published.api

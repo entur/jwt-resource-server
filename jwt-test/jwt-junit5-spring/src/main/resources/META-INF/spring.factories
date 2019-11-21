@@ -1,0 +1,2 @@
+org.springframework.boot.env.EnvironmentPostProcessor=\
+org.entur.jwt.spring.test.JwtEnvironmentPostProcessor

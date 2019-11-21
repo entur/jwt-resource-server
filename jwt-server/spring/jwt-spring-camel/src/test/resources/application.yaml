@@ -1,0 +1,14 @@
+entur:
+  jwt:
+    enabled: true
+    mode: required
+    mdc:
+      enabled: true
+      items:
+      - from: issuer
+        to: issuer
+  cors:
+    enabled: true
+    mode: api
+  auth0:
+    namespace: https://entur.io/
