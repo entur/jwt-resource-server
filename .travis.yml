@@ -10,3 +10,4 @@ cache:
 
 script:
   - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent verify org.jacoco:jacoco-maven-plugin:report
+
