@@ -38,7 +38,7 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
         return this.principal;
     }
 
-    public void setAuthenticated(boolean isAuthenticated) throws IllegalArgumentException {
+    public void setAuthenticated(boolean isAuthenticated) {
         if (isAuthenticated) {
             throw new IllegalArgumentException("Cannot set this token to trusted - use constructor which takes a GrantedAuthority list instead");
         }
@@ -53,12 +53,43 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
     }
     
     @SuppressWarnings("unchecked")
-	public <V> V getClaim(String name, Class<V> type) throws JwtClaimException {
+	public <V> V getClaim(String name, Class<V> type) {
     	return (V) principal.get(name);
     }
     
     public Map<String, Object> getClaims() {
     	return principal;
     }
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result + ((credentials == null) ? 0 : credentials.hashCode());
+		result = prime * result + ((principal == null) ? 0 : principal.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		JwtAuthenticationToken other = (JwtAuthenticationToken) obj;
+		if (credentials == null) {
+			if (other.credentials != null)
+				return false;
+		} else if (!credentials.equals(other.credentials))
+			return false;
+		if (principal == null) {
+			if (other.principal != null)
+				return false;
+		} else if (!principal.equals(other.principal))
+			return false;
+		return true;
+	}
 
 }

@@ -96,10 +96,7 @@ public class JwtClientAutoConfiguration {
 
     	builder.health(health);
     	
-    	
-    	AccessTokenProvider provider = builder.build();
-    	
-    	return provider;
+    	return builder.build();
 	}
 	
 	@Bean

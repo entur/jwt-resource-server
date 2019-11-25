@@ -18,36 +18,21 @@ public class JwksHealthIndicator extends AbstractHealthIndicator {
 	protected static final Logger logger = LoggerFactory.getLogger(JwksHealthIndicator.class);
 
 	private final JwtVerifier<?> jwtVerifier;
-	
-    public JwksHealthIndicator(JwtVerifier<?> jwtVerifier) {
-		super();
+
+	public JwksHealthIndicator(JwtVerifier<?> jwtVerifier) {
 		this.jwtVerifier = jwtVerifier;
 	}
 
 	@Override
-    protected void doHealthCheck(Health.Builder builder) throws Exception {
+	protected void doHealthCheck(Health.Builder builder) throws Exception {
 		JwksHealth health = jwtVerifier.getHealth(true);
 
 		if(health.isSuccess()) {
-	        builder.up();
+			builder.up();
 		} else {
-	        builder.down();
+			builder.down();
 		}
 		builder.withDetail("timestamp", health.getTimestamp());
-    }
-	
-	/*
-	@PostConstruct
-	public void verifyHealthSupported() {
-		// verify that health is supported now
-		try {
-    		jwksHealthProvider.getHealth();
-		} catch(JwksHealthNotSupportedException e) {
-			throw new IllegalStateException(jwksHealthProvider.getClass().getName() + " does not support health checks");
-		} catch(Exception e) {
-			logger.warn("Exception when getting initial health", e);
-		}
 	}
-	*/
 
 }

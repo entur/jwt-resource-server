@@ -19,10 +19,7 @@ public class OrganisationJwtAuthorityMapper implements JwtAuthorityMapper<Decode
 
 	protected static final Logger logger = LoggerFactory.getLogger(OrganisationJwtAuthorityMapper.class);
 
-	private ObjectMapper mapper = new ObjectMapper();
-	
-	public OrganisationJwtAuthorityMapper() {
-	}
+	private final ObjectMapper mapper = new ObjectMapper();
 			
 	@Override
 	public List<GrantedAuthority> getGrantedAuthorities(DecodedJWT token) throws JwtClientException {

@@ -42,18 +42,5 @@ public class AccessTokenProviderHealthIndicator extends AbstractHealthIndicator 
 	        builder.down();
 		}
     }
-
-	/*
-	@PostConstruct
-	public void verifyHealthSupported() {
-		try {
-			provider.getHealth();
-		} catch(AccessTokenHealthNotSupportedException e) {
-			throw new IllegalArgumentException("Access-token provider " + provider.getClass().getName() + " must implement " + AccessTokenHealthProvider.class.getName() + " in order to support health status", e);
-		} catch(Exception e) {
-			logger.warn("Exception when getting initial health", e);
-		}
-	}
-	*/
 	
 }

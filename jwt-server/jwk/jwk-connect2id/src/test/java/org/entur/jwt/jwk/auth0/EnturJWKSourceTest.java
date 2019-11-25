@@ -59,9 +59,9 @@ public class EnturJWKSourceTest {
 
 	@Test
 	public void testConstants() {
-		assertEquals(500, RemoteJWKSet.DEFAULT_HTTP_CONNECT_TIMEOUT);
-		assertEquals(500, RemoteJWKSet.DEFAULT_HTTP_READ_TIMEOUT);
-		assertEquals(50 * 1024, RemoteJWKSet.DEFAULT_HTTP_SIZE_LIMIT);
+		assertEquals(RemoteJWKSet.DEFAULT_HTTP_CONNECT_TIMEOUT, 500);
+		assertEquals(RemoteJWKSet.DEFAULT_HTTP_READ_TIMEOUT, 500);
+		assertEquals(RemoteJWKSet.DEFAULT_HTTP_SIZE_LIMIT, 50 * 1024);
 	}
 
 	@Test

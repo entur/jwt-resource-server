@@ -21,40 +21,40 @@ public class UrlAccessTokenProvider implements AccessTokenProvider {
 
 	protected static final Logger logger = LoggerFactory.getLogger(UrlAccessTokenProvider.class);
 
-    protected static final String CONTENT_TYPE = "application/x-www-form-urlencoded";
-    protected static final String KEY_GRANT_TYPE = "grant_type";
-    
+	protected static final String CONTENT_TYPE = "application/x-www-form-urlencoded";
+	protected static final String KEY_GRANT_TYPE = "grant_type";
+
 	protected final URL issueUrl;
 	protected final byte[] issueBody;
 	protected final Map<String, Object> issueHeaders;
-	
+
 	protected final Integer connectTimeout;
-    protected final Integer readTimeout;
+	protected final Integer readTimeout;
 
 	protected final ObjectReader reader;
 
 	// https://www.oauth.com/oauth2-servers/access-tokens/client-credentials/
-	
+
 	public UrlAccessTokenProvider(URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers, Integer connectTimeout, Integer readTimeout) {
 		super();
-		
-        checkArgument(issueUrl != null, "A non-null url is required");
-        checkArgument(parameters != null, "A non-null body parameters is required");
-        checkArgument(headers != null, "A non-null headers is required");
-        checkArgument(connectTimeout == null || connectTimeout >= 0, "Invalid connect timeout value '" + connectTimeout + "'. Must be a non-negative integer.");
-        checkArgument(readTimeout == null || readTimeout >= 0, "Invalid read timeout value '" + readTimeout + "'. Must be a non-negative integer.");
-	
+
+		checkArgument(issueUrl != null, "A non-null url is required");
+		checkArgument(parameters != null, "A non-null body parameters is required");
+		checkArgument(headers != null, "A non-null headers is required");
+		checkArgument(connectTimeout == null || connectTimeout >= 0, "Invalid connect timeout value '" + connectTimeout + "'. Must be a non-negative integer.");
+		checkArgument(readTimeout == null || readTimeout >= 0, "Invalid read timeout value '" + readTimeout + "'. Must be a non-negative integer.");
+
 		this.issueUrl = issueUrl;
 		this.issueBody = createBody(parameters);
 		this.issueHeaders = headers;
 		this.connectTimeout = connectTimeout;
 		this.readTimeout = readTimeout;
-		
+
 		ObjectMapper mapper = new ObjectMapper();
 		reader = mapper.readerFor(ClientCredentialsResponse.class);
 	}
-	
-    private void checkArgument(boolean valid, String message) {
+
+	private void checkArgument(boolean valid, String message) {
 		if(!valid) {
 			throw new IllegalArgumentException(message);
 		}
@@ -74,22 +74,22 @@ public class UrlAccessTokenProvider implements AccessTokenProvider {
 		}
 		return builder.toString().getBytes(StandardCharsets.UTF_8);
 	}
-	
+
 	protected String encode(String value) {
 		try {
-			return URLEncoder.encode(value.toString(), StandardCharsets.UTF_8.name());
+			return URLEncoder.encode(value, StandardCharsets.UTF_8.name());
 		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException(e);
+			throw new IllegalArgumentException(e);
 		}		
 	}
 
 	protected ClientCredentialsResponse getToken() throws  AccessTokenException {
 		try {
-			HttpURLConnection request = (HttpURLConnection) request(issueUrl, issueBody);
-			
+			HttpURLConnection request = request(issueUrl, issueBody);
+
 			int responseCode = request.getResponseCode();
 			if(responseCode != 200) {
-				logger.info("Got unexpected response code " + responseCode + " when trying to issue token at " + issueUrl);
+				logger.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
 				if(responseCode == 503) { // service unavailable
 					throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(request, "Retry-After"));
 				} else if(responseCode == 429) { // too many calls
@@ -98,15 +98,15 @@ public class UrlAccessTokenProvider implements AccessTokenProvider {
 				}
 				throw new AccessTokenException("Authorization server responded with HTTP unexpected response code " + request.getResponseCode());
 			}
-	        try (InputStream inputStream = request.getInputStream()) {
-	            return reader.readValue(inputStream);
-	        }
+			try (InputStream inputStream = request.getInputStream()) {
+				return reader.readValue(inputStream);
+			}
 		} catch(IOException e) {
 			throw new AccessTokenUnavailableException(e);
 		}		
 	}
-	
-	protected StringBuilder printHeadersIfPresent(HttpURLConnection c, String ... headerNames) throws IOException {
+
+	protected StringBuilder printHeadersIfPresent(HttpURLConnection c, String ... headerNames) {
 		StringBuilder builder = new StringBuilder();
 		for(String headerName : headerNames) {
 			String value = c.getHeaderField(headerName);
@@ -124,36 +124,36 @@ public class UrlAccessTokenProvider implements AccessTokenProvider {
 	}
 
 	protected HttpURLConnection request(URL url, byte[] body) throws IOException {
-        final HttpURLConnection c = (HttpURLConnection)url.openConnection();
-        if (connectTimeout != null) {
-            c.setConnectTimeout(connectTimeout);
-        }
-        if (readTimeout != null) {
-            c.setReadTimeout(readTimeout);
-        }
-        c.setRequestProperty("Accept", "application/json");
-        c.setRequestProperty("Content-Type", CONTENT_TYPE);
-
-        for (Entry<String, Object> entry : issueHeaders.entrySet()) {
-            c.setRequestProperty(entry.getKey(), entry.getValue().toString());
+		final HttpURLConnection c = (HttpURLConnection)url.openConnection();
+		if (connectTimeout != null) {
+			c.setConnectTimeout(connectTimeout);
 		}
-        
-        c.setDoOutput(true);
+		if (readTimeout != null) {
+			c.setReadTimeout(readTimeout);
+		}
+		c.setRequestProperty("Accept", "application/json");
+		c.setRequestProperty("Content-Type", CONTENT_TYPE);
 
-        try (OutputStream os = c.getOutputStream()) {
-        	os.write(body);
-        }
-        
-        return c;
+		for (Entry<String, Object> entry : issueHeaders.entrySet()) {
+			c.setRequestProperty(entry.getKey(), entry.getValue().toString());
+		}
+
+		c.setDoOutput(true);
+
+		try (OutputStream os = c.getOutputStream()) {
+			os.write(body);
+		}
+
+		return c;
 
 	}
 
 	@Override
 	public AccessToken getAccessToken(boolean forceRefresh) throws AccessTokenException {
 		long time = System.currentTimeMillis();
-		
+
 		ClientCredentialsResponse token = getToken();
-		
+
 		return new AccessToken(token.getAccessToken(), token.getTokenType(), time + token.getExpiresIn() * 1000);
 	}
 

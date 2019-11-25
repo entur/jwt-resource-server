@@ -96,6 +96,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
         this.executorService = executorService;
     }
 
+    @Override
     public AccessToken getAccessToken(long time, boolean forceUpdate) throws AccessTokenException {
     	AccessTokenCacheItem cache = this.cache;
         if(forceUpdate || cache == null || !cache.isValid(time)) {

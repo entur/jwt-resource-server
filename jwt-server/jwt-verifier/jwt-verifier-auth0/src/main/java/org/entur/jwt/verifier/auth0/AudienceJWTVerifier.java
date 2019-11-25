@@ -22,41 +22,39 @@ import com.auth0.jwt.interfaces.JWTVerifier;
 
 public class AudienceJWTVerifier implements JWTVerifier {
 
-    private final JWTVerifier delegate;
-    
-    private final List<String> audiences;
+	private final JWTVerifier delegate;
 
-    public AudienceJWTVerifier(JWTVerifier delegate, List<String> audiences) {
-        super();
-        this.delegate = delegate;
-        if(audiences != null && !audiences.isEmpty()) {
-            this.audiences = new ArrayList<>(audiences); // defensive copy for read-only multi-threading support 
-        } else {
-            this.audiences = null;
-        }
-    }
+	private final List<String> audiences;
 
-    public DecodedJWT verify(String token) throws JWTVerificationException {
-        DecodedJWT decodedJWT = delegate.verify(token);
+	public AudienceJWTVerifier(JWTVerifier delegate, List<String> audiences) {
+		super();
+		this.delegate = delegate;
+		if(audiences != null && !audiences.isEmpty()) {
+			this.audiences = new ArrayList<>(audiences); // defensive copy for read-only multi-threading support 
+		} else {
+			this.audiences = null;
+		}
+	}
 
-        return verify(decodedJWT);
-    }
+	public DecodedJWT verify(String token) {
+		DecodedJWT decodedJWT = delegate.verify(token);
 
-    public DecodedJWT verify(DecodedJWT jwt) throws JWTVerificationException {
-        DecodedJWT decodedJWT = delegate.verify(jwt);
-        
-        List<String> jwtAudiences = decodedJWT.getAudience();
-        if(jwtAudiences == null || jwtAudiences.isEmpty()) {
-            throw new InvalidClaimException("No audience specified.");
-        }
+		return verify(decodedJWT);
+	}
 
-        // if there is a list of approved audiences, check that at least one of the JWT audiences is among them
-        if(audiences != null) {
-            if(Collections.disjoint(audiences, jwtAudiences)) {
-                throw new InvalidClaimException("None of the claim 'aud' value '" + jwtAudiences + "' is not amoung the required audiences.");
-            }
-        }
-        return decodedJWT;
-    }
-    
+	public DecodedJWT verify(DecodedJWT jwt) {
+		DecodedJWT decodedJWT = delegate.verify(jwt);
+
+		List<String> jwtAudiences = decodedJWT.getAudience();
+		if(jwtAudiences == null || jwtAudiences.isEmpty()) {
+			throw new InvalidClaimException("No audience specified.");
+		}
+
+		// if there is a list of approved audiences, check that at least one of the JWT audiences is among them
+		if(audiences != null && Collections.disjoint(audiences, jwtAudiences)) {
+			throw new InvalidClaimException("None of the claim 'aud' value '" + jwtAudiences + "' is not amoung the required audiences.");
+		}
+		return decodedJWT;
+	}
+
 }

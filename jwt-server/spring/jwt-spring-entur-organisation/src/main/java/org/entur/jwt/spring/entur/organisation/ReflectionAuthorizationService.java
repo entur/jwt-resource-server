@@ -44,9 +44,6 @@ public class ReflectionAuthorizationService {
 
     private final EntityResolver entityResolver;
 
-    /**
-     * TODO: Keys needs to be added lower case. Find a better solution to this.
-     */
     private final Map<String, List<String>> fieldMappings;
 
     public ReflectionAuthorizationService(RoleAssignmentExtractor roleAssignmentExtractor,
@@ -103,9 +100,9 @@ public class ReflectionAuthorizationService {
     public Set<String> getRelevantRolesForEntity(Object entity) {
         return roleAssignmentExtractor.getRoleAssignmentsForUser().stream()
                 .filter(roleAssignment -> roleAssignment.getEntityClassifications().get(ENTITY_TYPE).stream()
-                        .anyMatch(entityTypeString -> entityTypeString.toLowerCase().equals(entity.getClass().getSimpleName().toLowerCase())
+                        .anyMatch(entityTypeString -> entityTypeString.equalsIgnoreCase(entity.getClass().getSimpleName().toLowerCase())
                                 || entityTypeString.contains(ENTITY_CLASSIFIER_ALL_TYPES)))
-                .map(roleAssignment -> roleAssignment.getRole())
+                .map(RoleAssignment::getRole)
                 .collect(Collectors.toSet());
     }
 
@@ -267,7 +264,7 @@ public class ReflectionAuthorizationService {
     }
 
     private String removeUnderscore(String string) {
-        return string.replaceAll("_", "");
+        return string.replace("_", "");
     }
 
     public boolean checkAdministrativeZone(RoleAssignment roleAssignment, Object entity) {

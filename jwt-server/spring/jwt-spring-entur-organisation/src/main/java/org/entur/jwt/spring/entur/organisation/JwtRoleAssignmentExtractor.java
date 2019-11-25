@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.entur.jwt.spring.filter.JwtAuthenticationToken;
-import org.entur.jwt.verifier.JwtClaimException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -48,30 +47,26 @@ public class JwtRoleAssignmentExtractor implements RoleAssignmentExtractor {
         if (auth instanceof JwtAuthenticationToken) {
         	JwtAuthenticationToken jwt = (JwtAuthenticationToken)auth;
         	
-        	List<?> claim;
-			try {
-				claim = jwt.getClaim(ATTRIBUTE_NAME_ROLE_ASSIGNMENT, List.class);
-			} catch (JwtClaimException e) {
-                throw new IllegalArgumentException("Unsupported 'roles' claim type.", e);
-			}
+        	List<?> claim = jwt.getClaim(ATTRIBUTE_NAME_ROLE_ASSIGNMENT, List.class);
+        	
 			if(claim == null || claim.isEmpty()) {
                 throw new IllegalArgumentException("Unsupported 'roles' claim type.");
 			}
 
-            return claim.stream().map(m -> parse(m)).collect(Collectors.toList());
+            return claim.stream().map(JwtRoleAssignmentExtractor::parse).collect(Collectors.toList());
         } else {
             throw new AccessDeniedException("Not authenticated with token");
         }
     }
 
-    private RoleAssignment parse(Object roleAssignment) {
+    private static RoleAssignment parse(Object roleAssignment) {
         if (roleAssignment instanceof Map) {
             return mapper.convertValue(roleAssignment, RoleAssignment.class);
         }
         try {
             return mapper.readValue((String) roleAssignment, RoleAssignment.class);
         } catch (IOException ioE) {
-            throw new RuntimeException("Exception while parsing role assignments from JSON: " + ioE.getMessage(), ioE);
+            throw new IllegalArgumentException("Exception while parsing role assignments from JSON: " + ioE.getMessage(), ioE);
         }
     }
 }

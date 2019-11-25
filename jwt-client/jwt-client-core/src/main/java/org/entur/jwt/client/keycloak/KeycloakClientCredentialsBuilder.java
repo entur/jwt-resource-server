@@ -5,9 +5,9 @@ import org.entur.jwt.client.ClientCredentials;
 
 public class KeycloakClientCredentialsBuilder extends AbstractClientCredentialsBuilder<KeycloakClientCredentialsBuilder>{
 
-	private final static String TEMPLATE = "/auth/realms/%s/protocol/openid-connect";
-	private final static String ISSUE_TEMPLATE = TEMPLATE + "/token";
-	private final static String REVOKE_TEMPLATE = TEMPLATE + "/logout";
+	private static final String TEMPLATE = "/auth/realms/%s/protocol/openid-connect";
+	private static final String ISSUE_TEMPLATE = TEMPLATE + "/token";
+	private static final String REVOKE_TEMPLATE = TEMPLATE + "/logout";
 	
 	public static KeycloakClientCredentialsBuilder newInstance() {
 		return new KeycloakClientCredentialsBuilder();

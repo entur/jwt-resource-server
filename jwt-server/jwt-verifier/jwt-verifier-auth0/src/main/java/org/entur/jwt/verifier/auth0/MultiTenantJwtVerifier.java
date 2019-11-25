@@ -62,11 +62,11 @@ public class MultiTenantJwtVerifier implements JwtVerifier<DecodedJWT> {
 				} catch(AlgorithmMismatchException e) {
 					throw new JwtClientException(e); // auth0 supports most known algorithms
 				} catch(JWTVerificationException e) {
-					logger.info("Unable to verify token for issuer " + issuer, e);
+					logger.info("Unable to verify token for issuer {}", issuer, e);
 					return null;
 				}
 			} else {
-				logger.info("Unknown issuer " + issuer);
+				logger.info("Unknown issuer {}", issuer);
 			}
 		}
 		

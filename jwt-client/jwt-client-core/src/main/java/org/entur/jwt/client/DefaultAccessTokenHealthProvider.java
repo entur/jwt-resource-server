@@ -2,11 +2,6 @@ package org.entur.jwt.client;
 
 import java.io.IOException;
 
-import org.entur.jwt.client.AccessToken;
-import org.entur.jwt.client.AccessTokenException;
-import org.entur.jwt.client.AccessTokenProvider;
-import org.entur.jwt.client.BaseAccessTokenProvider;
-
 public class DefaultAccessTokenHealthProvider extends BaseAccessTokenProvider {
 
 	private volatile AccessTokenHealth status;
@@ -41,30 +36,29 @@ public class DefaultAccessTokenHealthProvider extends BaseAccessTokenProvider {
 		provider.close();
 	}
 
+	@Override
 	public AccessTokenHealth getHealth(boolean refresh) {
-		AccessTokenHealth status = this.status;
-		if(refresh) {
-			if(status == null || !status.isSuccess()) { 
-				// get a fresh status
-				try {
-					refreshProvider.getAccessToken(false);
-				} catch(Exception e) {
-					// ignore
-					logger.warn("Exception refreshing health status.", e);
-				} finally {
-					// so was this provider actually invoked?
-					// check whether we got a new status
-					if(this.status != status) {
-						status = this.status;
-					} else {
-						// assume a provider above this instance
-						// was able to compensate somehow
-						status = new AccessTokenHealth(System.currentTimeMillis(), true);
-					}
+		AccessTokenHealth threadSafeStatus = this.status; // defensive copy
+		if(refresh &&  (threadSafeStatus == null || !threadSafeStatus.isSuccess())) { 
+			// get a fresh status
+			try {
+				refreshProvider.getAccessToken(false);
+			} catch(Exception e) {
+				// ignore
+				logger.warn("Exception refreshing health status.", e);
+			} finally {
+				// so was this provider actually invoked?
+				// check whether we got a new status
+				if(this.status != threadSafeStatus) {
+					threadSafeStatus = this.status;
+				} else {
+					// assume a provider above this instance
+					// was able to compensate somehow
+					threadSafeStatus = new AccessTokenHealth(System.currentTimeMillis(), true);
 				}
 			}
 		}
-		return status;
+		return threadSafeStatus;
 	}
 
 	public void setRefreshProvider(AccessTokenProvider top) {

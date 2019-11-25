@@ -34,79 +34,91 @@ public class Auth0JwtAuthorityMapper implements JwtAuthorityMapper<DecodedJWT> {
         List<GrantedAuthority> authorities = new ArrayList<>();
         
         if(!extractKeycloakResourceAccess && !extractAuth0Permissions) {
-	        Claim scopeClaim = token.getClaim("scope");
-	        if(scopeClaim != null && !(scopeClaim instanceof NullClaim)) {
-	        	String[] scopes = scopeClaim.asString().split("\\s");
-	        	for(String scope : scopes) {
-	                authorities.add(new SimpleGrantedAuthority(scope));
-	        	}
-	        }
+	        addScope(token, authorities);
         }
         
         if(extractAuth0Permissions) {
-	        Claim permissionClaim = token.getClaim("permissions");
-	        if(permissionClaim != null && !(permissionClaim instanceof NullClaim)) {
-	        	String[] permissions = permissionClaim.asArray(String.class);
-	        	for(String permission : permissions) {
-	                authorities.add(new SimpleGrantedAuthority(permission));
-	        	}
-	        }
+	        addPermissions(token, authorities);
         }
 
         if(extractKeycloakResourceAccess) {
-	        // keycloak
-        	
-        	/*
-			  "resource_access": {
-			    "e8e9a643-fb78-467e-9d9f-d14da69c6870": {
-			      "roles": [
-			        "uma_protection"
-			      ]
-			    },
-			    "account": {
-			      "roles": [
-			        "manage-account",
-			        "manage-account-links",
-			        "view-profile"
-			      ]
-			    }
-			  },        	
-        	*/
-	        Claim resourceAccess = token.getClaim("resource_access");
-	        if(resourceAccess != null && !(resourceAccess instanceof NullClaim)) {
-	        	Map<String, Object> map = resourceAccess.asMap();
-	        	for (Entry<String, Object> entry : map.entrySet()) {
-	        		
-	        		// skip account permissions
-	        		// see https://github.com/keycloak/keycloak/blob/master/adapters/oidc/adapter-core/src/main/java/org/keycloak/adapters/AdapterUtils.java#L39
-	        		if(entry.getKey().equals("account")) {
-	        			continue;
-	        		}
-					Object value = entry.getValue();
-					
-					if(value instanceof Map) {
-						Object rolesObject = ((Map)value).get("roles");
-						
-						if(rolesObject instanceof List) {
-							List<String> roles = (List<String>)rolesObject;
-
-				        	for(String role : roles) {
-				                authorities.add(new SimpleGrantedAuthority(role));
-				        	}
-						} else if(rolesObject instanceof String[]) {
-							String[] roles = (String[])rolesObject;
-	
-				        	for(String role : roles) {
-				                authorities.add(new SimpleGrantedAuthority(role));
-				        	}
-						} else {
-							logger.warn("Unable to map roles " + rolesObject + " of type " + rolesObject.getClass().getName() + " to an authority; expected List or array");
-						}
-					}
-	        	}
-	        }
+	        addResourceAccess(token, authorities);
         }
 		return authorities;
+	}
+
+	private void addResourceAccess(DecodedJWT token, List<GrantedAuthority> authorities) {
+		// keycloak
+		
+		/*
+		  "resource_access": {
+		    "e8e9a643-fb78-467e-9d9f-d14da69c6870": {
+		      "roles": [
+		        "uma_protection"
+		      ]
+		    },
+		    "account": {
+		      "roles": [
+		        "manage-account",
+		        "manage-account-links",
+		        "view-profile"
+		      ]
+		    }
+		  },        	
+		*/
+		Claim resourceAccess = token.getClaim("resource_access");
+		if(resourceAccess != null && !(resourceAccess instanceof NullClaim)) {
+			Map<String, Object> map = resourceAccess.asMap();
+			for (Entry<String, Object> entry : map.entrySet()) {
+				
+				// skip account permissions
+				// see https://github.com/keycloak/keycloak/blob/master/adapters/oidc/adapter-core/src/main/java/org/keycloak/adapters/AdapterUtils.java#L39
+				if(entry.getKey().equals("account")) {
+					continue;
+				}
+				Object value = entry.getValue();
+				
+				if(value instanceof Map) {
+					Object rolesObject = ((Map)value).get("roles");
+					
+					if(rolesObject instanceof List) {
+						List<String> roles = (List<String>)rolesObject;
+
+			        	for(String role : roles) {
+			                authorities.add(new SimpleGrantedAuthority(role));
+			        	}
+					} else if(rolesObject instanceof String[]) {
+						String[] roles = (String[])rolesObject;
+
+			        	for(String role : roles) {
+			                authorities.add(new SimpleGrantedAuthority(role));
+			        	}
+					} else {
+						logger.warn("Unable to map roles " + rolesObject + " of type " + rolesObject.getClass().getName() + " to an authority; expected List or array");
+					}
+				}
+			}
+		}
+	}
+
+	private void addScope(DecodedJWT token, List<GrantedAuthority> authorities) {
+		Claim scopeClaim = token.getClaim("scope");
+		if(scopeClaim != null && !(scopeClaim instanceof NullClaim)) {
+			String[] scopes = scopeClaim.asString().split("\\s");
+			for(String scope : scopes) {
+		        authorities.add(new SimpleGrantedAuthority(scope));
+			}
+		}
+	}
+
+	private void addPermissions(DecodedJWT token, List<GrantedAuthority> authorities) {
+		Claim permissionClaim = token.getClaim("permissions");
+		if(permissionClaim != null && !(permissionClaim instanceof NullClaim)) {
+			String[] permissions = permissionClaim.asArray(String.class);
+			for(String permission : permissions) {
+		        authorities.add(new SimpleGrantedAuthority(permission));
+			}
+		}
 	}
 
 

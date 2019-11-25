@@ -1,14 +1,18 @@
 package org.entur.jwt.client;
 
-public class AccessToken {
+import java.io.Serializable;
+
+public class AccessToken implements Serializable {
+
+	private static final long serialVersionUID = 1L;
 
 	public static AccessToken newInstance(String value, String type, long expires) {
 		return new AccessToken(value, type, expires);
 	}
 	
-    private final String value;
-    private final String type;
-    private final long expires;
+    protected final String value;
+    protected final String type;
+    protected final long expires;
     
 	public AccessToken(String value, String type, long expiresAt) {
 		super();
@@ -54,13 +58,15 @@ public class AccessToken {
 		if (type == null) {
 			if (other.type != null)
 				return false;
-		} else if (!type.equals(other.type))
+		} else if (!type.equals(other.type)) {
 			return false;
+		}
 		if (value == null) {
 			if (other.value != null)
 				return false;
-		} else if (!value.equals(other.value))
+		} else if (!value.equals(other.value)) {
 			return false;
+		}
 		return true;
 	}
     

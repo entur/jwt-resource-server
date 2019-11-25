@@ -62,12 +62,12 @@ public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT>{
 		List<JwtClaimConstraintProperties> dataValueConstraints = new ArrayList<>();
 		for(JwtClaimConstraintProperties r : required) {
 			if(r.getValue() == null) {
-				log.info("Require claim " + r.getName() + " value " + r.getValue() + " of type " + r.getType());
+				log.info("Require claim {} value {} of type {}", r.getName(), r.getValue(), r.getType());
 				
 				dataTypeConstraints.add(r);
 				
 			} else {
-				log.info("Require claim " + r.getName() + " of type " + r.getType());
+				log.info("Require claim {} of type {}", r.getName() + r.getType());
 				
 				dataValueConstraints.add(r);
 			}
@@ -76,7 +76,7 @@ public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT>{
 		for (Entry<String, JwtTenantProperties> entry : tenants.entrySet()) {
 			JwtTenantProperties tenantConfiguration = entry.getValue();
 			
-			log.info("Configure tenant '" + entry.getKey() + "' with issuer '" + tenantConfiguration.getIssuer() + "'");
+			log.info("Configure tenant '{}' with issuer '{}'", entry.getKey(), tenantConfiguration.getIssuer());
 			
 			JwkLocationProperties tenantJwkConfiguration = tenantConfiguration.getJwk();
 			if(tenantJwkConfiguration == null) {
@@ -124,11 +124,7 @@ public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT>{
 			}
 
 			JwkRetryProperties retrying = jwkConfiguration.getRetry();
-			if(retrying != null && retrying.isEnabled()) {
-				builder.retrying(true);
-			} else {
-				builder.retrying(false);
-			}
+			builder.retrying(retrying != null && retrying.isEnabled());
 
 			JwkOutageCacheProperties outageCache = jwkConfiguration.getOutageCache();
 			if(outageCache != null && outageCache.isEnabled()) {
@@ -158,12 +154,7 @@ public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT>{
 			for(JwtClaimConstraintProperties r : dataValueConstraints) {
 				switch(r.getType()) {
 					case "integer": {
-						Long l = Long.parseLong(r.getValue());
-						if(l <= Integer.MAX_VALUE) {
-							jwtBuilder.withClaim(r.getName(), l.intValue());
-						} else {
-							jwtBuilder.withClaim(r.getName(), l);
-						}
+						parseInteger(jwtBuilder, r);
 						break;
 					} 
 					case "boolean" : {
@@ -227,6 +218,15 @@ public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT>{
 		}
 		return verifier;
 
+	}
+
+	private void parseInteger(Verification jwtBuilder, JwtClaimConstraintProperties r) {
+		Long l = Long.parseLong(r.getValue());
+		if(l <= Integer.MAX_VALUE) {
+			jwtBuilder.withClaim(r.getName(), l.intValue());
+		} else {
+			jwtBuilder.withClaim(r.getName(), l);
+		}
 	}
 
 
