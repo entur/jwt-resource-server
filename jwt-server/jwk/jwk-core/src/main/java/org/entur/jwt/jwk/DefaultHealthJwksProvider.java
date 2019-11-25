@@ -1,6 +1,10 @@
 package org.entur.jwt.jwk;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+
+import org.entur.jwt.jwk.AbstractCachedJwksProvider.JwkListCacheItem;
 
 /**
  * 
@@ -71,5 +75,18 @@ public class DefaultHealthJwksProvider<T> extends BaseJwksProvider<T> {
 
 	public void setRefreshProvider(JwksProvider<T> top) {
 		this.refreshProvider = top;
+	}
+
+	@Override
+	public CompletionStage<List<T>> getFutureJwks(boolean forceUpdate) {
+		return getFutureJwks(forceUpdate, System.currentTimeMillis());
+	}
+
+	public CompletionStage<List<T>> getFutureJwks(boolean forceUpdate, long time) {
+    	CompletionStage<List<T>> stage = provider.getFutureJwks(forceUpdate);
+
+    	return stage.whenComplete((l, ex) -> {
+    		DefaultHealthJwksProvider.this.status = new JwksHealth(time, ex != null);
+    	});
 	}
 }

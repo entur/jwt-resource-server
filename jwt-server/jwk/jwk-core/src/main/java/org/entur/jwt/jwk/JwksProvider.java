@@ -1,6 +1,8 @@
 package org.entur.jwt.jwk;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 /**
  * Provider of a list of Jwk.
@@ -16,4 +18,8 @@ public interface JwksProvider<T> extends JwksHealthProvider {
      */
     List<T> getJwks(boolean forceUpdate) throws JwksException;
     
+    // https://www.deadcoderising.com/java8-writing-asynchronous-code-with-completablefuture/
+    // https://www.baeldung.com/spring-webflux
+    // https://www.baeldung.com/spring-security-5-reactive
+    CompletionStage<List<T>> getFutureJwks(boolean forceUpdate);
 }

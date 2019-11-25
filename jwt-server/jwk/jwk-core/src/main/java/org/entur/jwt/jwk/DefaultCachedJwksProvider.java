@@ -1,6 +1,8 @@
 package org.entur.jwt.jwk;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -85,7 +87,6 @@ public class DefaultCachedJwksProvider<T> extends AbstractCachedJwksProvider<T> 
                 } else {
                     // load updated value
                     cache = this.cache;
-                    
                 }
             } else {
                 throw new JwksUnavailableException("Timeout while waiting for refreshed cache (limit of " + refreshTimeout + "ms exceed).");
@@ -104,4 +105,30 @@ public class DefaultCachedJwksProvider<T> extends AbstractCachedJwksProvider<T> 
     ReentrantLock getLock() {
         return lock;
     }
+
+	@Override
+	public CompletionStage<List<T>> getFutureJwks(boolean forceUpdate) {
+		return getFutureJwks(forceUpdate, System.currentTimeMillis());
+	}
+
+	public CompletionStage<List<T>> getFutureJwks(boolean forceUpdate, long time) {
+        JwkListCacheItem<T> cache = this.cache;
+        if(forceUpdate || cache == null || !cache.isValid(time)) {
+        	// make async execution here TODO
+        	
+        	// queue jobs, which all check whether updating is still necessary
+        	// and if so whether we're still within the deadline.
+        	// possible solution: have as many threads as cores, so that then the lock is resolved,
+        	// it is full parallel effort to complete the waiting work.
+        	
+        	CompletionStage<List<T>> stage = provider.getFutureJwks(forceUpdate);
+
+        	return stage.whenComplete((l, ex) -> {
+        		if(l != null) {
+        			DefaultCachedJwksProvider.this.cache = new JwkListCacheItem<T>(l, getExpires(time));
+        		}
+        	});
+        }
+        return CompletableFuture.completedStage(cache.getValue());
+	}
 }
