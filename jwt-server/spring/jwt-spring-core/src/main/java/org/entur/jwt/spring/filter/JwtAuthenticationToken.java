@@ -3,7 +3,6 @@ package org.entur.jwt.spring.filter;
 import java.util.Collection;
 import java.util.Map;
 
-import org.entur.jwt.verifier.JwtClaimException;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.SpringSecurityCoreVersion;
@@ -38,6 +37,7 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
         return this.principal;
     }
 
+    @Override
     public void setAuthenticated(boolean isAuthenticated) {
         if (isAuthenticated) {
             throw new IllegalArgumentException("Cannot set this token to trusted - use constructor which takes a GrantedAuthority list instead");

@@ -10,6 +10,7 @@ import org.junit.jupiter.api.extension.ParameterContext;
 
 public class PartnerAuth0TokenEncoder extends DefaultAccessTokenEncoder {
 
+	@Override
 	public Map<String, Object> encodeClaims(ParameterContext parameterContext, ResourceServerConfiguration resolver) {
 		Map<String, Object> encode = super.encodeClaims(parameterContext, resolver);
 		

@@ -18,7 +18,7 @@ public class PropertiesFileAuthorizationServerConfigurationResolver implements R
 		this(Paths.get("jwt.junit5.properties"), "entur.jwt.tenants");
 	}
 
-	public PropertiesFileAuthorizationServerConfigurationResolver(Path path, String prefix) throws IOException {
+	public PropertiesFileAuthorizationServerConfigurationResolver(Path path, String prefix) {
 		this.path = path;
 		this.prefix = prefix;
 	}

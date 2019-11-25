@@ -56,7 +56,7 @@ public class DefaultCachedJwksProvider<T> extends AbstractCachedJwksProvider<T> 
         return cache.getValue();
     }
 
-    protected List<T> getJwksBlocking(long time, JwkListCacheItem<T> cache) throws JwksException, JwksUnavailableException {
+    protected List<T> getJwksBlocking(long time, JwkListCacheItem<T> cache) throws JwksException {
         // Synchronize so that the first thread to acquire the lock
         // exclusively gets to call the underlying provider.
         // Other (later) threads must wait until the result is ready.
@@ -79,7 +79,7 @@ public class DefaultCachedJwksProvider<T> extends AbstractCachedJwksProvider<T> 
                         List<T> all = provider.getJwks(false);
     
                         // save to cache
-                        this.cache = cache = new JwkListCacheItem<T>(all, getExpires(time));
+                        this.cache = cache = new JwkListCacheItem<>(all, getExpires(time));
                     } finally {
                         lock.unlock();
                     }

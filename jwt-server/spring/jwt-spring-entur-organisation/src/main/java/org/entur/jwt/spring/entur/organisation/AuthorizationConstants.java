@@ -18,6 +18,10 @@ package org.entur.jwt.spring.entur.organisation;
 
 public class AuthorizationConstants {
 
+	private AuthorizationConstants() {
+		// utility class
+	}
+	
     public static final String ROLE_DELETE_STOPS = "deleteStops";
     public static final String ROLE_EDIT_STOPS = "editStops";
 

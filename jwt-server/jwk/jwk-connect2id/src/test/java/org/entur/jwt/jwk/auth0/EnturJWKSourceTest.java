@@ -5,9 +5,6 @@ import static net.jadler.Jadler.closeJadler;
 import static net.jadler.Jadler.initJadler;
 import static net.jadler.Jadler.onRequest;
 import static net.jadler.Jadler.port;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.io.FileNotFoundException;
 import java.net.SocketTimeoutException;
@@ -25,6 +22,7 @@ import org.entur.jwt.jwk.connect2id.Connect2IdJwkProviderBuilder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import com.nimbusds.jose.RemoteKeySourceException;
 import com.nimbusds.jose.jwk.JWK;
@@ -33,7 +31,6 @@ import com.nimbusds.jose.jwk.JWKSelector;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
-import com.nimbusds.jose.jwk.source.RemoteJWKSet;
 import com.nimbusds.jose.proc.SecurityContext;
 
 import net.jadler.Request;
@@ -55,13 +52,6 @@ public class EnturJWKSourceTest {
 	@AfterEach
 	public void tearDown() {
 		closeJadler();
-	}
-
-	@Test
-	public void testConstants() {
-		assertEquals(RemoteJWKSet.DEFAULT_HTTP_CONNECT_TIMEOUT, 500);
-		assertEquals(RemoteJWKSet.DEFAULT_HTTP_READ_TIMEOUT, 500);
-		assertEquals(RemoteJWKSet.DEFAULT_HTTP_SIZE_LIMIT, 50 * 1024);
 	}
 
 	@Test

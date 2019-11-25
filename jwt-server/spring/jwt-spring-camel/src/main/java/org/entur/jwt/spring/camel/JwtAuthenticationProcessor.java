@@ -4,7 +4,6 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
-import org.springframework.security.core.AuthenticationException;
 
 /**
  * A {@linkplain Processor} which, if present, extracts the Json Web Token from
@@ -19,5 +18,5 @@ import org.springframework.security.core.AuthenticationException;
 
 public interface JwtAuthenticationProcessor extends Processor {	
 	
-	void process(Exchange exchange) throws AuthenticationException;
+	void process(Exchange exchange);
 }

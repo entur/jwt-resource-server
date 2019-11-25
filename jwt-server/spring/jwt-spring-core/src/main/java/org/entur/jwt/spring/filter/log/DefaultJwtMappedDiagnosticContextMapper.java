@@ -25,7 +25,7 @@ public class DefaultJwtMappedDiagnosticContextMapper<T> implements JwtMappedDiag
 		for(int i = 0; i < from.length; i++) {
 			String value = extractor.getClaim(token, from[i], String.class);
 			if(value != null) {
-				MDC.put(to[i], value.toString());
+				MDC.put(to[i], value);
 			}
 		}
 	}

@@ -17,29 +17,29 @@ public class AuthorizationServerTestContext {
 
 	public AuthorizationServerTestContext(List<AuthorizationServerImplementation> list) {
 		super();
-		
-		Map<Annotation, AuthorizationServerImplementation> authorizationServers = new HashMap<>();
+
+		Map<Annotation, AuthorizationServerImplementation> values = new HashMap<>();
 		for (AuthorizationServerImplementation item : list) {
-			authorizationServers.put(item.getAnnotation(), item);
+			values.put(item.getAnnotation(), item);
 		}
-		
-		this.authorizationServers = authorizationServers;
+
+		this.authorizationServers = values;
 	}
-	
+
 	public AuthorizationServerEncoder getEncoder(AuthorizationServerImplementation impl) {
 		return authorizationServers.get(impl.getAnnotation()).getEncoder();
 	}
 
 	public boolean isDirty(List<AuthorizationServerImplementation> current) {
 		if (current.size() != authorizationServers.size()) {
-            return true;
+			return true;
 		}
-		
-		Set<Annotation> currentKeys = current.stream().map(a -> a.getAnnotation()).collect(Collectors.toSet());
-		
-        return !currentKeys.containsAll(authorizationServers.keySet());
+
+		Set<Annotation> currentKeys = current.stream().map(AuthorizationServerImplementation::getAnnotation).collect(Collectors.toSet());
+
+		return !currentKeys.containsAll(authorizationServers.keySet());
 	}
-	
+
 	public List<AuthorizationServerImplementation> toList() {
 		return new ArrayList<>(authorizationServers.values());
 	}

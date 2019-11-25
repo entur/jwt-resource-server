@@ -43,30 +43,29 @@ public class DefaultHealthJwksProvider<T> extends BaseJwksProvider<T> {
 		return list;
 	}
 
+	@Override
     public JwksHealth getHealth(boolean refresh) {
-		JwksHealth status = this.status;
-		if(refresh) {
-			if(status == null || !status.isSuccess()) { 
-				// get a fresh status
-				try {
-					refreshProvider.getJwks(false);
-				} catch(Exception e) {
-					// ignore
-					logger.warn("Exception refreshing health status.", e);
-				} finally {
-					// so was this provider actually invoked?
-					// check whether we got a new status
-					if(this.status != status) {
-						status = this.status;
-					} else {
-						// assume a provider above this instance
-						// was able to compensate somehow
-						status = new JwksHealth(System.currentTimeMillis(), true);
-					}
+		JwksHealth threadSafeStatus = this.status; // defensive copy
+		if(refresh && (threadSafeStatus == null || !threadSafeStatus.isSuccess())) { 
+			// get a fresh status
+			try {
+				refreshProvider.getJwks(false);
+			} catch(Exception e) {
+				// ignore
+				logger.warn("Exception refreshing health status.", e);
+			} finally {
+				// so was this provider actually invoked?
+				// check whether we got a new status
+				if(this.status != threadSafeStatus) {
+					threadSafeStatus = this.status;
+				} else {
+					// assume a provider above this instance
+					// was able to compensate somehow
+					threadSafeStatus = new JwksHealth(System.currentTimeMillis(), true);
 				}
 			}
 		}
-		return status;
+		return threadSafeStatus;
     }
 
 	public void setRefreshProvider(JwksProvider<T> top) {

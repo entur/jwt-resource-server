@@ -68,7 +68,7 @@ public class JwtAutoConfiguration {
 
     private static class NoUserDetailsService implements UserDetailsService {
         @Override
-        public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        public UserDetails loadUserByUsername(String username) {
             throw new UsernameNotFoundException("");
         }
     }
@@ -88,6 +88,7 @@ public class JwtAutoConfiguration {
         }
         
         @Bean
+        @Override
         public UserDetailsService userDetailsService() {
             // avoid the default user.
             return new NoUserDetailsService();

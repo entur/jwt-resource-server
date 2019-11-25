@@ -56,7 +56,7 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 	private static final String SCOPE = "scope";
 
 	@SuppressWarnings("unchecked")
-	private final static Class<? extends Annotation>[] fixedClaims = new Class[] {
+	private static final Class<? extends Annotation>[] fixedClaims = new Class[] {
 		Audience.class,
 		AuthorizedParty.class,
 		ExpiresAt.class,
@@ -67,7 +67,7 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 	};
 	
 	@SuppressWarnings("unchecked")
-	private final static Class<? extends Annotation>[] customClaims = new Class[]{
+	private static final Class<? extends Annotation>[] customClaims = new Class[]{
 			MapClaim.class,
 			BooleanClaim.class,
 			IntegerClaim.class,
@@ -81,12 +81,12 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 	};
 	
 	@SuppressWarnings("unchecked")
-	private final static Class<? extends Annotation>[] fixedSabotages = new Class[] {
+	private static final Class<? extends Annotation>[] fixedSabotages = new Class[] {
 		Signature.class,
 	};
 	
 	@SuppressWarnings("unchecked")
-	private final static Class<? extends Annotation>[] fixedHeaders = new Class[] {
+	private static final Class<? extends Annotation>[] fixedHeaders = new Class[] {
 		AlgorithmHeader.class,
 		KeyIdHeader.class,
 		TypeHeader.class

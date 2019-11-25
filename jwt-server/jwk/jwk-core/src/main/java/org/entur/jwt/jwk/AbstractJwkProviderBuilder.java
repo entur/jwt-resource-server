@@ -26,7 +26,7 @@ public abstract class AbstractJwkProviderBuilder<T, B extends AbstractJwkProvide
         if(provider instanceof JwkProvider) {
             return (JwkProvider<T>)provider;
         }
-        return new DefaultJwkProvider<T>(provider, jwkFieldExtractor);
+        return new DefaultJwkProvider<>(provider, jwkFieldExtractor);
         
     }
 }

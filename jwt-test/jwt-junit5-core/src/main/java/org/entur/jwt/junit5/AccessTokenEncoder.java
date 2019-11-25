@@ -8,6 +8,6 @@ import org.junit.jupiter.api.extension.ParameterContext;
 
 public interface AccessTokenEncoder {
 
-	<S extends Annotation> String encode(ParameterContext parameterContext, ExtensionContext extensionContext, Annotation authorizationServer, AuthorizationServerEncoder encoder, ResourceServerConfiguration configuration);
+	String encode(ParameterContext parameterContext, ExtensionContext extensionContext, Annotation authorizationServer, AuthorizationServerEncoder encoder, ResourceServerConfiguration configuration);
 	
 }

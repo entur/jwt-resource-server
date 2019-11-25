@@ -21,7 +21,6 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
 import org.junit.jupiter.api.extension.ExtensionContext.Store;
 import org.junit.jupiter.api.extension.ParameterContext;
-import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 
 public class AuthorizationServerExtension implements ParameterResolver, BeforeAllCallback, AfterAllCallback, BeforeEachCallback, ResourceServerConfiguration {
@@ -62,11 +61,11 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
 	
 	@Override
 	public void beforeEach(ExtensionContext context) throws Exception {
-		List<ResourceServerConfiguration> configurations = new ArrayList<>();
+		List<ResourceServerConfiguration> values = new ArrayList<>();
 		for (ResourceServerConfigurationResolver resolver : resolvers) {
-			configurations.add(resolver.resolve(context));
+			values.add(resolver.resolve(context));
 		}
-		this.configurations = configurations;
+		this.configurations = values;
 		
 		for(ResourceServerConfigurationEnricher enricher : enrichers) {
 			enricher.beforeEach(this, context);
@@ -87,7 +86,7 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
 	}
 
     @Override
-    public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
+    public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
         Optional<AccessToken> accessTokenTokenAnnotation = parameterContext.findAnnotation(AccessToken.class);
         if(accessTokenTokenAnnotation.isPresent()) {
         	AccessToken accessToken = accessTokenTokenAnnotation.get();
@@ -110,7 +109,7 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
     }
     
 	@Override
-    public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
+    public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
         Optional<AccessToken> accessTokenTokenAnnotation = parameterContext.findAnnotation(AccessToken.class);
         if(accessTokenTokenAnnotation.isPresent()) {
         	AccessToken accessToken = accessTokenTokenAnnotation.get();
@@ -147,11 +146,8 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
 	@Override
 	public String getProperty(String id, String propertyName) {
 		if(configurations.isEmpty()) {
-			switch(propertyName) {
-				case "issuer" : return toDefaultIssuer(id);
-				default : {
-					// fall through
-				}
+			if(propertyName.equals("issuer")) {
+				return toDefaultIssuer(id);
 			}
 		} else {
 			for (ResourceServerConfiguration r : configurations) {

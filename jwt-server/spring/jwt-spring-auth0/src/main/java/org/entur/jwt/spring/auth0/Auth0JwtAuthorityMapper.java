@@ -47,6 +47,7 @@ public class Auth0JwtAuthorityMapper implements JwtAuthorityMapper<DecodedJWT> {
 		return authorities;
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private void addResourceAccess(DecodedJWT token, List<GrantedAuthority> authorities) {
 		// keycloak
 		
@@ -94,7 +95,7 @@ public class Auth0JwtAuthorityMapper implements JwtAuthorityMapper<DecodedJWT> {
 			                authorities.add(new SimpleGrantedAuthority(role));
 			        	}
 					} else {
-						logger.warn("Unable to map roles " + rolesObject + " of type " + rolesObject.getClass().getName() + " to an authority; expected List or array");
+						logger.warn("Unable to map roles {} of type {} to an authority; expected List or array", rolesObject, rolesObject.getClass().getName());
 					}
 				}
 			}

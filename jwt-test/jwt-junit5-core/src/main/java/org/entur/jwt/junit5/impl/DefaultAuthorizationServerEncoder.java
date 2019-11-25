@@ -72,7 +72,7 @@ public class DefaultAuthorizationServerEncoder implements AuthorizationServerEnc
     
             return keyGen.generateKeyPair();
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException(e);
         }
     }	
 	

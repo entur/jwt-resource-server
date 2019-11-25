@@ -1,6 +1,7 @@
 package org.entur.jwt.junit5.configuration.enrich;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -47,8 +48,11 @@ public class PropertiesFileResourceServerConfigurationEnricher extends AbstractP
 
 	@Override
 	public void afterAll(ExtensionContext context) throws IOException {
-		if(output != null && Files.exists(output)) {
-			Files.delete(output);
+		if(output != null) {
+			File file = output.toFile(); // using file because sonarqube says it has better performance
+			if(file.exists()) {			
+				file.delete();
+			}
 		}
 	}
 

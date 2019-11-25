@@ -4,12 +4,11 @@ import org.entur.jwt.spring.filter.JwtAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 
 public class JwtAuthenticationManager implements AuthenticationManager {
 
 	@Override
-	public Authentication authenticate(Authentication authentication) throws AuthenticationException {
+	public Authentication authenticate(Authentication authentication) {
 		if(authentication instanceof JwtAuthenticationToken) {
 			return authentication;
 		}

@@ -58,9 +58,9 @@ public abstract class AbstractCachedJwksProvider<T> extends BaseJwksProvider<T> 
     }
     
     protected JwkListCacheItem<T> getCache(long time) {
-        JwkListCacheItem<T> cache = this.cache;
-        if(cache != null && cache.isValid(time)) {
-            return cache;
+        JwkListCacheItem<T> threadSafeCache = this.cache; // defensive copy
+        if(threadSafeCache != null && threadSafeCache.isValid(time)) {
+            return threadSafeCache;
         }
         return null;
     }

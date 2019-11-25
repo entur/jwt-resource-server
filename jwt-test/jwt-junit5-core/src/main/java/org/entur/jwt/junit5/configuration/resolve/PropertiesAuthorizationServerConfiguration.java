@@ -1,6 +1,5 @@
 package org.entur.jwt.junit5.configuration.resolve;
 
-import java.io.IOException;
 import java.util.Properties;
 
 public class PropertiesAuthorizationServerConfiguration implements ResourceServerConfiguration {
@@ -8,7 +7,7 @@ public class PropertiesAuthorizationServerConfiguration implements ResourceServe
 	private final Properties properties;
 	private final String prefix;
 	
-	public PropertiesAuthorizationServerConfiguration(String prefix, Properties properties) throws IOException {
+	public PropertiesAuthorizationServerConfiguration(String prefix, Properties properties) {
 		this.prefix = prefix;
 		this.properties = properties;
 	}

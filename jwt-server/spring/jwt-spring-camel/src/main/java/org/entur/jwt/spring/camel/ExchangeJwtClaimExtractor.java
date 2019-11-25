@@ -10,6 +10,10 @@ import org.entur.jwt.verifier.JwtClaimException;
 
 public class ExchangeJwtClaimExtractor {
 
+	private ExchangeJwtClaimExtractor() {
+		// utility class
+	}
+	
 	public static <V> V extract(Exchange e, String name, Class<V> type) throws JwtClaimException {
 	    Subject subject = e.getIn().getHeader(Exchange.AUTHENTICATION, Subject.class);
 	    Set<JwtAuthenticationToken> principals = subject.getPrincipals(JwtAuthenticationToken.class);

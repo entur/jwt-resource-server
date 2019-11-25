@@ -16,7 +16,8 @@ public abstract class BaseJwksProvider<T> implements JwksProvider<T> {
     public JwksProvider<T> getProvider() {
         return provider;
     }
-    
+
+    @Override
     public JwksHealth getHealth(boolean refresh) {
     	return provider.getHealth(refresh);
     }
