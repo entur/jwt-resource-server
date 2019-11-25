@@ -11,16 +11,13 @@ import org.entur.jwt.client.keycloak.KeycloakClientCredentialsBuilder;
 import org.entur.jwt.client.properties.AbstractJwtClientProperties;
 import org.entur.jwt.client.properties.Auth0JwtClientProperties;
 import org.entur.jwt.client.properties.JwtClientCache;
-import org.entur.jwt.client.properties.JwtClientProperties;
 import org.entur.jwt.client.properties.KeycloakJwtClientProperties;
 import org.entur.jwt.client.properties.PreemptiveRefresh;
 import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
-
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

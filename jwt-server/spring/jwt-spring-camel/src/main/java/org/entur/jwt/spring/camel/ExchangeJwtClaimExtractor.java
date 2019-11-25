@@ -16,7 +16,7 @@ public class ExchangeJwtClaimExtractor {
 	    if(principals.isEmpty()) {
 	    	throw new JwtClaimException("JWT authentication not found in exchange");
 	    }
-	    JwtAuthenticationToken<?> next = principals.iterator().next();
+	    JwtAuthenticationToken next = principals.iterator().next();
 	    V claim = next.getClaim(name, type);
 	    if(claim == null) {
 	    	throw new JwtClaimException("JWT claim " + name + " not found in token");

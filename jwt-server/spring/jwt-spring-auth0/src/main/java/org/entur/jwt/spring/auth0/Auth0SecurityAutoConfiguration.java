@@ -5,6 +5,7 @@ import org.entur.jwt.spring.auth0.properties.Auth0AuthorityMapperProperties;
 import org.entur.jwt.spring.auth0.properties.Auth0Properties;
 import org.entur.jwt.spring.filter.JwtAuthorityMapper;
 import org.entur.jwt.spring.filter.resolver.JwtArgumentResolver;
+import org.entur.jwt.spring.filter.resolver.JwtPayload;
 import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.entur.jwt.verifier.JwtVerifierFactory;
 import org.entur.jwt.verifier.auth0.Auth0JwtClaimExtractor;
@@ -49,7 +50,7 @@ public class Auth0SecurityAutoConfiguration {
     @ConditionalOnMissingBean(JwtArgumentResolver.class)
     @ConditionalOnProperty(name = "entur.jwt.enabled", havingValue = "true", matchIfMissing = false)
     public JwtArgumentResolver jwtArgumentResolver() {
-    	return new JwtArgumentResolver( (value, type) -> value, DecodedJWT.class);
+    	return new JwtArgumentResolver( (value, type) -> new JwtPayload(value), JwtPayload.class);
     }
 
 }

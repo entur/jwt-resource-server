@@ -1,23 +1,21 @@
 package org.entur.jwt.spring.rest.config;
 
+import java.util.Map;
 import java.util.function.BiFunction;
-import com.auth0.jwt.impl.NullClaim;
-import com.auth0.jwt.interfaces.Claim;
-import com.auth0.jwt.interfaces.DecodedJWT;
 
-public class TenantArgumentResolver implements BiFunction<DecodedJWT, Class<?>, Tenant> {
+public class TenantArgumentResolver implements BiFunction<Map<String, Object>, Class<?>, Tenant> {
 
 	@Override
-	public Tenant apply(DecodedJWT t, Class<?> u) {
-		Claim claim = t.getClaim("organisationID");
-		if(claim == null || claim instanceof NullClaim) {
+	public Tenant apply(Map<String, Object> t, Class<?> u) {
+		Number value = (Number) t.get("organisationID");
+		if(value == null) {
 			throw new IllegalArgumentException();
 		}
 		if(u == Tenant.class) {
-			return new Tenant(claim.asLong());
+			return new Tenant(value.longValue());
 		}
 		if(u == PartnerTenant.class) {
-			return new PartnerTenant(claim.asLong());
+			return new PartnerTenant(value.longValue());
 		}
 		throw new RuntimeException();
 	}

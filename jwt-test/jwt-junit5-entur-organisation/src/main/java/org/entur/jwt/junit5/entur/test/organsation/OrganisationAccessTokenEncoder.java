@@ -10,6 +10,8 @@ import org.junit.jupiter.api.extension.ParameterContext;
 
 public class OrganisationAccessTokenEncoder extends DefaultAccessTokenEncoder {
 
+	private static final String ROLES = "roles";
+
 	public Map<String, Object> encodeClaims(ParameterContext parameterContext, ResourceServerConfiguration resolver) {
 		Map<String, Object> encode = super.encodeClaims(parameterContext, resolver);
 		
@@ -37,12 +39,12 @@ public class OrganisationAccessTokenEncoder extends DefaultAccessTokenEncoder {
 		
 		Map<String, Object> resource = new HashMap<>();
 		resourceAccess.put(partnerAccessToken.resource(), resource);
-		resource.put("roles", partnerAccessToken.resourceAccess());
+		resource.put(ROLES, partnerAccessToken.resourceAccess());
 
 		Map<String, Object> realmAccess = new HashMap<>();
 		encode.put("realm_access", realmAccess);
-		realmAccess.put("roles", partnerAccessToken.realmAccess());
+		realmAccess.put(ROLES, partnerAccessToken.realmAccess());
 
-		encode.put("roles", partnerAccessToken.roles());
+		encode.put(ROLES, partnerAccessToken.roles());
 	}
 }

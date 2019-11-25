@@ -2,6 +2,7 @@ package org.entur.jwt.spring.filter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
@@ -54,7 +55,9 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
                 if(token != null) {
                     List<GrantedAuthority> authorities = authorityMapper.getGrantedAuthorities(token);
 
-                    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken<T>(token, header, authorities, extractor));
+                    Map<String, Object> claims = extractor.getClaims(token);
+                    
+                    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(claims, header, authorities));
                     
                     if(mdcMapper != null) {
     	                mdcMapper.addContext(token);

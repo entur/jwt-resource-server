@@ -578,6 +578,11 @@ public class ReflectionAuthorizationServiceTest {
             StopPlaceType(String v) {
                 value = v;
             }
+            
+            @SuppressWarnings("unused")
+			public String getValue() {
+				return value;
+			}
         }
 
         StopPlaceType stopPlaceType;

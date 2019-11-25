@@ -106,6 +106,8 @@ public class DefaultCachedAccessTokenProvider extends AbstractCachedAccessTokenP
             
             throw new AccessTokenUnavailableException("Unable to refresh cache");
         } catch (InterruptedException e) {
+        	Thread.currentThread().interrupt(); // Restore interrupted state to make sonar happy
+
             throw new AccessTokenUnavailableException("Interrupted while waiting for refreshed cache", e);
         }
     }

@@ -1,8 +1,9 @@
 package org.entur.jwt.spring.filter;
 
 import java.util.Collection;
+import java.util.Map;
+
 import org.entur.jwt.verifier.JwtClaimException;
-import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.SpringSecurityCoreVersion;
@@ -12,19 +13,20 @@ import org.springframework.security.core.SpringSecurityCoreVersion;
  * Adapted copy of UsernamePasswordAuthentication.
  */
 
-public class JwtAuthenticationToken<T> extends AbstractAuthenticationToken {
+public class JwtAuthenticationToken extends AbstractAuthenticationToken {
 
     private static final long serialVersionUID = SpringSecurityCoreVersion.SERIAL_VERSION_UID;
 
-	private final JwtClaimExtractor<T> extractor;
-    private final T principal;
+    // instead of principal we might have used the original token types here,
+    // but for some of our reference libraries, these are not serializable classes
+    // also this is more generic
+    private final Map<String, Object> principal;
     private String credentials;
     
-    public JwtAuthenticationToken(T principal, String credentials, Collection<? extends GrantedAuthority> authorities, JwtClaimExtractor<T> extractor) {
+    public JwtAuthenticationToken(Map<String, Object> principal, String credentials, Collection<? extends GrantedAuthority> authorities) {
         super(authorities);
         this.principal = principal;
         this.credentials = credentials;
-        this.extractor = extractor;
         super.setAuthenticated(true); // must use super, as we override
     }
 
@@ -32,7 +34,7 @@ public class JwtAuthenticationToken<T> extends AbstractAuthenticationToken {
         return this.credentials;
     }
 
-    public T getPrincipal() {
+    public Map<String, Object> getPrincipal() {
         return this.principal;
     }
 
@@ -50,8 +52,13 @@ public class JwtAuthenticationToken<T> extends AbstractAuthenticationToken {
         credentials = null;
     }
     
-    public <V> V getClaim(String name, Class<V> type) throws JwtClaimException {
-    	return extractor.getClaim(principal, name, type);
+    @SuppressWarnings("unchecked")
+	public <V> V getClaim(String name, Class<V> type) throws JwtClaimException {
+    	return (V) principal.get(name);
+    }
+    
+    public Map<String, Object> getClaims() {
+    	return principal;
     }
 
 }

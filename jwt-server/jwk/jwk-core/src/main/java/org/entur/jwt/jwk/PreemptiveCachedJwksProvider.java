@@ -6,6 +6,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * 
  * Caching {@linkplain JwksProvider} which preemptively attempts to update the cache in the background. 
@@ -19,6 +22,8 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 
 public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T> {
+
+	protected static final Logger logger = LoggerFactory.getLogger(PreemptiveCachedJwksProvider.class);
 
     // preemptive update should execute when 
     // expire - preemptiveRefresh < current time < expire.
@@ -130,19 +135,15 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
                             cacheExpires = cache.getExpires();
                             
                             // run update in the background
-                            executorService.execute(new Runnable() {
-                                
-                                @Override
-                                public void run() {
-                                    try {
-                                        PreemptiveCachedJwksProvider.super.getJwksBlocking(time, cache);
-                                    } catch (JwksException e) {
-                                        // update failed, but another thread can retry
-                                        cacheExpires = -1L;
-                                        // ignore, unable to update
-                                        // another thread will attempt the same
-                                        // TODO logging?
-                                    }
+                            executorService.execute(() ->  {
+                                try {
+                                    PreemptiveCachedJwksProvider.super.getJwksBlocking(time, cache);
+                                } catch (JwksException e) {
+                                    // update failed, but another thread can retry
+                                    cacheExpires = -1L;
+                                    // ignore, unable to update
+                                    // another thread will attempt the same
+                                    logger.warn("Preemptive cache refresh failed", e);
                                 }
                             });
                         }

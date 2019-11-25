@@ -26,6 +26,10 @@
 		    <groupId>org.slf4j</groupId>
 		    <artifactId>slf4j-api</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+		</dependency>
 		
 		<!-- test -->
 		<dependency>
@@ -63,11 +67,5 @@
 		    <artifactId>commons-codec</artifactId>
 		    <scope>test</scope>
 		</dependency>
-		<dependency>
-		    <groupId>com.fasterxml.jackson.core</groupId>
-		    <artifactId>jackson-databind</artifactId>
-		    <scope>test</scope>
-		</dependency>
-		
 	</dependencies>
 </project>

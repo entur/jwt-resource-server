@@ -45,8 +45,8 @@ public class JwtRoleAssignmentExtractor implements RoleAssignmentExtractor {
 
     @Override
     public List<RoleAssignment> getRoleAssignmentsForUser(Authentication auth) {
-        if (auth instanceof JwtAuthenticationToken<?>) {
-        	JwtAuthenticationToken<?> jwt = (JwtAuthenticationToken<?>)auth;
+        if (auth instanceof JwtAuthenticationToken) {
+        	JwtAuthenticationToken jwt = (JwtAuthenticationToken)auth;
         	
         	List<?> claim;
 			try {

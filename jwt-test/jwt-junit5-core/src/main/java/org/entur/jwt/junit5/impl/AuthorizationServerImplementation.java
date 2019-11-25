@@ -20,7 +20,7 @@ public class AuthorizationServerImplementation {
 	protected AuthorizationServerEncoder getAuthorizationServerEncoder(AuthorizationServer token) {
     	Class<?> encoder = (Class<?>) token.encoder();
     	try {
-			return (AuthorizationServerEncoder) encoder.newInstance();
+			return (AuthorizationServerEncoder) encoder.getDeclaredConstructor().newInstance();
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}

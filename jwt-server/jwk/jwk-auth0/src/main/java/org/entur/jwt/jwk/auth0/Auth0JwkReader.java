@@ -18,19 +18,16 @@ public class Auth0JwkReader implements JwksReader<Jwk> {
 
     private final MappingJsonFactory factory = new MappingJsonFactory();
 
-    public Auth0JwkReader() {
-	}
-    
 	@Override
 	public List<Jwk> readJwks(InputStream inputStream) throws IOException, InvalidSigningKeysException {
 		JsonParser parser = factory.createParser(inputStream);
 
-        JsonToken nextToken = parser.nextToken();
-        if(nextToken != JsonToken.START_OBJECT) {
-    		throw new InvalidSigningKeysException("Unexpected type " + nextToken.name());
-        }
-		
         try {
+            JsonToken nextToken = parser.nextToken();
+            if(nextToken != JsonToken.START_OBJECT) {
+        		throw new InvalidSigningKeysException("Unexpected type " + nextToken.name());
+            }
+            
             do {
                 nextToken = parser.nextToken();
                 if(nextToken == null) {

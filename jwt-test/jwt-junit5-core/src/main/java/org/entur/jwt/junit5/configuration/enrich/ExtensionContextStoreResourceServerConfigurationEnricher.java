@@ -35,7 +35,7 @@ public class ExtensionContextStoreResourceServerConfigurationEnricher implements
 	public void afterAll(ExtensionContext context) throws IOException {
 		Store store = AuthorizationServerExtension.getStore(context);
 		
-		store.remove("authorizationServers");		
+		store.remove(KEY_AUTHORIZATION_SERVERS);		
 	}
 
 }

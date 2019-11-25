@@ -28,8 +28,7 @@ import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 import org.junit.jupiter.api.extension.TestInstancePostProcessor;
 
-public class AuthorizationServerExtension implements ParameterResolver, BeforeAllCallback, AfterAllCallback, TestInstancePostProcessor,
-BeforeEachCallback, AfterEachCallback, BeforeTestExecutionCallback, AfterTestExecutionCallback, ResourceServerConfiguration {
+public class AuthorizationServerExtension implements ParameterResolver, BeforeAllCallback, AfterAllCallback, BeforeEachCallback, ResourceServerConfiguration {
 
 	public static final Namespace NAMESPACE = Namespace.create(AuthorizationServerExtension.class);
 
@@ -65,11 +64,6 @@ BeforeEachCallback, AfterEachCallback, BeforeTestExecutionCallback, AfterTestExe
 		resolvers = ResourceServerConfigurationResolverServiceLoader.load();
 	}
 	
-	@Override
-	public void afterEach(ExtensionContext context) throws Exception {
-		
-	}
-
 	@Override
 	public void beforeEach(ExtensionContext context) throws Exception {
 		List<ResourceServerConfiguration> configurations = new ArrayList<>();
@@ -155,22 +149,13 @@ BeforeEachCallback, AfterEachCallback, BeforeTestExecutionCallback, AfterTestExe
 	}
 
 	@Override
-	public void postProcessTestInstance(Object testInstance, ExtensionContext context) throws Exception {
-	}
-
-	@Override
-	public void afterTestExecution(ExtensionContext context) throws Exception {
-	}
-
-	@Override
-	public void beforeTestExecution(ExtensionContext context) throws Exception {
-	}
-
-	@Override
 	public String getProperty(String id, String propertyName) {
 		if(configurations.isEmpty()) {
 			switch(propertyName) {
 				case "issuer" : return toDefaultIssuer(id);
+				default : {
+					// fall through
+				}
 			}
 		} else {
 			for (ResourceServerConfiguration r : configurations) {

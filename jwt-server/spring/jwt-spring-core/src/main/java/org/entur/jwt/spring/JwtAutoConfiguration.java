@@ -186,7 +186,7 @@ public class JwtAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(JwtAuthenticationFilter.class)
-    public <T> JwtAuthenticationFilter<?> auth(SecurityProperties properties, JwtVerifier<T> verifier, @Autowired(required = false) JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtAuthorityMapper<T> authorityMapper, JwtClaimExtractor<T> extractor) {
+    public <T> JwtAuthenticationFilter<T> auth(SecurityProperties properties, JwtVerifier<T> verifier, @Autowired(required = false) JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtAuthorityMapper<T> authorityMapper, JwtClaimExtractor<T> extractor) {
     	JwtProperties jwt = properties.getJwt();
 
     	AuthorizationProperties authorization = jwt.getAuthorization();

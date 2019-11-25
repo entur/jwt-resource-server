@@ -50,8 +50,9 @@ public class GreetingController {
     public Greeting body() {
         log.info("Get protected method");
         
-        JwtAuthenticationToken<?> authentication = (JwtAuthenticationToken<?>)SecurityContextHolder.getContext().getAuthentication();
-    	log.info("Tenant {}", authentication.getCredentials());
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken)SecurityContextHolder.getContext().getAuthentication();
+        
+        log.info("Authorization header: {}", authentication.getCredentials());
     	
         return new Greeting(counter.incrementAndGet(), "Hello protected", null, authentication.getAuthorities());
     }
@@ -61,7 +62,7 @@ public class GreetingController {
     public Greeting protectedWithPartnerTenant(Tenant tenant) {
         log.info("Get method protected by tenant");
 
-        JwtAuthenticationToken<?> authentication = (JwtAuthenticationToken<?>)SecurityContextHolder.getContext().getAuthentication();
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken)SecurityContextHolder.getContext().getAuthentication();
     	
     	log.info("Authorization header: {}", authentication.getCredentials());
     	
@@ -73,7 +74,7 @@ public class GreetingController {
     public Greeting protectedWithSpcificPartnerTenant(PartnerTenant partner) {
         log.info("Get method protected by partner tenant");
         
-        JwtAuthenticationToken<?> authentication = (JwtAuthenticationToken<?>)SecurityContextHolder.getContext().getAuthentication();
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken)SecurityContextHolder.getContext().getAuthentication();
         
         log.info("Authorization header: {}", authentication.getCredentials());
         
@@ -85,7 +86,7 @@ public class GreetingController {
     public Greeting protectedWithPermission(PartnerTenant partner) {
         log.info("Get method protected by partner tenant");
         
-        JwtAuthenticationToken<?> authentication = (JwtAuthenticationToken<?>)SecurityContextHolder.getContext().getAuthentication();
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken)SecurityContextHolder.getContext().getAuthentication();
         
         log.info("Authorization header: {}", authentication.getCredentials());
         

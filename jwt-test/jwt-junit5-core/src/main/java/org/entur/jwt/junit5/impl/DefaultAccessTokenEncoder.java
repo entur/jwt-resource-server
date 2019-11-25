@@ -2,7 +2,6 @@ package org.entur.jwt.junit5.impl;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +41,7 @@ import com.fasterxml.jackson.databind.util.RawValue;
 
 public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 
+	@SuppressWarnings("unchecked")
 	private final static Class<? extends Annotation>[] fixedClaims = new Class[] {
 		Audience.class,
 		AuthorizedParty.class,
@@ -52,6 +52,7 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 		Subject.class		
 	};
 	
+	@SuppressWarnings("unchecked")
 	private final static Class<? extends Annotation>[] customClaims = new Class[]{
 			MapClaim.class,
 			BooleanClaim.class,
@@ -65,15 +66,17 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 			JsonClaim.class
 	};
 	
+	@SuppressWarnings("unchecked")
 	private final static Class<? extends Annotation>[] fixedSabotages = new Class[] {
-			Signature.class,
-		};
+		Signature.class,
+	};
 	
+	@SuppressWarnings("unchecked")
 	private final static Class<? extends Annotation>[] fixedHeaders = new Class[] {
-			AlgorithmHeader.class,
-			KeyIdHeader.class,
-			TypeHeader.class
-		};	
+		AlgorithmHeader.class,
+		KeyIdHeader.class,
+		TypeHeader.class
+	};
 	
 	@Override
 	public String encode(ParameterContext parameterContext, ExtensionContext extensionContext, Annotation authorizationServer, AuthorizationServerEncoder encoder, ResourceServerConfiguration resolver) {
@@ -185,6 +188,7 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 		}
 	}	
 	
+	@SuppressWarnings("unchecked")
 	protected void encodeCustomClaims(ParameterContext parameterContext, Map<String, Object> result, ResourceServerConfiguration resolver) {
 		List<Object> parameters = extractCustomClaims(parameterContext);
 		if(!parameters.isEmpty()) {
@@ -204,7 +208,7 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 				} else if(c instanceof BooleanArrayClaim) {
 					BooleanArrayClaim b = (BooleanArrayClaim)c;
 					result.put(b.name(), b.value());
-				} else if(c instanceof IntegerClaim) {
+				} else if(c instanceof IntegerArrayClaim) {
 					IntegerArrayClaim b = (IntegerArrayClaim)c;
 					result.put(b.name(), b.value());
 				} else if(c instanceof DoubleArrayClaim) {
@@ -345,8 +349,6 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 				result.put("azp", token.authorizedParty());
 			}
 		}
-		
-		
 	}
 	
 	private boolean isBlank(String[] scope) {

@@ -1,6 +1,7 @@
 package org.entur.jwt.spring.camel;
 
 import java.util.List;
+import java.util.Map;
 
 import javax.security.auth.Subject;
 import javax.servlet.http.HttpServletRequest;
@@ -52,6 +53,7 @@ public class DefaultJwtAuthenticationProcessor implements JwtAuthenticationProce
 		this.extractor = extractor;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public void process(Exchange exchange) {
 		// implementation note: Must add anon authentication or else SpringSecurityAuthorizationPolicy blows up
@@ -71,7 +73,9 @@ public class DefaultJwtAuthenticationProcessor implements JwtAuthenticationProce
 			            if(token != null) {
 			                List<GrantedAuthority> authorities = authorityMapper.getGrantedAuthorities(token);
 			
-			                authentication = new JwtAuthenticationToken<Object>(token, header, authorities, extractor);
+			                Map<String, Object> claims = extractor.getClaims(token);
+			                
+			                authentication = new JwtAuthenticationToken(claims, header, authorities);
 			            } else {
 			                throw new BadCredentialsException("Unknown issuer");
 			            }

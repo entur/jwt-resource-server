@@ -2,6 +2,7 @@ package org.entur.jwt.spring.filter.resolver;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiFunction;
 import org.entur.jwt.spring.filter.JwtAuthenticationToken;
 import org.springframework.core.MethodParameter;
@@ -16,13 +17,13 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 public class JwtArgumentResolver implements HandlerMethodArgumentResolver {
 
 	private final List<Class<?>> paramters;
-	private final BiFunction transformer;
+	private final BiFunction<Map<String, Object>, Class<?>, ?> transformer;
 	
-	public JwtArgumentResolver(BiFunction<?, Class<?>, ?> transformer, Class<?> ... parameters) {
+	public JwtArgumentResolver(BiFunction<Map<String, Object>, Class<?>, ?> transformer, Class<?> ... parameters) {
 		this(transformer, Arrays.asList(parameters));
 	}
 	
-	public JwtArgumentResolver(BiFunction<?, Class<?>, ?> transformer, List<Class<?>> parameters) {
+	public JwtArgumentResolver(BiFunction<Map<String, Object>, Class<?>, ?> transformer, List<Class<?>> parameters) {
 		super();
 		this.paramters = parameters;
 		this.transformer = transformer;
@@ -33,12 +34,13 @@ public class JwtArgumentResolver implements HandlerMethodArgumentResolver {
 		return paramters.contains(parameter.getParameterType());
     }
 
-    @Override
+    @SuppressWarnings("unchecked")
+	@Override
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer, NativeWebRequest webRequest, WebDataBinderFactory binderFactory) throws Exception {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if(authentication != null && !(authentication instanceof AnonymousAuthenticationToken)) {
             if(authentication instanceof JwtAuthenticationToken) {
-                JwtAuthenticationToken<?> token = (JwtAuthenticationToken<?>)authentication;
+                JwtAuthenticationToken token = (JwtAuthenticationToken)authentication;
 
                 Class<?> target = parameter.getParameterType();
 

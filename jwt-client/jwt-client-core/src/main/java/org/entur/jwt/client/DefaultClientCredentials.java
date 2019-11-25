@@ -57,7 +57,7 @@ public class DefaultClientCredentials implements ClientCredentials {
 			builder.append(path);
 			return new URL(builder.toString());
 		} catch(MalformedURLException e) {
-			throw new RuntimeException(e);
+			throw new IllegalArgumentException(e);
 		}
 	}
 

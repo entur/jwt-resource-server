@@ -95,7 +95,7 @@ public class TestController {
 
     @GetMapping(value = "/myAdminService",  produces = arrayOf(MediaType.TEXT_PLAIN_VALUE))
     @PreAuthorize("hasAnyAuthority('admin')")
-    public String authenticatedEndpoint(DecodedJWT token){
+    public String authenticatedEndpoint(JwtPayload token){
         // your code here
     }
 }

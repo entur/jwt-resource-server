@@ -97,6 +97,8 @@ public class DefaultCachedJwksProvider<T> extends AbstractCachedJwksProvider<T> 
             
             throw new JwksUnavailableException("Unable to refresh cache");
         } catch (InterruptedException e) {
+        	Thread.currentThread().interrupt(); // Restore interrupted state to make sonar happy
+        	
             throw new JwksUnavailableException("Interrupted while waiting for refreshed cache", e);
         }
     }

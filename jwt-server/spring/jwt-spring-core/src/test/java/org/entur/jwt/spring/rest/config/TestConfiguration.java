@@ -1,5 +1,6 @@
 package org.entur.jwt.spring.rest.config;
 
+import java.util.Map;
 import java.util.function.BiFunction;
 
 import org.entur.jwt.spring.filter.JwtAuthorityMapper;
@@ -38,7 +39,7 @@ public class TestConfiguration {
     @Bean
     @ConditionalOnMissingBean(JwtArgumentResolver.class)
     public JwtArgumentResolver jwtArgumentResolver() {
-    	BiFunction<?, Class<?>, ?> a = new TenantArgumentResolver();
+    	BiFunction<Map<String, Object>, Class<?>, ?> a = new TenantArgumentResolver();
 		return new JwtArgumentResolver(a, Tenant.class, PartnerTenant.class);
     }
 

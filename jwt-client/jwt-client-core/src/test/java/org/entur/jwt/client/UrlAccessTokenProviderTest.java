@@ -21,12 +21,13 @@ public class UrlAccessTokenProviderTest extends AbstractUrlAccessTokenProviderTe
 
     @Test
     public void shouldFailHealthCheck() throws Exception {
-    	UrlAccessTokenProvider urlProvider = new UrlAccessTokenProvider(new URL("https://localhost"), Collections.emptyMap(), Collections.emptyMap(), null, null);
-    	
-	    assertThrows(AccessTokenHealthNotSupportedException.class,
-			()->{
-				urlProvider.getHealth(false);
-			} );
+    	try (UrlAccessTokenProvider urlProvider = new UrlAccessTokenProvider(new URL("https://localhost"), Collections.emptyMap(), Collections.emptyMap(), null, null)) {
+	    	
+		    assertThrows(AccessTokenHealthNotSupportedException.class,
+				()->{
+					urlProvider.getHealth(false);
+				} );
+    	}
     }
 
 	private AccessTokenProvider providerForResource(String resource) throws Exception {
@@ -108,12 +109,13 @@ public class UrlAccessTokenProviderTest extends AbstractUrlAccessTokenProviderTe
     public void shouldFailWithAccessTokenUnavailableExceptionWhenUnparsableEntity() throws Exception {
         when(urlConnection.getInputStream()).thenReturn(new ByteArrayInputStream("{unaparsable}".getBytes(StandardCharsets.UTF_8)));
 
-        DefaultAccessTokenHealthProvider provider = new DefaultAccessTokenHealthProvider(new UrlAccessTokenProvider(new URL("mock://localhost"), Collections.emptyMap(), Collections.emptyMap(), null, null));
+        try (DefaultAccessTokenHealthProvider provider = new DefaultAccessTokenHealthProvider(new UrlAccessTokenProvider(new URL("mock://localhost"), Collections.emptyMap(), Collections.emptyMap(), null, null))) {
 
-	    assertThrows(AccessTokenUnavailableException.class,
-			()->{
-		        provider.getAccessToken(false);
-			} );
+		    assertThrows(AccessTokenUnavailableException.class,
+				()->{
+			        provider.getAccessToken(false);
+				} );
+        }
     }    
 
     @Test
@@ -123,20 +125,21 @@ public class UrlAccessTokenProviderTest extends AbstractUrlAccessTokenProviderTe
         int connectTimeout = 10000;
         int readTimeout = 15000;
 
-        DefaultAccessTokenHealthProvider urlJwkProvider = new DefaultAccessTokenHealthProvider(new UrlAccessTokenProvider(new URL("mock://localhost"), Collections.emptyMap(), Collections.emptyMap(), connectTimeout, readTimeout));
-        AccessToken token = urlJwkProvider.getAccessToken(false);
-        assertNotNull(token);
-
-        //Request Timeout assertions
-        ArgumentCaptor<Integer> connectTimeoutCaptor = ArgumentCaptor.forClass(Integer.class);
-        verify(urlConnection).setConnectTimeout(connectTimeoutCaptor.capture());
-        assertThat(connectTimeoutCaptor.getValue()).isEqualTo(connectTimeout);
-
-        ArgumentCaptor<Integer> readTimeoutCaptor = ArgumentCaptor.forClass(Integer.class);
-        verify(urlConnection).setReadTimeout(readTimeoutCaptor.capture());
-        assertThat(readTimeoutCaptor.getValue()).isEqualTo(readTimeout);
-
-        //Request Headers assertions
-        verify(urlConnection).setRequestProperty("Accept", "application/json");
+        try (DefaultAccessTokenHealthProvider urlJwkProvider = new DefaultAccessTokenHealthProvider(new UrlAccessTokenProvider(new URL("mock://localhost"), Collections.emptyMap(), Collections.emptyMap(), connectTimeout, readTimeout))) {
+	        AccessToken token = urlJwkProvider.getAccessToken(false);
+	        assertNotNull(token);
+	
+	        //Request Timeout assertions
+	        ArgumentCaptor<Integer> connectTimeoutCaptor = ArgumentCaptor.forClass(Integer.class);
+	        verify(urlConnection).setConnectTimeout(connectTimeoutCaptor.capture());
+	        assertThat(connectTimeoutCaptor.getValue()).isEqualTo(connectTimeout);
+	
+	        ArgumentCaptor<Integer> readTimeoutCaptor = ArgumentCaptor.forClass(Integer.class);
+	        verify(urlConnection).setReadTimeout(readTimeoutCaptor.capture());
+	        assertThat(readTimeoutCaptor.getValue()).isEqualTo(readTimeout);
+	
+	        //Request Headers assertions
+	        verify(urlConnection).setRequestProperty("Accept", "application/json");
+        }
     }
 }

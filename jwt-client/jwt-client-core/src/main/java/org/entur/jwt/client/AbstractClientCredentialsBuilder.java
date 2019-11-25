@@ -23,7 +23,7 @@ public abstract class AbstractClientCredentialsBuilder<B extends AbstractClientC
     
     protected static String createHeader(String clientId, String secret) {
     	// see https://www.base64encoder.io/java/ and 
-        StringBuffer buf = new StringBuffer(clientId);
+        StringBuilder buf = new StringBuilder(clientId);
         buf.append(':').append(secret);
         
         // encode with padding
@@ -43,46 +43,55 @@ public abstract class AbstractClientCredentialsBuilder<B extends AbstractClientC
 	protected String audience;
 	protected String scope;
 
+	@SuppressWarnings("unchecked")
 	public B withHost(String host) {
 		this.host = host;
         return (B) this;
 	}
 	
+	@SuppressWarnings("unchecked")
 	public B withProtocol(String protocol) {
 		this.protocol = protocol;
         return (B) this;
 	}
 
+	@SuppressWarnings("unchecked")
 	public B withIssuePath(String issuePath) {
 		this.issuePath = issuePath;
         return (B) this;
 	}
 
+	@SuppressWarnings("unchecked")
 	public B withRefreshPath(String refreshPath) {
 		this.refreshPath = refreshPath;
         return (B) this;
 	}
 
+	@SuppressWarnings("unchecked")
 	public B withRevokePath(String revokePath) {
 		this.revokePath = revokePath;
         return (B) this;
 	}
 
+	@SuppressWarnings("unchecked")
 	public B withClientId(String clientId) {
 		this.clientId = clientId;
         return (B) this;
 	}
 
+	@SuppressWarnings("unchecked")
 	public B withSecret(String secret) {
 		this.secret = secret;
         return (B) this;
 	}
 
+	@SuppressWarnings("unchecked")
 	public B withAudience(String audience) {
 		this.audience = audience;
         return (B) this;
 	}
 
+	@SuppressWarnings("unchecked")
 	public B withScope(String scope) {
 		this.scope = scope;
         return (B) this;

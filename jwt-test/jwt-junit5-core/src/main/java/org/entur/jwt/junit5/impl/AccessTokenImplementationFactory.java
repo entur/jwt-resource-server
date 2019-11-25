@@ -25,7 +25,7 @@ public class AccessTokenImplementationFactory {
 	protected <T extends AccessTokenEncoder> T getAccessTokenEncoder(AccessToken token) {
     	Class<T> encoder = (Class<T>) token.encoder();
     	try {
-			return encoder.newInstance();
+			return encoder.getDeclaredConstructor().newInstance();
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}

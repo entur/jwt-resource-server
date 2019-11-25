@@ -5,6 +5,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * 
  * Caching {@linkplain AccessTokenProvider} which preemptively attempts to update the cache in the background. 
@@ -17,6 +20,8 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 
 public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessTokenProvider {
+
+	protected static final Logger logger = LoggerFactory.getLogger(PreemptiveCachedAccessTokenProvider.class);
 
     // preemptive update should execute when 
     // expire - preemptiveRefresh < current time < expire.
@@ -126,19 +131,15 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
                             cacheExpires = cache.getExpires();
                             
                             // run update in the background
-                            executorService.execute(new Runnable() {
-                                
-                                @Override
-                                public void run() {
-                                    try {
-                                        PreemptiveCachedAccessTokenProvider.super.getAccessTokenBlocking(time, cache);
-                                    } catch (AccessTokenException e) {
-                                        // update failed, but another thread can retry
-                                        cacheExpires = -1L;
-                                        // ignore, unable to update
-                                        // another thread will attempt the same
-                                        // TODO logging?
-                                    }
+                            executorService.execute(() ->  {
+                                try {
+                                    PreemptiveCachedAccessTokenProvider.super.getAccessTokenBlocking(time, cache);
+                                } catch (AccessTokenException e) {
+                                    // update failed, but another thread can retry
+                                    cacheExpires = -1L;
+                                    // ignore, unable to update
+                                    // another thread will attempt the same
+                                    logger.warn("Preemptive cache refresh failed", e);
                                 }
                             });
                         }

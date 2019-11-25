@@ -5,9 +5,6 @@ public class AuthorizationServerTestManager {
 	// implementation note: Follow pattern from Spring TestContext
 	protected final ThreadLocal<AuthorizationServerTestContext> testContextHolder = new ThreadLocal<>();
 
-	public AuthorizationServerTestManager() {
-	}
-	
 	/**
 	 * Get the {@link AuthorizationServerTestContext} managed by this {@code AuthorizationServerTestManager}.
 	 * @return the current text context

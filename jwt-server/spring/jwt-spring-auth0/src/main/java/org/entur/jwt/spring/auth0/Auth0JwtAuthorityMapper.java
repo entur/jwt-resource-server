@@ -27,6 +27,7 @@ public class Auth0JwtAuthorityMapper implements JwtAuthorityMapper<DecodedJWT> {
 		this.extractKeycloakResourceAccess = keycloakResourceAccess;
 	}	
 	
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
 	public List<GrantedAuthority> getGrantedAuthorities(DecodedJWT token) {
 		

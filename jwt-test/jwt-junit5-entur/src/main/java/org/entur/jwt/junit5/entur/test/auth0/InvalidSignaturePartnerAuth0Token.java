@@ -6,8 +6,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import org.entur.jwt.junit5.claim.IssuedAt;
-import org.entur.jwt.junit5.claim.Issuer;
 import org.entur.jwt.junit5.sabotage.Signature;
 
 @Retention(RetentionPolicy.RUNTIME)

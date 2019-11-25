@@ -17,7 +17,7 @@ public class Auth0JwkProviderBuilderTest {
 
 		JwkProvider<Jwk> provider = builder.build();
 
-		assertThat(provider.getJwk("NkJCQzIyQzRBMEU4NjhGNUU4MzU4RkY0M0ZDQzkwOUQ0Q0VGNUMwQg"));
+		assertThat(provider.getJwk("NkJCQzIyQzRBMEU4NjhGNUU4MzU4RkY0M0ZDQzkwOUQ0Q0VGNUMwQg")).isNotNull();
 	}
 
 	@Test
@@ -26,7 +26,7 @@ public class Auth0JwkProviderBuilderTest {
 
 		JwkProvider<Jwk> provider = builder.build();
 
-		assertThat(provider.getJwk("NkJCQzIyQzRBMEU4NjhGNUU4MzU4RkY0M0ZDQzkwOUQ0Q0VGNUMwQg"));
+		assertThat(provider.getJwk("NkJCQzIyQzRBMEU4NjhGNUU4MzU4RkY0M0ZDQzkwOUQ0Q0VGNUMwQg")).isNotNull();
 	}	
 
 	private JwkProviderBuilder<Jwk> builderForResource(String resource) throws MalformedURLException {

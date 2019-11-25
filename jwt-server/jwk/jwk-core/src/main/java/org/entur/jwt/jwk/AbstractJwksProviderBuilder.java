@@ -66,6 +66,7 @@ public class AbstractJwksProviderBuilder<T, B extends AbstractJwksProviderBuilde
      * @param cached if the provider should cache jwks
      * @return the builder
      */
+	@SuppressWarnings("unchecked")
     public B cached(boolean cached) {
         this.cached = cached;
         this.preemptiveRefresh = false;
@@ -82,6 +83,7 @@ public class AbstractJwksProviderBuilder<T, B extends AbstractJwksProviderBuilde
      * @return the builder
      */    
     
+	@SuppressWarnings("unchecked")
     public B cached(long expiresIn, TimeUnit expiresInUnit, long refreshExpiresIn, TimeUnit refreshExpiresInUnit) {
         this.cached = true;
         this.expiresIn = expiresIn;
@@ -98,6 +100,7 @@ public class AbstractJwksProviderBuilder<T, B extends AbstractJwksProviderBuilde
      * @param unit      unit of preemptive limit
      * @return the builder
      */
+	@SuppressWarnings("unchecked")
     public B preemptiveCacheRefresh(long units, TimeUnit unit) {
 		this.cached = true;
         this.preemptiveRefresh = true;
@@ -112,6 +115,7 @@ public class AbstractJwksProviderBuilder<T, B extends AbstractJwksProviderBuilde
      * @param preemptive      if true, preemptive caching is active
      * @return the builder
      */
+	@SuppressWarnings("unchecked")
     public B preemptiveCacheRefresh(boolean preemptive) {
     	if(preemptive) {
     		this.cached = true;
@@ -126,6 +130,7 @@ public class AbstractJwksProviderBuilder<T, B extends AbstractJwksProviderBuilde
      * @param rateLimited if the provider should rate limit jwks
      * @return the builder
      */
+	@SuppressWarnings("unchecked")
     public B rateLimited(boolean rateLimited) {
     	if(rateLimited) {
     		return rateLimited(10, 1, TimeUnit.MINUTES);
@@ -146,6 +151,7 @@ public class AbstractJwksProviderBuilder<T, B extends AbstractJwksProviderBuilde
      * @return the builder
      */
     
+	@SuppressWarnings("unchecked")
     public B rateLimited(long bucketSize, long refillRate, TimeUnit unit) {
         this.rateLimited = true;
         this.bucketSize = bucketSize;
@@ -192,6 +198,7 @@ public class AbstractJwksProviderBuilder<T, B extends AbstractJwksProviderBuilde
         return provider;
 	}
 
+	@SuppressWarnings("unchecked")
 	public B retrying(boolean retrying) {
         this.retrying = retrying;
         
@@ -204,6 +211,7 @@ public class AbstractJwksProviderBuilder<T, B extends AbstractJwksProviderBuilde
      * @param enabled true if the health status provider should be enabled
      * @return the builder
      */
+	@SuppressWarnings("unchecked")
     public B health(boolean enabled) {
         this.health = enabled;
         return (B) this;
@@ -215,6 +223,7 @@ public class AbstractJwksProviderBuilder<T, B extends AbstractJwksProviderBuilde
      * @param outageCached if the outage cache is enabled
      * @return the builder
      */
+	@SuppressWarnings("unchecked")
     public B outageCached(boolean outageCached) {
         this.outageCached = outageCached;
         return (B) this;
@@ -227,6 +236,7 @@ public class AbstractJwksProviderBuilder<T, B extends AbstractJwksProviderBuilde
      * @param unit      unit of time for the expire of jwk
      * @return the builder
      */
+	@SuppressWarnings("unchecked")
     public B outageCached(long expiresIn, TimeUnit unit) {
         this.outageCached = true;
         this.outageCachedExpiresIn = expiresIn;

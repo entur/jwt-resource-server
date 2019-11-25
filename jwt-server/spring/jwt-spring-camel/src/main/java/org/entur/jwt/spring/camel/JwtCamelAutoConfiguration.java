@@ -8,7 +8,6 @@ import org.apache.camel.component.spring.security.SpringSecurityAuthorizationPol
 import org.entur.jwt.spring.filter.JwtAuthorityMapper;
 import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.entur.jwt.verifier.JwtVerifier;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;

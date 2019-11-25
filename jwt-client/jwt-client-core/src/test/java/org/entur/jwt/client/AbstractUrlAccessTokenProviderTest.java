@@ -17,7 +17,7 @@ import java.net.URLStreamHandlerFactory;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 
-public class AbstractUrlAccessTokenProviderTest {
+public abstract class AbstractUrlAccessTokenProviderTest {
 
 	protected static MockURLStreamHandlerFactory mockURLStreamHandlerFactory = new MockURLStreamHandlerFactory();
 	

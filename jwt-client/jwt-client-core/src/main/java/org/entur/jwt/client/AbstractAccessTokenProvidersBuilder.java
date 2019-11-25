@@ -51,6 +51,7 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
      * @param cached if the provider should cache access-tokens
      * @return the builder
      */
+	@SuppressWarnings("unchecked")
     public B cached(boolean cached) {
         this.cached = cached;
         if(!cached) {
@@ -65,6 +66,7 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
      * @param enabled true if the health status provider should be enabled
      * @return the builder
      */
+	@SuppressWarnings("unchecked")
     public B health(boolean enabled) {
         this.health = enabled;
         return (B) this;
@@ -81,6 +83,7 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
      * @return the builder
      */    
     
+	@SuppressWarnings("unchecked")
     public B cached(long minimumTimeToLiveLeft, TimeUnit minimumTimeToLiveLeftUnit, long refreshExpiresIn, TimeUnit refreshExpiresInUnit) {
         this.cached = true;
         this.minimumTimeToLiveUnits = minimumTimeToLiveLeft;
@@ -97,6 +100,7 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
      * @param unit      unit of preemptive timeout
      * @return the builder
      */
+	@SuppressWarnings("unchecked")
     public B preemptiveCacheRefresh(long timeout, TimeUnit unit) {
     	this.cached = true;
         this.preemptiveRefresh = true;
@@ -111,6 +115,7 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
      * @param preemptive      if true, preemptive caching is active
      * @return the builder
      */
+	@SuppressWarnings("unchecked")
     public B preemptiveCacheRefresh(boolean preemptive) {
     	if(preemptive) {
     		this.cached = true;
@@ -146,6 +151,7 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
         return provider;
 	}
 
+	@SuppressWarnings("unchecked")
 	public B retrying(boolean retrying) {
         this.retrying = retrying;
         

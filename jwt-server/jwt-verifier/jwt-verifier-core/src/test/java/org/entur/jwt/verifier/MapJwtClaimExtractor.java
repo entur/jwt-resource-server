@@ -16,4 +16,9 @@ public class MapJwtClaimExtractor implements JwtClaimExtractor<Map<String, Objec
 		return null;
 	}
 
+	@Override
+	public Map<String, Object> getClaims(Map<String, Object> token) throws JwtClaimException {
+		return token;
+	}
+
 }

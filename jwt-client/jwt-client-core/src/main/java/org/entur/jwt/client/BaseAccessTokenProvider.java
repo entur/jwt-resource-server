@@ -17,6 +17,7 @@ public abstract class BaseAccessTokenProvider implements AccessTokenProvider {
         return provider;
     }
     
+    @Override
     public AccessTokenHealth getHealth(boolean refresh) {
     	return provider.getHealth(refresh);
     }    

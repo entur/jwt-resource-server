@@ -21,7 +21,6 @@ public abstract class AbstractJwkProviderBuilder<T, B extends AbstractJwkProvide
      *
      * @return a newly created {@link JwkProvider}
      */
-    @SuppressWarnings("unchecked")
 	public JwkProvider<T> build() {
     	JwksProvider<T> provider = build(jwksProvider);
         if(provider instanceof JwkProvider) {

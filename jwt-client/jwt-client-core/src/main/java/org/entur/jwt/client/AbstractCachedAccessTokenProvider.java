@@ -1,7 +1,5 @@
 package org.entur.jwt.client;
 
-import java.util.List;
-
 /**
  * Access-token provider that caches previously obtained access-tokens in memory.
  */

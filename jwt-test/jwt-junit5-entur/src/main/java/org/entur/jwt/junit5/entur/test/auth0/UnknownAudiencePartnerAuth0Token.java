@@ -7,8 +7,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import org.entur.jwt.junit5.claim.Audience;
-import org.entur.jwt.junit5.claim.IssuedAt;
-import org.entur.jwt.junit5.claim.Issuer;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.PARAMETER, ElementType.TYPE})

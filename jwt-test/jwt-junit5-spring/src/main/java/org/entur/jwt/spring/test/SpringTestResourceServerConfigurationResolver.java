@@ -28,9 +28,7 @@ public class SpringTestResourceServerConfigurationResolver implements ResourceSe
 	@Override
 	public ResourceServerConfiguration resolve(ExtensionContext context) throws Exception {
 		ApplicationContext applicationContext = getApplicationContext(context);
-		if(applicationContext == null) {
-			throw new RuntimeException("Spring context is not loaded");
-		}
+		
 		Environment environment = applicationContext.getEnvironment();
 		
 		return new JwtEnvironmentResourceServerConfiguration(environment, "entur.jwt.tenants");
