@@ -31,7 +31,5 @@ public class JwtClientProperties {
 	public void setKeycloak(KeycloakJwtClientProperties keycloak) {
 		this.keycloak = keycloak;
 	}
-
-	
 	
 }

@@ -1,0 +1,12 @@
+sudo: false
+dist: trusty
+language: java
+jdk:
+  - openjdk8
+
+cache:
+  directories:
+    - '$HOME/.m2/repository'
+
+script:
+  - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent verify org.jacoco:jacoco-maven-plugin:report
