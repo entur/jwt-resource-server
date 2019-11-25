@@ -82,13 +82,15 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
 		if (credentials == null) {
 			if (other.credentials != null)
 				return false;
-		} else if (!credentials.equals(other.credentials))
+		} else if (!credentials.equals(other.credentials)) {
 			return false;
+		}
 		if (principal == null) {
 			if (other.principal != null)
 				return false;
-		} else if (!principal.equals(other.principal))
+		} else if (!principal.equals(other.principal)) {
 			return false;
+		}
 		return true;
 	}
 

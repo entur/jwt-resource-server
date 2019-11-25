@@ -25,7 +25,7 @@ public abstract class AbstractJWKSourceBuilder<C extends SecurityContext, B exte
      * @return a newly created {@link JWKSource}
      */
 	public JWKSource<C> build() {
-    	return new EnturJWKSource<C>(build(jwksProvider));
+    	return new EnturJWKSource<>(build(jwksProvider));
         
     }
 }

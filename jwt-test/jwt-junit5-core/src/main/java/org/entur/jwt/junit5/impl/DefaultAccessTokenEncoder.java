@@ -41,6 +41,20 @@ import com.fasterxml.jackson.databind.util.RawValue;
 
 public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 
+	// header claims
+	private static final String TYP = "typ";
+	private static final String KID = "kid";
+	private static final String ALG = "alg";
+
+	// payload claims
+	private static final String ISS = "iss";
+	private static final String SUB = "sub";
+	private static final String AUD = "aud";
+	private static final String IAT = "iat";
+	private static final String EXP = "exp";
+	private static final String AZP = "azp";
+	private static final String SCOPE = "scope";
+
 	@SuppressWarnings("unchecked")
 	private final static Class<? extends Annotation>[] fixedClaims = new Class[] {
 		Audience.class,
@@ -119,13 +133,13 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 		for(Object c : parameters) {
 			if(c instanceof AlgorithmHeader) {
 				AlgorithmHeader b = (AlgorithmHeader)c;
-				result.put("alg", b.value());
+				result.put(ALG, b.value());
 			} else if(c instanceof KeyIdHeader) {
 				KeyIdHeader b = (KeyIdHeader)c;
-				result.put("kid", b.value());
+				result.put(KID, b.value());
 			} else if(c instanceof TypeHeader) {
 				TypeHeader b = (TypeHeader)c;
-				result.put("typ", b.value());
+				result.put(TYP, b.value());
 			} else {
 				throw new IllegalArgumentException("Unsupported header type " + c);
 			}
@@ -149,11 +163,11 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 	}
 
 	protected void transformParameters(Map<String, Object> result) {
-		Long issuedAt = (Long)result.get("iat");
-		result.put("iat",  System.currentTimeMillis() / 1000 + issuedAt);
+		Long issuedAt = (Long)result.get(IAT);
+		result.put(IAT,  System.currentTimeMillis() / 1000 + issuedAt);
 		
-		Long expiresAt = (Long)result.get("exp");
-		result.put("exp", System.currentTimeMillis() / 1000 + expiresAt);
+		Long expiresAt = (Long)result.get(EXP);
+		result.put(EXP, System.currentTimeMillis() / 1000 + expiresAt);
 	}
 
 	protected void encodeKnownClaims(ParameterContext parameterContext, Map<String, Object> result, ResourceServerConfiguration resolver) {
@@ -162,25 +176,25 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 			for(Object c : parameters) {
 				if(c instanceof Audience) {
 					Audience b = (Audience)c;
-					result.put("aud", b.value());
+					result.put(AUD, b.value());
 				} else if(c instanceof AuthorizedParty) {
 					AuthorizedParty b = (AuthorizedParty)c;
-					result.put("azp", b.value());
+					result.put(AZP, b.value());
 				} else if(c instanceof ExpiresAt) {
 					ExpiresAt b = (ExpiresAt)c;
-					result.put("exp", b.value());
+					result.put(EXP, b.value());
 				} else if(c instanceof IssuedAt) {
 					IssuedAt b = (IssuedAt)c;
-					result.put("iat", b.value());
+					result.put(IAT, b.value());
 				} else if(c instanceof Issuer) {
 					Issuer b = (Issuer)c;
-					result.put("iss", b.value());
+					result.put(ISS, b.value());
 				} else if(c instanceof Scope) {
 					Scope b = (Scope)c;
-					result.put("scope", String.join(" ", b.value()));
+					result.put(SCOPE, String.join(" ", b.value()));
 				} else if(c instanceof Subject) {
 					Subject b = (Subject)c;
-					result.put("sub", b.value());
+					result.put(SUB, b.value());
 				} else {
 					throw new IllegalArgumentException("Unsupported claim type " + c);
 				}
@@ -315,38 +329,38 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 	}	
 	
 	protected void encode(Map<String, Object> result, AccessToken token, ResourceServerConfiguration resolver) {
-		if(!result.containsKey("iss")) {
-			result.put("iss", resolver.getProperty(token.by(), "issuer"));
+		if(!result.containsKey(ISS)) {
+			result.put(ISS, resolver.getProperty(token.by(), "issuer"));
 		}
 		if(!isBlank(token.subject())) {
-			result.put("sub", token.subject());
+			result.put(SUB, token.subject());
 		}
 
-		if(!result.containsKey("aud")) {
+		if(!result.containsKey(AUD)) {
 			String[] audience = token.audience();
 			if(audience != null && audience.length > 0) {
-				result.put("aud", audience);
+				result.put(AUD, audience);
 			} else {
 				// TODO resolve from configuration?
 			}
 		}
 
-		if(!result.containsKey("iat")) {
-			result.put("iat", token.issuedAt() * 1000);
+		if(!result.containsKey(IAT)) {
+			result.put(IAT, token.issuedAt() * 1000);
 		}
-		if(!result.containsKey("exp")) {
-			result.put("exp", token.expiresAt() * 1000);
+		if(!result.containsKey(EXP)) {
+			result.put(EXP, token.expiresAt() * 1000);
 		}
 
-		if(!result.containsKey("scope")) {
+		if(!result.containsKey(SCOPE)) {
 			if(!isBlank(token.scope())) {
-				result.put("scope", token.scope());
+				result.put(SCOPE, token.scope());
 			}
 		}
 
-		if(!result.containsKey("azp")) {
+		if(!result.containsKey(AZP)) {
 			if(!isBlank(token.authorizedParty())) {
-				result.put("azp", token.authorizedParty());
+				result.put(AZP, token.authorizedParty());
 			}
 		}
 	}

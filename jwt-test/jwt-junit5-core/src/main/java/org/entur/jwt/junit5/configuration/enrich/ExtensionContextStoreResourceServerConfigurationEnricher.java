@@ -28,7 +28,7 @@ public class ExtensionContextStoreResourceServerConfigurationEnricher implements
 
 	@Override
 	public void beforeEach(ResourceServerConfiguration configuration, ExtensionContext context) {
-		
+		// do nothing
 	}
 
 	@Override

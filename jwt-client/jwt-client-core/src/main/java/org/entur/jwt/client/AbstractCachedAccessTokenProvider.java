@@ -45,9 +45,9 @@ public abstract class AbstractCachedAccessTokenProvider extends BaseAccessTokenP
     abstract AccessToken getAccessToken(long time, boolean forceUpdate) throws AccessTokenException;
     
     protected AccessToken getCachedAccessToken(long time) {
-    	AccessTokenCacheItem cache = this.cache;
-        if(cache != null && cache.isValid(time)) {
-            return cache.getValue();
+    	AccessTokenCacheItem threadSafeCache = this.cache; // defensive copy
+        if(threadSafeCache != null && threadSafeCache.isValid(time)) {
+            return threadSafeCache.getValue();
         }
         return null;
     }

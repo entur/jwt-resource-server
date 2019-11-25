@@ -14,6 +14,12 @@ public class JwtPayload implements Serializable {
 
 	private final Map<String, Object> claims;
 
+	/**
+	 * Constructor. Note that all claims, and the map it self is assumed to be serializable.
+	 * 
+	 * @param claims map with claims
+	 */
+	
 	public JwtPayload(Map<String, Object> claims) {
 		super();
 		this.claims = claims;

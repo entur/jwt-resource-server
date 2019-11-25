@@ -33,12 +33,12 @@ public class JwtKeyProvider implements RSAKeyProvider {
 
     @Override
     public RSAPrivateKey getPrivateKey() {
-        throw new RuntimeException("Attempted to acquire private key from authentication service.");
+        throw new SecurityException("Attempted to acquire private key from authentication service.");
     }
 
     @Override
     public String getPrivateKeyId() {
-        throw new RuntimeException("Attempted to acquire private key id from authentication service.");
+        throw new SecurityException("Attempted to acquire private key id from authentication service.");
     }
 
 }

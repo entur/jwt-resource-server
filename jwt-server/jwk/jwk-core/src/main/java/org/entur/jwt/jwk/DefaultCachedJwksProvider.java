@@ -42,6 +42,7 @@ public class DefaultCachedJwksProvider<T> extends AbstractCachedJwksProvider<T> 
         this.refreshTimeout = refreshTimeout;
     }
 
+    @Override
     public List<T> getJwks(boolean forceUpdate) throws JwksException {
     	return getJwks(System.currentTimeMillis(), forceUpdate);
     }
