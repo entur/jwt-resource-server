@@ -9,6 +9,10 @@
 	</parent>	
 	<artifactId>jwt-spring-camel</artifactId>
 	
+	<properties>
+		<spring-boot.version>2.1.9.RELEASE</spring-boot.version>	
+	</properties>
+	
 	<dependencies>
 		<dependency>
 			<groupId>org.entur.jwt-rs</groupId>
@@ -45,8 +49,24 @@
 		
 		<!-- test -->
 		<dependency>
+            <groupId>org.apache.camel</groupId>
+            <artifactId>camel-servlet-starter</artifactId>
+            <version>${camel.version}</version>
+			<scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.entur.jwt-rs</groupId>
+            <artifactId>jwt-spring-auth0</artifactId>
+			<scope>test</scope>
+        </dependency>
+        <dependency>
 			<groupId>org.entur.jwt-rs</groupId>
-			<artifactId>jwt-junit5-core</artifactId>
+			<artifactId>jwt-junit5-entur</artifactId>
+			<scope>test</scope>
+        </dependency>		
+		<dependency>
+			<groupId>org.entur.jwt-rs</groupId>
+			<artifactId>jwt-junit5-spring</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -92,6 +112,11 @@
 		<dependency>
 		    <groupId>com.fasterxml.jackson.core</groupId>
 		    <artifactId>jackson-databind</artifactId>
+		    <scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.rest-assured</groupId>
+			<artifactId>rest-assured</artifactId>
 		    <scope>test</scope>
 		</dependency>
 		

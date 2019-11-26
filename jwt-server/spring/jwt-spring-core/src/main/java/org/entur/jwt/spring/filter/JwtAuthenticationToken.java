@@ -63,7 +63,7 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
     		if(type.isAssignableFrom(object.getClass())) {
     			return (V)object;
     		}
-    		throw new IllegalArgumentException("Expected claim '" + name + "' type " + type.getClass().getName() + ", found " + object.getClass());
+    		throw new IllegalArgumentException("Expected claim '" + name + "' type " + type.getName() + ", found " + object.getClass().getName());
     	}
     	return null;
     }

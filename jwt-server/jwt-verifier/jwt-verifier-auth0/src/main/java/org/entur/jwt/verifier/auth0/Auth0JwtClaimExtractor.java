@@ -20,7 +20,8 @@ import java.util.Base64;
  * Claim key normalizer; Auth0 requires that all non-standard claims must have a 'namespace' prefix.
  * This class removes that prefix so that (for multitenant use-cases), the same key can be used
  * to extract claim values.
- *
+ * 
+ * Note that integer and long usually are interchangeable; use Number.longValue(). 
  */
 
 public class Auth0JwtClaimExtractor implements JwtClaimExtractor<DecodedJWT> {

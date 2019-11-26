@@ -28,3 +28,5 @@ public void configure() throws Exception {
 
 
 ```
+
+Detailed permission checking must be done seperately.

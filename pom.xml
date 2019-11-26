@@ -87,9 +87,7 @@
 		<maven-war-plugin.version>3.2.2</maven-war-plugin.version>
 		<owasp-dependency-check.version>5.2.4</owasp-dependency-check.version>
 
-<!-- 
-		<aggregate.report.dir>tests/target/site/jacoco-aggregate/jacoco.xml</aggregate.report.dir>
--->
+		<!-- aggregated jacoco report; for cross-module code coverage -->
 		<sonar.jacoco.reportPath>${maven.multiModuleProjectDirectory}/target/jacoco.exec</sonar.jacoco.reportPath>
 	</properties>
 
@@ -170,6 +168,11 @@
 				<artifactId>jwt-spring-camel</artifactId>
 				<version>${project.version}</version>
 			</dependency>
+			<dependency>
+				<groupId>${project.groupId}</groupId>
+				<artifactId>jwt-spring-auth0</artifactId>
+				<version>${project.version}</version>
+			</dependency>			
 			<!-- third party dependencies -->
 			<dependency>
 				<groupId>io.jsonwebtoken</groupId>
@@ -429,11 +432,11 @@
 					<failOnError>false</failOnError>
 					<skipTestScope>true</skipTestScope>
 					<!-- suppressionFiles: see https://jeremylong.github.io/DependencyCheck/general/suppression.html -->
-                    <suppressionFiles>
-                        <suppressionFile>dependencycheck-root-suppression.xml</suppressionFile>
-                    </suppressionFiles>					
+					<suppressionFiles>
+						<suppressionFile>dependencycheck-root-suppression.xml</suppressionFile>
+					</suppressionFiles>
 				</configuration>
-				
+
 				<executions>
 					<execution>
 						<!-- run only using explicit command -->
@@ -465,7 +468,7 @@
 			<activation>
 				<!-- i.e. not active for release -->
 				<activeByDefault>true</activeByDefault>
-			</activation>			
+			</activation>
 			<modules>
 				<module>examples/jwt-resource-server-spring-boot-example</module>
 			</modules>
@@ -497,80 +500,6 @@
 					</plugin>
 				</plugins>
 			</build>
-		</profile>
-		<profile>
-			<id>jacoco</id>
-			<activation>
-				<activeByDefault>false</activeByDefault>
-			</activation>
-			
-		<dependencies>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwt-junit5-core</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwk-core</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwk-auth0</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwk-connect2id</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwt-verifier-core</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwt-verifier-auth0</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwt-core</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwt-client-core</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwt-client-spring</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwt-spring-core</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwt-spring-entur</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwt-junit5-spring</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwt-spring-camel</artifactId>
-				<version>${project.version}</version>
-			</dependency>		
-		</dependencies>
 		</profile>
 	</profiles>
 

@@ -1,14 +1,28 @@
 entur:
   jwt:
     enabled: true
-    mode: required
+    claims:
+      expires-at-leeway: 15
+      issued-at-leeway: 5
+      audiences:
+        - https://auth0.partner.mock.audience
     mdc:
       enabled: true
-      items:
-      - from: issuer
+      mappings:
+      - from: iss
         to: issuer
+      - from: azp
+        to: azp
+    jwk:
+      health-indicator:
+        enabled: true
+    auth0:
+      namespace: https://entur.io/ 
   cors:
     enabled: true
     mode: api
-  auth0:
-    namespace: https://entur.io/
+    hosts:
+    - https://my.published.api
+
+camel.component.servlet.mapping.contextPath: /services/*
+    
