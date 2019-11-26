@@ -78,7 +78,7 @@ public class JwtClaimVerifier<T> implements JwtVerifier<T> {
 	}
 	
 	private boolean isIntegerType(Class<?> c) {
-		return c == Long.class || c == Integer.class || c == Short.class || c == Short.class || c == Byte.class;
+		return c == Long.class || c == Integer.class || c == Short.class || c == Byte.class;
 	}
 
 	@Override
