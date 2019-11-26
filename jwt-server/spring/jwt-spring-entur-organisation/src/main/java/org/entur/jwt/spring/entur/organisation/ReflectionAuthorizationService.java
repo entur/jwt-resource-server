@@ -78,7 +78,7 @@ public class ReflectionAuthorizationService {
 
         List<RoleAssignment> relevantRoles = roleAssignmentExtractor.getRoleAssignmentsForUser()
                 .stream()
-                .filter(roleAssignment -> requiredRole.equals(roleAssignment.r))
+                .filter(roleAssignment -> requiredRole.equals(roleAssignment.getRole()))
                 .collect(toList());
 
         for (Object entity : entities) {

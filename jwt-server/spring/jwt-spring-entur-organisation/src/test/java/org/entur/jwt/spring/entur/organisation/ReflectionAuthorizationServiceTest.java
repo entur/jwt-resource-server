@@ -89,7 +89,7 @@ public class ReflectionAuthorizationServiceTest {
         StopPlace stopPlace = new StopPlace();
         stopPlace.stopPlaceType = StopPlace.StopPlaceType.ONSTREET_BUS;
 
-        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r);
+        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole());
         assertThat(authorized, is(true));
     }
 
@@ -115,7 +115,7 @@ public class ReflectionAuthorizationServiceTest {
 
         fieldMappings.put("combinedfield", Arrays.asList("someField1"));
 
-        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r);
+        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole());
         assertThat(authorized, is(true));
     }
 
@@ -140,7 +140,7 @@ public class ReflectionAuthorizationServiceTest {
 
         fieldMappings.put("combinedfield", Arrays.asList("someField1"));
 
-        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r);
+        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole());
         assertThat(railReplacementBus + " not allowed for combinedField", authorized, is(false));
     }
 
@@ -163,7 +163,7 @@ public class ReflectionAuthorizationServiceTest {
 
         fieldMappings.put("combinedfield", Arrays.asList("someField1"));
 
-        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r);
+        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole());
         assertThat("airport not allowed for stop place type", authorized, is(false));
     }
 
@@ -187,7 +187,7 @@ public class ReflectionAuthorizationServiceTest {
 
         fieldMappings.put("combinedfield", Arrays.asList("someField1"));
 
-        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r);
+        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole());
         assertThat("railReplacementBus allowed, but not stop place type airport", authorized, is(false));
     }
 
@@ -210,7 +210,7 @@ public class ReflectionAuthorizationServiceTest {
                 .withEntityClassification("anotherProperty", "!someval2")
                 .build();
 
-        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r);
+        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole());
         assertThat(authorized, is(false));
     }
 
@@ -231,7 +231,7 @@ public class ReflectionAuthorizationServiceTest {
                 .withEntityClassification("anotherProperty", "someval2")
                 .build();
 
-        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r);
+        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole());
         assertThat("someval2 should be allowed for anotherProperty", authorized, is(true));
     }
 
@@ -292,7 +292,7 @@ public class ReflectionAuthorizationServiceTest {
                 .withEntityClassification(ENTITY_TYPE, "*")
                 .build();
 
-        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, new Object(), roleAssignment.r);
+        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, new Object(), roleAssignment.getRole());
         assertThat(authorized, is(true));
     }
 
@@ -317,7 +317,7 @@ public class ReflectionAuthorizationServiceTest {
                 .withOrganisation("OST")
                 .build();
 
-        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, new Object(), roleAssignment.r);
+        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, new Object(), roleAssignment.getRole());
         assertThat(authorized, is(false));
     }
 
@@ -337,7 +337,7 @@ public class ReflectionAuthorizationServiceTest {
         // Submode is not allowed
         stopPlace.submode = "railReplacementBus";
 
-        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r);
+        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole());
         assertThat(authorized, is(false));
     }
 
@@ -353,7 +353,7 @@ public class ReflectionAuthorizationServiceTest {
         // Not stop place
         Object object = new Object();
 
-        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, object, roleAssignment.r);
+        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, object, roleAssignment.getRole());
         assertThat(authorized, is(false));
     }
 
@@ -370,7 +370,7 @@ public class ReflectionAuthorizationServiceTest {
         StopPlace stopPlace = new StopPlace();
         stopPlace.stopPlaceType = StopPlace.StopPlaceType.AIRPORT;
 
-        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r);
+        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole());
         assertThat(authorized, is(false));
     }
 
@@ -386,7 +386,7 @@ public class ReflectionAuthorizationServiceTest {
 
         StopPlace stopPlace = new StopPlace();
 
-        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r);
+        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole());
         assertThat("stop place type is not set, which means that it's not airport", authorized, is(true));
     }
 
@@ -406,7 +406,7 @@ public class ReflectionAuthorizationServiceTest {
         StopPlace stopPlace = new StopPlace();
         stopPlace.stopPlaceType = StopPlace.StopPlaceType.ONSTREET_BUS;
 
-        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r);
+        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole());
         assertThat(authorized, is(false));
     }
 
@@ -424,7 +424,7 @@ public class ReflectionAuthorizationServiceTest {
         StopPlace stopPlace = new StopPlace();
         stopPlace.stopPlaceType = StopPlace.StopPlaceType.ONSTREET_BUS;
 
-        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r);
+        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole());
         assertThat(authorized, is(false));
     }
 
@@ -441,7 +441,7 @@ public class ReflectionAuthorizationServiceTest {
         StopPlace stopPlace = new StopPlace();
         stopPlace.stopPlaceType = StopPlace.StopPlaceType.ONSTREET_BUS;
 
-        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r);
+        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole());
         assertThat(authorized, is(false));
     }
 
@@ -458,7 +458,7 @@ public class ReflectionAuthorizationServiceTest {
         StopPlace stopPlace = new StopPlace();
         stopPlace.stopPlaceType = StopPlace.StopPlaceType.ONSTREET_BUS;
 
-        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r);
+        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole());
         assertThat(authorized, is(false));
     }
 
@@ -486,7 +486,7 @@ public class ReflectionAuthorizationServiceTest {
 
         types.forEach(type -> {
             stopPlace.stopPlaceType = type;
-            boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r);
+            boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole());
             assertThat("Should have access to edit stop with type "+ type, authorized, is(true));
         });
     }
@@ -507,15 +507,15 @@ public class ReflectionAuthorizationServiceTest {
         StopPlace stopPlace = new StopPlace();
 
         stopPlace.stopPlaceType = StopPlace.StopPlaceType.AIRPORT;
-        assertThat(reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r), is(true));
+        assertThat(reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole()), is(true));
 
 
         stopPlace.stopPlaceType = StopPlace.StopPlaceType.ONSTREET_BUS;
-        assertThat("no access for bus", reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r), is(false));
+        assertThat("no access for bus", reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole()), is(false));
 
 
         stopPlace.stopPlaceType = StopPlace.StopPlaceType.ONSTREET_TRAM;
-        assertThat(reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r), is(true));
+        assertThat(reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole()), is(true));
     }
 
 
@@ -535,14 +535,14 @@ public class ReflectionAuthorizationServiceTest {
             StopPlace stopPlace = new StopPlace();
             stopPlace.stopPlaceType = enumValue;
 
-            boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r);
+            boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole());
             assertThat("should not be authorized as negation is on !", authorized, is(false));
 
             Arrays.stream(StopPlace.StopPlaceType.values()).forEach(otherEnum -> {
                 if(otherEnum != enumValue) {
                     stopPlace.stopPlaceType = otherEnum;
                     assertThat("One value is not allowed " + enumValue + ", but " + otherEnum + " is",
-                            reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r), is(true));
+                            reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole()), is(true));
                 }
             });
         }
@@ -564,7 +564,7 @@ public class ReflectionAuthorizationServiceTest {
 
         fieldMappings.put("combinedfield", Arrays.asList("someField1", "someField2"));
 
-        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.r);
+        boolean authorized = reflectionAuthorizationService.authorized(roleAssignment, stopPlace, roleAssignment.getRole());
         assertThat(authorized, is(true));
     }
 

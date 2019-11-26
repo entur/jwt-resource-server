@@ -38,23 +38,23 @@ public class RoleAssignment {
     /**
      * Private code for role, required
      */
-    public String r;
+    private String r;
 
     /**
      * Private code for organisation, required
      */
-    public String o;
+    private String o;
 
     /**
      * Private code for administrative zone, optional
      */
-    public String z;
+    private String z;
 
 
     /**
      * Map of entity types (Stop place, PlaceOfInterest ... ) mapped against classifiers for the type (tramStop etc), each represented by private code. Optional.
      */
-    public Map<String, List<String>> e;
+    private Map<String, List<String>> e;
 
     @JsonIgnore
     public String getRole() {
