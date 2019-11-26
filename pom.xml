@@ -88,7 +88,7 @@
 		<owasp-dependency-check.version>5.2.4</owasp-dependency-check.version>
 
 		<!-- aggregated jacoco report; for cross-module code coverage -->
-		<sonar.coverage.jacoco.xmlReportPaths>${maven.multiModuleProjectDirectory}/target/report/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+		<sonar.jacoco.reportPath>${maven.multiModuleProjectDirectory}/target/jacoco.exec</sonar.jacoco.reportPath>
 	</properties>
 
 	<dependencyManagement>
@@ -406,8 +406,6 @@
 				<configuration>
 					<sessionId>${project.artifactId}</sessionId>
 					<destFile>${maven.multiModuleProjectDirectory}/target/jacoco.exec</destFile>
-					<outputDirectory>${maven.multiModuleProjectDirectory}/target/report</outputDirectory>
-					<dataFile>${maven.multiModuleProjectDirectory}/target/jacoco.exec</dataFile>
 				</configuration>
 				<executions>
 					<execution>
