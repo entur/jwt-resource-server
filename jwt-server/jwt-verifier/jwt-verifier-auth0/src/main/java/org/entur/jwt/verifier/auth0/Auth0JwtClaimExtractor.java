@@ -48,7 +48,13 @@ public class Auth0JwtClaimExtractor implements JwtClaimExtractor<DecodedJWT> {
 			return null;
 		}
 		
-		return claim.as(type);
+		V value;
+		if(type.isArray()) {
+			throw new IllegalArgumentException("Array types not supported, use List");
+		} else {
+			value = claim.as(type);
+		}
+		return value;
 	}
 
 	@Override

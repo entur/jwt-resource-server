@@ -1,5 +1,6 @@
 package org.entur.jwt.spring.filter;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Map;
 
@@ -24,6 +25,9 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
     
     public JwtAuthenticationToken(Map<String, Object> principal, String credentials, Collection<? extends GrantedAuthority> authorities) {
         super(authorities);
+        if(!(principal instanceof Serializable)) {
+        	throw new IllegalArgumentException("Map of claims must be serializable");
+        }
         this.principal = principal;
         this.credentials = credentials;
         super.setAuthenticated(true); // must use super, as we override
@@ -54,7 +58,14 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
     
     @SuppressWarnings("unchecked")
 	public <V> V getClaim(String name, Class<V> type) {
-    	return (V) principal.get(name);
+    	Object object = principal.get(name);
+    	if(object != null) {
+    		if(type.isAssignableFrom(object.getClass())) {
+    			return (V)object;
+    		}
+    		throw new IllegalArgumentException("Expected claim '" + name + "' type " + type.getClass().getName() + ", found " + object.getClass());
+    	}
+    	return null;
     }
     
     public Map<String, Object> getClaims() {

@@ -132,8 +132,8 @@ public class RoleAssignment {
     	
     	try {
 			return mapper.writeValueAsString(this);
-		} catch (JsonProcessingException e) {
-			throw new RuntimeException(e);
+		} catch (JsonProcessingException e1) {
+			throw new IllegalArgumentException(e1);
 		}
     }
 }

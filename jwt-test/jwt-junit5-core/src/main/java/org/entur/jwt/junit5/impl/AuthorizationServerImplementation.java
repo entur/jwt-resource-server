@@ -9,25 +9,25 @@ public class AuthorizationServerImplementation {
 
 	private AuthorizationServer authorizationServer;
 	private Annotation annotation;
-	private AuthorizationServerEncoder encoder;
+	private AuthorizationServerEncoder authorizationServerEncoder;
 	
 	public AuthorizationServerImplementation(AuthorizationServer server, Annotation source) {
 		this.authorizationServer = server;
 		this.annotation = source;
-		this.encoder = getAuthorizationServerEncoder(server);
+		this.authorizationServerEncoder = getAuthorizationServerEncoder(server);
 	}
 	
 	protected AuthorizationServerEncoder getAuthorizationServerEncoder(AuthorizationServer token) {
-    	Class<?> encoder = (Class<?>) token.encoder();
+    	Class<?> encoder = token.encoder();
     	try {
 			return (AuthorizationServerEncoder) encoder.getDeclaredConstructor().newInstance();
 		} catch (Exception e) {
-			throw new RuntimeException(e);
+			throw new IllegalArgumentException("Unable to initialize encoder type " + encoder.getClass().getName(), e);
 		}
 	}
 	
 	public AuthorizationServerEncoder getEncoder() {
-		return encoder;
+		return authorizationServerEncoder;
 	}
 
 	public AccessTokenImplementationFactory createAccessTokenFactory() {
@@ -43,11 +43,11 @@ public class AuthorizationServerImplementation {
 	}
 	
 	public String getJsonWebKeys() {
-		return encoder.getJsonWebKeys(annotation);
+		return authorizationServerEncoder.getJsonWebKeys(annotation);
 	}
 	
 	public void setEncoder(AuthorizationServerEncoder encoder) {
-		this.encoder = encoder;
+		this.authorizationServerEncoder = encoder;
 	}
 	
 	public String getId() {

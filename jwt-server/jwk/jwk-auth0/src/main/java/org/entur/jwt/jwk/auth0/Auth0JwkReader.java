@@ -56,7 +56,6 @@ public class Auth0JwkReader implements JwksReader<Jwk> {
 	
     @SuppressWarnings("unchecked")
 	private List<Jwk> parseJwks(JsonParser parser) throws IOException, InvalidSigningKeysException {
-		// TODO manually parse for improved performance
 		List<Map<String, Object>> values = parser.readValueAs(List.class);
 		
 		List<Jwk> jwks = new ArrayList<>(values.size());

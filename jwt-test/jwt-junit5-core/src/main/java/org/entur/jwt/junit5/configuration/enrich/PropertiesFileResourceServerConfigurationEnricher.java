@@ -43,7 +43,6 @@ public class PropertiesFileResourceServerConfigurationEnricher extends AbstractP
 	@Override
 	public void beforeEach(ResourceServerConfiguration configuration, ExtensionContext context) {
 		// do nothing
-		// TODO generate keys here
 	}
 
 	@Override

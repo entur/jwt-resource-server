@@ -6,6 +6,10 @@ import java.util.ServiceLoader;
 
 public class ResourceServerConfigurationResolverServiceLoader {
 
+	private ResourceServerConfigurationResolverServiceLoader() {
+		// utility class
+	}
+	
 	public static List<ResourceServerConfigurationResolver> load() {
 		ServiceLoader<ResourceServerConfigurationResolver> loader = ServiceLoader.load(ResourceServerConfigurationResolver.class);
 		Iterator<ResourceServerConfigurationResolver> iterator = loader.iterator();

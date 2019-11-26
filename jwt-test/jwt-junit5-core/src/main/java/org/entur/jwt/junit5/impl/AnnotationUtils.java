@@ -15,6 +15,10 @@ import java.util.Set;
 
 public class AnnotationUtils {
 
+	private AnnotationUtils() {
+		// utility class
+	}
+	
 	public static <A extends Annotation> Optional<A> findAnnotation(AnnotatedElement element, Class<A> annotationType) {
 		boolean inherited = annotationType.isAnnotationPresent(Inherited.class);
 		return findAnnotation(element, annotationType, inherited, new HashSet<>());

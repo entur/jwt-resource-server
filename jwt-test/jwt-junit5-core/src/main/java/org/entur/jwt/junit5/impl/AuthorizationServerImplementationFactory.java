@@ -9,7 +9,7 @@ import org.entur.jwt.junit5.AuthorizationServer;
 
 public class AuthorizationServerImplementationFactory {
 
-	public List<AuthorizationServerImplementation> create(Class<?> testClass) throws Exception {
+	public List<AuthorizationServerImplementation> create(Class<?> testClass) {
 		List<AuthorizationServerImplementation> results = new ArrayList<>();
 		Annotation[] annotations = testClass.getAnnotations();
 		
@@ -39,7 +39,7 @@ public class AuthorizationServerImplementationFactory {
 		// copy approach from junit AnnotationUtils
 		Optional<AuthorizationServer> single = AnnotationUtils.findAnnotation(annotation.getClass(), AuthorizationServer.class);
 		if(single.isPresent()) {
-			AuthorizationServer authorizationServer = (AuthorizationServer)single.get();
+			AuthorizationServer authorizationServer = single.get();
 
 			results.add(new AuthorizationServerImplementation(authorizationServer, annotation));
 		}

@@ -12,19 +12,22 @@ public class OrganisationAccessTokenEncoder extends DefaultAccessTokenEncoder {
 
 	private static final String ROLES = "roles";
 
+	@Override
 	public Map<String, Object> encodeClaims(ParameterContext parameterContext, ResourceServerConfiguration resolver) {
 		Map<String, Object> encode = super.encodeClaims(parameterContext, resolver);
-		
+
 		Optional<OrganisationToken> a = parameterContext.findAnnotation(OrganisationToken.class);
 		if(a.isPresent()) {
 			encode(encode, a.get());			
 		}
-		
+
 		return encode;
 	}
 
 	private void encode(Map<String, Object> encode, OrganisationToken partnerAccessToken) {
-    	/*
+
+		// example:
+		/*
 		  "resource_access": {
 		    "xyz": {
 		      "roles": [
@@ -32,11 +35,11 @@ public class OrganisationAccessTokenEncoder extends DefaultAccessTokenEncoder {
 		      ]
 		    }
 		  }
-    	*/
-		
+		 */
+
 		Map<String, Object> resourceAccess = new HashMap<>();
 		encode.put("resource_access", resourceAccess);
-		
+
 		Map<String, Object> resource = new HashMap<>();
 		resourceAccess.put(partnerAccessToken.resource(), resource);
 		resource.put(ROLES, partnerAccessToken.resourceAccess());

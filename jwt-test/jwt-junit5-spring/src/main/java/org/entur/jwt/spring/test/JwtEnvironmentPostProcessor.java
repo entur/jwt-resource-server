@@ -43,9 +43,9 @@ public class JwtEnvironmentPostProcessor implements EnvironmentPostProcessor {
 				
 				Map<String, Object> junit5Properties = source.getSource();
 				// see whether issuer is populated, if not create a mock value
-				// background: JWTs need an issuer, but configuration manipulation
+				// background: JWTs need an issuer, so using a list would be the easy way. 
+				// But configuration manipulation
 				// is generally better when specifying tenants under an id key 
-				// (i.e. compared to a list).
 				// This approach works around this.
 				
 				Set<String> tenants = extractTenants(junit5Properties); 
@@ -62,7 +62,7 @@ public class JwtEnvironmentPostProcessor implements EnvironmentPostProcessor {
 				addOrReplace(environment.getPropertySources(), junit5Properties);
     		}
 		} catch (IOException e) {
-			throw new RuntimeException("Unable to load properties", e);
+			throw new IllegalStateException("Unable to load properties", e);
 		}
     }
 
