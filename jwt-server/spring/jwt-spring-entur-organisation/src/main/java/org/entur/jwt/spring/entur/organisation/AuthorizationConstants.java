@@ -21,16 +21,16 @@ public class AuthorizationConstants {
 	private AuthorizationConstants() {
 		// utility class
 	}
-	
-    public static final String ROLE_DELETE_STOPS = "deleteStops";
-    public static final String ROLE_EDIT_STOPS = "editStops";
 
-    public static final String ROLE_ORGANISATION_EDIT = "editOrganisation";
-    public static final String ROLE_ROUTE_DATA_EDIT = "editRouteData";
-    public static final String ROLE_ROUTE_DATA_ADMIN = "adminEditRouteData";
+	public static final String ROLE_DELETE_STOPS = "deleteStops";
+	public static final String ROLE_EDIT_STOPS = "editStops";
 
-    public static final String ENTITY_CLASSIFIER_ALL_TYPES = "*";
-    public static final String ENTITY_TYPE = "EntityType";
+	public static final String ROLE_ORGANISATION_EDIT = "editOrganisation";
+	public static final String ROLE_ROUTE_DATA_EDIT = "editRouteData";
+	public static final String ROLE_ROUTE_DATA_ADMIN = "adminEditRouteData";
 
-    public static final String ENTITY_CLASSIFIER_ALL_ATTRIBUTES = "*";
+	public static final String ENTITY_CLASSIFIER_ALL_TYPES = "*";
+	public static final String ENTITY_TYPE = "EntityType";
+
+	public static final String ENTITY_CLASSIFIER_ALL_ATTRIBUTES = "*";
 }

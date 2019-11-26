@@ -5,7 +5,7 @@ public class JwtClaimConstraintProperties {
 	private String name;
 	private String value; // optional
 	private String type; // i.e. number, tree, text etc
-	
+
 	public String getName() {
 		return name;
 	}
@@ -18,11 +18,11 @@ public class JwtClaimConstraintProperties {
 	public void setType(String type) {
 		this.type = type;
 	}
-	
+
 	public void setValue(String value) {
 		this.value = value;
 	}
-	
+
 	public String getValue() {
 		return value;
 	}

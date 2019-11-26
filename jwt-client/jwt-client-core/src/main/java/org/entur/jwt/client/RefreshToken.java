@@ -2,9 +2,9 @@ package org.entur.jwt.client;
 
 public class RefreshToken {
 
-    private final String value;
-    // non-standard claim
-    private final long expires;
+	private final String value;
+	// non-standard claim
+	private final long expires;
 
 	public RefreshToken(String refreshToken, long expiresAt) {
 		super();
@@ -19,9 +19,9 @@ public class RefreshToken {
 	public long getExpires() {
 		return expires;
 	}
-	
-    public boolean isValid(long time) {
-        return expires == -1L || time <= expires;
-    }
-    
+
+	public boolean isValid(long time) {
+		return expires == -1L || time <= expires;
+	}
+
 }

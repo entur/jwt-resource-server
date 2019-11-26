@@ -22,6 +22,6 @@ import org.entur.jwt.junit5.claim.MapClaim.Entry;
 		@Entry(name = "roles", alwaysArray = true, value = {"admin"})
 })
 public @interface KeycloakResourceAccessToken {
-	
+
 	public long myId();
 }

@@ -21,25 +21,25 @@ import javax.servlet.http.HttpServletResponse;
 public final class JwtFilter implements Filter {
 
 	private final String[] filters; // thread safe
-	
+
 	public JwtFilter(List<String> paths) {
 		this.filters = paths.toArray(new String[paths.size()]);
 	}
 
 	@Override
 	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
-		
-        HttpServletRequest httpRequest = (HttpServletRequest) request;
 
-        String header = httpRequest.getHeader("Authorization");
+		HttpServletRequest httpRequest = (HttpServletRequest) request;
+
+		String header = httpRequest.getHeader("Authorization");
 		if(header != null && header.startsWith("Bearer ")) {
 			chain.doFilter(httpRequest, response);
 		} else if(isPath(httpRequest)) {
 			chain.doFilter(httpRequest, response);
 		} else {
-	        HttpServletResponse httpResponse = (HttpServletResponse) response;
+			HttpServletResponse httpResponse = (HttpServletResponse) response;
 
-	        httpResponse.setStatus(401);
+			httpResponse.setStatus(401);
 		}
 	}
 
@@ -54,7 +54,4 @@ public final class JwtFilter implements Filter {
 		}
 		return false;
 	}
-
-	
-
 }

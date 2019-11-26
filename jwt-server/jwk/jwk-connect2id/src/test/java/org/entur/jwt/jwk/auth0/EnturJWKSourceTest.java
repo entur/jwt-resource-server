@@ -55,39 +55,38 @@ public class EnturJWKSourceTest {
 	}
 
 	@Test
-	public void testSimplifiedConstructor()
-		throws Exception {
+	public void testSimplifiedConstructor() throws Exception {
 
 		KeyPairGenerator pairGen = KeyPairGenerator.getInstance("RSA");
 		pairGen.initialize(1024);
 		KeyPair keyPair = pairGen.generateKeyPair();
 
 		RSAKey rsaJWK1 = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
-			.privateKey((RSAPrivateKey) keyPair.getPrivate())
-			.keyID("1")
-			.build();
+				.privateKey((RSAPrivateKey) keyPair.getPrivate())
+				.keyID("1")
+				.build();
 
 		keyPair = pairGen.generateKeyPair();
 
 		RSAKey rsaJWK2 = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
-			.privateKey((RSAPrivateKey) keyPair.getPrivate())
-			.keyID("2")
-			.build();
+				.privateKey((RSAPrivateKey) keyPair.getPrivate())
+				.keyID("2")
+				.build();
 
 		JWKSet jwkSet = new JWKSet(Arrays.asList((JWK)rsaJWK1, (JWK)rsaJWK2));
 
 		URL jwkSetURL = new URL("http://localhost:" + port() + "/jwks.json");
 
 		onRequest()
-			.havingMethodEqualTo("GET")
-			.havingPathEqualTo("/jwks.json")
-			.respond()
-			.withStatus(200)
-			.withHeader("Content-Type", "application/json")
-			.withBody(jwkSet.toJSONObject(true).toJSONString());
+		.havingMethodEqualTo("GET")
+		.havingPathEqualTo("/jwks.json")
+		.respond()
+		.withStatus(200)
+		.withHeader("Content-Type", "application/json")
+		.withBody(jwkSet.toJSONObject(true).toJSONString());
 
 		JWKSource<SecurityContext> jwkSetSource = Connect2IdJwkProviderBuilder.newBuilder(jwkSetURL).build();
-		
+
 		List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
 
 		RSAKey m1 = (RSAKey) matches.get(0);
@@ -100,35 +99,35 @@ public class EnturJWKSourceTest {
 
 	@Test
 	public void testSelectRSAByKeyID_defaultRetriever()
-		throws Exception {
+			throws Exception {
 
 		KeyPairGenerator pairGen = KeyPairGenerator.getInstance("RSA");
 		pairGen.initialize(1024);
 		KeyPair keyPair = pairGen.generateKeyPair();
 
 		RSAKey rsaJWK1 = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
-			.privateKey((RSAPrivateKey) keyPair.getPrivate())
-			.keyID("1")
-			.build();
+				.privateKey((RSAPrivateKey) keyPair.getPrivate())
+				.keyID("1")
+				.build();
 
 		keyPair = pairGen.generateKeyPair();
 
 		RSAKey rsaJWK2 = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
-			.privateKey((RSAPrivateKey) keyPair.getPrivate())
-			.keyID("2")
-			.build();
+				.privateKey((RSAPrivateKey) keyPair.getPrivate())
+				.keyID("2")
+				.build();
 
 		JWKSet jwkSet = new JWKSet(Arrays.asList((JWK)rsaJWK1, (JWK)rsaJWK2));
 
 		URL jwkSetURL = new URL("http://localhost:" + port() + "/jwks.json");
 
 		onRequest()
-			.havingMethodEqualTo("GET")
-			.havingPathEqualTo("/jwks.json")
-			.respond()
-			.withStatus(200)
-			.withHeader("Content-Type", "application/json")
-			.withBody(jwkSet.toJSONObject(true).toJSONString());
+		.havingMethodEqualTo("GET")
+		.havingPathEqualTo("/jwks.json")
+		.respond()
+		.withStatus(200)
+		.withHeader("Content-Type", "application/json")
+		.withBody(jwkSet.toJSONObject(true).toJSONString());
 
 		JWKSource<SecurityContext> jwkSetSource = Connect2IdJwkProviderBuilder.newBuilder(jwkSetURL).build();
 
@@ -145,62 +144,62 @@ public class EnturJWKSourceTest {
 
 	@Test
 	public void testRefreshRSAByKeyID_defaultRetriever()
-		throws Exception {
+			throws Exception {
 
 		KeyPairGenerator pairGen = KeyPairGenerator.getInstance("RSA");
 		pairGen.initialize(1024);
 		KeyPair keyPair = pairGen.generateKeyPair();
 
 		final RSAKey rsaJWK1 = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
-			.privateKey((RSAPrivateKey) keyPair.getPrivate())
-			.keyID("1")
-			.build();
+				.privateKey((RSAPrivateKey) keyPair.getPrivate())
+				.keyID("1")
+				.build();
 
 		keyPair = pairGen.generateKeyPair();
 
 		final RSAKey rsaJWK2 = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
-			.privateKey((RSAPrivateKey) keyPair.getPrivate())
-			.keyID("2")
-			.build();
+				.privateKey((RSAPrivateKey) keyPair.getPrivate())
+				.keyID("2")
+				.build();
 
 		keyPair = pairGen.generateKeyPair();
 
 		final RSAKey rsaJWK3 = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
-			.privateKey((RSAPrivateKey) keyPair.getPrivate())
-			.keyID("3")
-			.build();
+				.privateKey((RSAPrivateKey) keyPair.getPrivate())
+				.keyID("3")
+				.build();
 
 		URL jwkSetURL = new URL("http://localhost:" + port() + "/jwks.json");
 
 		onRequest()
-			.havingMethodEqualTo("GET")
-			.havingPathEqualTo("/jwks.json")
-			.respondUsing(new Responder() {
-				private int count = 0;
-				@Override
-				public StubResponse nextResponse(Request request) {
+		.havingMethodEqualTo("GET")
+		.havingPathEqualTo("/jwks.json")
+		.respondUsing(new Responder() {
+			private int count = 0;
+			@Override
+			public StubResponse nextResponse(Request request) {
 
-					if (! request.getMethod().equalsIgnoreCase("GET")) {
-						return StubResponse.builder().status(405).build();
-					}
+				if (! request.getMethod().equalsIgnoreCase("GET")) {
+					return StubResponse.builder().status(405).build();
+				}
 
-					if (count == 0) {
-						++count;
-						return StubResponse.builder()
+				if (count == 0) {
+					++count;
+					return StubResponse.builder()
 							.status(200)
 							.header("Content-Type", "application/json")
 							.body(new JWKSet(Arrays.asList((JWK)rsaJWK1, (JWK)rsaJWK2)).toJSONObject().toJSONString(), Charset.forName("UTF-8"))
 							.build();
-					}
+				}
 
-					// Add 3rd key
-					return StubResponse.builder()
+				// Add 3rd key
+				return StubResponse.builder()
 						.status(200)
 						.header("Content-Type", "application/json")
 						.body(new JWKSet(Arrays.asList((JWK)rsaJWK1, (JWK)rsaJWK2, (JWK)rsaJWK3)).toJSONObject().toJSONString(), Charset.forName("UTF-8"))
 						.build();
-				}
-			});
+			}
+		});
 
 		JWKSource<SecurityContext> jwkSetSource = Connect2IdJwkProviderBuilder.newBuilder(jwkSetURL).build();
 
@@ -226,35 +225,35 @@ public class EnturJWKSourceTest {
 
 	@Test
 	public void testInvalidJWKSetURL()
-		throws Exception {
+			throws Exception {
 
 		KeyPairGenerator pairGen = KeyPairGenerator.getInstance("RSA");
 		pairGen.initialize(1024);
 		KeyPair keyPair = pairGen.generateKeyPair();
 
 		RSAKey rsaJWK1 = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
-			.privateKey((RSAPrivateKey) keyPair.getPrivate())
-			.keyID("1")
-			.build();
+				.privateKey((RSAPrivateKey) keyPair.getPrivate())
+				.keyID("1")
+				.build();
 
 		keyPair = pairGen.generateKeyPair();
 
 		RSAKey rsaJWK2 = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
-			.privateKey((RSAPrivateKey) keyPair.getPrivate())
-			.keyID("2")
-			.build();
+				.privateKey((RSAPrivateKey) keyPair.getPrivate())
+				.keyID("2")
+				.build();
 
 		JWKSet jwkSet = new JWKSet(Arrays.asList((JWK)rsaJWK1, (JWK)rsaJWK2));
 
 		URL jwkSetURL = new URL("http://localhost:" + port() + "/invalid-path");
 
 		onRequest()
-			.havingMethodEqualTo("GET")
-			.havingPathEqualTo("/jwks.json")
-			.respond()
-			.withStatus(200)
-			.withHeader("Content-Type", "application/json")
-			.withBody(jwkSet.toJSONObject(true).toJSONString());
+		.havingMethodEqualTo("GET")
+		.havingPathEqualTo("/jwks.json")
+		.respond()
+		.withStatus(200)
+		.withHeader("Content-Type", "application/json")
+		.withBody(jwkSet.toJSONObject(true).toJSONString());
 
 		JWKSource<SecurityContext> jwkSetSource = Connect2IdJwkProviderBuilder.newBuilder(jwkSetURL).build();
 
@@ -269,7 +268,7 @@ public class EnturJWKSourceTest {
 
 	@Test
 	public void testTimeout()
-		throws Exception {
+			throws Exception {
 
 		URL jwkSetURL = new URL("http://localhost:" + port() + "/jwks.json");
 

@@ -11,17 +11,17 @@ public class JwksException extends Exception {
 
 	public JwksException() {
 	}
-	
-    public JwksException(String message) {
-        super(message);
-    }
 
-    public JwksException(String message, Throwable cause) {
-        super(message, cause);
-    }
+	public JwksException(String message) {
+		super(message);
+	}
 
-    public JwksException(Throwable cause) {
-        super(cause);
-    }
+	public JwksException(String message, Throwable cause) {
+		super(message, cause);
+	}
+
+	public JwksException(Throwable cause) {
+		super(cause);
+	}
 
 }

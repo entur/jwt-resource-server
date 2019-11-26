@@ -11,12 +11,12 @@ public class MyAccessTokenEncoder extends DefaultAccessTokenEncoder {
 
 	public Map<String, Object> encodeClaims(ParameterContext parameterContext, ResourceServerConfiguration configuration) {
 		Map<String, Object> encode = super.encodeClaims(parameterContext, configuration);
-		
+
 		Optional<MyAccessToken> a = parameterContext.findAnnotation(MyAccessToken.class);
 		if(a.isPresent()) {
 			encode(encode, a.get());			
 		}
-		
+
 		return encode;
 	}
 

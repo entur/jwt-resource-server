@@ -44,7 +44,7 @@ public class DefaultClientCredentials implements ClientCredentials {
 	protected URL urlForPath(String path) {
 		try {
 			StringBuilder builder = new StringBuilder();
-			
+
 			builder.append(protocol);
 			if(!protocol.contains("://")) {
 				builder.append("://");
@@ -112,19 +112,19 @@ public class DefaultClientCredentials implements ClientCredentials {
 	public void setHeaders(Map<String, Object> headers) {
 		this.headers = headers;
 	}
-	
+
 	public void setPort(int port) {
 		this.port = port;
 	}
-	
+
 	public int getPort() {
 		return port;
 	}
-	
+
 	public void setProtocol(String protocol) {
 		this.protocol = protocol;
 	}
-	
+
 	public String getProtocol() {
 		return protocol;
 	}

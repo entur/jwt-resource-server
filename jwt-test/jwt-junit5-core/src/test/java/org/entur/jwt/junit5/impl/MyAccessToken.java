@@ -17,6 +17,6 @@ import org.entur.jwt.junit5.AccessToken;
 		encoder = MyAccessTokenEncoder.class
 		)
 public @interface MyAccessToken {
-	
+
 	public long myId();
 }

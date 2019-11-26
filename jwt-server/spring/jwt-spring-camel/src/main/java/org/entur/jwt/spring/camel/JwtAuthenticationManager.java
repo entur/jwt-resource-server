@@ -12,7 +12,7 @@ public class JwtAuthenticationManager implements AuthenticationManager {
 		if(authentication instanceof JwtAuthenticationToken) {
 			return authentication;
 		}
-		
+
 		throw new AuthenticationCredentialsNotFoundException("Expected " + JwtAuthenticationToken.class.getName());
 	}
 

@@ -10,9 +10,9 @@ public interface JwksHealthProvider {
 	 * @throws JwksHealthNotSupportedException if operation not supported
 	 * @return health status.
 	 */
-	
+
 	default JwksHealth getHealth(boolean refresh) {
-    	throw new JwksHealthNotSupportedException("Provider " + getClass().getName() + " does not support health requests");
+		throw new JwksHealthNotSupportedException("Provider " + getClass().getName() + " does not support health requests");
 	}
 
 }

@@ -19,10 +19,10 @@ import io.jsonwebtoken.SignatureAlgorithm;
 public class DefaultAuthorizationServerEncoder implements AuthorizationServerEncoder {
 
 	private static final Set<String> standardClaims;
-	
+
 	static {
 		Set<String> claims = new HashSet<>(); // thread safe for reading		
-		
+
 		claims.add("iss");
 		claims.add("sub");
 		claims.add("aud");
@@ -30,7 +30,7 @@ public class DefaultAuthorizationServerEncoder implements AuthorizationServerEnc
 		claims.add("nbf");
 		claims.add("iat");
 		claims.add("jti");
-		
+
 		claims.add("name");
 		claims.add("given_name");
 		claims.add("family_name");
@@ -50,39 +50,39 @@ public class DefaultAuthorizationServerEncoder implements AuthorizationServerEnc
 		claims.add("phone_number_verified");
 		claims.add("address");
 		claims.add("updated_at");
-		
+
 		standardClaims = claims;
 	}
 
 	public boolean isStandardClaim(String name) {
 		return standardClaims.contains(name);
 	}
-	
+
 	private final KeyPair keyPair;
-	
+
 	public DefaultAuthorizationServerEncoder() {
 		keyPair = createKeyPair();
 	}
-	
-    protected KeyPair createKeyPair()  {
-        KeyPairGenerator keyGen;
-        try {
-            keyGen = KeyPairGenerator.getInstance("RSA");
-            keyGen.initialize(2048);
-    
-            return keyGen.generateKeyPair();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(e);
-        }
-    }	
-	
+
+	protected KeyPair createKeyPair()  {
+		KeyPairGenerator keyGen;
+		try {
+			keyGen = KeyPairGenerator.getInstance("RSA");
+			keyGen.initialize(2048);
+
+			return keyGen.generateKeyPair();
+		} catch (NoSuchAlgorithmException e) {
+			throw new IllegalStateException(e);
+		}
+	}	
+
 	@Override
 	public String getJsonWebKeys(Annotation annotation) {
-        RSAPublicKey pk = (RSAPublicKey) keyPair.getPublic();
-        String n = Base64.getEncoder().encodeToString(pk.getModulus().toByteArray());
-        String e = Base64.getEncoder().encodeToString(pk.getPublicExponent().toByteArray());
+		RSAPublicKey pk = (RSAPublicKey) keyPair.getPublic();
+		String n = Base64.getEncoder().encodeToString(pk.getModulus().toByteArray());
+		String e = Base64.getEncoder().encodeToString(pk.getPublicExponent().toByteArray());
 
-        return String.format("{\"keys\":[{\"kid\":\"%s\",\"kty\":\"RSA\",\"alg\":\"RS256\",\"use\":\"sig\",\"n\":\"%s\",\"e\":\"%s\"}]}", Integer.toString(pk.hashCode()), n, e);
+		return String.format("{\"keys\":[{\"kid\":\"%s\",\"kty\":\"RSA\",\"alg\":\"RS256\",\"use\":\"sig\",\"n\":\"%s\",\"e\":\"%s\"}]}", Integer.toString(pk.hashCode()), n, e);
 	}
 
 	@Override
@@ -93,18 +93,18 @@ public class DefaultAuthorizationServerEncoder implements AuthorizationServerEnc
 		if(!headers.containsKey("kid")) {
 			headers.put("kid", Integer.toString(keyPair.getPublic().hashCode()));
 		}
-		
-	    JwtBuilder builder = Jwts.builder()
-	    		.setHeader(headers)
-	            .setClaims(claims);
-	    
-	    SignatureAlgorithm algorithm = SignatureAlgorithm.RS256;
-	    String algorithmName = (String)headers.get("alg"); 
-	    if(algorithmName != null) {
-	    	// XXX spawn key types on demand
-	    	algorithm = SignatureAlgorithm.forName(algorithmName);
-	    }
 
-    	return builder.signWith(keyPair.getPrivate(), algorithm).compact();
+		JwtBuilder builder = Jwts.builder()
+				.setHeader(headers)
+				.setClaims(claims);
+
+		SignatureAlgorithm algorithm = SignatureAlgorithm.RS256;
+		String algorithmName = (String)headers.get("alg"); 
+		if(algorithmName != null) {
+			// XXX spawn key types on demand
+			algorithm = SignatureAlgorithm.forName(algorithmName);
+		}
+
+		return builder.signWith(keyPair.getPrivate(), algorithm).compact();
 	}
 }

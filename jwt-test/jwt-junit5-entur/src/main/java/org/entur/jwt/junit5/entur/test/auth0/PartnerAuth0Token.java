@@ -18,11 +18,11 @@ import org.entur.jwt.junit5.entur.test.PartnerAuth0TokenEncoder;
 		encoder = PartnerAuth0TokenEncoder.class
 		)
 public @interface PartnerAuth0Token {
-	
+
 	public long organisationId();
-	
+
 	public String[] permissions() default {};
-	
+
 	public String[] scopes() default {};
-	
+
 }

@@ -17,6 +17,6 @@
 package org.entur.jwt.spring.entur.organisation;
 
 public interface AdministrativeZoneChecker {
-    boolean entityMatchesAdministrativeZone(RoleAssignment roleAssignment, Object entity);
+	boolean entityMatchesAdministrativeZone(RoleAssignment roleAssignment, Object entity);
 
 }

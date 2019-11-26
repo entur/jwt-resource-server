@@ -34,56 +34,56 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 })
 public class GreetingControllerAuthenticationRequiredTest {
 
-    @LocalServerPort
-    private int randomServerPort;
-    
-    @Autowired
-    private TestRestTemplate restTemplate;
-    
-    @Test 
-    public void testUnprotectedResource() {
-        HttpHeaders headers = new HttpHeaders();
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-        
-        String url = "http://localhost:" + randomServerPort + "/unprotected";
-        
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-    }
-    
-    @Test 
-    public void testProtectedResource() {
-        HttpHeaders headers = new HttpHeaders();
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-        
-        String url = "http://localhost:" + randomServerPort + "/protected";
-        
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-    }
-    
-    @Test 
-    public void testActuatorResource() {
-        HttpHeaders headers = new HttpHeaders();
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-        
-        String url = "http://localhost:" + randomServerPort + "/actuator/health";
-        
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    }
+	@LocalServerPort
+	private int randomServerPort;
 
-    @Test 
-    public void testProtectedResourceWithToken(@AccessToken(audience = "mock.my.audience") String token) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", token);
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-        
-        String url = "http://localhost:" + randomServerPort + "/protected";
-        
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-    }
+	@Autowired
+	private TestRestTemplate restTemplate;
+
+	@Test 
+	public void testUnprotectedResource() {
+		HttpHeaders headers = new HttpHeaders();
+		HttpEntity<String> entity = new HttpEntity<String>(headers);
+
+		String url = "http://localhost:" + randomServerPort + "/unprotected";
+
+		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+	}
+
+	@Test 
+	public void testProtectedResource() {
+		HttpHeaders headers = new HttpHeaders();
+		HttpEntity<String> entity = new HttpEntity<String>(headers);
+
+		String url = "http://localhost:" + randomServerPort + "/protected";
+
+		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+	}
+
+	@Test 
+	public void testActuatorResource() {
+		HttpHeaders headers = new HttpHeaders();
+		HttpEntity<String> entity = new HttpEntity<String>(headers);
+
+		String url = "http://localhost:" + randomServerPort + "/actuator/health";
+
+		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+	}
+
+	@Test 
+	public void testProtectedResourceWithToken(@AccessToken(audience = "mock.my.audience") String token) {
+		HttpHeaders headers = new HttpHeaders();
+		headers.add("Authorization", token);
+		HttpEntity<String> entity = new HttpEntity<String>(headers);
+
+		String url = "http://localhost:" + randomServerPort + "/protected";
+
+		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+	}
 
 
 }

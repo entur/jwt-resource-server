@@ -17,6 +17,6 @@ import org.apache.camel.Processor;
  */
 
 public interface JwtAuthenticationProcessor extends Processor {	
-	
+
 	void process(Exchange exchange);
 }

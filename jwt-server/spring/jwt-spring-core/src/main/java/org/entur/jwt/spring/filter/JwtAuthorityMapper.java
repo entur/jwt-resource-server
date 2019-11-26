@@ -8,5 +8,5 @@ import org.springframework.security.core.GrantedAuthority;
 public interface JwtAuthorityMapper<T> {
 
 	List<GrantedAuthority> getGrantedAuthorities(T token) throws JwtException;
-	
+
 }

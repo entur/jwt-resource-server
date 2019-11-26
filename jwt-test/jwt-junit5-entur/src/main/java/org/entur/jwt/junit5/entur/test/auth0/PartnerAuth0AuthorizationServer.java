@@ -16,15 +16,15 @@ import org.entur.jwt.junit5.AuthorizationServer;
 @AuthorizationServer(
 		value="partner-auth0",
 		encoder = PartnerAuth0AuthorizationServerEncoder.class
-)
+		)
 public @interface PartnerAuth0AuthorizationServer {
 
 	public String namespace() default "https://entur.io/";
 
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.TYPE})
-    @Inherited
-    @interface List {
-    	PartnerAuth0AuthorizationServer[] value();
-    }
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.TYPE})
+	@Inherited
+	@interface List {
+		PartnerAuth0AuthorizationServer[] value();
+	}
 }

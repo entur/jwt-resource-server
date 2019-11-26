@@ -11,12 +11,12 @@ public class KeycloakResourceAccessTokenEncoder extends DefaultAccessTokenEncode
 
 	public Map<String, Object> encodeClaims(ParameterContext parameterContext, ResourceServerConfiguration resolver) {
 		Map<String, Object> encode = super.encodeClaims(parameterContext, resolver);
-		
+
 		Optional<KeycloakResourceAccessToken> a = parameterContext.findAnnotation(KeycloakResourceAccessToken.class);
 		if(a.isPresent()) {
 			encode(encode, a.get());			
 		}
-		
+
 		return encode;
 	}
 

@@ -17,7 +17,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 public class EnturJWKSource<C extends SecurityContext> implements JWKSource<C> {
 
 	private final JwksProvider<JWK> provider;
-	
+
 	public EnturJWKSource(JwksProvider<JWK> provider) {
 		super();
 		this.provider = provider;

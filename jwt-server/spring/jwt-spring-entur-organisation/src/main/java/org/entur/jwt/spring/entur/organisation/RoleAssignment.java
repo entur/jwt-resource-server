@@ -35,105 +35,105 @@ import java.util.Map;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class RoleAssignment {
 
-    /**
-     * Private code for role, required
-     */
-    private String r;
+	/**
+	 * Private code for role, required
+	 */
+	private String r;
 
-    /**
-     * Private code for organisation, required
-     */
-    private String o;
+	/**
+	 * Private code for organisation, required
+	 */
+	private String o;
 
-    /**
-     * Private code for administrative zone, optional
-     */
-    private String z;
+	/**
+	 * Private code for administrative zone, optional
+	 */
+	private String z;
 
 
-    /**
-     * Map of entity types (Stop place, PlaceOfInterest ... ) mapped against classifiers for the type (tramStop etc), each represented by private code. Optional.
-     */
-    private Map<String, List<String>> e;
+	/**
+	 * Map of entity types (Stop place, PlaceOfInterest ... ) mapped against classifiers for the type (tramStop etc), each represented by private code. Optional.
+	 */
+	private Map<String, List<String>> e;
 
-    @JsonIgnore
-    public String getRole() {
-        return r;
-    }
-    @JsonIgnore
-    public String getOrganisation() {
-        return o;
-    }
-    @JsonIgnore
-    public String getAdministrativeZone() {
-        return z;
-    }
-    @JsonIgnore
-    public Map<String, List<String>> getEntityClassifications() {
-        return e;
-    }
+	@JsonIgnore
+	public String getRole() {
+		return r;
+	}
+	@JsonIgnore
+	public String getOrganisation() {
+		return o;
+	}
+	@JsonIgnore
+	public String getAdministrativeZone() {
+		return z;
+	}
+	@JsonIgnore
+	public Map<String, List<String>> getEntityClassifications() {
+		return e;
+	}
 
-    @Override
+	@Override
 	public String toString() {
 		return "RoleAssignment [r=" + r + ", o=" + o + ", z=" + z + ", e=" + e + "]";
 	}
 	public static Builder builder() {
-        return new Builder();
-    }
+		return new Builder();
+	}
 
-    public static class Builder {
+	public static class Builder {
 
-        protected RoleAssignment roleAssignment = new RoleAssignment();
+		protected RoleAssignment roleAssignment = new RoleAssignment();
 
-        private Builder() {
-        }
+		private Builder() {
+		}
 
-        public Builder withRole(String role) {
-            roleAssignment.r = role;
-            return this;
-        }
+		public Builder withRole(String role) {
+			roleAssignment.r = role;
+			return this;
+		}
 
-        public Builder withOrganisation(String organisation) {
-            roleAssignment.o = organisation;
-            return this;
-        }
+		public Builder withOrganisation(String organisation) {
+			roleAssignment.o = organisation;
+			return this;
+		}
 
-        public Builder withAdministrativeZone(String administrativeZone) {
-            roleAssignment.z = administrativeZone;
-            return this;
-        }
+		public Builder withAdministrativeZone(String administrativeZone) {
+			roleAssignment.z = administrativeZone;
+			return this;
+		}
 
-        public Builder withEntityClassification(String entityType, String entityClassification) {
-            if (roleAssignment.e == null) {
-                roleAssignment.e = new HashMap<>();
-            }
-            List<String> classificationsForType = roleAssignment.e.get(entityType);
-            if (classificationsForType == null) {
-                classificationsForType = new ArrayList<>();
-                roleAssignment.e.put(entityType, classificationsForType);
-            }
-            classificationsForType.add(entityClassification);
-            return this;
-        }
+		public Builder withEntityClassification(String entityType, String entityClassification) {
+			if (roleAssignment.e == null) {
+				roleAssignment.e = new HashMap<>();
+			}
+			List<String> classificationsForType = roleAssignment.e.get(entityType);
+			if (classificationsForType == null) {
+				classificationsForType = new ArrayList<>();
+				roleAssignment.e.put(entityType, classificationsForType);
+			}
+			classificationsForType.add(entityClassification);
+			return this;
+		}
 
-        public RoleAssignment build() {
-            if (roleAssignment.r == null) {
-                throw new IllegalArgumentException("No role (r) set");
-            }
-            if (roleAssignment.o == null) {
-                throw new IllegalArgumentException("No organisation (o) set");
-            }
-            return roleAssignment;
-        }
-    }
-    
-    public String toJson() {
-    	ObjectMapper mapper = new ObjectMapper();
-    	
-    	try {
+		public RoleAssignment build() {
+			if (roleAssignment.r == null) {
+				throw new IllegalArgumentException("No role (r) set");
+			}
+			if (roleAssignment.o == null) {
+				throw new IllegalArgumentException("No organisation (o) set");
+			}
+			return roleAssignment;
+		}
+	}
+
+	public String toJson() {
+		ObjectMapper mapper = new ObjectMapper();
+
+		try {
 			return mapper.writeValueAsString(this);
 		} catch (JsonProcessingException e1) {
 			throw new IllegalArgumentException(e1);
 		}
-    }
+	}
 }

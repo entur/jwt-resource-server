@@ -15,15 +15,15 @@ import org.entur.jwt.junit5.AuthorizationServer;
 @Inherited
 @AuthorizationServer(
 		value="myServer"
-)
+		)
 public @interface MyAuthorizationServer {
 
 	public String namespace() default "";
 
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.TYPE})
-    @Inherited
-    @interface List {
-    	MyAuthorizationServer[] value();
-    }
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.TYPE})
+	@Inherited
+	@interface List {
+		MyAuthorizationServer[] value();
+	}
 }

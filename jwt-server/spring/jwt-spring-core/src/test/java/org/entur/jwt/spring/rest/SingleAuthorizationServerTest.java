@@ -17,7 +17,7 @@ public class SingleAuthorizationServerTest {
 
 	@Autowired
 	private JwtVerifier<?> verifier;
-	
+
 	@Test
 	public void test(@MyAccessToken(myId = 1) String token) throws Exception {
 		verifier.verify(token);

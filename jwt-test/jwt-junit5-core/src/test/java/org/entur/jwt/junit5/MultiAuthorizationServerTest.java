@@ -19,10 +19,10 @@ public class MultiAuthorizationServerTest {
 	@Test
 	public void test(@AccessToken(by="myKeycloak") String token) throws IOException {
 		Path path = Paths.get("jwt.junit5.properties");
-		
+
 		Properties properties = new Properties();
 		properties.load(Files.newInputStream(path));
-		
+
 		assertNotNull(properties.get("entur.jwt.tenants.myKeycloak.jwk.location"));
 		assertNotNull(properties.get("entur.jwt.tenants.myAuth0.jwk.location"));
 	}

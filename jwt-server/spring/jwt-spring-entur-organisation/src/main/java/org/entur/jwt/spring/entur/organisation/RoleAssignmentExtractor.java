@@ -22,13 +22,13 @@ import java.util.List;
 
 public interface RoleAssignmentExtractor {
 
-    /**
-     * Extract role assignments for user from security context.
-     *
-     * @return
-     */
-    List<RoleAssignment> getRoleAssignmentsForUser();
+	/**
+	 * Extract role assignments for user from security context.
+	 *
+	 * @return
+	 */
+	List<RoleAssignment> getRoleAssignmentsForUser();
 
-    List<RoleAssignment> getRoleAssignmentsForUser(Authentication authentication);
+	List<RoleAssignment> getRoleAssignmentsForUser(Authentication authentication);
 
 }

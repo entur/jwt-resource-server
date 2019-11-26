@@ -10,9 +10,9 @@ public interface AccessTokenHealthProvider {
 	 * @throws AccessTokenHealthNotSupportedException if operation is not supported
 	 * @return health status.
 	 */
-	
+
 	// implementation note: this might have returned a list, but we really do not want to create a lot of status objects for each provider in the chain
 	default AccessTokenHealth getHealth(boolean refresh) {
-    	throw new AccessTokenHealthNotSupportedException("Provider " + getClass().getName() + " does not support health requests");
+		throw new AccessTokenHealthNotSupportedException("Provider " + getClass().getName() + " does not support health requests");
 	}	
 }

@@ -12,14 +12,14 @@ public class JwksClientException extends JwksException {
 
 	public JwksClientException() {
 	}
-	
-    public JwksClientException(String message) {
-        super(message);
-    }
 
-    public JwksClientException(String message, Throwable cause) {
-        super(message, cause);
-    }
+	public JwksClientException(String message) {
+		super(message);
+	}
+
+	public JwksClientException(String message, Throwable cause) {
+		super(message, cause);
+	}
 
 
 }

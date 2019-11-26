@@ -14,31 +14,31 @@ import org.entur.jwt.jwk.JwksException;
 public class JwtKeyProvider implements RSAKeyProvider {
 
 	private final JwkProvider<Jwk> provider;
-	
-    public JwtKeyProvider(JwkProvider<Jwk> provider) {
+
+	public JwtKeyProvider(JwkProvider<Jwk> provider) {
 		super();
 		this.provider = provider;
 	}
 
 	@Override
-    public RSAPublicKey getPublicKeyById(String keyId) {
-        try {
-            return (RSAPublicKey) provider.getJwk(keyId).getPublicKey();
-        } catch (org.entur.jwt.jwk.JwksUnavailableException e) {
-        	throw new SigningKeyUnavailableException("Problem getting public key id " + keyId, e);
-        } catch (JwksException | InvalidPublicKeyException e) {
-            throw new JWTVerificationException("Problem getting public key id " + keyId, e);
+	public RSAPublicKey getPublicKeyById(String keyId) {
+		try {
+			return (RSAPublicKey) provider.getJwk(keyId).getPublicKey();
+		} catch (org.entur.jwt.jwk.JwksUnavailableException e) {
+			throw new SigningKeyUnavailableException("Problem getting public key id " + keyId, e);
+		} catch (JwksException | InvalidPublicKeyException e) {
+			throw new JWTVerificationException("Problem getting public key id " + keyId, e);
 		}
-    }
+	}
 
-    @Override
-    public RSAPrivateKey getPrivateKey() {
-        throw new SecurityException("Attempted to acquire private key from authentication service.");
-    }
+	@Override
+	public RSAPrivateKey getPrivateKey() {
+		throw new SecurityException("Attempted to acquire private key from authentication service.");
+	}
 
-    @Override
-    public String getPrivateKeyId() {
-        throw new SecurityException("Attempted to acquire private key id from authentication service.");
-    }
+	@Override
+	public String getPrivateKeyId() {
+		throw new SecurityException("Attempted to acquire private key id from authentication service.");
+	}
 
 }

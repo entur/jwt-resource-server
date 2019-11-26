@@ -14,25 +14,25 @@ import java.lang.annotation.Target;
 public @interface MapClaim {
 
 	public String[] path();
-	
-	public Entry[] entries() default {};
-	
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.PARAMETER})
-    @Inherited
-    @interface List {
-    	MapClaim[] value();
-    }
-    
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.PARAMETER, ElementType.TYPE})
-    @Inherited
-    public @interface Entry {
 
-    	public String name();
-    	public Class<?> type() default String.class;
-    	public String[] value() default {};
-    	public boolean alwaysArray() default false;    	
-    }
-    
+	public Entry[] entries() default {};
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.PARAMETER})
+	@Inherited
+	@interface List {
+		MapClaim[] value();
+	}
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.PARAMETER, ElementType.TYPE})
+	@Inherited
+	public @interface Entry {
+
+		public String name();
+		public Class<?> type() default String.class;
+		public String[] value() default {};
+		public boolean alwaysArray() default false;    	
+	}
+
 }

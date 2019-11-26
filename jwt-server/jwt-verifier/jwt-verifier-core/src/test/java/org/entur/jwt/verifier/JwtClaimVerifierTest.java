@@ -17,12 +17,8 @@ public class JwtClaimVerifierTest {
 	private Map<String, Class<?>> types = new HashMap<>();
 	private Map<String, Object> values = new HashMap<>();
 	private JwtClaimVerifier<Map<String, Object>> claimVerifier = new JwtClaimVerifier<>(verifier, jwtClaimExtractor, types, values);
-	
+
 	private String token = "a.b.c";
-	
-	@BeforeEach
-	public void beforeEach() {
-	}
 
 	@AfterEach
 	public void afterEach() {
@@ -40,38 +36,38 @@ public class JwtClaimVerifierTest {
 	@Test
 	public void testRejectsInvalidValue() throws JwtException, JwksException {
 		forDataValue(1L, "abcdef");
-	    assertThrows(JwtClaimException.class,
-			()->{
-				claimVerifier.verify(token);
-			} );		
+		assertThrows(JwtClaimException.class,
+				()->{
+					claimVerifier.verify(token);
+				} );		
 	}
 
 	@Test
 	public void testRejectsInvalidDataType() throws JwtException, JwksException {
 		forDataType("aString", Integer.class);
-	    assertThrows(JwtClaimException.class,
-			()->{
-				claimVerifier.verify(token);
-			} );		
+		assertThrows(JwtClaimException.class,
+				()->{
+					claimVerifier.verify(token);
+				} );		
 	}
-	
+
 	public void forDataType(Object value, Class<?> dataType) {
 		String claimName = "https://my.namespace/key";
-		
+
 		Map<String, Object> claims = new HashMap<>();
 		claims.put(claimName, value);
-		
+
 		verifier.put(token, claims);
 
 		types.put(claimName, dataType);
 	}
-	
+
 	public void forDataValue(Object value, Object expected) {
 		String claimName = "https://my.namespace/key";
-		
+
 		Map<String, Object> claims = new HashMap<>();
 		claims.put(claimName, value);
-		
+
 		verifier.put(token, claims);
 
 		values.put(claimName, expected);

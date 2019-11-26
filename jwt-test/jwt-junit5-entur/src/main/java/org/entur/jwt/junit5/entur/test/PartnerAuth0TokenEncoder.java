@@ -13,12 +13,12 @@ public class PartnerAuth0TokenEncoder extends DefaultAccessTokenEncoder {
 	@Override
 	public Map<String, Object> encodeClaims(ParameterContext parameterContext, ResourceServerConfiguration resolver) {
 		Map<String, Object> encode = super.encodeClaims(parameterContext, resolver);
-		
+
 		Optional<PartnerAuth0Token> a = parameterContext.findAnnotation(PartnerAuth0Token.class);
 		if(a.isPresent()) {
 			encode(encode, a.get());			
 		}
-		
+
 		return encode;
 	}
 

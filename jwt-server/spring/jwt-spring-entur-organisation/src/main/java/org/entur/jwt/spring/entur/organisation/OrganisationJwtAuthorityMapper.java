@@ -20,29 +20,29 @@ public class OrganisationJwtAuthorityMapper implements JwtAuthorityMapper<Decode
 	protected static final Logger logger = LoggerFactory.getLogger(OrganisationJwtAuthorityMapper.class);
 
 	private final ObjectMapper mapper = new ObjectMapper();
-			
+
 	@Override
 	public List<GrantedAuthority> getGrantedAuthorities(DecodedJWT token) throws JwtClientException {
-        List<GrantedAuthority> authorities = new ArrayList<>();
-        
-        // granting a few authorities for framework support, although
-        // more detailed check can be performed later.
-        
-        Claim claim = token.getClaim("roles");
-        String[] rolesJson = claim.as(String[].class);
-        
-        // json per role
-        for(String roleJson : rolesJson) {
-        	try {
+		List<GrantedAuthority> authorities = new ArrayList<>();
+
+		// granting a few authorities for framework support, although
+		// more detailed check can be performed later.
+
+		Claim claim = token.getClaim("roles");
+		String[] rolesJson = claim.as(String[].class);
+
+		// json per role
+		for(String roleJson : rolesJson) {
+			try {
 				JsonNode node = mapper.readTree(roleJson);
-				
+
 				JsonNode jsonNode = node.get("r");
 				authorities.add(new SimpleGrantedAuthority(jsonNode.textValue()));
 			} catch (Exception e) {
 				throw new JwtClientException(e);
 			}
-        }
-        
+		}
+
 		return authorities;
 	}
 

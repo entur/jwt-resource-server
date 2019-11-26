@@ -5,14 +5,14 @@ import java.io.IOException;
 public class DefaultAccessTokenHealthProvider extends BaseAccessTokenProvider {
 
 	private volatile AccessTokenHealth status;
-	
+
 	/** 
 	 * Provider to invoke when refreshing state. This should be the top level provider,
 	 * so that caches are actually populated and so on. 
 	 */
 
 	private AccessTokenProvider refreshProvider;
-	
+
 	public DefaultAccessTokenHealthProvider(AccessTokenProvider provider) {
 		super(provider);
 	}
@@ -20,14 +20,14 @@ public class DefaultAccessTokenHealthProvider extends BaseAccessTokenProvider {
 	@Override
 	public AccessToken getAccessToken(boolean forceRefresh) throws AccessTokenException {
 		long time = System.currentTimeMillis();
-		
+
 		AccessToken accessToken = null;
 		try {
 			accessToken = provider.getAccessToken(forceRefresh);
 		} finally {
 			this.status = new AccessTokenHealth(time, accessToken != null);
 		}
-		
+
 		return accessToken;
 	}
 

@@ -24,9 +24,9 @@ public class GeneratesTenantIssuerWhenMissingTest {
 	@Test
 	public void testTokenIsValid(@MyAccessToken(myId = 5) String token) throws Exception  {
 		System.out.println("Run " + getClass().getName());
-		
+
 		DecodedJWT verified = jwtVerifier.verify(token);
-		
+
 		assertNotNull(verified);
 	}
 }

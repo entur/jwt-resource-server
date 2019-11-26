@@ -41,11 +41,11 @@ public class DefaultJwtAuthenticationProcessor implements JwtAuthenticationProce
 	private static Authentication anonymous = new AnonymousAuthenticationToken("anonymous", "anonymous", AuthorityUtils.createAuthorityList("ROLE_ANONYMOUS"));
 
 	public static final String AUTHORIZATION = "Authorization";
-	
-    private final JwtVerifier verifier;
-    private final JwtAuthorityMapper authorityMapper;
+
+	private final JwtVerifier verifier;
+	private final JwtAuthorityMapper authorityMapper;
 	private final JwtClaimExtractor extractor;
-    
+
 	public <T> DefaultJwtAuthenticationProcessor(JwtVerifier<T> verifier, JwtAuthorityMapper<T> authorityMapper, JwtClaimExtractor<T> extractor) {
 		super();
 		this.verifier = verifier;
@@ -57,45 +57,45 @@ public class DefaultJwtAuthenticationProcessor implements JwtAuthenticationProce
 	@Override
 	public void process(Exchange exchange) {
 		// implementation note: Must add anon authentication or else SpringSecurityAuthorizationPolicy blows up
-		
+
 		Message in = exchange.getIn();
 		if(in.getHeader(Exchange.AUTHENTICATION) == null) {
 			// https://camel.apache.org/components/latest/http-component.html
 			HttpServletRequest request = in.getBody(HttpServletRequest.class);
-			
+
 			Authentication authentication;
 			if(request != null) {
-		        String header = request.getHeader(AUTHORIZATION);
-		        if (header != null) {
-		        	// if a token is present, it must be valid regardless of whether the end-point requires authorization or not
-		        	try {
-		        		Object token = verifier.verify(header); // note: can return null
-			            if(token != null) {
-			                List<GrantedAuthority> authorities = authorityMapper.getGrantedAuthorities(token);
-			
-			                Map<String, Object> claims = extractor.getClaims(token);
-			                
-			                authentication = new JwtAuthenticationToken(claims, header, authorities);
-			            } else {
-			                throw new BadCredentialsException("Unknown issuer");
-			            }
-			        } catch(JwksServiceException | JwtServiceException e) {
-		        		throw new JwtAuthenticationServiceUnavailableException("Unable to process token", e);
-		        	} catch(JwtException | JwksException e) {
-		        		// assume client issue
-		        		throw new BadCredentialsException("Problem verifying token", e);
-		        	}
-		        } else {
+				String header = request.getHeader(AUTHORIZATION);
+				if (header != null) {
+					// if a token is present, it must be valid regardless of whether the end-point requires authorization or not
+					try {
+						Object token = verifier.verify(header); // note: can return null
+						if(token != null) {
+							List<GrantedAuthority> authorities = authorityMapper.getGrantedAuthorities(token);
+
+							Map<String, Object> claims = extractor.getClaims(token);
+
+							authentication = new JwtAuthenticationToken(claims, header, authorities);
+						} else {
+							throw new BadCredentialsException("Unknown issuer");
+						}
+					} catch(JwksServiceException | JwtServiceException e) {
+						throw new JwtAuthenticationServiceUnavailableException("Unable to process token", e);
+					} catch(JwtException | JwksException e) {
+						// assume client issue
+						throw new BadCredentialsException("Problem verifying token", e);
+					}
+				} else {
 					authentication = anonymous;
-		        }
+				}
 			} else {
 				authentication = anonymous;
 			}
-    		Subject subject = new Subject();
-    		subject.getPrincipals().add(authentication);
-    		in.setHeader(Exchange.AUTHENTICATION, subject);
+			Subject subject = new Subject();
+			subject.getPrincipals().add(authentication);
+			in.setHeader(Exchange.AUTHENTICATION, subject);
 		}
 	}
 
-	
+
 }

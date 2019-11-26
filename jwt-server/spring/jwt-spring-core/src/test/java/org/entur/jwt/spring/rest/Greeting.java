@@ -11,38 +11,38 @@ import org.springframework.security.core.GrantedAuthority;
 
 public class Greeting {
 
-    private long id;
-    @NotNull
-    private String content;
-    
-    private String className;
-    private List<String> authorities = new ArrayList<>();
+	private long id;
+	@NotNull
+	private String content;
 
-    public Greeting() {
+	private String className;
+	private List<String> authorities = new ArrayList<>();
+
+	public Greeting() {
 	}
-    public Greeting(long id, String content) {
-        this.id = id;
-        this.content = content;
-    }
-    
-    public Greeting(long id, String content, Class<?> argument, Collection<GrantedAuthority> authorities) {
-        this.id = id;
-        this.content = content;
-        if(argument != null) {
-        	this.className = argument.getName();
-        }
-        if(authorities != null) {
-        	this.authorities = authorities.stream().map(a -> a.getAuthority()).collect(Collectors.toList());
-        }
-    }
+	public Greeting(long id, String content) {
+		this.id = id;
+		this.content = content;
+	}
 
-    public long getId() {
-        return id;
-    }
+	public Greeting(long id, String content, Class<?> argument, Collection<GrantedAuthority> authorities) {
+		this.id = id;
+		this.content = content;
+		if(argument != null) {
+			this.className = argument.getName();
+		}
+		if(authorities != null) {
+			this.authorities = authorities.stream().map(a -> a.getAuthority()).collect(Collectors.toList());
+		}
+	}
 
-    public String getContent() {
-        return content;
-    }
+	public long getId() {
+		return id;
+	}
+
+	public String getContent() {
+		return content;
+	}
 
 	public String getClassName() {
 		return className;

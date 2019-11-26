@@ -26,86 +26,86 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties(SpringJwtClientProperties.class)
 public class JwtClientAutoConfiguration {
 
-    @Bean
-    @ConditionalOnMissingBean(AccessTokenProvider.class)
-    @ConditionalOnExpression("!'${entur.jwt.client.auth0.client-id:}'.trim().isEmpty()")
-    @ConditionalOnProperty(value="entur.jwt.client.auth0.enabled", matchIfMissing = true, havingValue="true")
-    public AccessTokenProvider auth0(SpringJwtClientProperties root) {
-    	
-    	Auth0JwtClientProperties properties = root.getAuth0();
-    	
-    	ClientCredentials credentials = Auth0ClientCredentialsBuilder.newInstance()
-    			.withHost(properties.getHost())
-    			.withClientId(properties.getClientId())
-    			.withSecret(properties.getSecret())
-    			.withScope(properties.getScope())
-    			.withAudience(properties.getAudience())
-    			.build();
+	@Bean
+	@ConditionalOnMissingBean(AccessTokenProvider.class)
+	@ConditionalOnExpression("!'${entur.jwt.client.auth0.client-id:}'.trim().isEmpty()")
+	@ConditionalOnProperty(value="entur.jwt.client.auth0.enabled", matchIfMissing = true, havingValue="true")
+	public AccessTokenProvider auth0(SpringJwtClientProperties root) {
 
-    	return toAccessTokenProvider(properties, credentials, root.getHealthIndicator().isEnabled());
-    }
+		Auth0JwtClientProperties properties = root.getAuth0();
 
-    @Bean
-    @ConditionalOnMissingBean(AccessTokenProvider.class)
-    @ConditionalOnExpression("!'${entur.jwt.client.keycloak.client-id:}'.trim().isEmpty()")
-    @ConditionalOnProperty(value="entur.jwt.client.keycloak.enabled", matchIfMissing = true, havingValue="true")
-    public AccessTokenProvider keycloak(SpringJwtClientProperties root) {
-    	
-    	KeycloakJwtClientProperties properties = root.getKeycloak();
-    	
-    	ClientCredentials credentials = KeycloakClientCredentialsBuilder.newInstance()
-    			.withHost(properties.getHost())
-    			.withClientId(properties.getClientId())
-    			.withSecret(properties.getSecret())
-    			.withScope(properties.getScope())
-    			.withAudience(properties.getAudience())
-    			.withRealm(properties.getRealm())
-    			.build();
+		ClientCredentials credentials = Auth0ClientCredentialsBuilder.newInstance()
+				.withHost(properties.getHost())
+				.withClientId(properties.getClientId())
+				.withSecret(properties.getSecret())
+				.withScope(properties.getScope())
+				.withAudience(properties.getAudience())
+				.build();
 
-    	return toAccessTokenProvider(properties, credentials, root.getHealthIndicator().isEnabled());
+		return toAccessTokenProvider(properties, credentials, root.getHealthIndicator().isEnabled());
+	}
 
-    }
+	@Bean
+	@ConditionalOnMissingBean(AccessTokenProvider.class)
+	@ConditionalOnExpression("!'${entur.jwt.client.keycloak.client-id:}'.trim().isEmpty()")
+	@ConditionalOnProperty(value="entur.jwt.client.keycloak.enabled", matchIfMissing = true, havingValue="true")
+	public AccessTokenProvider keycloak(SpringJwtClientProperties root) {
+
+		KeycloakJwtClientProperties properties = root.getKeycloak();
+
+		ClientCredentials credentials = KeycloakClientCredentialsBuilder.newInstance()
+				.withHost(properties.getHost())
+				.withClientId(properties.getClientId())
+				.withSecret(properties.getSecret())
+				.withScope(properties.getScope())
+				.withAudience(properties.getAudience())
+				.withRealm(properties.getRealm())
+				.build();
+
+		return toAccessTokenProvider(properties, credentials, root.getHealthIndicator().isEnabled());
+
+	}
 
 	private AccessTokenProvider toAccessTokenProvider(AbstractJwtClientProperties properties,
 			ClientCredentials credentials, boolean health) {
 		Integer connectTimeout = properties.getConnectTimeout();
-    	Integer readTimeout = properties.getReadTimeout();
+		Integer readTimeout = properties.getReadTimeout();
 
-    	// get connect timeout from cache refresh, if none is specified
-    	JwtClientCache cache = properties.getCache();
+		// get connect timeout from cache refresh, if none is specified
+		JwtClientCache cache = properties.getCache();
 		if(connectTimeout == null && cache != null && cache.isEnabled()) {
 			connectTimeout = cache.getRefreshTimeOut();
 		}
 
-    	AccessTokenProviderBuilder builder = AccessTokenProviderBuilder.newBuilder(credentials, connectTimeout, readTimeout);
-    	
-    	builder.retrying(properties.isRetrying());	
-    	
-    	if(cache != null && cache.isEnabled()) {
-    		builder.cached(cache.getMinimumTimeToLive(), TimeUnit.SECONDS, cache.getRefreshTimeOut(), TimeUnit.SECONDS);
-    		
-    		PreemptiveRefresh preemptiveRefresh = cache.getPreemptiveRefresh();
-    		if(preemptiveRefresh != null && preemptiveRefresh.isEnabled()) {
-    			builder.preemptiveCacheRefresh(preemptiveRefresh.getTime(), TimeUnit.SECONDS);
-    		} else {
-    			builder.preemptiveCacheRefresh(false);
-    		}
-    	} else {
-    		builder.cached(false);
-    	}
+		AccessTokenProviderBuilder builder = AccessTokenProviderBuilder.newBuilder(credentials, connectTimeout, readTimeout);
 
-    	builder.health(health);
-    	
-    	return builder.build();
+		builder.retrying(properties.isRetrying());	
+
+		if(cache != null && cache.isEnabled()) {
+			builder.cached(cache.getMinimumTimeToLive(), TimeUnit.SECONDS, cache.getRefreshTimeOut(), TimeUnit.SECONDS);
+
+			PreemptiveRefresh preemptiveRefresh = cache.getPreemptiveRefresh();
+			if(preemptiveRefresh != null && preemptiveRefresh.isEnabled()) {
+				builder.preemptiveCacheRefresh(preemptiveRefresh.getTime(), TimeUnit.SECONDS);
+			} else {
+				builder.preemptiveCacheRefresh(false);
+			}
+		} else {
+			builder.cached(false);
+		}
+
+		builder.health(health);
+
+		return builder.build();
 	}
-	
+
 	@Bean
-    @ConditionalOnProperty(value="entur.jwt.client.health-indicator.enabled", matchIfMissing = true)
+	@ConditionalOnProperty(value="entur.jwt.client.health-indicator.enabled", matchIfMissing = true)
 	@ConditionalOnBean(AccessTokenProvider.class)
-    public AccessTokenProviderHealthIndicator provider(AccessTokenProvider provider) {
+	public AccessTokenProviderHealthIndicator provider(AccessTokenProvider provider) {
 		// could verify that health is supported here, but that would interfere with mocking / testing.
 		return new AccessTokenProviderHealthIndicator(provider);
-    }
+	}
 
 
 }

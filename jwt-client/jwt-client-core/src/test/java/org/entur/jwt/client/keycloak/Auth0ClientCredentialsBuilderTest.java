@@ -15,12 +15,12 @@ public class Auth0ClientCredentialsBuilderTest {
 				.withProtocol("https")
 				.withSecret("mySecret")
 				.withClientId("myClientID").build();
-		
+
 		assertNotNull(build.getHeaders());
 		assertNotNull(build.getParameters());
 		assertNotNull(build.getIssueURL());
 		assertNotNull(build.getRefreshURL());
 		assertNotNull(build.getRevokeURL());
-		
+
 	}
 }

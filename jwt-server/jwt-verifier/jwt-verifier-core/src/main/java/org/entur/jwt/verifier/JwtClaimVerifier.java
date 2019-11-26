@@ -49,7 +49,7 @@ public class JwtClaimVerifier<T> implements JwtVerifier<T> {
 					throw new JwtClaimException("Unable to parse " + entry.getKey() + " claim value " + claim + " type " + claim.getClass().getName() + " as " + entry.getValue().getName());
 				}
 			}
-			
+
 			// TODO also support list types, i.e. list of Strings and so on.
 		}		
 	}
@@ -76,7 +76,7 @@ public class JwtClaimVerifier<T> implements JwtVerifier<T> {
 		}
 		return false;
 	}
-	
+
 	private boolean isIntegerType(Class<?> c) {
 		return c == Long.class || c == Integer.class || c == Short.class || c == Byte.class;
 	}

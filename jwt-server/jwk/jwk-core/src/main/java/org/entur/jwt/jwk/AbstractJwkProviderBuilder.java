@@ -9,24 +9,24 @@ package org.entur.jwt.jwk;
 public abstract class AbstractJwkProviderBuilder<T, B extends AbstractJwkProviderBuilder<T, B>> extends AbstractJwksProviderBuilder<T, B>{
 
 	protected JwkFieldExtractor<T> jwkFieldExtractor;
-	
-    public AbstractJwkProviderBuilder(JwksProvider<T> jwksProvider, JwkFieldExtractor<T> jwkFieldExtractor) {
+
+	public AbstractJwkProviderBuilder(JwksProvider<T> jwksProvider, JwkFieldExtractor<T> jwkFieldExtractor) {
 		super(jwksProvider);
-		
+
 		this.jwkFieldExtractor = jwkFieldExtractor;
 	}
 
 	/**
-     * Creates a {@link JwkProvider}
-     *
-     * @return a newly created {@link JwkProvider}
-     */
+	 * Creates a {@link JwkProvider}
+	 *
+	 * @return a newly created {@link JwkProvider}
+	 */
 	public JwkProvider<T> build() {
-    	JwksProvider<T> provider = build(jwksProvider);
-        if(provider instanceof JwkProvider) {
-            return (JwkProvider<T>)provider;
-        }
-        return new DefaultJwkProvider<>(provider, jwkFieldExtractor);
-        
-    }
+		JwksProvider<T> provider = build(jwksProvider);
+		if(provider instanceof JwkProvider) {
+			return (JwkProvider<T>)provider;
+		}
+		return new DefaultJwkProvider<>(provider, jwkFieldExtractor);
+
+	}
 }

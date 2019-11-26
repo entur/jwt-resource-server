@@ -18,13 +18,13 @@ import java.util.List;
 public class DefaultHealthJwksProvider<T> extends BaseJwksProvider<T> {
 
 	private volatile JwksHealth status;
-	
+
 	/** 
 	 * Provider to invoke when refreshing state. This should be the top level provider,
 	 * so that caches are actually populated and so on. 
 	 */
 	private JwksProvider<T> refreshProvider;
-	
+
 	public DefaultHealthJwksProvider(JwksProvider<T> provider) {
 		super(provider);
 	}
@@ -32,19 +32,19 @@ public class DefaultHealthJwksProvider<T> extends BaseJwksProvider<T> {
 	@Override
 	public List<T> getJwks(boolean forceUpdate) throws JwksException {
 		long time = System.currentTimeMillis();
-		
+
 		List<T> list = null;
 		try {
 			list = provider.getJwks(forceUpdate);
 		} finally {
 			this.status = new JwksHealth(time, list != null);
 		}
-		
+
 		return list;
 	}
 
 	@Override
-    public JwksHealth getHealth(boolean refresh) {
+	public JwksHealth getHealth(boolean refresh) {
 		JwksHealth threadSafeStatus = this.status; // defensive copy
 		if(refresh && (threadSafeStatus == null || !threadSafeStatus.isSuccess())) { 
 			// get a fresh status
@@ -66,7 +66,7 @@ public class DefaultHealthJwksProvider<T> extends BaseJwksProvider<T> {
 			}
 		}
 		return threadSafeStatus;
-    }
+	}
 
 	public void setRefreshProvider(JwksProvider<T> top) {
 		this.refreshProvider = top;

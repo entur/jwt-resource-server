@@ -19,15 +19,15 @@ public class JwtPayload implements Serializable {
 	 * 
 	 * @param claims map with claims
 	 */
-	
+
 	public JwtPayload(Map<String, Object> claims) {
 		super();
 		this.claims = claims;
 	}
-	
+
 	public Map<String, Object> getClaims() {
 		return claims;
 	}
-	
-	
+
+
 }

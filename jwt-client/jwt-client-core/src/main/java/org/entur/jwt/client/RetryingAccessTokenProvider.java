@@ -11,23 +11,23 @@ import java.io.IOException;
 
 public class RetryingAccessTokenProvider extends BaseAccessTokenProvider {
 
-    public RetryingAccessTokenProvider(AccessTokenProvider provider) {
-        super(provider);
-    }
+	public RetryingAccessTokenProvider(AccessTokenProvider provider) {
+		super(provider);
+	}
 
-    @Override
-    public AccessToken getAccessToken(boolean forceRefresh) throws AccessTokenException {
-        try {
-            return provider.getAccessToken(forceRefresh);
-        } catch(AccessTokenUnavailableException e) {
-            // assume transient network issue, retry once
-            return provider.getAccessToken(forceRefresh);
-        }
-    }
+	@Override
+	public AccessToken getAccessToken(boolean forceRefresh) throws AccessTokenException {
+		try {
+			return provider.getAccessToken(forceRefresh);
+		} catch(AccessTokenUnavailableException e) {
+			// assume transient network issue, retry once
+			return provider.getAccessToken(forceRefresh);
+		}
+	}
 
 	@Override
 	public void close() throws IOException {
 		provider.close();
 	}
-    
+
 }

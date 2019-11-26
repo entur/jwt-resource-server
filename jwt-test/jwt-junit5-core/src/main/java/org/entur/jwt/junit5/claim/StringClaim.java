@@ -15,11 +15,11 @@ public @interface StringClaim {
 
 	public String name();
 	public String value();
-	
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.PARAMETER})
-    @Inherited
-    @interface List {
-    	StringClaim[] value();
-    }	
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.PARAMETER})
+	@Inherited
+	@interface List {
+		StringClaim[] value();
+	}	
 }

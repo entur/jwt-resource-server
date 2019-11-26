@@ -14,7 +14,7 @@ public interface JwtVerifier<T> extends JwksHealthProvider {
 	 * @throws JwtException on problem with token (i.e. known signature type not available)
 	 * @throws JwksException on problem with signing keys (i.e. authorization server is down) 
 	 */
-	
+
 	T verify(String token) throws JwtException, JwksException;
-	
+
 }

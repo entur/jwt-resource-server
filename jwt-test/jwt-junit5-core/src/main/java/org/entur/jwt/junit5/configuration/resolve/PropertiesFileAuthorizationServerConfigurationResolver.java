@@ -13,7 +13,7 @@ public class PropertiesFileAuthorizationServerConfigurationResolver implements R
 
 	private Path path;
 	private String prefix;
-	
+
 	public PropertiesFileAuthorizationServerConfigurationResolver() throws IOException {
 		this(Paths.get("jwt.junit5.properties"), "entur.jwt.tenants");
 	}
@@ -29,7 +29,7 @@ public class PropertiesFileAuthorizationServerConfigurationResolver implements R
 		try (InputStream in = Files.newInputStream(path)) {
 			properties.load(in);
 		}
-		
+
 		return new PropertiesAuthorizationServerConfiguration(prefix, properties);
 	}
 

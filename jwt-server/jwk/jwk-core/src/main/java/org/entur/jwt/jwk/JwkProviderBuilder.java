@@ -6,10 +6,8 @@ package org.entur.jwt.jwk;
 
 public class JwkProviderBuilder<T> extends AbstractJwkProviderBuilder<T, JwkProviderBuilder<T>> {
 
-    public JwkProviderBuilder(JwksProvider<T> jwksProvider, JwkFieldExtractor<T> fieldExtractor) {
+	public JwkProviderBuilder(JwksProvider<T> jwksProvider, JwkFieldExtractor<T> fieldExtractor) {
 		super(jwksProvider, fieldExtractor);
 	}
-
-
 
 }

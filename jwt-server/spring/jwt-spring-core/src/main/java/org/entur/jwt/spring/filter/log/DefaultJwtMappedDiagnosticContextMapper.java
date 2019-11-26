@@ -12,7 +12,7 @@ public class DefaultJwtMappedDiagnosticContextMapper<T> implements JwtMappedDiag
 	private final String[] from;
 	/** mdc keys */
 	private final String[] to;
-	
+
 	private final JwtClaimExtractor<T> extractor;
 
 	public DefaultJwtMappedDiagnosticContextMapper(List<String> claims, List<String> keys, JwtClaimExtractor<T> extractor) {
@@ -29,7 +29,7 @@ public class DefaultJwtMappedDiagnosticContextMapper<T> implements JwtMappedDiag
 			}
 		}
 	}
-	
+
 	public void removeContext(T token) {
 		for(int i = 0; i < to.length; i++) {
 			MDC.remove(to[i]);

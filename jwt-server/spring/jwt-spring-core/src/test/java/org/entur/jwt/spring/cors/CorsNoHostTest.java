@@ -23,24 +23,24 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 })
 public class CorsNoHostTest {
 
-    @LocalServerPort
-    protected int port;
+	@LocalServerPort
+	protected int port;
 
-    private List<String> hosts = Arrays.asList(
-    	  "http://min.andre.host"
-    		);
+	private List<String> hosts = Arrays.asList(
+		  "http://min.andre.host"
+			);
 
-    @Test
-    public void request_is_allowed_for_no_origin() {
-    	hosts.forEach(host -> {
-            given()
-            .when()
-            	.log().all()
-                .get("http://localhost:" + port + "/unprotected")
-            .then()
-                .log().all()
-                .assertThat()
-                .statusCode(HttpStatus.OK.value());
-    	});
-    }    
+	@Test
+	public void request_is_allowed_for_no_origin() {
+		hosts.forEach(host -> {
+			given()
+			.when()
+				.log().all()
+				.get("http://localhost:" + port + "/unprotected")
+			.then()
+				.log().all()
+				.assertThat()
+				.statusCode(HttpStatus.OK.value());
+		});
+	}	
 }

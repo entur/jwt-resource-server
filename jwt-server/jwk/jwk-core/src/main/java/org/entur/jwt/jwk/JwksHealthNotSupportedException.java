@@ -8,5 +8,4 @@ public class JwksHealthNotSupportedException extends RuntimeException {
 		super(message);
 	}
 
-
 }

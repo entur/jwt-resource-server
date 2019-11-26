@@ -6,7 +6,7 @@ public class PropertiesAuthorizationServerConfiguration implements ResourceServe
 
 	private final Properties properties;
 	private final String prefix;
-	
+
 	public PropertiesAuthorizationServerConfiguration(String prefix, Properties properties) {
 		this.prefix = prefix;
 		this.properties = properties;

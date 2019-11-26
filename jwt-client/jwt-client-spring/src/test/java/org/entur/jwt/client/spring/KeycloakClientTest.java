@@ -17,14 +17,14 @@ public class KeycloakClientTest {
 
 	@Autowired
 	private AccessTokenProvider accessTokenProvider;
-	
+
 	@Autowired
 	private AccessTokenProviderHealthIndicator healthIndicator;
-	
+
 	@Test
 	public void contextLoads() {
 		assertNotNull(accessTokenProvider);
 		assertNotNull(healthIndicator);
 	}
-	
+
 }

@@ -24,40 +24,40 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 public class CorsUnknownHostTest {
 
-    @LocalServerPort
-    protected int port;
+	@LocalServerPort
+	protected int port;
 
-    private List<String> methods = Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH");
+	private List<String> methods = Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH");
 
-    @Test
-    public void cors_options_is_not_allowed() {
-        methods.forEach(method -> {
-            given()
-                .header("Origin", "https://ukjent.swagger.io")
-                .header("Access-Control-Request-Method", method)
-            .when()
-            	.log().all()
-                .options("http://localhost:" + port + "/unprotected")
-            .then()
-                .log().all()
-                .assertThat()
-                .statusCode(HttpStatus.FORBIDDEN.value());
-        });
-    }
+	@Test
+	public void cors_options_is_not_allowed() {
+		methods.forEach(method -> {
+			given()
+				.header("Origin", "https://ukjent.swagger.io")
+				.header("Access-Control-Request-Method", method)
+			.when()
+				.log().all()
+				.options("http://localhost:" + port + "/unprotected")
+			.then()
+				.log().all()
+				.assertThat()
+				.statusCode(HttpStatus.FORBIDDEN.value());
+		});
+	}
 
-    @Test
-    public void cors_request_is_not_allowed() {
-        methods.forEach(method -> {
-            given()
-            .header("Origin", "https://ukjent.swagger.io")
-            .when()
-            	.log().all()
-                .get("http://localhost:" + port + "/unprotected")
-            .then()
-                .log().all()
-                .assertThat()
-                .statusCode(HttpStatus.FORBIDDEN.value())
-                ;
-        });
-    }     
+	@Test
+	public void cors_request_is_not_allowed() {
+		methods.forEach(method -> {
+			given()
+			.header("Origin", "https://ukjent.swagger.io")
+			.when()
+				.log().all()
+				.get("http://localhost:" + port + "/unprotected")
+			.then()
+				.log().all()
+				.assertThat()
+				.statusCode(HttpStatus.FORBIDDEN.value())
+				;
+		});
+	}
 }

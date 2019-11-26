@@ -16,10 +16,10 @@ public @interface DoubleArrayClaim {
 	public String name();
 	public double[] value() default {};
 
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.PARAMETER})
-    @Inherited
-    @interface List {
-    	DoubleArrayClaim[] value();
-    }
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.PARAMETER})
+	@Inherited
+	@interface List {
+		DoubleArrayClaim[] value();
+	}
 }

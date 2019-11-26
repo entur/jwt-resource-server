@@ -3,7 +3,7 @@ package org.entur.jwt.client.properties;
 public class JwtClientProperties {
 
 	protected JwtHealthIndicator healthIndicator = new JwtHealthIndicator();
-	
+
 	protected Auth0JwtClientProperties auth0 = new Auth0JwtClientProperties();
 
 	protected KeycloakJwtClientProperties keycloak = new KeycloakJwtClientProperties();
@@ -11,7 +11,7 @@ public class JwtClientProperties {
 	public void setHealthIndicator(JwtHealthIndicator healthIndicator) {
 		this.healthIndicator = healthIndicator;
 	}
-	
+
 	public JwtHealthIndicator getHealthIndicator() {
 		return healthIndicator;
 	}
@@ -31,5 +31,5 @@ public class JwtClientProperties {
 	public void setKeycloak(KeycloakJwtClientProperties keycloak) {
 		this.keycloak = keycloak;
 	}
-	
+
 }

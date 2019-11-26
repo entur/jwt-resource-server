@@ -11,6 +11,6 @@ public class JwtHealthIndicator {
 	public void setEnabled(boolean enabled) {
 		this.enabled = enabled;
 	}
-	
-    
+
+
 }

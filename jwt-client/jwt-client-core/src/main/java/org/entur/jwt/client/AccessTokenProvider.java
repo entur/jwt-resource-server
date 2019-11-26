@@ -11,5 +11,5 @@ import java.io.Closeable;
 public interface AccessTokenProvider extends Closeable, AccessTokenHealthProvider {
 
 	AccessToken getAccessToken(boolean forceRefresh) throws AccessTokenException;
-	
+
 }

@@ -186,7 +186,7 @@ public class Auth0JwkReaderTest {
 		values.put("e", EXPONENT);
 		return values;
 	}
-	
+
 	private Jwk fromValues(Map<String, Object> values) throws Exception {
 		Map<String, Object> jwks = new HashMap<>();
 
@@ -196,7 +196,7 @@ public class Auth0JwkReaderTest {
 
 		ObjectMapper mapper = new ObjectMapper();
 		String json = mapper.writeValueAsString(jwks);
-		
+
 		List<Jwk> deserialized = reader.readJwks(json.getBytes(StandardCharsets.UTF_8));
 		return deserialized.get(0);
 	}	

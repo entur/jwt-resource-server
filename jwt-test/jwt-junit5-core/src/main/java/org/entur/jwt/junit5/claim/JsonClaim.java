@@ -22,11 +22,11 @@ public @interface JsonClaim {
 	public String name(); // claim name / root key to set in body JSON document
 	public String value(); // value to embed as-is (without encoding)
 
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.PARAMETER})
-    @Inherited
-    @interface List {
-    	JsonClaim[] value();
-    }	
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.PARAMETER})
+	@Inherited
+	@interface List {
+		JsonClaim[] value();
+	}	
 }
 

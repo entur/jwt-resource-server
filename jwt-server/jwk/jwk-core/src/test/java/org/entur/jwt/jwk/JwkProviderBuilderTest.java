@@ -287,7 +287,7 @@ public class JwkProviderBuilderTest {
 				.health(false)
 				.preemptiveCacheRefresh(true)
 				.build();
-		
+
 		assertThat(provider, notNullValue());
 
 		List<JwksProvider<?>> jwksProviders = jwksProviders(provider);

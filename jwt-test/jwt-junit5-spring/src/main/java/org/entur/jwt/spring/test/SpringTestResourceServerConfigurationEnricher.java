@@ -31,7 +31,7 @@ public class SpringTestResourceServerConfigurationEnricher extends PropertiesFil
 	 * keyed by test class.
 	 */
 	private static final Namespace SPRING_EXTENTION_NAMESPACE = Namespace.create(SpringExtension.class);
-	
+
 	public SpringTestResourceServerConfigurationEnricher() throws IOException {
 		super();
 	}
@@ -42,15 +42,15 @@ public class SpringTestResourceServerConfigurationEnricher extends PropertiesFil
 
 		// try to reuse the spring context
 		// check if all our authorization servers were already loaded into the context
-		
+
 		// TODO use testContext.hasApplicationContext() for cleaner approach
 		boolean dirty = checkDirty(authorizationServers, context);
 		if(dirty) {
 			if(logger.isDebugEnabled()) logger.debug("Authorization servers have changed, refresh spring context");
-			
+
 			// save context
 			jwtTestContextManager.setTestContext(new AuthorizationServerTestContext(authorizationServers));
-			
+
 			// write new properties file
 			super.beforeAll(authorizationServers, context);
 
@@ -69,7 +69,7 @@ public class SpringTestResourceServerConfigurationEnricher extends PropertiesFil
 
 			// write properties, the context might be dirty even if we think its not
 			super.beforeAll(jwtTestContext.toList(), context);
-			
+
 			// set previous encoder on the current mocks
 			// so that they generate tokens signed with previous (the right) certificates
 			for (AuthorizationServerImplementation authorizationServerImplementation : authorizationServers) {
@@ -82,7 +82,7 @@ public class SpringTestResourceServerConfigurationEnricher extends PropertiesFil
 		AuthorizationServerTestManager jwtTestContextManager = getJwtTestContextManager(context);
 
 		AuthorizationServerTestContext testContext = jwtTestContextManager.getTestContext();
-		
+
 		return testContext == null || testContext.isDirty(authorizationServers);
 	}
 
@@ -100,7 +100,7 @@ public class SpringTestResourceServerConfigurationEnricher extends PropertiesFil
 	protected static Store getSpringStore(ExtensionContext context) {
 		return context.getRoot().getStore(SPRING_EXTENTION_NAMESPACE);
 	}
-	
+
 	/**
 	 * Get the {@link TestContextManager} associated with the supplied {@code ExtensionContext}.
 	 * @return the {@code TestContextManager} (never {@code null})

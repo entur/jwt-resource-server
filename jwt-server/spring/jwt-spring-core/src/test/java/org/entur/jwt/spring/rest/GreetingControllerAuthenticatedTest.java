@@ -36,123 +36,123 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 @AutoConfigureMockMvc
 public class GreetingControllerAuthenticatedTest {
 
-    @LocalServerPort
-    private int randomServerPort;
-    
-    @Autowired
-    private TestRestTemplate restTemplate;
-    
-    @Test 
-    public void testUnprotectedResource(@AccessToken(audience = "mock.my.audience") String token) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", token);
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-        
-        String url = "http://localhost:" + randomServerPort + "/unprotected";
-        
-        ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
-        assertTrue(response.getStatusCode().is2xxSuccessful());
-        
-        assertThat(response.getBody().getContent()).isEqualTo("Hello unprotected");
-    }    
-    
-    @Test 
-    public void testProtectedResource(@AccessToken(audience = "mock.my.audience") String token) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", token);
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-        
-        String url = "http://localhost:" + randomServerPort + "/protected";
-        
-        ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
-        assertTrue(response.getStatusCode().is2xxSuccessful());
-        
-        assertThat(response.getBody().getContent()).isEqualTo("Hello protected");
-    }
-    
-    @Test 
-    public void testProtectedResourceTenant(@MyAccessToken(myId = 1) String token) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", token);
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-        
-        String url = "http://localhost:" + randomServerPort + "/protected/requiredTenant";
-        
-        ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
-        assertTrue(response.getStatusCode().is2xxSuccessful());
-    }
+	@LocalServerPort
+	private int randomServerPort;
 
-    @Test 
-    public void testSecurityHeaders(@AccessToken(audience = "mock.my.audience") String token) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", token);
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-        
-        String url = "http://localhost:" + randomServerPort + "/protected";
-        
-        ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
-        assertTrue(response.getStatusCode().is2xxSuccessful());
+	@Autowired
+	private TestRestTemplate restTemplate;
 
-        HttpHeaders responseHeaders = response.getHeaders();
-        assertThat(responseHeaders.get("X-Content-Type-Options")).contains("nosniff");
-        assertThat(responseHeaders.get("X-XSS-Protection")).contains("1; mode=block");
-        assertThat(responseHeaders.get("Cache-Control")).contains("no-cache, no-store, max-age=0, must-revalidate");
-        assertThat(responseHeaders.get("Pragma")).contains("no-cache");
-        assertThat(responseHeaders.get("Expires")).contains("0");
-        assertThat(responseHeaders.get("X-Frame-Options")).contains("DENY");
-    }
+	@Test 
+	public void testUnprotectedResource(@AccessToken(audience = "mock.my.audience") String token) {
+		HttpHeaders headers = new HttpHeaders();
+		headers.add("Authorization", token);
+		HttpEntity<String> entity = new HttpEntity<String>(headers);
 
-    @Test 
-    public void testStateless(@AccessToken(audience = "mock.my.audience") String token) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", token);
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-        
-        String url = "http://localhost:" + randomServerPort + "/protected";
-        
-        ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
-        assertTrue(response.getStatusCode().is2xxSuccessful());
+		String url = "http://localhost:" + randomServerPort + "/unprotected";
 
-        HttpHeaders responseHeaders = response.getHeaders();
-        for (Entry<String, List<String>> entry : responseHeaders.entrySet()) {
-           assertThat(entry.getKey().toLowerCase()).isNotEqualTo("set-cookie");;
-        }
-    }
-    
-    @Test 
-    public void testProtectedResourceWithCorrectPermission(
-    		@MyAccessToken(myId = 1) 
-    		@Scope("configure")
-    		String token
-    		) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", token);
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-        
-        String url = "http://localhost:" + randomServerPort + "/protected/permission";
-        
-        ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
-        assertTrue(response.getStatusCode().is2xxSuccessful());
-        
-        assertThat(response.getBody().getContent()).isEqualTo("Hello protected partner tenant 1 with authority");
-        assertThat(response.getBody().getAuthorities()).containsExactly("configure");
-    }
-    
-    @Test 
-    public void testProtectedResourceWithWrongPermission(
-    		@MyAccessToken(myId = 1) 
-    		@Scope("letmein")
-    		String token
-    		) {
-    		
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", token);
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-        
-        String url = "http://localhost:" + randomServerPort + "/protected/permission";
-        
-        ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-    }    
-	
+		ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
+		assertTrue(response.getStatusCode().is2xxSuccessful());
+
+		assertThat(response.getBody().getContent()).isEqualTo("Hello unprotected");
+	}    
+
+	@Test 
+	public void testProtectedResource(@AccessToken(audience = "mock.my.audience") String token) {
+		HttpHeaders headers = new HttpHeaders();
+		headers.add("Authorization", token);
+		HttpEntity<String> entity = new HttpEntity<String>(headers);
+
+		String url = "http://localhost:" + randomServerPort + "/protected";
+
+		ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
+		assertTrue(response.getStatusCode().is2xxSuccessful());
+
+		assertThat(response.getBody().getContent()).isEqualTo("Hello protected");
+	}
+
+	@Test 
+	public void testProtectedResourceTenant(@MyAccessToken(myId = 1) String token) {
+		HttpHeaders headers = new HttpHeaders();
+		headers.add("Authorization", token);
+		HttpEntity<String> entity = new HttpEntity<String>(headers);
+
+		String url = "http://localhost:" + randomServerPort + "/protected/requiredTenant";
+
+		ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
+		assertTrue(response.getStatusCode().is2xxSuccessful());
+	}
+
+	@Test 
+	public void testSecurityHeaders(@AccessToken(audience = "mock.my.audience") String token) {
+		HttpHeaders headers = new HttpHeaders();
+		headers.add("Authorization", token);
+		HttpEntity<String> entity = new HttpEntity<String>(headers);
+
+		String url = "http://localhost:" + randomServerPort + "/protected";
+
+		ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
+		assertTrue(response.getStatusCode().is2xxSuccessful());
+
+		HttpHeaders responseHeaders = response.getHeaders();
+		assertThat(responseHeaders.get("X-Content-Type-Options")).contains("nosniff");
+		assertThat(responseHeaders.get("X-XSS-Protection")).contains("1; mode=block");
+		assertThat(responseHeaders.get("Cache-Control")).contains("no-cache, no-store, max-age=0, must-revalidate");
+		assertThat(responseHeaders.get("Pragma")).contains("no-cache");
+		assertThat(responseHeaders.get("Expires")).contains("0");
+		assertThat(responseHeaders.get("X-Frame-Options")).contains("DENY");
+	}
+
+	@Test 
+	public void testStateless(@AccessToken(audience = "mock.my.audience") String token) {
+		HttpHeaders headers = new HttpHeaders();
+		headers.add("Authorization", token);
+		HttpEntity<String> entity = new HttpEntity<String>(headers);
+
+		String url = "http://localhost:" + randomServerPort + "/protected";
+
+		ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
+		assertTrue(response.getStatusCode().is2xxSuccessful());
+
+		HttpHeaders responseHeaders = response.getHeaders();
+		for (Entry<String, List<String>> entry : responseHeaders.entrySet()) {
+			assertThat(entry.getKey().toLowerCase()).isNotEqualTo("set-cookie");;
+		}
+	}
+
+	@Test 
+	public void testProtectedResourceWithCorrectPermission(
+			@MyAccessToken(myId = 1) 
+			@Scope("configure")
+			String token
+			) {
+		HttpHeaders headers = new HttpHeaders();
+		headers.add("Authorization", token);
+		HttpEntity<String> entity = new HttpEntity<String>(headers);
+
+		String url = "http://localhost:" + randomServerPort + "/protected/permission";
+
+		ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
+		assertTrue(response.getStatusCode().is2xxSuccessful());
+
+		assertThat(response.getBody().getContent()).isEqualTo("Hello protected partner tenant 1 with authority");
+		assertThat(response.getBody().getAuthorities()).containsExactly("configure");
+	}
+
+	@Test 
+	public void testProtectedResourceWithWrongPermission(
+			@MyAccessToken(myId = 1) 
+			@Scope("letmein")
+			String token
+			) {
+
+		HttpHeaders headers = new HttpHeaders();
+		headers.add("Authorization", token);
+		HttpEntity<String> entity = new HttpEntity<String>(headers);
+
+		String url = "http://localhost:" + randomServerPort + "/protected/permission";
+
+		ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+	}    
+
 }

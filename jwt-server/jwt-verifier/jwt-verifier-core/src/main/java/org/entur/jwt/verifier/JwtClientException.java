@@ -12,17 +12,17 @@ public class JwtClientException extends JwtException {
 
 	public JwtClientException() {
 	}
-	
-    public JwtClientException(String message) {
-        super(message);
-    }
 
-    public JwtClientException(String message, Throwable cause) {
-        super(message, cause);
-    }
+	public JwtClientException(String message) {
+		super(message);
+	}
 
-    public JwtClientException(Throwable cause) {
-        super(cause);
-    }
+	public JwtClientException(String message, Throwable cause) {
+		super(message, cause);
+	}
+
+	public JwtClientException(Throwable cause) {
+		super(cause);
+	}
 
 }

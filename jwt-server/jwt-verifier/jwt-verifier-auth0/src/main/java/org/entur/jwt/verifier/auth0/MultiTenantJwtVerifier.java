@@ -24,13 +24,13 @@ public class MultiTenantJwtVerifier implements JwtVerifier<DecodedJWT> {
 
 	private final Map<String, JWTVerifier> verifiers;
 	private final List<JwksProvider<?>> healthProviders;
-	
+
 	/**
 	 * Construct new instance.
 	 * 
 	 * @param verifiers map of verifiers which must be thread safe for read access.
 	 */
-	
+
 	public MultiTenantJwtVerifier(Map<String, JWTVerifier> verifiers) {
 		this(verifiers, null);
 	}
@@ -49,11 +49,11 @@ public class MultiTenantJwtVerifier implements JwtVerifier<DecodedJWT> {
 			logger.info("Unable to decode token", e);
 			return null;
 		}
-		
+
 		String issuer = decode.getIssuer();
 		if(issuer != null) {
 			JWTVerifier jwtVerifier = verifiers.get(issuer);
-			
+
 			if(jwtVerifier != null) {
 				try {
 					return jwtVerifier.verify(decode);
@@ -69,7 +69,7 @@ public class MultiTenantJwtVerifier implements JwtVerifier<DecodedJWT> {
 				logger.info("Unknown issuer {}", issuer);
 			}
 		}
-		
+
 		return null;
 	}
 
@@ -79,7 +79,7 @@ public class MultiTenantJwtVerifier implements JwtVerifier<DecodedJWT> {
 	 * <br>
 	 * <br>
 	 */
-	
+
 	@Override
 	public JwksHealth getHealth(boolean refresh) {
 		long latestTimestamp = -1L;
@@ -91,7 +91,7 @@ public class MultiTenantJwtVerifier implements JwtVerifier<DecodedJWT> {
 			}
 			latestTimestamp = Math.max(latestTimestamp, status.getTimestamp());
 		}				
-		
+
 		return new JwksHealth(latestTimestamp, atLeastOneSuccess);
 	}
 }

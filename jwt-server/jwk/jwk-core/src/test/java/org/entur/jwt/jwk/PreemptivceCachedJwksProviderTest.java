@@ -46,9 +46,9 @@ public class PreemptivceCachedJwksProviderTest extends AbstractDelegateProviderT
 	public void setUp() throws Exception {
 		super.setUp();
 		provider = new PreemptiveCachedJwksProvider<>(delegate, 10, TimeUnit.HOURS, 15, TimeUnit.SECONDS, 10, TimeUnit.SECONDS);
-		
+
 		wrapper = new DefaultJwkProvider<>(provider, new JwkFieldExtractorImpl());
-		
+
 	}
 
 	@Test

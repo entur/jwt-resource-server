@@ -17,23 +17,23 @@
 package org.entur.jwt.spring.entur.organisation;
 
 public class AuthorizationClaim {
-    private String requiredRole;
-    private Long providerId;
+	private String requiredRole;
+	private Long providerId;
 
-    public AuthorizationClaim(String requiredRole, Long providerId) {
-        this.requiredRole = requiredRole;
-        this.providerId = providerId;
-    }
+	public AuthorizationClaim(String requiredRole, Long providerId) {
+		this.requiredRole = requiredRole;
+		this.providerId = providerId;
+	}
 
-    public AuthorizationClaim(String requiredRole) {
-        this.requiredRole = requiredRole;
-    }
+	public AuthorizationClaim(String requiredRole) {
+		this.requiredRole = requiredRole;
+	}
 
-    public String getRequiredRole() {
-        return requiredRole;
-    }
+	public String getRequiredRole() {
+		return requiredRole;
+	}
 
-    public Long getProviderId() {
-        return providerId;
-    }
+	public Long getProviderId() {
+		return providerId;
+	}
 }

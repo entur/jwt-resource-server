@@ -4,7 +4,7 @@ public class MdcPair {
 
 	private String from;
 	private String to;
-	
+
 	public String getFrom() {
 		return from;
 	}
@@ -17,5 +17,5 @@ public class MdcPair {
 	public void setTo(String to) {
 		this.to = to;
 	}
-	
+
 }

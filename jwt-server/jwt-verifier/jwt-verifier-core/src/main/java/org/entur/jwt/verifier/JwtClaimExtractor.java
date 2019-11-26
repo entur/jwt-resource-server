@@ -15,5 +15,5 @@ public interface JwtClaimExtractor<T> extends Serializable { // Serializable as 
 	<V> V getClaim(T token, String name, Class<V> type) throws JwtClaimException;
 
 	Map<String, Object> getClaims(T token) throws JwtClaimException;
-	
+
 }

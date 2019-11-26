@@ -12,7 +12,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 public class SystemPropertiesResourceServerConfigurationEnricher extends AbstractPropertiesResourceServerConfigurationEnricher {
 
 	private Set<String> propertyNames;
-	
+
 	public SystemPropertiesResourceServerConfigurationEnricher() throws IOException {
 		super();
 	}
@@ -20,7 +20,7 @@ public class SystemPropertiesResourceServerConfigurationEnricher extends Abstrac
 	@Override
 	public void beforeAll(List<AuthorizationServerImplementation> authorizationServers, ExtensionContext context) throws IOException {
 		Properties properties = super.getProperties(authorizationServers);
-		
+
 		propertyNames = properties.stringPropertyNames();
 		for (String string : propertyNames) {
 			System.setProperty(string, properties.getProperty(string));
@@ -42,6 +42,6 @@ public class SystemPropertiesResourceServerConfigurationEnricher extends Abstrac
 		// TODO generate keys here
 	}
 
-	
+
 
 }

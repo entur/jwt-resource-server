@@ -42,13 +42,13 @@ public class JwtCamelAutoConfiguration {
 	}
 
 	@Bean
-    @ConditionalOnMissingBean(AuthenticatedVoter.class)
+	@ConditionalOnMissingBean(AuthenticatedVoter.class)
 	public AuthenticatedVoter authenticatedVoter() {
 		return new AuthenticatedVoter();
 	}	
 
 	@Bean
-    @ConditionalOnMissingBean(JwtAuthenticationProcessor.class)
+	@ConditionalOnMissingBean(JwtAuthenticationProcessor.class)
 	@ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = false)
 	public <T> JwtAuthenticationProcessor jwtAuthenticationProcessor(JwtVerifier<T> verifier, JwtAuthorityMapper<T> authorityMapper, JwtClaimExtractor<T> extractor) {
 		return new DefaultJwtAuthenticationProcessor(verifier, authorityMapper, extractor);

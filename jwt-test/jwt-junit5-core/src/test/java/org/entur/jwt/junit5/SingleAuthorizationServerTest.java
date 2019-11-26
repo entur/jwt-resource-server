@@ -18,10 +18,10 @@ public class SingleAuthorizationServerTest {
 	@Test
 	public void test(@AccessToken String token) throws IOException {
 		Path path = Paths.get("jwt.junit5.properties");
-		
+
 		Properties properties = new Properties();
 		properties.load(Files.newInputStream(path));
-		
+
 		assertNotNull(properties.get("entur.jwt.tenants.mock.jwk.location"));
 	}
 }

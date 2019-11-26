@@ -9,7 +9,7 @@ public class AccessTokenProviderBuilder extends AbstractAccessTokenProvidersBuil
 	}
 
 	public static AccessTokenProviderBuilder newBuilder(ClientCredentials credentials, Integer connectTimeout, Integer readTimeout) {
-		
+
 		URL revokeUrl = credentials.getRevokeURL();
 		URL refreshUrl = credentials.getRefreshURL();
 
@@ -25,9 +25,9 @@ public class AccessTokenProviderBuilder extends AbstractAccessTokenProvidersBuil
 		}
 		return new AccessTokenProviderBuilder(accessTokenProvider);
 	}
-	
+
 	public AccessTokenProviderBuilder(AccessTokenProvider accessTokenProvider) {
 		super(accessTokenProvider);
 	}
-	
+
 }

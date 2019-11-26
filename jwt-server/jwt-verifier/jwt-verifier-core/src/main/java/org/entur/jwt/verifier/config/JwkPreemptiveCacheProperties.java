@@ -1,11 +1,11 @@
 package org.entur.jwt.verifier.config;
 
 public class JwkPreemptiveCacheProperties {
-	
-    protected boolean enabled = true;
-    /** time to live, in seconds */
-    protected long timeToExpires = 15;
-    
+
+	protected boolean enabled = true;
+	/** time to live, in seconds */
+	protected long timeToExpires = 15;
+
 	public boolean isEnabled() {
 		return enabled;
 	}

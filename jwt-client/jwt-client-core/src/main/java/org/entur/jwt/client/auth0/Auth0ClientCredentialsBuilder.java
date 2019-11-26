@@ -8,7 +8,7 @@ public class Auth0ClientCredentialsBuilder extends AbstractClientCredentialsBuil
 	public static Auth0ClientCredentialsBuilder newInstance() {
 		return new Auth0ClientCredentialsBuilder().withIssuePath("/oauth/token");
 	}
-	
+
 	@Override
 	public ClientCredentials build() {
 		return build(false); // auth0 does not support using the basic authorization header

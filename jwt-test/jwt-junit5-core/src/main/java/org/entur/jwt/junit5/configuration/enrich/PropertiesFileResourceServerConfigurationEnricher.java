@@ -17,7 +17,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 public class PropertiesFileResourceServerConfigurationEnricher extends AbstractPropertiesResourceServerConfigurationEnricher {
 
 	protected Path output;
-	
+
 	public PropertiesFileResourceServerConfigurationEnricher() throws IOException {
 		this("entur.jwt.tenants", Paths.get("jwt.junit5.properties"));
 	}

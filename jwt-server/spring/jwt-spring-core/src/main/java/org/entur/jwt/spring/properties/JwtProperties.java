@@ -11,10 +11,10 @@ import org.entur.jwt.verifier.config.JwtTenantProperties;
 public class JwtProperties {
 
 	private boolean enabled = true;
-	
+
 	private AuthorizationProperties authorization = new AuthorizationProperties();
-	
-    private MdcProperties mdc = new MdcProperties();
+
+	private MdcProperties mdc = new MdcProperties();
 
 	private Map<String, JwtTenantProperties> tenants = new HashMap<>();
 
@@ -26,9 +26,9 @@ public class JwtProperties {
 	private List<String> filter = null; // 
 
 	private JwkProperties jwk = new JwkProperties();
-	
+
 	private JwtClaimsProperties claims = new JwtClaimsProperties();
-	
+
 	public Map<String, JwtTenantProperties> getTenants() {
 		return tenants;
 	}
@@ -44,8 +44,8 @@ public class JwtProperties {
 	public void setJwk(JwkProperties jwk) {
 		this.jwk = jwk;
 	}
-	    
-    
+
+
 	public boolean isEnabled() {
 		return enabled;
 	}
@@ -53,27 +53,27 @@ public class JwtProperties {
 	public void setEnabled(boolean enabled) {
 		this.enabled = enabled;
 	}
-	
+
 	public MdcProperties getMdc() {
 		return mdc;
 	}
-	
+
 	public void setMdc(MdcProperties mdc) {
 		this.mdc = mdc;
 	}
-	
+
 	public void setAuthorization(AuthorizationProperties authorization) {
 		this.authorization = authorization;
 	}
-	
+
 	public AuthorizationProperties getAuthorization() {
 		return authorization;
 	}
-	
+
 	public List<String> getFilter() {
 		return filter;
 	}
-	
+
 	public void setFilter(List<String> filter) {
 		this.filter = filter;
 	}
@@ -81,7 +81,7 @@ public class JwtProperties {
 	public JwtClaimsProperties getClaims() {
 		return claims;
 	}
-	
+
 	public void setClaims(JwtClaimsProperties claims) {
 		this.claims = claims;
 	}

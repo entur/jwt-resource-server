@@ -17,5 +17,5 @@
 package org.entur.jwt.spring.entur.organisation;
 
 public interface OrganisationChecker {
-    boolean entityMatchesOrganisationRef(RoleAssignment roleAssignment, Object entity);
+	boolean entityMatchesOrganisationRef(RoleAssignment roleAssignment, Object entity);
 }

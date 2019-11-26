@@ -4,11 +4,11 @@ import java.util.concurrent.TimeUnit;
 
 public class JwkCacheProperties {
 
-    protected boolean enabled = true;
-    protected long timeToLive = TimeUnit.HOURS.toSeconds(1);
-    protected long refreshTimeout = 15; // seconds
+	protected boolean enabled = true;
+	protected long timeToLive = TimeUnit.HOURS.toSeconds(1);
+	protected long refreshTimeout = 15; // seconds
 
-    protected JwkPreemptiveCacheProperties preemptive = new JwkPreemptiveCacheProperties();
+	protected JwkPreemptiveCacheProperties preemptive = new JwkPreemptiveCacheProperties();
 
 	public boolean isEnabled() {
 		return enabled;
@@ -41,6 +41,6 @@ public class JwkCacheProperties {
 	public void setPreemptive(JwkPreemptiveCacheProperties preemptive) {
 		this.preemptive = preemptive;
 	}
-    
-    
+
+
 }

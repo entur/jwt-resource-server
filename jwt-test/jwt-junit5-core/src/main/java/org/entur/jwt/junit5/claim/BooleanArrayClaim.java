@@ -16,10 +16,10 @@ public @interface BooleanArrayClaim {
 	public String name();
 	public boolean[] value() default {};
 
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.PARAMETER})
-    @Inherited
-    @interface List {
-    	BooleanArrayClaim[] value();
-    }	
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.PARAMETER})
+	@Inherited
+	@interface List {
+		BooleanArrayClaim[] value();
+	}	
 }

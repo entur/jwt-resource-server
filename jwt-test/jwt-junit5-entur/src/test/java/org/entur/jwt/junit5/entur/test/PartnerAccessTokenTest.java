@@ -37,16 +37,16 @@ public class PartnerAccessTokenTest {
 	@Test
 	public void testTokenIsExpired(@ExpiredPartnerAuth0Token String token) throws IOException {
 		DecodedJWT decodedJWT = JWT.decode(token);
-		
+
 		Claim claim = decodedJWT.getClaim("exp"); // in seconds
 
 		assertThat(claim.asLong()).isLessThan(System.currentTimeMillis() / 1000);
 	}
-	
+
 	@Test
 	public void testTokenIsNotYetIssued(@NotYetIssuedPartnerAuth0Token String token) throws IOException {
 		DecodedJWT decodedJWT = JWT.decode(token);
-		
+
 		Claim claim = decodedJWT.getClaim("iat"); // in seconds
 
 		assertThat(claim.asLong()).isGreaterThan(System.currentTimeMillis() / 1000 + Integer.MAX_VALUE / 2);
@@ -56,30 +56,30 @@ public class PartnerAccessTokenTest {
 	public void testTokenSignatureInvalid(@InvalidSignaturePartnerAuth0Token String token) throws IOException {
 		assertThat(token).endsWith("SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c");
 	}
-	
+
 	@Test
 	public void testTokenUnknownIssuer(@UnknownIssuerPartnerAuth0Token String token) throws IOException {
 		DecodedJWT decodedJWT = JWT.decode(token);
-		
+
 		Claim claim = decodedJWT.getClaim("iss");
 
 		assertThat(claim.asString()).isEqualTo("https://unknown.issuer");
 	}	
-	
+
 	@Test
 	public void testTokenUnknownAudience(@UnknownAudiencePartnerAuth0Token String token) throws IOException {
 		DecodedJWT decodedJWT = JWT.decode(token);
-		
+
 		Claim claim = decodedJWT.getClaim("aud");
 
 		assertThat(claim.asArray(String.class)[0]).isEqualTo("https://unknown.audience");
 	}	
-	
+
 	@Test
 	public void testTokenUnknownKeyId(@UnknownKeyIdPartnerAuth0Token String token) throws IOException {
 		DecodedJWT decodedJWT = JWT.decode(token);
-		
+
 		assertThat(decodedJWT.getHeaderClaim("kid").asString()).isEqualTo("unknown-kid");
 	}	
-	
+
 }

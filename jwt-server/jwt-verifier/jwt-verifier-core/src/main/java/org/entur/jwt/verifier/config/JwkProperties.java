@@ -10,15 +10,15 @@ public class JwkProperties {
 	protected JwkCacheProperties cache = new JwkCacheProperties();
 
 	protected JwkRetryProperties retry = new JwkRetryProperties();
-	
+
 	protected JwkOutageCacheProperties outageCache = new JwkOutageCacheProperties();
-	
+
 	protected JwkRateLimitProperties rateLimit = new JwkRateLimitProperties();
 
 	protected JwkHealthIndicator healthIndicator = new JwkHealthIndicator();
-	
-    protected Integer connectTimeout;
-    protected Integer readTimeout;
+
+	protected Integer connectTimeout;
+	protected Integer readTimeout;
 
 	public Integer getConnectTimeout() {
 		return connectTimeout;
@@ -71,9 +71,9 @@ public class JwkProperties {
 	public JwkHealthIndicator getHealthIndicator() {
 		return healthIndicator;
 	}
-	
+
 	public void setHealthIndicator(JwkHealthIndicator healthIndicator) {
 		this.healthIndicator = healthIndicator;
 	}
-	
+
 }

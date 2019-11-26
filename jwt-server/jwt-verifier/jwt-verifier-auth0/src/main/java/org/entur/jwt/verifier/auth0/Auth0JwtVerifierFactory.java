@@ -41,8 +41,8 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 
 public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT>{
 
-    private static Logger log = LoggerFactory.getLogger(Auth0JwtVerifierFactory.class);
-    
+	private static Logger log = LoggerFactory.getLogger(Auth0JwtVerifierFactory.class);
+
 	private final JwtClaimExtractor<DecodedJWT> extractor;
 
 	public Auth0JwtVerifierFactory(JwtClaimExtractor<DecodedJWT> extractor) {
@@ -52,42 +52,42 @@ public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT>{
 	@Override
 	public JwtVerifier<DecodedJWT> getVerifier(Map<String, JwtTenantProperties> tenants, JwkProperties jwkConfiguration, JwtClaimsProperties claims) {
 		Map<String, JWTVerifier> verifiers = new HashMap<>(); // thread safe for read access
-		
+
 		boolean healthIndicator = jwkConfiguration.getHealthIndicator().isEnabled();
-		
+
 		List<JwksProvider<?>> statusProviders = new ArrayList<>();
-		
+
 		List<JwtClaimConstraintProperties> valueConstraints = getValueConstraints(claims);
 		for (Entry<String, JwtTenantProperties> entry : tenants.entrySet()) {
 			JwtTenantProperties tenantConfiguration = entry.getValue();
-			
+
 			log.info("Configure tenant '{}' with issuer '{}'", entry.getKey(), tenantConfiguration.getIssuer());
-			
+
 			JwkLocationProperties tenantJwkConfiguration = tenantConfiguration.getJwk();
 			if(tenantJwkConfiguration == null) {
 				throw new IllegalStateException("Missing JWK location for " + entry.getKey());
 			}
-			
+
 			String location = tenantJwkConfiguration.getLocation();
 			if(location == null) {
 				throw new IllegalStateException("Missing JWK location for " + entry.getKey());
 			}
-			
+
 			URL url;
 			try {
 				url = new URL(location);
 			} catch (MalformedURLException e) {
 				throw new IllegalArgumentException("Invalid location " + tenantJwkConfiguration.getLocation() + " for " + entry.getKey());
 			}
-			
+
 			UrlJwksProvider<Jwk> urlProvider = new UrlJwksProvider<>(url, new Auth0JwkReader(), jwkConfiguration.getConnectTimeout(), jwkConfiguration.getReadTimeout());
-			
+
 			Auth0JwkProviderBuilder builder = new Auth0JwkProviderBuilder(urlProvider);
-			
+
 			JwkRateLimitProperties rateLimiting = jwkConfiguration.getRateLimit();
 			if(rateLimiting != null && rateLimiting.isEnabled()) {
 				int refillRatePerDay = (int) (rateLimiting.getRefillRate() * (24 * 3600));
-				
+
 				builder.rateLimited(rateLimiting.getBucketSize(), refillRatePerDay, TimeUnit.DAYS);
 			} else {
 				builder.rateLimited(false);
@@ -96,7 +96,7 @@ public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT>{
 			JwkCacheProperties cache = jwkConfiguration.getCache();
 			if(cache != null && cache.isEnabled()) {
 				builder.cached(cache.getTimeToLive(), TimeUnit.SECONDS, cache.getRefreshTimeout(), TimeUnit.SECONDS);
-				
+
 				JwkPreemptiveCacheProperties preemptive = cache.getPreemptive();
 				if(preemptive != null && preemptive.isEnabled()) {
 					builder.preemptiveCacheRefresh(preemptive.getTimeToExpires(), TimeUnit.SECONDS);
@@ -117,38 +117,38 @@ public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT>{
 			} else {
 				builder.outageCached(false);
 			}
-			
+
 			builder.health(healthIndicator);
-			
+
 			JwkProvider<Jwk> jwkProvider = builder.build();
-			
+
 			if(healthIndicator) {
 				jwkProvider.getHealth(false); // verify that health is supported
 				statusProviders.add(jwkProvider);
 			}
-			
+
 			JwtKeyProvider keyProvider = new JwtKeyProvider(jwkProvider);
-			
+
 			Verification jwtBuilder = JWT
-				.require(Algorithm.RSA256(keyProvider))
-				.withIssuer(tenantConfiguration.getIssuer()) // strictly not necessary, but lets add it anyways
-				.acceptExpiresAt(claims.getExpiresAtLeeway())
-				.acceptIssuedAt(claims.getIssuedAtLeeway());
-			
+					.require(Algorithm.RSA256(keyProvider))
+					.withIssuer(tenantConfiguration.getIssuer()) // strictly not necessary, but lets add it anyways
+					.acceptExpiresAt(claims.getExpiresAtLeeway())
+					.acceptIssuedAt(claims.getIssuedAtLeeway());
+
 			// value verification directly supported by auth0
 			addValueConstraints(jwtBuilder, valueConstraints);
-			
+
 			JWTVerifier verifier = new AudienceJWTVerifier(jwtBuilder.build(), claims.getAudiences());
 			verifiers.put(tenantConfiguration.getIssuer(), verifier);
 		}
-		
+
 		JwtVerifier<DecodedJWT> verifier;
 		if(!statusProviders.isEmpty()) {
 			verifier = new MultiTenantJwtVerifier(verifiers, statusProviders);
 		} else {
 			verifier = new MultiTenantJwtVerifier(verifiers);
 		}
-		
+
 		List<JwtClaimConstraintProperties> dataTypeConstraints = getDataTypeConstraints(claims);
 		if(!dataTypeConstraints.isEmpty()) {
 			return getVerifierForDataTypes(verifier, dataTypeConstraints);
@@ -160,25 +160,25 @@ public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT>{
 	private void addValueConstraints(Verification jwtBuilder, List<JwtClaimConstraintProperties> valueConstraints) {
 		for(JwtClaimConstraintProperties r : valueConstraints) {
 			switch(r.getType()) {
-				case "integer": {
-					add(jwtBuilder, r);
-					break;
-				} 
-				case "boolean" : {
-					jwtBuilder.withClaim(r.getName(), Boolean.parseBoolean(r.getValue()));
-					break;
-				}
-				case "string" : {
-					jwtBuilder.withClaim(r.getName(), r.getValue());
-					break;
-				}
-				case "double" : {
-					jwtBuilder.withClaim(r.getName(), Double.parseDouble(r.getValue()));
-					break;
-				}
-				default : {
-					throw new IllegalArgumentException("Unexpected claim type '" + r.getType() + "'");
-				}
+			case "integer": {
+				add(jwtBuilder, r);
+				break;
+			} 
+			case "boolean" : {
+				jwtBuilder.withClaim(r.getName(), Boolean.parseBoolean(r.getValue()));
+				break;
+			}
+			case "string" : {
+				jwtBuilder.withClaim(r.getName(), r.getValue());
+				break;
+			}
+			case "double" : {
+				jwtBuilder.withClaim(r.getName(), Double.parseDouble(r.getValue()));
+				break;
+			}
+			default : {
+				throw new IllegalArgumentException("Unexpected claim type '" + r.getType() + "'");
+			}
 			}
 		}
 	}
@@ -187,31 +187,31 @@ public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT>{
 			List<JwtClaimConstraintProperties> dataTypeConstraints) {
 		// add claim-verifying wrapper 
 		Map<String, Class<?>> types = new HashMap<>(dataTypeConstraints.size() * 2);
-		
+
 		for (JwtClaimConstraintProperties r : dataTypeConstraints) {
 			switch(r.getType()) {
-				case "integer": {
-					types.put(r.getName(), Long.class); // integers can be cast to long, so should not be a problem.
-					break;
-				} 
-				case "boolean" : {
-					types.put(r.getName(), Boolean.class);
-					break;
-				}
-				case "string" : {
-					types.put(r.getName(), String.class);
-					break;
-				}
-				case "double" : {
-					types.put(r.getName(), Double.class);
-					break;
-				}
-				default : {
-					throw new IllegalArgumentException("Unexpected claim type '" + r.getType() + "'");
-				}
+			case "integer": {
+				types.put(r.getName(), Long.class); // integers can be cast to long, so should not be a problem.
+				break;
+			} 
+			case "boolean" : {
+				types.put(r.getName(), Boolean.class);
+				break;
+			}
+			case "string" : {
+				types.put(r.getName(), String.class);
+				break;
+			}
+			case "double" : {
+				types.put(r.getName(), Double.class);
+				break;
+			}
+			default : {
+				throw new IllegalArgumentException("Unexpected claim type '" + r.getType() + "'");
+			}
 			}
 		}
-		
+
 		return new JwtClaimVerifier<>(verifier, extractor, types, Collections.emptyMap());
 	}
 
@@ -229,7 +229,7 @@ public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT>{
 		for(JwtClaimConstraintProperties r : claims.getRequire()) {
 			if(r.getValue() != null) {
 				log.info("Require claim {} of type {}", r.getName(), r.getType());
-				
+
 				dataValueConstraints.add(r);
 			}
 		}		
@@ -241,7 +241,7 @@ public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT>{
 		for(JwtClaimConstraintProperties r : claims.getRequire()) {
 			if(r.getValue() == null) {
 				log.info("Require claim {} value {} of type {}", r.getName(), r.getValue(), r.getType());
-				
+
 				dataTypeConstraints.add(r);
 			}
 		}

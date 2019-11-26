@@ -12,7 +12,7 @@ public class AuthorizationServerTestManager {
 	public AuthorizationServerTestContext getTestContext() {
 		return this.testContextHolder.get();
 	}
-	
+
 	public void setTestContext(AuthorizationServerTestContext context) {
 		this.testContextHolder.set(context);
 	}
@@ -20,5 +20,5 @@ public class AuthorizationServerTestManager {
 	public void removeTestContext() {
 		this.testContextHolder.remove();
 	}
-	
+
 }

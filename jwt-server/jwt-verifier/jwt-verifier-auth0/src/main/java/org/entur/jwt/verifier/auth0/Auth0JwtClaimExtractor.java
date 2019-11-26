@@ -18,7 +18,7 @@ import java.util.Base64;
 
 /**
  * Claim key normalizer; Auth0 requires that all non-standard claims must have a 'namespace' prefix.
- * This class removes that prefix so that (for multitenant use-cases), the same key can be used
+ * This class removes that prefix so that (for multi-tenant use-cases), the same key can be used
  * to extract claim values.
  * 
  * Note that integer and long usually are interchangeable; use Number.longValue(). 
@@ -31,11 +31,11 @@ public class Auth0JwtClaimExtractor implements JwtClaimExtractor<DecodedJWT> {
 	private final String normalizer; // assume non-standard claim names must be normalized
 
 	private ObjectReader objectReader;
-	
+
 	public Auth0JwtClaimExtractor(String namespace) {
 		super();
 		this.normalizer = namespace;
-	
+
 		this.objectReader = new ObjectMapper().readerFor(Map.class);
 	}
 
@@ -48,7 +48,7 @@ public class Auth0JwtClaimExtractor implements JwtClaimExtractor<DecodedJWT> {
 		if(claim instanceof NullClaim) {
 			return null;
 		}
-		
+
 		V value;
 		if(type.isArray()) {
 			throw new IllegalArgumentException("Array types not supported, use List");
@@ -62,10 +62,10 @@ public class Auth0JwtClaimExtractor implements JwtClaimExtractor<DecodedJWT> {
 	public Map<String, Object> getClaims(DecodedJWT token) throws JwtClaimException {
 		// not ideal, but getting all claims as a map is basically not support out of the box
 		// decode the token again, borrowing from fusionauth-jwts JWTUtils
-		
+
 		try {
 			Map<String, Object> claimsMap = objectReader.readValue(Base64.getUrlDecoder().decode(token.getPayload()));
-			
+
 			if(normalizer != null) {
 				HashMap<String, Object> claims = new HashMap<>(claimsMap.size() * 2);
 				for (Entry<String, Object> entry : claimsMap.entrySet()) {

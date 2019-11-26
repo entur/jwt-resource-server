@@ -27,24 +27,24 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
 
 	public static final Namespace NAMESPACE = Namespace.create(AuthorizationServerExtension.class);
 
-    protected List<AuthorizationServerImplementation> servers = new ArrayList<>();
-    protected List<ResourceServerConfigurationEnricher> enrichers = new ArrayList<>();
-    protected List<ResourceServerConfigurationResolver> resolvers = new ArrayList<>();
-    
-    protected List<ResourceServerConfiguration> configurations = new ArrayList<>();
-    
+	protected List<AuthorizationServerImplementation> servers = new ArrayList<>();
+	protected List<ResourceServerConfigurationEnricher> enrichers = new ArrayList<>();
+	protected List<ResourceServerConfigurationResolver> resolvers = new ArrayList<>();
+
+	protected List<ResourceServerConfiguration> configurations = new ArrayList<>();
+
 	public static Store getStore(ExtensionContext context) {
 		return context.getRoot().getStore(NAMESPACE);
 	}
-	
+
 	@Override
 	public void beforeAll(ExtensionContext context) throws Exception {
 		Class<?> testClass = context.getRequiredTestClass();
-		
+
 		AuthorizationServerImplementationFactory factory = new AuthorizationServerImplementationFactory();
-		
+
 		servers = factory.create(testClass);
-		
+
 		enrichers = ResourceServerConfigurationEnricherServiceLoader.load();
 		if(enrichers.isEmpty()) {
 			throw new IllegalArgumentException("No configuration enrichers registred");
@@ -54,11 +54,11 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
 		for(ResourceServerConfigurationEnricher enricher : enrichers) {
 			enricher.beforeAll(servers, context);
 		}
-		
+
 		// might be empty
 		resolvers = ResourceServerConfigurationResolverServiceLoader.load();
 	}
-	
+
 	@Override
 	public void beforeEach(ExtensionContext context) throws Exception {
 		List<ResourceServerConfiguration> values = new ArrayList<>();
@@ -66,81 +66,81 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
 			values.add(resolver.resolve(context));
 		}
 		this.configurations = values;
-		
+
 		for(ResourceServerConfigurationEnricher enricher : enrichers) {
 			enricher.beforeEach(this, context);
 		}
-		
+
 	}
 
 	@Override
 	public void afterAll(ExtensionContext context) throws Exception {
 		servers.clear();
-		
+
 		for(ResourceServerConfigurationEnricher enricher : enrichers) {
 			enricher.afterAll(context);
 		}
 		enrichers.clear();
-		
+
 		resolvers.clear();
 	}
 
-    @Override
-    public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
-        Optional<AccessToken> accessTokenTokenAnnotation = parameterContext.findAnnotation(AccessToken.class);
-        if(accessTokenTokenAnnotation.isPresent()) {
-        	AccessToken accessToken = accessTokenTokenAnnotation.get();
-        	
-        	AuthorizationServerImplementation authorizationServerImplementation;
-        	String authorizationServer = accessToken.by();
-        	if(authorizationServer != null && !authorizationServer.isEmpty()) {
-        		authorizationServerImplementation = getAuthorizationServerImplementation(authorizationServer);
-        	} else if(servers.size() == 1) {
-        		authorizationServerImplementation = servers.iterator().next();
-        	} else {
-        		throw new IllegalArgumentException("Please specify AccessToken authorization-server attribute when using multiple authorization servers");
-        	}
-        	
-			AccessTokenImplementationFactory factory = authorizationServerImplementation.createAccessTokenFactory();
-			
-            return factory.create(accessToken, parameterContext, extensionContext, this);
-        }
-        throw new IllegalArgumentException("Unable to resolve parameter");
-    }
-    
 	@Override
-    public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
-        Optional<AccessToken> accessTokenTokenAnnotation = parameterContext.findAnnotation(AccessToken.class);
-        if(accessTokenTokenAnnotation.isPresent()) {
-        	AccessToken accessToken = accessTokenTokenAnnotation.get();
+	public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
+		Optional<AccessToken> accessTokenTokenAnnotation = parameterContext.findAnnotation(AccessToken.class);
+		if(accessTokenTokenAnnotation.isPresent()) {
+			AccessToken accessToken = accessTokenTokenAnnotation.get();
 
-        	if(servers.size() == 1) {
-        		return true;
-        	}
+			AuthorizationServerImplementation authorizationServerImplementation;
+			String authorizationServer = accessToken.by();
+			if(authorizationServer != null && !authorizationServer.isEmpty()) {
+				authorizationServerImplementation = getAuthorizationServerImplementation(authorizationServer);
+			} else if(servers.size() == 1) {
+				authorizationServerImplementation = servers.iterator().next();
+			} else {
+				throw new IllegalArgumentException("Please specify AccessToken authorization-server attribute when using multiple authorization servers");
+			}
 
-        	String authorizationServer = accessToken.by();
-        	if(authorizationServer == null || authorizationServer.isEmpty()) {
-            	throw new IllegalArgumentException("Please specify AccessToken authorization-server 'by' attribute when using multiple authorization servers");
-        	}
-        	if(!authorizationServer.isEmpty()) {
-        		if(getAuthorizationServerImplementation(authorizationServer) == null) {
-        			throw new IllegalArgumentException("Unknown authorization server " + authorizationServer);        			
-        		}
-        		return true;
-        	}
+			AccessTokenImplementationFactory factory = authorizationServerImplementation.createAccessTokenFactory();
 
-        	throw new IllegalArgumentException("Unknown authorization-server attribute '" + authorizationServer + "' for access-token " + accessTokenTokenAnnotation);
-        }
-        return false;
-    }
-	
+			return factory.create(accessToken, parameterContext, extensionContext, this);
+		}
+		throw new IllegalArgumentException("Unable to resolve parameter");
+	}
+
+	@Override
+	public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
+		Optional<AccessToken> accessTokenTokenAnnotation = parameterContext.findAnnotation(AccessToken.class);
+		if(accessTokenTokenAnnotation.isPresent()) {
+			AccessToken accessToken = accessTokenTokenAnnotation.get();
+
+			if(servers.size() == 1) {
+				return true;
+			}
+
+			String authorizationServer = accessToken.by();
+			if(authorizationServer == null || authorizationServer.isEmpty()) {
+				throw new IllegalArgumentException("Please specify AccessToken authorization-server 'by' attribute when using multiple authorization servers");
+			}
+			if(!authorizationServer.isEmpty()) {
+				if(getAuthorizationServerImplementation(authorizationServer) == null) {
+					throw new IllegalArgumentException("Unknown authorization server " + authorizationServer);        			
+				}
+				return true;
+			}
+
+			throw new IllegalArgumentException("Unknown authorization-server attribute '" + authorizationServer + "' for access-token " + accessTokenTokenAnnotation);
+		}
+		return false;
+	}
+
 	protected AuthorizationServerImplementation getAuthorizationServerImplementation(String id) {
-    	for (AuthorizationServerImplementation issuer : servers) {
+		for (AuthorizationServerImplementation issuer : servers) {
 			if(issuer.getAuthorizationServer().value().equals(id)) {
 				return issuer;
 			}
-    	}
-    	return null;
+		}
+		return null;
 	}
 
 	@Override

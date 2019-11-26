@@ -20,13 +20,13 @@ public class AuthorizationServerTest {
 			@AccessToken
 			@IntegerClaim(name="https://entur.io/organisationID", value=1) 
 			String token) throws IOException {
-		
+
 		Path path = Paths.get("jwt.junit5.properties");
-		
+
 		Properties properties = new Properties();
 		properties.load(Files.newInputStream(path));
-		
+
 		assertNotNull(properties.get("entur.jwt.tenants.partner-auth0.jwk.location"));
-		
+
 	}
 }

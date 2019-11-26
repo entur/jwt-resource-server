@@ -13,7 +13,7 @@ import org.apache.camel.spi.RoutePolicyFactory;
 public class JwtAuthenticationRoutePolicyFactory implements RoutePolicyFactory {
 
 	private final JwtAuthenticationRoutePolicy jwtRoutePolicy;
-	
+
 	public JwtAuthenticationRoutePolicyFactory(JwtAuthenticationProcessor processor) {
 		this.jwtRoutePolicy = new JwtAuthenticationRoutePolicy(processor);
 	}

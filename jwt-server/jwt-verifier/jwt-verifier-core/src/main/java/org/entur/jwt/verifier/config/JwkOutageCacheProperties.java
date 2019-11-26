@@ -6,7 +6,7 @@ public class JwkOutageCacheProperties {
 
 	protected boolean enabled = true;
 	/** Time to live, in seconds */
-    protected long timeToLive = TimeUnit.HOURS.toSeconds(10);
+	protected long timeToLive = TimeUnit.HOURS.toSeconds(10);
 	public boolean isEnabled() {
 		return enabled;
 	}
@@ -19,6 +19,6 @@ public class JwkOutageCacheProperties {
 	public void setTimeToLive(long timeToLive) {
 		this.timeToLive = timeToLive;
 	}
-    
-    
+
+
 }

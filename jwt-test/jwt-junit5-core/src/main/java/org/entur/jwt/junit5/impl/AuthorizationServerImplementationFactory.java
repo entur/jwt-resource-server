@@ -12,7 +12,7 @@ public class AuthorizationServerImplementationFactory {
 	public List<AuthorizationServerImplementation> create(Class<?> testClass) {
 		List<AuthorizationServerImplementation> results = new ArrayList<>();
 		Annotation[] annotations = testClass.getAnnotations();
-		
+
 		for(Annotation annotation : annotations) {
 			createFromAnnotation(annotation, results);
 		}

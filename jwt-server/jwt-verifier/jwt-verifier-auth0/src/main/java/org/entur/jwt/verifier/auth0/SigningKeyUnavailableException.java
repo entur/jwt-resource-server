@@ -13,5 +13,5 @@ public class SigningKeyUnavailableException extends JWTVerificationException {
 	public SigningKeyUnavailableException(String message) {
 		super(message);
 	}
-	
+
 }

@@ -17,12 +17,12 @@
 package org.entur.jwt.spring.entur.organisation;
 
 public interface EntityResolver {
-    /**
-     * If entity itself cannot be checked for authorization, but the owning entity can.
-     * For instance, if a Quay belongs to StopPlace, the Quay cannot be checked, but the StopPlace can.
-     *
-     * @param entity child entity
-     * @return the parent entity to check for authorization
-     */
-    Object resolveCorrectEntity(Object entity);
+	/**
+	 * If entity itself cannot be checked for authorization, but the owning entity can.
+	 * For instance, if a Quay belongs to StopPlace, the Quay cannot be checked, but the StopPlace can.
+	 *
+	 * @param entity child entity
+	 * @return the parent entity to check for authorization
+	 */
+	Object resolveCorrectEntity(Object entity);
 }

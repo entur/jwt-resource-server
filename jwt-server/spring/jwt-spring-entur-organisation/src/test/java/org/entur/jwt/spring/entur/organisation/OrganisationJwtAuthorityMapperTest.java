@@ -22,13 +22,13 @@ import com.auth0.jwt.interfaces.Payload;
 public class OrganisationJwtAuthorityMapperTest {
 
 	private OrganisationJwtAuthorityMapper mapper = new OrganisationJwtAuthorityMapper();
-	
+
 	@Test
 	public void testMapper() throws Exception {
 		List<GrantedAuthority> grantedAuthorities = mapper.getGrantedAuthorities(getToken());
 
 		List<String> authorities = grantedAuthorities.stream().map(g -> g.getAuthority()).collect(Collectors.toList());
-		
+
 		assertThat(authorities).containsExactly(
 				"adminEditRouteData", 
 				"editOrganisation",
@@ -38,12 +38,12 @@ public class OrganisationJwtAuthorityMapperTest {
 				"deleteStops"
 				);
 	}
-	
+
 	public DecodedJWT getToken() throws Exception {
 		String body = IOUtils.resourceToString("/jwt.txt", StandardCharsets.UTF_8);
 		JWTParser parser = new JWTParser();
 		Payload payload = parser.parsePayload(body);
-		
+
 		DecodedJWT jwt = mock(DecodedJWT.class);
 		when(jwt.getClaim("roles")).then(new Answer<Claim>() {
 
@@ -52,6 +52,6 @@ public class OrganisationJwtAuthorityMapperTest {
 				return payload.getClaim("roles");
 			}
 		});
-	    return jwt;
+		return jwt;
 	}
 }

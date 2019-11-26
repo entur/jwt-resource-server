@@ -8,7 +8,7 @@ import org.entur.jwt.jwk.JwksException;
 public class MapJwtVerifier implements JwtVerifier<Map<String, Object>>{
 
 	private Map<String, Map<String, Object>> tokens = new HashMap<>();
-	
+
 	@Override
 	public Map<String, Object> verify(String token) throws JwtException, JwksException {
 		return tokens.get(token);

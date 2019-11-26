@@ -10,16 +10,16 @@ public class JwksServiceException extends JwksException {
 
 	private static final long serialVersionUID = 1L;
 
-    public JwksServiceException(String message) {
-        super(message);
-    }
+	public JwksServiceException(String message) {
+		super(message);
+	}
 
-    public JwksServiceException(String message, Throwable cause) {
-        super(message, cause);
-    }
+	public JwksServiceException(String message, Throwable cause) {
+		super(message, cause);
+	}
 
-    public JwksServiceException(Throwable cause) {
-        super(cause);
-    }
+	public JwksServiceException(Throwable cause) {
+		super(cause);
+	}
 
 }

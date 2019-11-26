@@ -18,7 +18,7 @@ public class AnnotationUtils {
 	private AnnotationUtils() {
 		// utility class
 	}
-	
+
 	public static <A extends Annotation> Optional<A> findAnnotation(AnnotatedElement element, Class<A> annotationType) {
 		boolean inherited = annotationType.isAnnotationPresent(Inherited.class);
 		return findAnnotation(element, annotationType, inherited, new HashSet<>());
@@ -39,7 +39,7 @@ public class AnnotationUtils {
 
 		// Meta-present on directly present annotations?
 		Optional<A> directMetaAnnotation = findMetaAnnotation(annotationType, element.getDeclaredAnnotations(),
-			inherited, visited);
+				inherited, visited);
 		if (directMetaAnnotation.isPresent()) {
 			return directMetaAnnotation;
 		}
@@ -81,7 +81,7 @@ public class AnnotationUtils {
 			Class<? extends Annotation> candidateAnnotationType = candidateAnnotation.annotationType();
 			if (!isInJavaLangAnnotationPackage(candidateAnnotationType) && visited.add(candidateAnnotation)) {
 				Optional<A> metaAnnotation = findAnnotation(candidateAnnotationType, annotationType, inherited,
-					visited);
+						visited);
 				if (metaAnnotation.isPresent()) {
 					return metaAnnotation;
 				}

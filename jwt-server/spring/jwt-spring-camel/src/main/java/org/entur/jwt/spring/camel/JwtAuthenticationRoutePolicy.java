@@ -7,7 +7,7 @@ import org.apache.camel.spi.RoutePolicy;
 public class JwtAuthenticationRoutePolicy implements RoutePolicy {
 
 	private final JwtAuthenticationProcessor jwtProcessor;
-	
+
 	public JwtAuthenticationRoutePolicy(JwtAuthenticationProcessor jwtAuthenticationToSubjectProcessor) {
 		super();
 		this.jwtProcessor = jwtAuthenticationToSubjectProcessor;
@@ -21,31 +21,31 @@ public class JwtAuthenticationRoutePolicy implements RoutePolicy {
 	@Override
 	public void onRemove(Route route) {
 		// NOOP
-		
+
 	}
 
 	@Override
 	public void onStart(Route route) {
 		// NOOP
-		
+
 	}
 
 	@Override
 	public void onStop(Route route) {
 		// NOOP
-		
+
 	}
 
 	@Override
 	public void onSuspend(Route route) {
 		// NOOP
-		
+
 	}
 
 	@Override
 	public void onResume(Route route) {
 		// NOOP
-		
+
 	}
 
 	@Override
@@ -56,7 +56,7 @@ public class JwtAuthenticationRoutePolicy implements RoutePolicy {
 	@Override
 	public void onExchangeDone(Route route, Exchange exchange) {
 		// NOOP
-		
+
 	}
 
 }

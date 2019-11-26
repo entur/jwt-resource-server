@@ -16,10 +16,10 @@ public @interface BooleanClaim {
 	public String name();
 	public boolean value();
 
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.PARAMETER})
-    @Inherited
-    @interface List {
-    	BooleanClaim[] value();
-    }	
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.PARAMETER})
+	@Inherited
+	@interface List {
+		BooleanClaim[] value();
+	}	
 }

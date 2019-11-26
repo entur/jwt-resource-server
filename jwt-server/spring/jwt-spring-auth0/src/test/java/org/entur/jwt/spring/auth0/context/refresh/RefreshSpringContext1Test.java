@@ -30,19 +30,19 @@ public class RefreshSpringContext1Test {
 	@Test
 	public void testTokenIsValid1(@AccessToken(audience = "mock.my.audience") String token) throws Exception  {
 		System.out.println("Run " + getClass().getName());
-		
+
 		DecodedJWT verified = jwtVerifier.verify(token);
-		
+
 		assertNotNull(verified);
 	}
 
 	@Test
 	public void testTokenIsValid2(@AccessToken(audience = "mock.my.audience") String token) throws Exception  {
 		System.out.println("Run " + getClass().getName());
-		
+
 		DecodedJWT verified = jwtVerifier.verify(token);
-		
+
 		assertNotNull(verified);
 	}
-	
+
 }

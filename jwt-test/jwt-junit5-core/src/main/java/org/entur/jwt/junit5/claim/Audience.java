@@ -14,11 +14,11 @@ import java.lang.annotation.Target;
 public @interface Audience {
 
 	public String[] value() default {};
-	
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.PARAMETER})
-    @Inherited
-    @interface List {
-    	Audience[] value();
-    }	
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.PARAMETER})
+	@Inherited
+	@interface List {
+		Audience[] value();
+	}	
 }

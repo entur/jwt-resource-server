@@ -8,7 +8,7 @@ public interface ClientCredentials {
 	URL getIssueURL();
 	URL getRefreshURL();
 	URL getRevokeURL();
-	
+
 	Map<String, Object> getParameters();
 	Map<String, Object> getHeaders();
 }

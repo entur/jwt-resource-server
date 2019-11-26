@@ -15,7 +15,7 @@ public class JwtEnvironmentResourceServerConfiguration implements ResourceServer
 
 	private final Environment environment;
 	private final String prefix;
-	
+
 	public JwtEnvironmentResourceServerConfiguration(Environment environment, String prefix) {
 		super();
 		this.environment = environment;
@@ -28,17 +28,17 @@ public class JwtEnvironmentResourceServerConfiguration implements ResourceServer
 			// if there is only one, select it
 			if(environment instanceof ConfigurableEnvironment) {
 				ConfigurableEnvironment configurableEnvironment = (ConfigurableEnvironment)environment;
-				
+
 				MutablePropertySources propertySources = configurableEnvironment.getPropertySources();
-				
+
 				Map<String, String> props = new HashMap<>();
 				StreamSupport.stream(propertySources.spliterator(), false)
-				        .filter(ps -> ps instanceof EnumerablePropertySource)
-				        .map(ps -> ((EnumerablePropertySource<?>) ps).getPropertyNames())
-				        .flatMap(Arrays::<String>stream)
-				        .filter(name -> name.startsWith(prefix))
-				        .filter(name -> name.endsWith("." + propertyName))
-				        .forEach(propName -> props.put(propName, environment.getProperty(propName, String.class)));				
+				.filter(ps -> ps instanceof EnumerablePropertySource)
+				.map(ps -> ((EnumerablePropertySource<?>) ps).getPropertyNames())
+				.flatMap(Arrays::<String>stream)
+				.filter(name -> name.startsWith(prefix))
+				.filter(name -> name.endsWith("." + propertyName))
+				.forEach(propName -> props.put(propName, environment.getProperty(propName, String.class)));				
 				if(props.size() == 1) {
 					return props.entrySet().iterator().next().getValue();
 				} else {

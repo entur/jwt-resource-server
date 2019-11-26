@@ -21,10 +21,10 @@ public @interface IntegerClaim {
 	public String name();
 	public long value();
 
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.PARAMETER})
-    @Inherited
-    @interface List {
-    	IntegerClaim[] value();
-    }
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.PARAMETER})
+	@Inherited
+	@interface List {
+		IntegerClaim[] value();
+	}
 }

@@ -19,7 +19,7 @@ public class Auth0JwkProviderBuilder extends JwkProviderBuilder<Jwk> {
 		UrlJwksProvider<Jwk> jwksProvider = new UrlJwksProvider<>(url, new Auth0JwkReader(), connectTimeout, readTimeout);
 		return new Auth0JwkProviderBuilder(jwksProvider);
 	}
-	
+
 	public Auth0JwkProviderBuilder(JwksProvider<Jwk> jwksProvider) {
 		super(jwksProvider, new Auth0JwkFieldExtractor());
 	}

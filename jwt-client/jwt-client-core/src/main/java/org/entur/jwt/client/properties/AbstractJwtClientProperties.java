@@ -3,23 +3,23 @@ package org.entur.jwt.client.properties;
 public abstract class AbstractJwtClientProperties {
 
 	protected boolean enabled;
-	
-    protected String clientId;
-    protected String secret;
-    protected String audience;
-    protected String scope;
 
-    protected String protocol = null;
+	protected String clientId;
+	protected String secret;
+	protected String audience;
+	protected String scope;
+
+	protected String protocol = null;
 	protected int port = -1;
 	protected String host;
-	
+
 	protected Integer connectTimeout;
 	protected Integer readTimeout;
 
 	protected boolean retrying = true;
-	
+
 	protected JwtClientCache cache = new JwtClientCache();
-	
+
 	public String getClientId() {
 		return clientId;
 	}
@@ -71,7 +71,7 @@ public abstract class AbstractJwtClientProperties {
 	public JwtClientCache getCache() {
 		return cache;
 	}
-	
+
 	public void setCache(JwtClientCache cache) {
 		this.cache = cache;
 	}
@@ -102,7 +102,7 @@ public abstract class AbstractJwtClientProperties {
 	public void setRetrying(boolean retrying) {
 		this.retrying = retrying;
 	}
-	
+
 	public boolean isRetrying() {
 		return retrying;
 	}
@@ -110,7 +110,7 @@ public abstract class AbstractJwtClientProperties {
 	public void setEnabled(boolean enabled) {
 		this.enabled = enabled;
 	}
-	
+
 	public boolean isEnabled() {
 		return enabled;
 	}

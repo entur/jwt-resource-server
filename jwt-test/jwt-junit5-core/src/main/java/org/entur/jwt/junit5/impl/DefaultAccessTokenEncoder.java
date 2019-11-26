@@ -57,15 +57,15 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 
 	@SuppressWarnings("unchecked")
 	private static final Class<? extends Annotation>[] fixedClaims = new Class[] {
-		Audience.class,
-		AuthorizedParty.class,
-		ExpiresAt.class,
-		IssuedAt.class,
-		Issuer.class,
-		Scope.class,
-		Subject.class		
+			Audience.class,
+			AuthorizedParty.class,
+			ExpiresAt.class,
+			IssuedAt.class,
+			Issuer.class,
+			Scope.class,
+			Subject.class		
 	};
-	
+
 	@SuppressWarnings("unchecked")
 	private static final Class<? extends Annotation>[] customClaims = new Class[]{
 			MapClaim.class,
@@ -79,26 +79,26 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 			DoubleArrayClaim.class,
 			JsonClaim.class
 	};
-	
+
 	@SuppressWarnings("unchecked")
 	private static final Class<? extends Annotation>[] fixedSabotages = new Class[] {
-		Signature.class,
+			Signature.class,
 	};
-	
+
 	@SuppressWarnings("unchecked")
 	private static final Class<? extends Annotation>[] fixedHeaders = new Class[] {
-		AlgorithmHeader.class,
-		KeyIdHeader.class,
-		TypeHeader.class
+			AlgorithmHeader.class,
+			KeyIdHeader.class,
+			TypeHeader.class
 	};
-	
+
 	@Override
 	public String encode(ParameterContext parameterContext, ExtensionContext extensionContext, Annotation authorizationServer, AuthorizationServerEncoder encoder, ResourceServerConfiguration resolver) {
 		String token = encoder.getToken(authorizationServer, encodeClaims(parameterContext, resolver), encoderHeaders(parameterContext, resolver));
-		
+
 		return sabotageToken(token, parameterContext, resolver);
 	}
-	
+
 	protected String sabotageToken(String token, ParameterContext parameterContext, ResourceServerConfiguration resolver) {
 		return encodeKnownSabotages(token, parameterContext);
 	}
@@ -109,9 +109,9 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 		for(Object c : parameters) {
 			if(c instanceof Signature) {
 				Signature s = (Signature)c;
-				
+
 				int index = token.lastIndexOf('.');
-				
+
 				token = token.substring(index + 1) + s.value();
 			} else {
 				throw new IllegalArgumentException("Unsupported sabotage type " + c);
@@ -127,7 +127,7 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 
 		return result;
 	}
-	
+
 	protected void encodeKnownHeaders(ParameterContext parameterContext, Map<String, Object> result, ResourceServerConfiguration resolver) {
 		List<Object> parameters = extractKnownHeaders(parameterContext);
 		for(Object c : parameters) {
@@ -156,16 +156,16 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 
 		encodeKnownClaims(parameterContext, result, resolver);
 		encodeCustomClaims(parameterContext, result, resolver);
-		
+
 		transformParameters(result);
-		
+
 		return result;
 	}
 
 	protected void transformParameters(Map<String, Object> result) {
 		Long issuedAt = (Long)result.get(IAT);
 		result.put(IAT,  System.currentTimeMillis() / 1000 + issuedAt);
-		
+
 		Long expiresAt = (Long)result.get(EXP);
 		result.put(EXP, System.currentTimeMillis() / 1000 + expiresAt);
 	}
@@ -201,7 +201,7 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 			}
 		}
 	}	
-	
+
 	@SuppressWarnings("unchecked")
 	protected void encodeCustomClaims(ParameterContext parameterContext, Map<String, Object> result, ResourceServerConfiguration resolver) {
 		List<Object> parameters = extractCustomClaims(parameterContext);
@@ -233,9 +233,9 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 					result.put(b.name(), b.value());
 				} else if(c instanceof MapClaim) {
 					MapClaim mapClaim = (MapClaim)c;
-					
+
 					String[] paths = mapClaim.path();
-					
+
 					Map<String, Object> mapForPath = result;
 					int i = 0;
 					do {
@@ -245,30 +245,30 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 							mapForPath.put(paths[i], nextMapForPath);
 						}
 						mapForPath = nextMapForPath;
-						
+
 						i++;
 					} while(i < paths.length);
 
 					// start adding entries
 					for (Entry entry : mapClaim.entries()) {
 						String[] value = entry.value();
-						
+
 						if(!entry.alwaysArray() && value.length == 1) {
 							mapForPath.put(entry.name(), valueForType(value[0], entry.type()));
 						} else {
 							// use a list, not an array, as its serialized the same as an array
 							List<Object> list = new ArrayList<>();
-							
+
 							for(String v : value) {
 								list.add(valueForType(v, entry.type()));
 							}
-							
+
 							mapForPath.put(entry.name(), list);
 						}
 					}
 				} else if(c instanceof JsonClaim) {
 					JsonClaim jsonClaim = (JsonClaim)c;
-					
+
 					result.put(jsonClaim.name(), new RawValue(jsonClaim.value()));
 				} else {
 					throw new IllegalArgumentException("Unsupported claim type " + c);
@@ -276,7 +276,7 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 			}
 		}
 	}
-	
+
 	protected Object valueForType(String value, Class<?> type) {
 		if(type == String.class) {
 			return value;
@@ -291,7 +291,7 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 		} else if(type == Float.class) {
 			return Float.parseFloat(value);
 		}
-		
+
 		throw new IllegalArgumentException("Cant convert '" + value + "' to " + type.getName());
 	}
 
@@ -302,10 +302,10 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 		}
 		return parameters;
 	}
-	
+
 	protected List<Object> extractAnnotations(ParameterContext parameterContext, Class<? extends Annotation>[] items) {
 		List<Object> parameters = new ArrayList<>(items.length);
-		
+
 		for(Class<? extends Annotation> c : items) {
 			Optional<?> optional = parameterContext.findAnnotation(c);
 			if(optional.isPresent()) {
@@ -313,13 +313,13 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 			}
 		}
 		return parameters;
-		
+
 	}
-	
+
 	protected List<Object> extractKnownClaims(ParameterContext parameterContext) {
 		return extractAnnotations(parameterContext, fixedClaims);
 	}
-	
+
 	protected List<Object> extractKnownHeaders(ParameterContext parameterContext) {
 		return extractAnnotations(parameterContext, fixedHeaders);
 	}	
@@ -327,7 +327,7 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 	protected List<Object> extractKnownSabotages(ParameterContext parameterContext) {
 		return extractAnnotations(parameterContext, fixedSabotages);
 	}	
-	
+
 	protected void encode(Map<String, Object> result, AccessToken token, ResourceServerConfiguration resolver) {
 		if(!result.containsKey(ISS)) {
 			result.put(ISS, resolver.getProperty(token.by(), "issuer"));
@@ -364,7 +364,7 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 			}
 		}
 	}
-	
+
 	private boolean isBlank(String[] scope) {
 		return scope == null || scope.length == 0;
 	}

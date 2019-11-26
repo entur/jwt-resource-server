@@ -15,13 +15,13 @@ import org.entur.jwt.junit5.AuthorizationServer;
 @Inherited
 @AuthorizationServer(
 		value="organisation-keycloak"
-)
+		)
 public @interface OrganisationAuthorizationServer {
 
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.TYPE})
-    @Inherited
-    @interface List {
-    	OrganisationAuthorizationServer[] value();
-    }
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.TYPE})
+	@Inherited
+	@interface List {
+		OrganisationAuthorizationServer[] value();
+	}
 }

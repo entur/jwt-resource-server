@@ -14,11 +14,11 @@ import java.lang.annotation.Target;
 public @interface Scope {
 
 	public String[] value() default {};
-	
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.PARAMETER})
-    @Inherited
-    @interface List {
-    	Scope[] value();
-    }	
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.PARAMETER})
+	@Inherited
+	@interface List {
+		Scope[] value();
+	}	
 }

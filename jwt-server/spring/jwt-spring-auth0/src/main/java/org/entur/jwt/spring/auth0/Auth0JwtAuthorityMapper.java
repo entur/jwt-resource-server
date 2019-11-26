@@ -21,36 +21,36 @@ public class Auth0JwtAuthorityMapper implements JwtAuthorityMapper<DecodedJWT> {
 
 	protected final boolean extractAuth0Permissions;
 	protected final boolean extractKeycloakResourceAccess;
-	
+
 	public Auth0JwtAuthorityMapper(boolean auth0Permissions, boolean keycloakResourceAccess) {
 		this.extractAuth0Permissions = auth0Permissions;
 		this.extractKeycloakResourceAccess = keycloakResourceAccess;
 	}	
-	
+
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
 	public List<GrantedAuthority> getGrantedAuthorities(DecodedJWT token) {
-		
-        List<GrantedAuthority> authorities = new ArrayList<>();
-        
-        if(!extractKeycloakResourceAccess && !extractAuth0Permissions) {
-	        addScope(token, authorities);
-        }
-        
-        if(extractAuth0Permissions) {
-	        addPermissions(token, authorities);
-        }
 
-        if(extractKeycloakResourceAccess) {
-	        addResourceAccess(token, authorities);
-        }
+		List<GrantedAuthority> authorities = new ArrayList<>();
+
+		if(!extractKeycloakResourceAccess && !extractAuth0Permissions) {
+			addScope(token, authorities);
+		}
+
+		if(extractAuth0Permissions) {
+			addPermissions(token, authorities);
+		}
+
+		if(extractKeycloakResourceAccess) {
+			addResourceAccess(token, authorities);
+		}
 		return authorities;
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private void addResourceAccess(DecodedJWT token, List<GrantedAuthority> authorities) {
 		// keycloak
-		
+
 		/*
 		  "resource_access": {
 		    "e8e9a643-fb78-467e-9d9f-d14da69c6870": {
@@ -66,34 +66,34 @@ public class Auth0JwtAuthorityMapper implements JwtAuthorityMapper<DecodedJWT> {
 		      ]
 		    }
 		  },        	
-		*/
+		 */
 		Claim resourceAccess = token.getClaim("resource_access");
 		if(resourceAccess != null && !(resourceAccess instanceof NullClaim)) {
 			Map<String, Object> map = resourceAccess.asMap();
 			for (Entry<String, Object> entry : map.entrySet()) {
-				
+
 				// skip account permissions
 				// see https://github.com/keycloak/keycloak/blob/master/adapters/oidc/adapter-core/src/main/java/org/keycloak/adapters/AdapterUtils.java#L39
 				if(entry.getKey().equals("account")) {
 					continue;
 				}
 				Object value = entry.getValue();
-				
+
 				if(value instanceof Map) {
 					Object rolesObject = ((Map)value).get("roles");
-					
+
 					if(rolesObject instanceof List) {
 						List<String> roles = (List<String>)rolesObject;
 
-			        	for(String role : roles) {
-			                authorities.add(new SimpleGrantedAuthority(asRole(role)));
-			        	}
+						for(String role : roles) {
+							authorities.add(new SimpleGrantedAuthority(asRole(role)));
+						}
 					} else if(rolesObject instanceof String[]) {
 						String[] roles = (String[])rolesObject;
 
-			        	for(String role : roles) {
-			                authorities.add(new SimpleGrantedAuthority(asRole(role)));
-			        	}
+						for(String role : roles) {
+							authorities.add(new SimpleGrantedAuthority(asRole(role)));
+						}
 					} else {
 						logger.warn("Unable to map roles {} of type {} to an authority; expected List or array", rolesObject, rolesObject.getClass().getName());
 					}
@@ -114,7 +114,7 @@ public class Auth0JwtAuthorityMapper implements JwtAuthorityMapper<DecodedJWT> {
 		if(scopeClaim != null && !(scopeClaim instanceof NullClaim)) {
 			String[] scopes = scopeClaim.asString().split("\\s");
 			for(String scope : scopes) {
-		        authorities.add(new SimpleGrantedAuthority(asScope(scope)));
+				authorities.add(new SimpleGrantedAuthority(asScope(scope)));
 			}
 		}
 	}
@@ -131,7 +131,7 @@ public class Auth0JwtAuthorityMapper implements JwtAuthorityMapper<DecodedJWT> {
 		if(permissionClaim != null && !(permissionClaim instanceof NullClaim)) {
 			String[] permissions = permissionClaim.asArray(String.class);
 			for(String permission : permissions) {
-		        authorities.add(new SimpleGrantedAuthority(asPermission(permission)));
+				authorities.add(new SimpleGrantedAuthority(asPermission(permission)));
 			}
 		}
 	}

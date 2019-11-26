@@ -15,7 +15,7 @@ import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
 public abstract class AbstractPropertiesResourceServerConfigurationEnricher implements ResourceServerConfigurationEnricher {
 
 	protected String prefix;
-	
+
 	public AbstractPropertiesResourceServerConfigurationEnricher() throws IOException {
 		this("entur.jwt.tenants");
 	}
@@ -27,18 +27,18 @@ public abstract class AbstractPropertiesResourceServerConfigurationEnricher impl
 	public void setPrefix(String prefix) {
 		this.prefix = prefix;
 	}
-	
+
 	protected Properties getProperties(List<AuthorizationServerImplementation> implementations) throws IOException {
 		Properties properties = new Properties();
 		for (int i = 0; i < implementations.size(); i++) {
 			AuthorizationServerImplementation implementation = implementations.get(i);
-			
+
 			AuthorizationServer authorizationServer = implementation.getAuthorizationServer();
-			
+
 			// write certificates to temp file; get as an URI.
 			// TODO do this right before the test method is called, so that
 			// additional configuration parameters can be included
-			
+
 			// also, delete on exit, do not delete after use. 
 			// for certain frameworks (i.e. spring), context is reused and this
 			// file might come in handy later

@@ -6,54 +6,54 @@ package org.entur.jwt.client;
 
 public abstract class AbstractCachedAccessTokenProvider extends BaseAccessTokenProvider {
 
-    protected static class AccessTokenCacheItem {
+	protected static class AccessTokenCacheItem {
 
-    	// must be final so that initialization is safe
-    	// https://shipilev.net/blog/2014/safe-public-construction/
-        private final AccessToken value;
-        private final long expires;
+		// must be final so that initialization is safe
+		// https://shipilev.net/blog/2014/safe-public-construction/
+		private final AccessToken value;
+		private final long expires;
 
-        public AccessTokenCacheItem(AccessToken value, long expires) {
-            this.value = value;
-            this.expires = expires;
-        }
-        
-        public boolean isValid(long time) {
-            return time <= expires;
-        }
+		public AccessTokenCacheItem(AccessToken value, long expires) {
+			this.value = value;
+			this.expires = expires;
+		}
 
-        public AccessToken getValue() {
-            return value;
-        }
+		public boolean isValid(long time) {
+			return time <= expires;
+		}
 
-        public long getExpires() {
-            return expires;
-        }
-    }  
+		public AccessToken getValue() {
+			return value;
+		}
 
-    protected volatile AccessTokenCacheItem cache; 
-    
-    public AbstractCachedAccessTokenProvider(AccessTokenProvider provider) {
-        super(provider);
-    }
+		public long getExpires() {
+			return expires;
+		}
+	}  
 
-    @Override
-    public AccessToken getAccessToken(boolean forceRefresh) throws AccessTokenException {
-        return getAccessToken(System.currentTimeMillis(), forceRefresh);
-    }
-    
-    abstract AccessToken getAccessToken(long time, boolean forceUpdate) throws AccessTokenException;
-    
-    protected AccessToken getCachedAccessToken(long time) {
-    	AccessTokenCacheItem threadSafeCache = this.cache; // defensive copy
-        if(threadSafeCache != null && threadSafeCache.isValid(time)) {
-            return threadSafeCache.getValue();
-        }
-        return null;
-    }
-    
-    protected AccessTokenCacheItem getCache() {
-    	return cache;
-    }
-    
+	protected volatile AccessTokenCacheItem cache; 
+
+	public AbstractCachedAccessTokenProvider(AccessTokenProvider provider) {
+		super(provider);
+	}
+
+	@Override
+	public AccessToken getAccessToken(boolean forceRefresh) throws AccessTokenException {
+		return getAccessToken(System.currentTimeMillis(), forceRefresh);
+	}
+
+	abstract AccessToken getAccessToken(long time, boolean forceUpdate) throws AccessTokenException;
+
+	protected AccessToken getCachedAccessToken(long time) {
+		AccessTokenCacheItem threadSafeCache = this.cache; // defensive copy
+		if(threadSafeCache != null && threadSafeCache.isValid(time)) {
+			return threadSafeCache.getValue();
+		}
+		return null;
+	}
+
+	protected AccessTokenCacheItem getCache() {
+		return cache;
+	}
+
 }

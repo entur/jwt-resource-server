@@ -13,7 +13,7 @@ public class JwtAuthenticationExceptionAdvice extends ResponseEntityExceptionHan
 	@ExceptionHandler(JwtAuthenticationServiceUnavailableException.class)
 	public ResponseEntity<Object> handleHttpRequestMethodNotSupportedException(JwtAuthenticationServiceUnavailableException ex, WebRequest request) {
 		logger.warn("Unable to verify token, returning service unavailable", ex);
-		
+
 		return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
 	}
 

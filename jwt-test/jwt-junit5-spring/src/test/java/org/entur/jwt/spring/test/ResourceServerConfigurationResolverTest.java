@@ -13,7 +13,7 @@ public class ResourceServerConfigurationResolverTest {
 	@Test
 	public void testResolvesDummy() {
 		List<ResourceServerConfigurationResolver> load = ResourceServerConfigurationResolverServiceLoader.load();
-		
+
 		assertThat(load).hasSize(1);
 	}
 }

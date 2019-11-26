@@ -9,16 +9,16 @@ public class ResourceServerConfigurationEnricherServiceLoader {
 	private ResourceServerConfigurationEnricherServiceLoader() {
 		// utility method
 	}
-	
+
 	public static List<ResourceServerConfigurationEnricher> load() {
 		ServiceLoader<ResourceServerConfigurationEnricher> loader = ServiceLoader.load(ResourceServerConfigurationEnricher.class);
 		Iterator<ResourceServerConfigurationEnricher> iterator = loader.iterator();
-		
+
 		List<ResourceServerConfigurationEnricher> list = new ArrayList<>();
 		while(iterator.hasNext()) {
 			list.add(iterator.next());
 		}
-		
+
 		return list;		
 	}
 }

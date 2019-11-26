@@ -1,10 +1,10 @@
 package org.entur.jwt.jwk;
 
 public class JwksHealth {
-	
+
 	private final long timestamp;
 	private final boolean success;
-	
+
 	public JwksHealth(long timestamp, boolean success) {
 		super();
 		this.success = success;

@@ -4,7 +4,7 @@ public class Auth0AuthorityMapperProperties {
 
 	private boolean auth0 = true;
 	private boolean keycloak = true;
-	
+
 	public boolean isAuth0() {
 		return auth0;
 	}
@@ -17,6 +17,5 @@ public class Auth0AuthorityMapperProperties {
 	public void setKeycloak(boolean keycloak) {
 		this.keycloak = keycloak;
 	}
-	
-	
+
 }

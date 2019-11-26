@@ -7,19 +7,19 @@ public abstract class BaseJwksProvider<T> implements JwksProvider<T> {
 
 	protected static final Logger logger = LoggerFactory.getLogger(BaseJwksProvider.class);
 
-    protected final JwksProvider<T> provider;
+	protected final JwksProvider<T> provider;
 
-    public BaseJwksProvider(JwksProvider<T> provider) {
-        this.provider = provider;
-    }
-    
-    public JwksProvider<T> getProvider() {
-        return provider;
-    }
+	public BaseJwksProvider(JwksProvider<T> provider) {
+		this.provider = provider;
+	}
 
-    @Override
-    public JwksHealth getHealth(boolean refresh) {
-    	return provider.getHealth(refresh);
-    }
-    
+	public JwksProvider<T> getProvider() {
+		return provider;
+	}
+
+	@Override
+	public JwksHealth getHealth(boolean refresh) {
+		return provider.getHealth(refresh);
+	}
+
 }

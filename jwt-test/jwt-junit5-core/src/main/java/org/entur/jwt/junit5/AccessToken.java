@@ -16,7 +16,7 @@ public @interface AccessToken {
 	public String by() default "";
 
 	public String subject() default "";
-	
+
 	public long issuedAt() default 0;
 	public long expiresAt() default 10 * 60;
 
@@ -24,7 +24,7 @@ public @interface AccessToken {
 	public String[] audience() default {};
 
 	public String[] scope() default {};
-	
+
 	public Class<? extends AccessTokenEncoder> encoder() default DefaultAccessTokenEncoder.class;
 
 }

@@ -15,17 +15,17 @@ import com.nimbusds.jose.proc.SecurityContext;
 
 public abstract class AbstractJWKSourceBuilder<C extends SecurityContext, B extends AbstractJWKSourceBuilder<C, B>> extends AbstractJwksProviderBuilder<JWK, B> {
 
-    public AbstractJWKSourceBuilder(JwksProvider<JWK> jwksProvider) {
+	public AbstractJWKSourceBuilder(JwksProvider<JWK> jwksProvider) {
 		super(jwksProvider);
 	}
 
 	/**
-     * Creates a {@link JWKSource}
-     *
-     * @return a newly created {@link JWKSource}
-     */
+	 * Creates a {@link JWKSource}
+	 *
+	 * @return a newly created {@link JWKSource}
+	 */
 	public JWKSource<C> build() {
-    	return new EnturJWKSource<>(build(jwksProvider));
-        
-    }
+		return new EnturJWKSource<>(build(jwksProvider));
+
+	}
 }

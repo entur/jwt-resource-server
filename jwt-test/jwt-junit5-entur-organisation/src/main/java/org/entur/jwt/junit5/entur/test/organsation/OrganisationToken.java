@@ -17,10 +17,10 @@ import org.entur.jwt.junit5.AccessToken;
 		encoder = OrganisationAccessTokenEncoder.class
 		)
 public @interface OrganisationToken {
-	
+
 	public String[] resourceAccess() default {};
 	public String resource() default "myResource";
 	public String[] realmAccess() default {};
-	
+
 	public String[] roles() default {};
 }

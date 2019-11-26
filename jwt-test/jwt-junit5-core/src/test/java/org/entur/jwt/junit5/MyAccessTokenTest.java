@@ -16,7 +16,7 @@ public class MyAccessTokenTest {
 	@Test
 	public void testTokenIsValid(@MyAccessToken(myId = 5) String token) throws IOException {
 		DecodedJWT decoded = JWT.decode(token);
-		
+
 		Integer value = decoded.getClaim("https://www.mock.com/organisationID").asInt();
 		assertThat(value).isEqualTo(5);
 

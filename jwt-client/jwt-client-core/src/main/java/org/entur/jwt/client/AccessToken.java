@@ -9,11 +9,11 @@ public class AccessToken implements Serializable {
 	public static AccessToken newInstance(String value, String type, long expires) {
 		return new AccessToken(value, type, expires);
 	}
-	
-    protected final String value;
-    protected final String type;
-    protected final long expires;
-    
+
+	protected final String value;
+	protected final String type;
+	protected final long expires;
+
 	public AccessToken(String value, String type, long expiresAt) {
 		super();
 		this.value = value;
@@ -26,15 +26,15 @@ public class AccessToken implements Serializable {
 	public String getType() {
 		return type;
 	}
-    
+
 	public long getExpires() {
 		return expires;
 	}
-	
-    public boolean isValid(long time) {
-        return time <= expires;
-    }
-    
+
+	public boolean isValid(long time) {
+		return time <= expires;
+	}
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -69,6 +69,6 @@ public class AccessToken implements Serializable {
 		}
 		return true;
 	}
-    
-    
+
+
 }

@@ -125,14 +125,14 @@ public class AccessTokenProviderBuilderTest {
 				.health(false)
 				.preemptiveCacheRefresh(true)
 				.build();
-		
+
 		List<AccessTokenProvider> accessTokenProviders = accessTokenProviders(provider);
 		assertThat(accessTokenProviders).hasSize(2);
 
 		assertThat(accessTokenProviders.get(0)).isInstanceOf(PreemptiveCachedAccessTokenProvider.class);
 		assertThat(accessTokenProviders.get(1)).isInstanceOf(AccessTokenProvider.class);
 	}
-	
+
 	private AccessTokenProviderBuilder builder() {
 		return new AccessTokenProviderBuilder(rootProvider);
 	}

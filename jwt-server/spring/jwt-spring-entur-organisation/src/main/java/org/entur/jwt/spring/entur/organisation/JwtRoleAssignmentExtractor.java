@@ -34,39 +34,39 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public class JwtRoleAssignmentExtractor implements RoleAssignmentExtractor {
 
-    private static final String ATTRIBUTE_NAME_ROLE_ASSIGNMENT = "roles";
-    private static ObjectMapper mapper = new ObjectMapper();
+	private static final String ATTRIBUTE_NAME_ROLE_ASSIGNMENT = "roles";
+	private static ObjectMapper mapper = new ObjectMapper();
 
-    public List<RoleAssignment> getRoleAssignmentsForUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return getRoleAssignmentsForUser(auth);
-    }
+	public List<RoleAssignment> getRoleAssignmentsForUser() {
+		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+		return getRoleAssignmentsForUser(auth);
+	}
 
-    @Override
-    public List<RoleAssignment> getRoleAssignmentsForUser(Authentication auth) {
-        if (auth instanceof JwtAuthenticationToken) {
-        	JwtAuthenticationToken jwt = (JwtAuthenticationToken)auth;
-        	
-        	List<?> claim = jwt.getClaim(ATTRIBUTE_NAME_ROLE_ASSIGNMENT, List.class);
-        	
+	@Override
+	public List<RoleAssignment> getRoleAssignmentsForUser(Authentication auth) {
+		if (auth instanceof JwtAuthenticationToken) {
+			JwtAuthenticationToken jwt = (JwtAuthenticationToken)auth;
+
+			List<?> claim = jwt.getClaim(ATTRIBUTE_NAME_ROLE_ASSIGNMENT, List.class);
+
 			if(claim == null || claim.isEmpty()) {
-                throw new IllegalArgumentException("Unsupported 'roles' claim type.");
+				throw new IllegalArgumentException("Unsupported 'roles' claim type.");
 			}
 
-            return claim.stream().map(JwtRoleAssignmentExtractor::parse).collect(Collectors.toList());
-        } else {
-            throw new AccessDeniedException("Not authenticated with token");
-        }
-    }
+			return claim.stream().map(JwtRoleAssignmentExtractor::parse).collect(Collectors.toList());
+		} else {
+			throw new AccessDeniedException("Not authenticated with token");
+		}
+	}
 
-    private static RoleAssignment parse(Object roleAssignment) {
-        if (roleAssignment instanceof Map) {
-            return mapper.convertValue(roleAssignment, RoleAssignment.class);
-        }
-        try {
-            return mapper.readValue((String) roleAssignment, RoleAssignment.class);
-        } catch (IOException ioE) {
-            throw new IllegalArgumentException("Exception while parsing role assignments from JSON: " + ioE.getMessage(), ioE);
-        }
-    }
+	private static RoleAssignment parse(Object roleAssignment) {
+		if (roleAssignment instanceof Map) {
+			return mapper.convertValue(roleAssignment, RoleAssignment.class);
+		}
+		try {
+			return mapper.readValue((String) roleAssignment, RoleAssignment.class);
+		} catch (IOException ioE) {
+			throw new IllegalArgumentException("Exception while parsing role assignments from JSON: " + ioE.getMessage(), ioE);
+		}
+	}
 }
