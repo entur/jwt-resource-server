@@ -406,6 +406,8 @@
 				<configuration>
 					<sessionId>${project.artifactId}</sessionId>
 					<destFile>${maven.multiModuleProjectDirectory}/target/jacoco.exec</destFile>
+					<outputDirectory>${maven.multiModuleProjectDirectory}/target/report</outputDirectory>
+					<dataFile>${maven.multiModuleProjectDirectory}/target/jacoco.exec</dataFile>
 				</configuration>
 				<executions>
 					<execution>
