@@ -50,7 +50,9 @@ public class PropertiesFileResourceServerConfigurationEnricher extends AbstractP
 		if(output != null) {
 			File file = output.toFile(); // using file because sonarqube says it has better performance
 			if(file.exists()) {			
-				file.delete();
+				if(!file.delete()) {
+					throw new IOException("Unable to delete " + output);
+				}
 			}
 		}
 	}

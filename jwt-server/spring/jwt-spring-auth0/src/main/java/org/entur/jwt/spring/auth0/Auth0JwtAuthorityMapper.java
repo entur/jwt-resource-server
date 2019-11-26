@@ -86,13 +86,13 @@ public class Auth0JwtAuthorityMapper implements JwtAuthorityMapper<DecodedJWT> {
 						List<String> roles = (List<String>)rolesObject;
 
 			        	for(String role : roles) {
-			                authorities.add(new SimpleGrantedAuthority(role));
+			                authorities.add(new SimpleGrantedAuthority(asRole(role)));
 			        	}
 					} else if(rolesObject instanceof String[]) {
 						String[] roles = (String[])rolesObject;
 
 			        	for(String role : roles) {
-			                authorities.add(new SimpleGrantedAuthority(role));
+			                authorities.add(new SimpleGrantedAuthority(asRole(role)));
 			        	}
 					} else {
 						logger.warn("Unable to map roles {} of type {} to an authority; expected List or array", rolesObject, rolesObject.getClass().getName());
@@ -102,14 +102,28 @@ public class Auth0JwtAuthorityMapper implements JwtAuthorityMapper<DecodedJWT> {
 		}
 	}
 
-	private void addScope(DecodedJWT token, List<GrantedAuthority> authorities) {
+	protected String asRole(String role) {
+		if(role.startsWith("ROLE_")) {
+			return role;
+		}
+		return "ROLE_" + role;
+	}
+
+	protected void addScope(DecodedJWT token, List<GrantedAuthority> authorities) {
 		Claim scopeClaim = token.getClaim("scope");
 		if(scopeClaim != null && !(scopeClaim instanceof NullClaim)) {
 			String[] scopes = scopeClaim.asString().split("\\s");
 			for(String scope : scopes) {
-		        authorities.add(new SimpleGrantedAuthority(scope));
+		        authorities.add(new SimpleGrantedAuthority(asScope(scope)));
 			}
 		}
+	}
+
+	protected String asScope(String scope) {
+		if(scope.startsWith("SCOPE_")) {
+			return scope;
+		}
+		return "SCOPE_" + scope;
 	}
 
 	private void addPermissions(DecodedJWT token, List<GrantedAuthority> authorities) {
@@ -117,11 +131,13 @@ public class Auth0JwtAuthorityMapper implements JwtAuthorityMapper<DecodedJWT> {
 		if(permissionClaim != null && !(permissionClaim instanceof NullClaim)) {
 			String[] permissions = permissionClaim.asArray(String.class);
 			for(String permission : permissions) {
-		        authorities.add(new SimpleGrantedAuthority(permission));
+		        authorities.add(new SimpleGrantedAuthority(asPermission(permission)));
 			}
 		}
 	}
 
-
+	protected String asPermission(String permission) {
+		return permission;
+	}
 
 }
