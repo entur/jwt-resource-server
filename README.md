@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/entur/jwt-resource-server.svg?branch=master)](https://travis-ci.org/entur/jwt-resource-server)
+[![Build Status](https://travis-ci.org/entur/jwt-resource-server.svg?branch=master)](https://travis-ci.org/entur/jwt-resource-server)[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=entur_jwt-resource-server&metric=coverage)](https://sonarcloud.io/dashboard?id=entur_jwt-resource-server)[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=entur_jwt-resource-server&metric=alert_status)](https://sonarcloud.io/dashboard?id=entur_jwt-resource-server)
 
 # jwt-resource-server
 
