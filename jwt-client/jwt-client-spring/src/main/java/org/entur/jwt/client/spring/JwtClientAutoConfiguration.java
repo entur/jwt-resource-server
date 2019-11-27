@@ -123,14 +123,12 @@ public class JwtClientAutoConfiguration {
 		URL refreshUrl = credentials.getRefreshURL();
 
 		AccessTokenProvider accessTokenProvider;
-		if(revokeUrl == null && refreshUrl != null) {
-			throw new IllegalStateException("Expected revoke url when refresh url is present");
-		} else if(revokeUrl != null && refreshUrl == null) {
-			throw new IllegalStateException("Expected refresh url when revoke url is present");
-		} else if(revokeUrl != null && refreshUrl != null) {
+		if(revokeUrl != null && refreshUrl != null) {
 			accessTokenProvider = new RestTemplateStatefulUrlAccessTokenProvider(restTemplate, credentials.getIssueURL(), credentials.getParameters(), credentials.getHeaders(), refreshUrl, revokeUrl);
-		} else {
+		} else if(revokeUrl == null && refreshUrl == null) {
 			accessTokenProvider = new RestTemplateUrlAccessTokenProvider(restTemplate, credentials.getIssueURL(), credentials.getParameters(), credentials.getHeaders());
+		} else {
+			throw new IllegalStateException("Expected neither or both refresh url and revoke url present");
 		}
 		
 		AccessTokenProviderBuilder builder = new AccessTokenProviderBuilder(accessTokenProvider);

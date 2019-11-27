@@ -28,10 +28,10 @@ import org.springframework.web.client.RestTemplate;
 
 public class RestTemplateUrlAccessTokenProvider extends AbstractUrlAccessTokenProvider<ResponseEntity<Resource>> {
 
-	protected static StringBuilder printResponseEntityHeadersIfPresent(ResponseEntity<?> c, String[] ... headerNames) {
+	protected static StringBuilder printResponseEntityHeadersIfPresent(ResponseEntity<?> c, String ... headerNames) {
 		StringBuilder builder = new StringBuilder();
 		HttpHeaders headers = c.getHeaders();
-		for(String headerName : headers.keySet()) {
+		for(String headerName : headerNames) {
 			List<String> value = headers.get(headerName);
 			if(value != null) {
 				builder.append(headerName);
