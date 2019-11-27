@@ -60,6 +60,7 @@ public class JwtRoleAssignmentExtractor implements RoleAssignmentExtractor {
 	}
 
 	private static RoleAssignment parse(Object roleAssignment) {
+		// dual value support because of corresponding legacy code
 		if (roleAssignment instanceof Map) {
 			return mapper.convertValue(roleAssignment, RoleAssignment.class);
 		}

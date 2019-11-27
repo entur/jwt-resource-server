@@ -37,6 +37,8 @@ public class OrganisationJwtAuthorityMapperTest {
 				"editStops",
 				"deleteStops"
 				);
+		
+		
 	}
 
 	public DecodedJWT getToken() throws Exception {

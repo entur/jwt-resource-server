@@ -14,13 +14,19 @@ import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
 
 public class OrganisationJwtAuthorityMapper implements JwtAuthorityMapper<DecodedJWT> {
 
 	protected static final Logger logger = LoggerFactory.getLogger(OrganisationJwtAuthorityMapper.class);
 
-	private final ObjectMapper mapper = new ObjectMapper();
+	private final ObjectReader reader;
 
+	public OrganisationJwtAuthorityMapper() {
+		ObjectMapper mapper = new ObjectMapper();
+		this.reader = mapper.readerFor(RoleAssignment.class);
+	}
+	
 	@Override
 	public List<GrantedAuthority> getGrantedAuthorities(DecodedJWT token) throws JwtClientException {
 		List<GrantedAuthority> authorities = new ArrayList<>();
@@ -31,13 +37,12 @@ public class OrganisationJwtAuthorityMapper implements JwtAuthorityMapper<Decode
 		Claim claim = token.getClaim("roles");
 		String[] rolesJson = claim.as(String[].class);
 
-		// json per role
+		// one JSON per role
 		for(String roleJson : rolesJson) {
 			try {
-				JsonNode node = mapper.readTree(roleJson);
+				RoleAssignment roleAssigment = reader.readValue(roleJson);
 
-				JsonNode jsonNode = node.get("r");
-				authorities.add(new SimpleGrantedAuthority(jsonNode.textValue()));
+				authorities.add(new SimpleGrantedAuthority(roleAssigment.getRole()));
 			} catch (Exception e) {
 				throw new JwtClientException(e);
 			}

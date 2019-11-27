@@ -19,8 +19,10 @@ package org.entur.jwt.spring.entur.organisation;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,6 +35,7 @@ import java.util.Map;
  * Short attr names to keep JWT small.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonDeserialize(using = RoleAssignmentDeserializer.class)
 public class RoleAssignment {
 
 	/**
@@ -50,25 +53,24 @@ public class RoleAssignment {
 	 */
 	private String z;
 
-
 	/**
 	 * Map of entity types (Stop place, PlaceOfInterest ... ) mapped against classifiers for the type (tramStop etc), each represented by private code. Optional.
 	 */
 	private Map<String, List<String>> e;
 
-	@JsonIgnore
+	@JsonProperty("r")
 	public String getRole() {
 		return r;
 	}
-	@JsonIgnore
+	@JsonProperty("o")
 	public String getOrganisation() {
 		return o;
 	}
-	@JsonIgnore
+	@JsonProperty("z")
 	public String getAdministrativeZone() {
 		return z;
 	}
-	@JsonIgnore
+	@JsonProperty("e")
 	public Map<String, List<String>> getEntityClassifications() {
 		return e;
 	}
@@ -136,4 +138,6 @@ public class RoleAssignment {
 			throw new IllegalArgumentException(e1);
 		}
 	}
+	
+	
 }
