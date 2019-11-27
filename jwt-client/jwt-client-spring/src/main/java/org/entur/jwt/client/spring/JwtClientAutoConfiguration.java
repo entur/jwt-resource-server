@@ -67,7 +67,7 @@ public class JwtClientAutoConfiguration {
 			restTemplateBuilder = restTemplateBuilder.setConnectTimeout(Duration.of(connectTimeout.longValue(), ChronoUnit.SECONDS));
 		}
 		if(readTimeout != null) {
-			restTemplateBuilder = restTemplateBuilder.setReadTimeout(Duration.of(connectTimeout.longValue(), ChronoUnit.SECONDS));
+			restTemplateBuilder = restTemplateBuilder.setReadTimeout(Duration.of(readTimeout.longValue(), ChronoUnit.SECONDS));
 		}
 		
 		return restTemplateBuilder.build();
