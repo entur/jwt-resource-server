@@ -1,6 +1,9 @@
 package org.entur.jwt.client.spring;
 
 
+import java.net.URL;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.concurrent.TimeUnit;
 
 import org.entur.jwt.client.AccessTokenProvider;
@@ -14,23 +17,67 @@ import org.entur.jwt.client.properties.JwtClientCache;
 import org.entur.jwt.client.properties.KeycloakJwtClientProperties;
 import org.entur.jwt.client.properties.PreemptiveRefresh;
 import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestTemplate;
 
 @Configuration
 @EnableConfigurationProperties(SpringJwtClientProperties.class)
 public class JwtClientAutoConfiguration {
 
 	@Bean
+	@Qualifier("jwtRestTemplate")
+	public RestTemplate jwtRestTemplate(RestTemplateBuilder restTemplateBuilder, SpringJwtClientProperties properties) {
+		
+		Integer connectTimeout = properties.getConnectTimeout();
+		Integer readTimeout = properties.getReadTimeout();
+
+		// get connect timeout from cache refresh, if none is specified
+		if(connectTimeout == null || readTimeout == null) {
+			Integer timeout = null;
+			AbstractJwtClientProperties[] clients = new AbstractJwtClientProperties[] {properties.getAuth0(), properties.getKeycloak()};
+			for(AbstractJwtClientProperties client : clients) {
+				if(client.isEnabled()) {
+					JwtClientCache cache = client.getCache();
+					if(cache != null && cache.isEnabled()) {
+						if(timeout == null) {
+							timeout = cache.getRefreshTimeout();
+						} else {
+							timeout = Math.min(timeout, cache.getRefreshTimeout());
+						}
+					}
+				}
+			}
+			if(connectTimeout == null) {
+				connectTimeout = timeout;
+			}
+			if(readTimeout == null) {
+				readTimeout = timeout;
+			}
+		}
+
+		if(connectTimeout != null) {
+			restTemplateBuilder = restTemplateBuilder.setConnectTimeout(Duration.of(connectTimeout.longValue(), ChronoUnit.SECONDS));
+		}
+		if(readTimeout != null) {
+			restTemplateBuilder = restTemplateBuilder.setReadTimeout(Duration.of(connectTimeout.longValue(), ChronoUnit.SECONDS));
+		}
+		
+		return restTemplateBuilder.build();
+	}
+
+	@Bean
 	@ConditionalOnMissingBean(AccessTokenProvider.class)
 	@ConditionalOnExpression("!'${entur.jwt.client.auth0.client-id:}'.trim().isEmpty()")
 	@ConditionalOnProperty(value="entur.jwt.client.auth0.enabled", matchIfMissing = true, havingValue="true")
-	public AccessTokenProvider auth0(SpringJwtClientProperties root) {
+	public AccessTokenProvider auth0(SpringJwtClientProperties root, @Qualifier("jwtRestTemplate") RestTemplate restTemplate) {
 
 		Auth0JwtClientProperties properties = root.getAuth0();
 
@@ -42,14 +89,14 @@ public class JwtClientAutoConfiguration {
 				.withAudience(properties.getAudience())
 				.build();
 
-		return toAccessTokenProvider(properties, credentials, root.getHealthIndicator().isEnabled());
+		return toAccessTokenProvider(restTemplate, properties, credentials, root.getHealthIndicator().isEnabled());
 	}
 
 	@Bean
 	@ConditionalOnMissingBean(AccessTokenProvider.class)
 	@ConditionalOnExpression("!'${entur.jwt.client.keycloak.client-id:}'.trim().isEmpty()")
 	@ConditionalOnProperty(value="entur.jwt.client.keycloak.enabled", matchIfMissing = true, havingValue="true")
-	public AccessTokenProvider keycloak(SpringJwtClientProperties root) {
+	public AccessTokenProvider keycloak(SpringJwtClientProperties root, @Qualifier("jwtRestTemplate") RestTemplate restTemplate) {
 
 		KeycloakJwtClientProperties properties = root.getKeycloak();
 
@@ -62,27 +109,36 @@ public class JwtClientAutoConfiguration {
 				.withRealm(properties.getRealm())
 				.build();
 
-		return toAccessTokenProvider(properties, credentials, root.getHealthIndicator().isEnabled());
+		return toAccessTokenProvider(restTemplate, properties, credentials, root.getHealthIndicator().isEnabled());
 
 	}
 
-	private AccessTokenProvider toAccessTokenProvider(AbstractJwtClientProperties properties,
+	private AccessTokenProvider toAccessTokenProvider(RestTemplate restTemplate, AbstractJwtClientProperties properties,
 			ClientCredentials credentials, boolean health) {
-		Integer connectTimeout = properties.getConnectTimeout();
-		Integer readTimeout = properties.getReadTimeout();
 
 		// get connect timeout from cache refresh, if none is specified
 		JwtClientCache cache = properties.getCache();
-		if(connectTimeout == null && cache != null && cache.isEnabled()) {
-			connectTimeout = cache.getRefreshTimeOut();
-		}
 
-		AccessTokenProviderBuilder builder = AccessTokenProviderBuilder.newBuilder(credentials, connectTimeout, readTimeout);
+		URL revokeUrl = credentials.getRevokeURL();
+		URL refreshUrl = credentials.getRefreshURL();
+
+		AccessTokenProvider accessTokenProvider;
+		if(revokeUrl == null && refreshUrl != null) {
+			throw new IllegalStateException("Expected revoke url when refresh url is present");
+		} else if(revokeUrl != null && refreshUrl == null) {
+			throw new IllegalStateException("Expected refresh url when revoke url is present");
+		} else if(revokeUrl != null && refreshUrl != null) {
+			accessTokenProvider = new RestTemplateStatefulUrlAccessTokenProvider(restTemplate, credentials.getIssueURL(), credentials.getParameters(), credentials.getHeaders(), refreshUrl, revokeUrl);
+		} else {
+			accessTokenProvider = new RestTemplateUrlAccessTokenProvider(restTemplate, credentials.getIssueURL(), credentials.getParameters(), credentials.getHeaders());
+		}
+		
+		AccessTokenProviderBuilder builder = new AccessTokenProviderBuilder(accessTokenProvider);
 
 		builder.retrying(properties.isRetrying());	
 
 		if(cache != null && cache.isEnabled()) {
-			builder.cached(cache.getMinimumTimeToLive(), TimeUnit.SECONDS, cache.getRefreshTimeOut(), TimeUnit.SECONDS);
+			builder.cached(cache.getMinimumTimeToLive(), TimeUnit.SECONDS, cache.getRefreshTimeout(), TimeUnit.SECONDS);
 
 			PreemptiveRefresh preemptiveRefresh = cache.getPreemptiveRefresh();
 			if(preemptiveRefresh != null && preemptiveRefresh.isEnabled()) {

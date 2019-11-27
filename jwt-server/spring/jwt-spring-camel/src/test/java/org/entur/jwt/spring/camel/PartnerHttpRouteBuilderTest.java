@@ -17,8 +17,6 @@
 package org.entur.jwt.spring.camel;
 
 import static io.restassured.RestAssured.given;
-import static io.restassured.RestAssured.when;
-
 import java.net.URI;
 
 import org.apache.camel.model.ModelCamelContext;

@@ -67,6 +67,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
 	 * Construct new instance.
 	 * 
 	 * @param provider Access-token provider
+	 * @param minimumTimeToLive minimum time to live (left when returned by {@linkplain #getAccessToken(boolean)}).
 	 * @param refreshTimeout cache refresh timeout unit (in milliseconds)
 	 * @param preemptiveRefresh preemptive refresh limit (in milliseconds). This parameter is relative to time to live, i.e. "15000 milliseconds before token is invalid, refresh cached value". 
 	 */
@@ -80,6 +81,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
 	 * Construct new instance, use a custom executor service.
 	 * 
 	 * @param provider Access-token provider
+	 * @param minimumTimeToLive minimum time to live (left when returned by {@linkplain #getAccessToken(boolean)}).
 	 * @param refreshTimeout cache refresh timeout unit (in milliseconds)
 	 * @param preemptiveRefresh preemptive timeout (in milliseconds). This parameter is relative to time to live, i.e. "15000 milliseconds before timeout, refresh time cached value".
 	 * @param executorService executor service 

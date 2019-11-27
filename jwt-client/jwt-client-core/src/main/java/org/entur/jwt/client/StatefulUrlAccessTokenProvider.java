@@ -2,10 +2,14 @@ package org.entur.jwt.client;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.Map;
+import java.util.Map.Entry;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,130 +18,59 @@ import org.slf4j.LoggerFactory;
  *
  */
 
-public class StatefulUrlAccessTokenProvider extends UrlAccessTokenProvider {
+public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTokenProvider<HttpURLConnection> {
 
 	protected static final Logger logger = LoggerFactory.getLogger(StatefulUrlAccessTokenProvider.class);
 
-	protected static final String KEY_REFRESH_TOKEN = "refresh_token";
-
-	protected final URL revokeUrl;
-	protected final URL refreshUrl;
-
-	protected volatile RefreshToken refreshToken;
+	protected final Integer connectTimeout;
+	protected final Integer readTimeout;
 
 	public StatefulUrlAccessTokenProvider(URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers,
 			Integer connectTimeout, Integer readTimeout, URL refreshUrl, URL revokeUrl) {
-		super(issueUrl, parameters, headers, connectTimeout, readTimeout);
-		this.refreshUrl = refreshUrl;
-		this.revokeUrl = revokeUrl;
+		super(issueUrl, parameters, headers, refreshUrl, revokeUrl);
+		
+		checkArgument(connectTimeout == null || connectTimeout >= 0, "Invalid connect timeout value '" + connectTimeout + "'. Must be a non-negative integer.");
+		checkArgument(readTimeout == null || readTimeout >= 0, "Invalid read timeout value '" + readTimeout + "'. Must be a non-negative integer.");
+
+		this.connectTimeout = connectTimeout;
+		this.readTimeout = readTimeout;
 	}
 
 	@Override
-	public void close() {
-		close(System.currentTimeMillis());
-	}
-
-	protected void close(long time) {
-		RefreshToken threadSafeRefreshToken = this.refreshToken; // defensive copy
-		if(threadSafeRefreshToken != null && threadSafeRefreshToken.isValid(time)) {
-			this.refreshToken = null;
-
-			StringBuilder builder = new StringBuilder();
-
-			builder.append(KEY_REFRESH_TOKEN);
-			builder.append('=');
-			builder.append(encode(threadSafeRefreshToken.getValue()));
-
-			byte[] revokeBody = builder.toString().getBytes(StandardCharsets.UTF_8);
-
-			try {
-				HttpURLConnection request = request(revokeUrl, revokeBody);
-				if(request.getResponseCode() != 200) {
-					logger.info("Unexpected response code {} when revoking refresh token", request.getResponseCode());
-				}
-			} catch(IOException e) {
-				logger.warn("Unable to revoke token", e);
-			}
-		}
-	}
-
-	protected ClientCredentialsResponse getToken(RefreshToken response) throws AccessTokenException {
-		StringBuilder builder = new StringBuilder();
-
-		builder.append(KEY_GRANT_TYPE);
-		builder.append('=');
-		builder.append(KEY_REFRESH_TOKEN);
-		builder.append('&');
-		builder.append(KEY_REFRESH_TOKEN);
-		builder.append('=');
-		builder.append(encode(response.getValue()));
-
-		byte[] refreshBody = builder.toString().getBytes(StandardCharsets.UTF_8);
-
-		try {
-			HttpURLConnection request = request(refreshUrl, refreshBody);
-
-			int responseCode = request.getResponseCode();
-			if(responseCode != 200) {
-				logger.info("Got unexpected response code {} when trying to refresh token at {}", responseCode, refreshUrl);
-				if(responseCode == 503) { // service unavailable
-					throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(request, "Retry-After"));
-				} else if(responseCode == 429) { // too many calls
-					// see for example https://auth0.com/docs/policies/rate-limits
-					throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests. " + printHeadersIfPresent(request, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
-				}
-
-				throw new RefreshTokenException("Authorization server responded with HTTP unexpected response code " + request.getResponseCode());
-			}
-			try (InputStream inputStream = request.getInputStream()) {
-				return reader.readValue(inputStream);
-			}
-		} catch(IOException e) {
-			throw new AccessTokenUnavailableException(e);
-		}
+	protected int getResponseStatusCode(HttpURLConnection response) throws IOException {
+		return response.getResponseCode();
 	}
 
 	@Override
-	public AccessToken getAccessToken(boolean forceRefresh) throws AccessTokenException {
-		return getAccessToken(System.currentTimeMillis());
+	protected InputStream getResponseContent(HttpURLConnection response) throws IOException {
+		return response.getInputStream();
 	}
 
-	public AccessToken getAccessToken(long time) throws AccessTokenException {
-		// note: force refresh is not relevant for whether to use refresh-token or not
-		ClientCredentialsResponse token;
+	protected StringBuilder printHeadersIfPresent(HttpURLConnection c, String ... headerNames) {
+		return UrlAccessTokenProvider.printHttpURLConnectionHeadersIfPresent(c, headerNames);
+	}
+	
+	protected HttpURLConnection request(URL url, byte[] body, Map<String, Object> headers) throws IOException {
+		final HttpURLConnection c = (HttpURLConnection)url.openConnection();
+		if (connectTimeout != null) {
+			c.setConnectTimeout(connectTimeout);
+		}
+		if (readTimeout != null) {
+			c.setReadTimeout(readTimeout);
+		}
+		c.setRequestProperty("Accept", "application/json");
+		c.setRequestProperty("Content-Type", CONTENT_TYPE);
 
-		RefreshToken threadSafeRefreshToken = this.refreshToken; // defensive copy
-		if(threadSafeRefreshToken != null && threadSafeRefreshToken.isValid(time)) {
-			try {
-				token = getToken(threadSafeRefreshToken);
-			} catch(RefreshTokenException e) {
-				// assume current session has been revoked or expired
-				// open a new session and forget about the old one
-				token = getToken();
-			}
-		} else {
-			token = getToken();
+		for (Entry<String, Object> entry : headers.entrySet()) {
+			c.setRequestProperty(entry.getKey(), entry.getValue().toString());
 		}
 
-		if(token.getRefreshToken() != null) {
-			long expires;
+		c.setDoOutput(true);
 
-			// refresh token expiry is a non-standard claim
-			// so in other words it will not always be present
-			if(token.getRefreshExpiresIn() != null) {
-				expires = time + token.getRefreshExpiresIn() * 1000;
-			} else {
-				expires = -1L;
-			}
-			this.refreshToken = new RefreshToken(token.getRefreshToken(), expires);
-		} else {
-			this.refreshToken = null;
+		try (OutputStream os = c.getOutputStream()) {
+			os.write(body);
 		}
 
-		return new AccessToken(token.getAccessToken(), token.getTokenType(), time + token.getExpiresIn() * 1000);
-	}
-
-	public RefreshToken getRefreshToken() {
-		return refreshToken;
-	}
+		return c;
+	}	
 }

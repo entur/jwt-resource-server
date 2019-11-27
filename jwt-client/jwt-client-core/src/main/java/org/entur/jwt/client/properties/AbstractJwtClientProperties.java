@@ -13,9 +13,6 @@ public abstract class AbstractJwtClientProperties {
 	protected int port = -1;
 	protected String host;
 
-	protected Integer connectTimeout;
-	protected Integer readTimeout;
-
 	protected boolean retrying = true;
 
 	protected JwtClientCache cache = new JwtClientCache();
@@ -83,21 +80,6 @@ public abstract class AbstractJwtClientProperties {
 		this.scope = scope;
 	}
 
-	public Integer getConnectTimeout() {
-		return connectTimeout;
-	}
-
-	public void setConnectTimeout(Integer connectTimeout) {
-		this.connectTimeout = connectTimeout;
-	}
-
-	public Integer getReadTimeout() {
-		return readTimeout;
-	}
-
-	public void setReadTimeout(Integer readTimeout) {
-		this.readTimeout = readTimeout;
-	}
 
 	public void setRetrying(boolean retrying) {
 		this.retrying = retrying;

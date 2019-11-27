@@ -8,6 +8,9 @@ public class JwtClientProperties {
 
 	protected KeycloakJwtClientProperties keycloak = new KeycloakJwtClientProperties();
 
+	protected Integer connectTimeout;
+	protected Integer readTimeout;
+
 	public void setHealthIndicator(JwtHealthIndicator healthIndicator) {
 		this.healthIndicator = healthIndicator;
 	}
@@ -32,4 +35,19 @@ public class JwtClientProperties {
 		this.keycloak = keycloak;
 	}
 
+	public Integer getConnectTimeout() {
+		return connectTimeout;
+	}
+
+	public void setConnectTimeout(Integer connectTimeout) {
+		this.connectTimeout = connectTimeout;
+	}
+
+	public Integer getReadTimeout() {
+		return readTimeout;
+	}
+
+	public void setReadTimeout(Integer readTimeout) {
+		this.readTimeout = readTimeout;
+	}	
 }

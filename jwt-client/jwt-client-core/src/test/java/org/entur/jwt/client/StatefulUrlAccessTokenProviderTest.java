@@ -23,7 +23,7 @@ public class StatefulUrlAccessTokenProviderTest extends AbstractUrlAccessTokenPr
 
 	@Test
 	public void shouldFailHealthCheck() throws Exception {
-		try (UrlAccessTokenProvider urlProvider = new StatefulUrlAccessTokenProvider(new URL("https://localhost"), Collections.emptyMap(), Collections.emptyMap(), null, null, mockUrl, mockUrl)) {
+		try (StatefulUrlAccessTokenProvider urlProvider = new StatefulUrlAccessTokenProvider(new URL("https://localhost"), Collections.emptyMap(), Collections.emptyMap(), null, null, mockUrl, mockUrl)) {
 
 			assertThrows(AccessTokenHealthNotSupportedException.class,
 					()->{

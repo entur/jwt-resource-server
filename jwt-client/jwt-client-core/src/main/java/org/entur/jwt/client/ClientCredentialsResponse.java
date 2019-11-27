@@ -5,14 +5,14 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Class that contains the Tokens obtained after a call to the {@link com.auth0.client.auth.AuthAPI} methods.
+ * Class that contains the Tokens obtained after a call to the authorization server.
  * 
  */
 
 @SuppressWarnings("unused")
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-class ClientCredentialsResponse {
+public class ClientCredentialsResponse {
 
 	@JsonProperty("access_token")
 	private String accessToken;
