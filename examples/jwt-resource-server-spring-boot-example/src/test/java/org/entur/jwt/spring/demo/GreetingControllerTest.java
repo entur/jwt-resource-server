@@ -21,7 +21,6 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
  */
 
 @AuthorizationServer
-@ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 public class GreetingControllerTest {

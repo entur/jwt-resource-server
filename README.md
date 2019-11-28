@@ -1,16 +1,38 @@
+
+
+
 [![Build Status](https://travis-ci.org/entur/jwt-resource-server.svg?branch=master)](https://travis-ci.org/entur/jwt-resource-server) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=entur_jwt-resource-server&metric=coverage)](https://sonarcloud.io/dashboard?id=entur_jwt-resource-server) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=entur_jwt-resource-server&metric=alert_status)](https://sonarcloud.io/dashboard?id=entur_jwt-resource-server)
 
 # jwt-resource-server
 
 > work in progress
 
-Tools for synchronous (servlet-based) OpenID resource servers relying on use of JSON Web Tokens (JWT) issued by Authorization Servers like Auth0 and Keycloak.
+Tools for synchronous (servlet-based) __OpenID resource servers__ relying on use of [Access Tokens]([https://auth0.com/docs/tokens/access-tokens](https://auth0.com/docs/tokens/access-tokens)) for authorization. These come in the form of JSON Web Tokens (JWT) issued by Authorization Servers like Auth0 and Keycloak.
 
+## Primer
+Technically, this library deals with HTTP requests using the __Authorization__ header. Example HTTP request:
+
+``` 
+GET /some/restricted/service/1
+Accept: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsI.eyJzdWIIjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpM
+```
+where the __Base64-encoded value__ is the token itself. If the token was valid, the server could process the request and respond:
+
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 1024
+```
+
+Alternatively, the server might return __HTTP 401 Unauthorized__ if the token was not accepted, or __HTTP 403 Forbidden__ if the token did not contain the enough permissions. 
+
+## Overview
 Users of this library will benefit from:
 
- * Robust multi-tenant [access-token validation](jwt-server)
- * Robust [access-token client](jwt-client)
- * Flexible [JUnit 5 test-support](jwt-test)
+ * Robust multi-tenant JWT [access-token validation](jwt-server)
+ * Robust JWT [access-token client](jwt-client)
+ * Flexible JWT [JUnit 5 test-support](jwt-test)
  * [Spring Boot support](jwt-server) for the above
 
 In order to keep complexity (and risk) down, the library wraps existing third party libraries for low-level parsing, signature validation and authorization enforcement. Notable features:
@@ -22,15 +44,18 @@ In order to keep complexity (and risk) down, the library wraps existing third pa
 
 Async is not yet supported.
 
-## Modules
+## Project structure
 
- * [jwt-server] - Resource-server JSON Web Token validation, including Spring Boot support.
- * [jwt-client] - A client which makes machine-to-machine JSON Web Tokens issued by the Authorization Server *'almost always'* available to resource server consumers in such a way that tokens can be shared between threads.
- * [jwt-test] - Unit test support with JUnit 5.
+ * [jwt-server] - for handling incoming service calls (i.e. in your backend)
+ * [jwt-client] - for making outgoing service calls (i.e. support for obtaining a token first)
+ * [jwt-test] - JUnit 5 test support.
+ * [examples] - Example projects.
+
+See documentation contained in each folder to get started. Or skip right to the [examples](examples). 
 
 # License
 [European Union Public Licence v1.2](https://eupl.eu/).
- 
+
 [jwk]:                    jwt-server/jwk
 [jwt-verifier]:           jwt-server/jwk-verifier
 [jwt-server]:             jwt-server
