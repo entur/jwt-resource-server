@@ -17,7 +17,7 @@ GET /some/restricted/service/1
 Accept: application/json
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsI.eyJzdWIIjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpM
 ```
-where the __Base64-encoded value__ is the token itself. If the token was valid, the server could process the request and respond:
+where the __Base64-encoded value__ is the token itself. For a valid token, the server could process the request and respond:
 
 ```
 HTTP/1.1 200 OK
@@ -62,4 +62,5 @@ See documentation contained in each folder to get started. Or skip right to the 
 [jwt-client]:             jwt-client
 [jwt-test]:               jwt-test
 [java-jwt]:               https://github.com/auth0/java-jwt
+[examples]:               examples
 
