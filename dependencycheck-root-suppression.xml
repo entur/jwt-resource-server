@@ -5,4 +5,8 @@
 		<!-- spring security -->
 		<cve>CVE-2018-1258</cve>
 	</suppress>
+	<suppress>
+		<!-- spring security -->
+		<cve>CVE-2019-3795</cve>
+	</suppress>
 </suppressions>
