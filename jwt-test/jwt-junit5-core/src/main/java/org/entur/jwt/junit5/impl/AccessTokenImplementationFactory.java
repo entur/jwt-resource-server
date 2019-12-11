@@ -8,27 +8,27 @@ import org.junit.jupiter.api.extension.ParameterContext;
 
 public class AccessTokenImplementationFactory {
 
-	private AuthorizationServerImplementation server;
+    private AuthorizationServerImplementation server;
 
-	public AccessTokenImplementationFactory(AuthorizationServerImplementation server) {
-		super();
-		this.server = server;
-	}
+    public AccessTokenImplementationFactory(AuthorizationServerImplementation server) {
+        super();
+        this.server = server;
+    }
 
-	public String create(AccessToken token, ParameterContext parameterContext, ExtensionContext extensionContext, ResourceServerConfiguration resolver) {
-		AccessTokenEncoder encoder = getAccessTokenEncoder(token);
+    public String create(AccessToken token, ParameterContext parameterContext, ExtensionContext extensionContext, ResourceServerConfiguration resolver) {
+        AccessTokenEncoder encoder = getAccessTokenEncoder(token);
 
-		return encoder.encode(parameterContext, extensionContext, server.getAnnotation(), server.getEncoder(), resolver);
-	}
+        return encoder.encode(parameterContext, extensionContext, server.getAnnotation(), server.getEncoder(), resolver);
+    }
 
-	@SuppressWarnings("unchecked")
-	protected <T extends AccessTokenEncoder> T getAccessTokenEncoder(AccessToken token) {
-		Class<T> encoder = (Class<T>) token.encoder();
-		try {
-			return encoder.getDeclaredConstructor().newInstance();
-		} catch (Exception e) {
-			throw new IllegalArgumentException("Unable to initialize encoder type " + encoder.getClass().getName(), e);
-		}
-	}
+    @SuppressWarnings("unchecked")
+    protected <T extends AccessTokenEncoder> T getAccessTokenEncoder(AccessToken token) {
+        Class<T> encoder = (Class<T>) token.encoder();
+        try {
+            return encoder.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Unable to initialize encoder type " + encoder.getClass().getName(), e);
+        }
+    }
 
 }

@@ -11,24 +11,24 @@ import com.fasterxml.jackson.databind.ObjectReader;
 
 public class JwkReaderImpl implements JwksReader<JwkImpl> {
 
-	private final ObjectReader reader;
+    private final ObjectReader reader;
 
-	public JwkReaderImpl() {
-		this.reader = new ObjectMapper().readerFor(Map.class);
-	}
+    public JwkReaderImpl() {
+        this.reader = new ObjectMapper().readerFor(Map.class);
+    }
 
-	@Override
-	public List<JwkImpl> readJwks(InputStream inputStream) throws IOException, InvalidSigningKeysException {
-		@SuppressWarnings("unchecked")
-		Map<String, Object> value = (Map<String, Object>)reader.readValue(inputStream);
-		@SuppressWarnings("unchecked")
-		final List<Map<String, Object>> keys = (List<Map<String, Object>>)value.get("keys");
+    @Override
+    public List<JwkImpl> readJwks(InputStream inputStream) throws IOException, InvalidSigningKeysException {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> value = (Map<String, Object>) reader.readValue(inputStream);
+        @SuppressWarnings("unchecked")
+        final List<Map<String, Object>> keys = (List<Map<String, Object>>) value.get("keys");
 
-		List<JwkImpl> jwks = new ArrayList<>();
-		for (Map<String, Object> values : keys) {
-			jwks.add(JwkImpl.fromValues(values));
-		}
-		return jwks;
-	}
+        List<JwkImpl> jwks = new ArrayList<>();
+        for (Map<String, Object> values : keys) {
+            jwks.add(JwkImpl.fromValues(values));
+        }
+        return jwks;
+    }
 
 }

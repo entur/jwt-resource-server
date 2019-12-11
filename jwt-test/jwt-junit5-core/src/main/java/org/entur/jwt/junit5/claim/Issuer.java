@@ -7,10 +7,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.PARAMETER, ElementType.TYPE})
+@Target({ ElementType.PARAMETER, ElementType.TYPE })
 @Inherited
 public @interface Issuer {
 
-	public String value();
+    public String value();
 
 }

@@ -13,18 +13,19 @@ import java.lang.annotation.Target;
  */
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.PARAMETER, ElementType.TYPE})
+@Target({ ElementType.PARAMETER, ElementType.TYPE })
 @Repeatable(IntegerClaim.List.class)
 @Inherited
 public @interface IntegerClaim {
 
-	public String name();
-	public long value();
+    public String name();
 
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target({ElementType.PARAMETER})
-	@Inherited
-	@interface List {
-		IntegerClaim[] value();
-	}
+    public long value();
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ ElementType.PARAMETER })
+    @Inherited
+    @interface List {
+        IntegerClaim[] value();
+    }
 }

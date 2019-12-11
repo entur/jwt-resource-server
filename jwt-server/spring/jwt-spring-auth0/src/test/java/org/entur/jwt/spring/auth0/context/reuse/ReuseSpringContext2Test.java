@@ -21,27 +21,27 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 
 @MyAuthorizationServer
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@TestPropertySource(locations = {"/application-with-tenants.properties"})
+@TestPropertySource(locations = { "/application-with-tenants.properties" })
 public class ReuseSpringContext2Test {
 
-	@Autowired
-	private JwtVerifier<DecodedJWT> jwtVerifier;
+    @Autowired
+    private JwtVerifier<DecodedJWT> jwtVerifier;
 
-	@Test
-	public void testTokenIsValid1(@MyAccessToken(myId = 5) String token) throws Exception  {
-		System.out.println("Run " + getClass().getName());
+    @Test
+    public void testTokenIsValid1(@MyAccessToken(myId = 5) String token) throws Exception {
+        System.out.println("Run " + getClass().getName());
 
-		DecodedJWT verified = jwtVerifier.verify(token);
+        DecodedJWT verified = jwtVerifier.verify(token);
 
-		assertNotNull(verified);
-	}
+        assertNotNull(verified);
+    }
 
-	@Test
-	public void testTokenIsValid2(@MyAccessToken(myId = 5) String token) throws Exception  {
-		System.out.println("Run " + getClass().getName());
+    @Test
+    public void testTokenIsValid2(@MyAccessToken(myId = 5) String token) throws Exception {
+        System.out.println("Run " + getClass().getName());
 
-		DecodedJWT verified = jwtVerifier.verify(token);
+        DecodedJWT verified = jwtVerifier.verify(token);
 
-		assertNotNull(verified);
-	}
+        assertNotNull(verified);
+    }
 }

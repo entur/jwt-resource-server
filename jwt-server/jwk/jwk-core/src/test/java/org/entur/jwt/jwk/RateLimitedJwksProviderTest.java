@@ -14,37 +14,36 @@ import io.github.bucket4j.Bucket;
 
 public class RateLimitedJwksProviderTest extends AbstractDelegateProviderTest {
 
-	private RateLimitedJwksProvider<JwkImpl> provider;
+    private RateLimitedJwksProvider<JwkImpl> provider;
 
-	private Bucket bucket;
+    private Bucket bucket;
 
-	@BeforeEach
-	public void setUp() throws Exception {
-		super.setUp();
-		bucket = mock(Bucket.class);
-		provider = new RateLimitedJwksProvider<>(delegate, bucket);
-	}
+    @BeforeEach
+    public void setUp() throws Exception {
+        super.setUp();
+        bucket = mock(Bucket.class);
+        provider = new RateLimitedJwksProvider<>(delegate, bucket);
+    }
 
-	@Test
-	public void shouldFailToGetWhenBucketIsEmpty() throws Exception {
-		when(bucket.tryConsume(1)).thenReturn(false);
-		assertThrows(RateLimitReachedException.class,
-				()->{
-					provider.getJwks(false);
-				} );
-	}
+    @Test
+    public void shouldFailToGetWhenBucketIsEmpty() throws Exception {
+        when(bucket.tryConsume(1)).thenReturn(false);
+        assertThrows(RateLimitReachedException.class, () -> {
+            provider.getJwks(false);
+        });
+    }
 
-	@Test
-	public void shouldGetWhenBucketHasTokensAvailable() throws Exception {
-		when(bucket.tryConsume(1)).thenReturn(true);
-		when(delegate.getJwks(false)).thenReturn(jwks);
-		assertThat(provider.getJwks(false), equalTo(jwks));
-		verify(delegate).getJwks(false);
-	}
+    @Test
+    public void shouldGetWhenBucketHasTokensAvailable() throws Exception {
+        when(bucket.tryConsume(1)).thenReturn(true);
+        when(delegate.getJwks(false)).thenReturn(jwks);
+        assertThat(provider.getJwks(false), equalTo(jwks));
+        verify(delegate).getJwks(false);
+    }
 
-	@Test
-	public void shouldGetBaseProvider() throws Exception {
-		assertThat(provider.getProvider(), equalTo(delegate));
-	}
+    @Test
+    public void shouldGetBaseProvider() throws Exception {
+        assertThat(provider.getProvider(), equalTo(delegate));
+    }
 
 }

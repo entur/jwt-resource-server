@@ -27,92 +27,34 @@ public class GreetingControllerTest {
 
     @LocalServerPort
     private int port;
- 
-    @Test 
+
+    @Test
     public void testUnprotectedEndpoint() {
-        given()
-	        .port(port)
-	        .log().all()
-	    .when()
-	        .get("/unprotected")
-	    .then()
-	        .log().all()
-	        .assertThat()
-	        .statusCode(HttpStatus.OK.value());
-    }    
+        given().port(port).log().all().when().get("/unprotected").then().log().all().assertThat().statusCode(HttpStatus.OK.value());
+    }
 
-    @Test 
+    @Test
     public void testProtectedEndpoint(@AccessToken(audience = "https://my.audience") String token) {
-        given()
-	        .port(port)
-	        .log().all()
-	    .when()
-	    	.header("Authorization", token)
-	        .get("/protected")
-	    .then()
-	        .log().all()
-	        .assertThat()
-	        .statusCode(HttpStatus.OK.value());
+        given().port(port).log().all().when().header("Authorization", token).get("/protected").then().log().all().assertThat().statusCode(HttpStatus.OK.value());
     }
 
-    @Test 
+    @Test
     public void testProtectedEndpointWithArgument(@AccessToken(audience = "https://my.audience") String token) {
-        given()
-	        .port(port)
-	        .log().all()
-	    .when()
-	    	.header("Authorization", token)
-	        .get("/protected/withArgument")
-	    .then()
-	        .log().all()
-	        .assertThat()
-	        .statusCode(HttpStatus.OK.value());
+        given().port(port).log().all().when().header("Authorization", token).get("/protected/withArgument").then().log().all().assertThat().statusCode(HttpStatus.OK.value());
     }
 
-    @Test 
-    public void testProtectedEndpointWithPermission(
-    		@AccessToken(audience = "https://my.audience") 
-    		@StringArrayClaim(name = "permissions", value = {"configure"})
-    		String token) {
-        given()
-	        .port(port)
-	        .log().all()
-	    .when()
-	    	.header("Authorization", token)
-	        .get("/protected/withPermission")
-	    .then()
-	        .log().all()
-	        .assertThat()
-	        .statusCode(HttpStatus.OK.value());
+    @Test
+    public void testProtectedEndpointWithPermission(@AccessToken(audience = "https://my.audience") @StringArrayClaim(name = "permissions", value = { "configure" }) String token) {
+        given().port(port).log().all().when().header("Authorization", token).get("/protected/withPermission").then().log().all().assertThat().statusCode(HttpStatus.OK.value());
     }
-	
-    @Test 
+
+    @Test
     public void testProtectedEndpointWithoutToken() {
-        given()
-	        .port(port)
-	        .log().all()
-	    .when()
-	        .get("/protected")
-	    .then()
-	        .log().all()
-	        .assertThat()
-	        .statusCode(HttpStatus.FORBIDDEN.value());
+        given().port(port).log().all().when().get("/protected").then().log().all().assertThat().statusCode(HttpStatus.FORBIDDEN.value());
     }
-    
-    @Test 
-    public void testProtectedEndpointWithIncorrectPermission(
-    		@AccessToken(audience = "https://my.audience") 
-    		@StringArrayClaim(name = "permissions", value = {"myPermission"})
-    		String token) {
-        given()
-	        .port(port)
-	        .log().all()
-	    .when()
-	    	.header("Authorization", token)
-	        .get("/protected/withPermission")
-	    .then()
-	        .log().all()
-	        .assertThat()
-	        .statusCode(HttpStatus.FORBIDDEN.value());
-    }    
+
+    @Test
+    public void testProtectedEndpointWithIncorrectPermission(@AccessToken(audience = "https://my.audience") @StringArrayClaim(name = "permissions", value = { "myPermission" }) String token) {
+        given().port(port).log().all().when().header("Authorization", token).get("/protected/withPermission").then().log().all().assertThat().statusCode(HttpStatus.FORBIDDEN.value());
+    }
 }

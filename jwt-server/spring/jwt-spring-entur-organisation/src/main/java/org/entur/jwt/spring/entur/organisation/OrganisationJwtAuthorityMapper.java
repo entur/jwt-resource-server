@@ -18,39 +18,37 @@ import com.fasterxml.jackson.databind.ObjectReader;
 
 public class OrganisationJwtAuthorityMapper implements JwtAuthorityMapper<DecodedJWT> {
 
-	protected static final Logger logger = LoggerFactory.getLogger(OrganisationJwtAuthorityMapper.class);
+    protected static final Logger logger = LoggerFactory.getLogger(OrganisationJwtAuthorityMapper.class);
 
-	private final ObjectReader reader;
+    private final ObjectReader reader;
 
-	public OrganisationJwtAuthorityMapper() {
-		ObjectMapper mapper = new ObjectMapper();
-		this.reader = mapper.readerFor(RoleAssignment.class);
-	}
-	
-	@Override
-	public List<GrantedAuthority> getGrantedAuthorities(DecodedJWT token) throws JwtClientException {
-		List<GrantedAuthority> authorities = new ArrayList<>();
+    public OrganisationJwtAuthorityMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        this.reader = mapper.readerFor(RoleAssignment.class);
+    }
 
-		// granting a few authorities for framework support, although
-		// more detailed check can be performed later.
+    @Override
+    public List<GrantedAuthority> getGrantedAuthorities(DecodedJWT token) throws JwtClientException {
+        List<GrantedAuthority> authorities = new ArrayList<>();
 
-		Claim claim = token.getClaim("roles");
-		String[] rolesJson = claim.as(String[].class);
+        // granting a few authorities for framework support, although
+        // more detailed check can be performed later.
 
-		// one JSON per role
-		for(String roleJson : rolesJson) {
-			try {
-				RoleAssignment roleAssigment = reader.readValue(roleJson);
+        Claim claim = token.getClaim("roles");
+        String[] rolesJson = claim.as(String[].class);
 
-				authorities.add(new SimpleGrantedAuthority(roleAssigment.getRole()));
-			} catch (Exception e) {
-				throw new JwtClientException(e);
-			}
-		}
+        // one JSON per role
+        for (String roleJson : rolesJson) {
+            try {
+                RoleAssignment roleAssigment = reader.readValue(roleJson);
 
-		return authorities;
-	}
+                authorities.add(new SimpleGrantedAuthority(roleAssigment.getRole()));
+            } catch (Exception e) {
+                throw new JwtClientException(e);
+            }
+        }
 
-
+        return authorities;
+    }
 
 }

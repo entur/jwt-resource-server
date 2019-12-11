@@ -8,18 +8,19 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.PARAMETER, ElementType.TYPE})
+@Target({ ElementType.PARAMETER, ElementType.TYPE })
 @Repeatable(DoubleArrayClaim.List.class)
 @Inherited
 public @interface DoubleArrayClaim {
 
-	public String name();
-	public double[] value() default {};
+    public String name();
 
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target({ElementType.PARAMETER})
-	@Inherited
-	@interface List {
-		DoubleArrayClaim[] value();
-	}
+    public double[] value() default {};
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ ElementType.PARAMETER })
+    @Inherited
+    @interface List {
+        DoubleArrayClaim[] value();
+    }
 }

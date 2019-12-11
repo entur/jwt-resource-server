@@ -16,12 +16,12 @@ import org.entur.jwt.junit5.AuthorizationServer;
 @AuthorizationServer(value = "myServer", encoder = MyAuthorizationServerEncoder.class)
 public @interface MyOtherAuthorizationServer {
 
-	public String namespace() default "";
+    public String namespace() default "";
 
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target({ElementType.TYPE})
-	@Inherited
-	@interface List {
-		MyOtherAuthorizationServer[] value();
-	}
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ ElementType.TYPE })
+    @Inherited
+    @interface List {
+        MyOtherAuthorizationServer[] value();
+    }
 }

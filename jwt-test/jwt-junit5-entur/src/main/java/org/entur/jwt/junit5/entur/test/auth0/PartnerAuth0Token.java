@@ -10,19 +10,15 @@ import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.entur.test.PartnerAuth0TokenEncoder;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.PARAMETER, ElementType.TYPE})
+@Target({ ElementType.PARAMETER, ElementType.TYPE })
 @Inherited
-@AccessToken(
-		by = "partner-auth0",
-		audience = "https://auth0.partner.mock.audience",
-		encoder = PartnerAuth0TokenEncoder.class
-		)
+@AccessToken(by = "partner-auth0", audience = "https://auth0.partner.mock.audience", encoder = PartnerAuth0TokenEncoder.class)
 public @interface PartnerAuth0Token {
 
-	public long organisationId();
+    public long organisationId();
 
-	public String[] permissions() default {};
+    public String[] permissions() default {};
 
-	public String[] scopes() default {};
+    public String[] scopes() default {};
 
 }

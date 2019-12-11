@@ -8,18 +8,19 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.PARAMETER, ElementType.TYPE})
+@Target({ ElementType.PARAMETER, ElementType.TYPE })
 @Repeatable(BooleanArrayClaim.List.class)
 @Inherited
 public @interface BooleanArrayClaim {
 
-	public String name();
-	public boolean[] value() default {};
+    public String name();
 
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target({ElementType.PARAMETER})
-	@Inherited
-	@interface List {
-		BooleanArrayClaim[] value();
-	}	
+    public boolean[] value() default {};
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ ElementType.PARAMETER })
+    @Inherited
+    @interface List {
+        BooleanArrayClaim[] value();
+    }
 }

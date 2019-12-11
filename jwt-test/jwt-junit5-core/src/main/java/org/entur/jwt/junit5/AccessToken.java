@@ -9,22 +9,24 @@ import java.lang.annotation.Target;
 import org.entur.jwt.junit5.impl.DefaultAccessTokenEncoder;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.PARAMETER, ElementType.TYPE})
+@Target({ ElementType.PARAMETER, ElementType.TYPE })
 @Inherited
 public @interface AccessToken {
 
-	public String by() default "";
+    public String by() default "";
 
-	public String subject() default "";
+    public String subject() default "";
 
-	public long issuedAt() default 0;
-	public long expiresAt() default 10 * 60;
+    public long issuedAt() default 0;
 
-	public String authorizedParty() default "";
-	public String[] audience() default {};
+    public long expiresAt() default 10 * 60;
 
-	public String[] scope() default {};
+    public String authorizedParty() default "";
 
-	public Class<? extends AccessTokenEncoder> encoder() default DefaultAccessTokenEncoder.class;
+    public String[] audience() default {};
+
+    public String[] scope() default {};
+
+    public Class<? extends AccessTokenEncoder> encoder() default DefaultAccessTokenEncoder.class;
 
 }

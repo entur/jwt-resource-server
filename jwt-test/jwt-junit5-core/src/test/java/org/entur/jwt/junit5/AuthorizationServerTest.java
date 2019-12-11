@@ -15,18 +15,15 @@ import org.entur.jwt.junit5.claim.IntegerClaim;
 @AuthorizationServer("partner-auth0")
 public class AuthorizationServerTest {
 
-	@org.junit.jupiter.api.Test
-	public void test(
-			@AccessToken
-			@IntegerClaim(name="https://entur.io/organisationID", value=1) 
-			String token) throws IOException {
+    @org.junit.jupiter.api.Test
+    public void test(@AccessToken @IntegerClaim(name = "https://entur.io/organisationID", value = 1) String token) throws IOException {
 
-		Path path = Paths.get("jwt.junit5.properties");
+        Path path = Paths.get("jwt.junit5.properties");
 
-		Properties properties = new Properties();
-		properties.load(Files.newInputStream(path));
+        Properties properties = new Properties();
+        properties.load(Files.newInputStream(path));
 
-		assertNotNull(properties.get("entur.jwt.tenants.partner-auth0.jwk.location"));
+        assertNotNull(properties.get("entur.jwt.tenants.partner-auth0.jwk.location"));
 
-	}
+    }
 }

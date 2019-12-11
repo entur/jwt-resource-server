@@ -5,7 +5,7 @@ import java.util.Map;
 
 public interface AuthorizationServerEncoder {
 
-	String getJsonWebKeys(Annotation authorizationServer);
+    String getJsonWebKeys(Annotation authorizationServer);
 
-	String getToken(Annotation authorizationServer, Map<String, Object> claims, Map<String, Object> headers);
+    String getToken(Annotation authorizationServer, Map<String, Object> claims, Map<String, Object> headers);
 }

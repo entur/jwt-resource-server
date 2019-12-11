@@ -10,80 +10,79 @@ import org.entur.jwt.verifier.config.JwtTenantProperties;
 
 public class JwtProperties {
 
-	private boolean enabled = true;
+    private boolean enabled = true;
 
-	private AuthorizationProperties authorization = new AuthorizationProperties();
+    private AuthorizationProperties authorization = new AuthorizationProperties();
 
-	private MdcProperties mdc = new MdcProperties();
+    private MdcProperties mdc = new MdcProperties();
 
-	private Map<String, JwtTenantProperties> tenants = new HashMap<>();
+    private Map<String, JwtTenantProperties> tenants = new HashMap<>();
 
-	/** 
-	 * Tenant filter (on tenant name). 
-	 * This is a useful feature when configuration is shared across multiple applications, 
-	 * i.e. like a common config-map in Kubernetes. 
-	 */
-	private List<String> filter = null; // 
+    /**
+     * Tenant filter (on tenant name). This is a useful feature when configuration
+     * is shared across multiple applications, i.e. like a common config-map in
+     * Kubernetes.
+     */
+    private List<String> filter = null; //
 
-	private JwkProperties jwk = new JwkProperties();
+    private JwkProperties jwk = new JwkProperties();
 
-	private JwtClaimsProperties claims = new JwtClaimsProperties();
+    private JwtClaimsProperties claims = new JwtClaimsProperties();
 
-	public Map<String, JwtTenantProperties> getTenants() {
-		return tenants;
-	}
+    public Map<String, JwtTenantProperties> getTenants() {
+        return tenants;
+    }
 
-	public void setTenants(Map<String, JwtTenantProperties> tenants) {
-		this.tenants = tenants;
-	}
+    public void setTenants(Map<String, JwtTenantProperties> tenants) {
+        this.tenants = tenants;
+    }
 
-	public JwkProperties getJwk() {
-		return jwk;
-	}
+    public JwkProperties getJwk() {
+        return jwk;
+    }
 
-	public void setJwk(JwkProperties jwk) {
-		this.jwk = jwk;
-	}
+    public void setJwk(JwkProperties jwk) {
+        this.jwk = jwk;
+    }
 
+    public boolean isEnabled() {
+        return enabled;
+    }
 
-	public boolean isEnabled() {
-		return enabled;
-	}
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 
-	public void setEnabled(boolean enabled) {
-		this.enabled = enabled;
-	}
+    public MdcProperties getMdc() {
+        return mdc;
+    }
 
-	public MdcProperties getMdc() {
-		return mdc;
-	}
+    public void setMdc(MdcProperties mdc) {
+        this.mdc = mdc;
+    }
 
-	public void setMdc(MdcProperties mdc) {
-		this.mdc = mdc;
-	}
+    public void setAuthorization(AuthorizationProperties authorization) {
+        this.authorization = authorization;
+    }
 
-	public void setAuthorization(AuthorizationProperties authorization) {
-		this.authorization = authorization;
-	}
+    public AuthorizationProperties getAuthorization() {
+        return authorization;
+    }
 
-	public AuthorizationProperties getAuthorization() {
-		return authorization;
-	}
+    public List<String> getFilter() {
+        return filter;
+    }
 
-	public List<String> getFilter() {
-		return filter;
-	}
+    public void setFilter(List<String> filter) {
+        this.filter = filter;
+    }
 
-	public void setFilter(List<String> filter) {
-		this.filter = filter;
-	}
+    public JwtClaimsProperties getClaims() {
+        return claims;
+    }
 
-	public JwtClaimsProperties getClaims() {
-		return claims;
-	}
-
-	public void setClaims(JwtClaimsProperties claims) {
-		this.claims = claims;
-	}
+    public void setClaims(JwtClaimsProperties claims) {
+        this.claims = claims;
+    }
 
 }

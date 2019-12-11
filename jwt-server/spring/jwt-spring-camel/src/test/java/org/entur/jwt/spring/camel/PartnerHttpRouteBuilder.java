@@ -39,64 +39,37 @@ import org.springframework.stereotype.Component;
 @Component
 public class PartnerHttpRouteBuilder extends SpringRouteBuilder {
 
-	private static final String PLAIN = "text/plain";
+    private static final String PLAIN = "text/plain";
 
-	@Autowired
-	@Qualifier("validTokenAccessPolicy")
-	private SpringSecurityAuthorizationPolicy springSecurityAuthorizationPolicy;
+    @Autowired
+    @Qualifier("validTokenAccessPolicy")
+    private SpringSecurityAuthorizationPolicy springSecurityAuthorizationPolicy;
 
-	@Autowired
-	private JwtAuthenticationProcessor jwtAuthenticationProcessor;
+    @Autowired
+    private JwtAuthenticationProcessor jwtAuthenticationProcessor;
 
-	@Override
-	public void configure() throws Exception {
-		JwtAuthenticationRoutePolicyFactory factory = new JwtAuthenticationRoutePolicyFactory(jwtAuthenticationProcessor);
+    @Override
+    public void configure() throws Exception {
+        JwtAuthenticationRoutePolicyFactory factory = new JwtAuthenticationRoutePolicyFactory(jwtAuthenticationProcessor);
 
-		getContext().addRoutePolicyFactory(factory);
+        getContext().addRoutePolicyFactory(factory);
 
-		onException(CamelAuthorizationException.class)
-		.handled(true)
-		.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(401))
-		.setHeader(Exchange.CONTENT_TYPE, constant("text/plain"))
-		.transform(exceptionMessage());
+        onException(CamelAuthorizationException.class).handled(true).setHeader(Exchange.HTTP_RESPONSE_CODE, constant(401)).setHeader(Exchange.CONTENT_TYPE, constant("text/plain")).transform(exceptionMessage());
 
-		onException(AccessDeniedException.class)
-		.handled(true)
-		.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(403))
-		.setHeader(Exchange.CONTENT_TYPE, constant("text/plain"))
-		.transform(exceptionMessage());
+        onException(AccessDeniedException.class).handled(true).setHeader(Exchange.HTTP_RESPONSE_CODE, constant(403)).setHeader(Exchange.CONTENT_TYPE, constant("text/plain")).transform(exceptionMessage());
 
-		onException(BadCredentialsException.class)
-		.handled(true)
-		.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(401))
-		.setHeader(Exchange.CONTENT_TYPE, constant("text/plain"))
-		.transform(exceptionMessage());
+        onException(BadCredentialsException.class).handled(true).setHeader(Exchange.HTTP_RESPONSE_CODE, constant(401)).setHeader(Exchange.CONTENT_TYPE, constant("text/plain")).transform(exceptionMessage());
 
-		rest("/myPath")
-		.get("/{codespace}")
-		.description("Test route")
-		.param().name("codespace").type(RestParamType.path).description("Provider Codespace").dataType("string").endParam()
-		.produces(PLAIN)
-		.bindingMode(RestBindingMode.off)
-		.responseMessage().code(200).endResponseMessage()
-		.responseMessage().code(400).message("Invalid codespace").endResponseMessage()
-		.route()
-		.policy(springSecurityAuthorizationPolicy)
-		.process(e -> {
-			try {
-				Number organsiationId = ExchangeJwtClaimExtractor.extract(e, "organisationID", Number.class);
-				e.getOut().setBody("My message for organsiation " + organsiationId);
-			} catch(JwtClaimException e1) {
-				// whoops, no organisation id
-				throw new AccessDeniedException("Expected token with organisation id");
-			}
-		})
-		.log(LoggingLevel.INFO, "Return simple response")
-		.removeHeaders("CamelHttp*")
-		.routeId("test-my-path")
-		.endRest();
+        rest("/myPath").get("/{codespace}").description("Test route").param().name("codespace").type(RestParamType.path).description("Provider Codespace").dataType("string").endParam().produces(PLAIN).bindingMode(RestBindingMode.off)
+                .responseMessage().code(200).endResponseMessage().responseMessage().code(400).message("Invalid codespace").endResponseMessage().route().policy(springSecurityAuthorizationPolicy).process(e -> {
+                    try {
+                        Number organsiationId = ExchangeJwtClaimExtractor.extract(e, "organisationID", Number.class);
+                        e.getOut().setBody("My message for organsiation " + organsiationId);
+                    } catch (JwtClaimException e1) {
+                        // whoops, no organisation id
+                        throw new AccessDeniedException("Expected token with organisation id");
+                    }
+                }).log(LoggingLevel.INFO, "Return simple response").removeHeaders("CamelHttp*").routeId("test-my-path").endRest();
 
-	}
+    }
 }
-
-

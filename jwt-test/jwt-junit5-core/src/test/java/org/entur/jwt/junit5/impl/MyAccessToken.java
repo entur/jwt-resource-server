@@ -9,14 +9,10 @@ import java.lang.annotation.Target;
 import org.entur.jwt.junit5.AccessToken;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.PARAMETER, ElementType.TYPE})
+@Target({ ElementType.PARAMETER, ElementType.TYPE })
 @Inherited
-@AccessToken(
-		audience = "mock.my.partner.audience",
-		by = "myServer",
-		encoder = MyAccessTokenEncoder.class
-		)
+@AccessToken(audience = "mock.my.partner.audience", by = "myServer", encoder = MyAccessTokenEncoder.class)
 public @interface MyAccessToken {
 
-	public long myId();
+    public long myId();
 }

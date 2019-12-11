@@ -13,13 +13,12 @@ import static com.google.common.truth.Truth.*;
 @MyAuthorizationServer
 public class KeycloakResourceAccessTokenTest {
 
-	@Test
-	public void testTokenIsValid(@KeycloakResourceAccessToken(myId = 5) String token) throws IOException {
-		DecodedJWT decoded = JWT.decode(token);
+    @Test
+    public void testTokenIsValid(@KeycloakResourceAccessToken(myId = 5) String token) throws IOException {
+        DecodedJWT decoded = JWT.decode(token);
 
-		Integer value = decoded.getClaim("https://www.mock.com/organisationID").asInt();
-		assertThat(value).isEqualTo(5);
-	}
-
+        Integer value = decoded.getClaim("https://www.mock.com/organisationID").asInt();
+        assertThat(value).isEqualTo(5);
+    }
 
 }

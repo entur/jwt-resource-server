@@ -9,24 +9,24 @@ import java.lang.annotation.Target;
 
 /**
  * 
- * Raw JSON claim. 
+ * Raw JSON claim.
  * 
  */
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.PARAMETER, ElementType.TYPE})
+@Target({ ElementType.PARAMETER, ElementType.TYPE })
 @Repeatable(JsonClaim.List.class)
 @Inherited
 public @interface JsonClaim {
 
-	public String name(); // claim name / root key to set in body JSON document
-	public String value(); // value to embed as-is (without encoding)
+    public String name(); // claim name / root key to set in body JSON document
 
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target({ElementType.PARAMETER})
-	@Inherited
-	@interface List {
-		JsonClaim[] value();
-	}	
+    public String value(); // value to embed as-is (without encoding)
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ ElementType.PARAMETER })
+    @Inherited
+    @interface List {
+        JsonClaim[] value();
+    }
 }
-

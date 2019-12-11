@@ -8,21 +8,21 @@ package org.entur.jwt.verifier;
 
 public class JwtServiceException extends JwtException {
 
-	private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
-	public JwtServiceException() {
-	}
+    public JwtServiceException() {
+    }
 
-	public JwtServiceException(String message) {
-		super(message);
-	}
+    public JwtServiceException(String message) {
+        super(message);
+    }
 
-	public JwtServiceException(String message, Throwable cause) {
-		super(message, cause);
-	}
+    public JwtServiceException(String message, Throwable cause) {
+        super(message, cause);
+    }
 
-	public JwtServiceException(Throwable cause) {
-		super(cause);
-	}
+    public JwtServiceException(Throwable cause) {
+        super(cause);
+    }
 
 }

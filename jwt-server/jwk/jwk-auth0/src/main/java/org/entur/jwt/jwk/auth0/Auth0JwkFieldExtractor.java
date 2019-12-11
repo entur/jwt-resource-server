@@ -6,8 +6,8 @@ import com.auth0.jwk.Jwk;
 
 public class Auth0JwkFieldExtractor implements JwkFieldExtractor<Jwk> {
 
-	@Override
-	public String getJwkId(Jwk jwk) {
-		return jwk.getId();
-	}
+    @Override
+    public String getJwkId(Jwk jwk) {
+        return jwk.getId();
+    }
 }

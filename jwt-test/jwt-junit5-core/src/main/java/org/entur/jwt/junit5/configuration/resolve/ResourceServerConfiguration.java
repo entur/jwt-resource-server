@@ -1,7 +1,7 @@
 package org.entur.jwt.junit5.configuration.resolve;
 
-public interface ResourceServerConfiguration  {
+public interface ResourceServerConfiguration {
 
-	String getProperty(String tenantId, String propertyName);
+    String getProperty(String tenantId, String propertyName);
 
 }

@@ -10,13 +10,9 @@ import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.claim.IssuedAt;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.PARAMETER, ElementType.TYPE})
+@Target({ ElementType.PARAMETER, ElementType.TYPE })
 @Inherited
-@AccessToken(
-		audience = "https://organisation.mock.audience",
-		by = "organisation-keycloak",
-		encoder = OrganisationAccessTokenEncoder.class
-		)
+@AccessToken(audience = "https://organisation.mock.audience", by = "organisation-keycloak", encoder = OrganisationAccessTokenEncoder.class)
 @IssuedAt(Integer.MAX_VALUE)
 public @interface NotYetIssuedOrganisationToken {
 }

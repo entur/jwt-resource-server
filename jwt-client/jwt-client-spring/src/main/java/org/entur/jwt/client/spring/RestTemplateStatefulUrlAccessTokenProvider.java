@@ -20,51 +20,52 @@ import org.springframework.web.client.RestTemplate;
 
 /**
  * 
- * RestTemplate access-token provider. Using {@linkplain UrlAccessTokenProvider} would
- * strictly be sufficient, but using RestTemplate is more convenient for mocking.
+ * RestTemplate access-token provider. Using {@linkplain UrlAccessTokenProvider}
+ * would strictly be sufficient, but using RestTemplate is more convenient for
+ * mocking.
  *
  */
 
 public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTokenProvider<ResponseEntity<Resource>> {
 
-	protected final RestTemplate restTemplate;
+    protected final RestTemplate restTemplate;
 
-	public RestTemplateStatefulUrlAccessTokenProvider(RestTemplate restTemplate, URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers, URL refreshUrl, URL revokeUrl) {
-		super(issueUrl, parameters, headers, refreshUrl, revokeUrl);
-		this.restTemplate = restTemplate;
-	}
+    public RestTemplateStatefulUrlAccessTokenProvider(RestTemplate restTemplate, URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers, URL refreshUrl, URL revokeUrl) {
+        super(issueUrl, parameters, headers, refreshUrl, revokeUrl);
+        this.restTemplate = restTemplate;
+    }
 
-	protected ResponseEntity<Resource> request(URL url, byte[] body, Map<String, Object> map) throws IOException {
-		HttpHeaders headers = new HttpHeaders();
-		headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
-		headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-		
-		for (Entry<String, Object> entry : map.entrySet()) {
-			headers.set(entry.getKey(), entry.getValue().toString());
-		}
+    protected ResponseEntity<Resource> request(URL url, byte[] body, Map<String, Object> map) throws IOException {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-		HttpEntity<byte[]> request = new HttpEntity<>(body, headers);
+        for (Entry<String, Object> entry : map.entrySet()) {
+            headers.set(entry.getKey(), entry.getValue().toString());
+        }
 
-		try {
-			return restTemplate.exchange(url.toURI(), HttpMethod.POST, request, Resource.class);
-		} catch (URISyntaxException e) {
-			throw new IllegalArgumentException(e);
-		}
-	}
+        HttpEntity<byte[]> request = new HttpEntity<>(body, headers);
 
-	@Override
-	protected int getResponseStatusCode(ResponseEntity<Resource> response) throws IOException {
-		return response.getStatusCodeValue();
-	}
+        try {
+            return restTemplate.exchange(url.toURI(), HttpMethod.POST, request, Resource.class);
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
 
-	@Override
-	protected InputStream getResponseContent(ResponseEntity<Resource> response) throws IOException {
-		return response.getBody().getInputStream();
-	}
+    @Override
+    protected int getResponseStatusCode(ResponseEntity<Resource> response) throws IOException {
+        return response.getStatusCodeValue();
+    }
 
-	@Override
-	protected StringBuilder printHeadersIfPresent(ResponseEntity<Resource> c, String... headerNames) {
-		return RestTemplateUrlAccessTokenProvider.printResponseEntityHeadersIfPresent(c, headerNames);
-	}
+    @Override
+    protected InputStream getResponseContent(ResponseEntity<Resource> response) throws IOException {
+        return response.getBody().getInputStream();
+    }
+
+    @Override
+    protected StringBuilder printHeadersIfPresent(ResponseEntity<Resource> c, String... headerNames) {
+        return RestTemplateUrlAccessTokenProvider.printResponseEntityHeadersIfPresent(c, headerNames);
+    }
 
 }

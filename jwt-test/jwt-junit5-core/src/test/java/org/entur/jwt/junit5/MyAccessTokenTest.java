@@ -1,4 +1,5 @@
 package org.entur.jwt.junit5;
+
 import static com.google.common.truth.Truth.assertThat;
 
 import java.io.IOException;
@@ -13,12 +14,12 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 @MyAuthorizationServer()
 public class MyAccessTokenTest {
 
-	@Test
-	public void testTokenIsValid(@MyAccessToken(myId = 5) String token) throws IOException {
-		DecodedJWT decoded = JWT.decode(token);
+    @Test
+    public void testTokenIsValid(@MyAccessToken(myId = 5) String token) throws IOException {
+        DecodedJWT decoded = JWT.decode(token);
 
-		Integer value = decoded.getClaim("https://www.mock.com/organisationID").asInt();
-		assertThat(value).isEqualTo(5);
+        Integer value = decoded.getClaim("https://www.mock.com/organisationID").asInt();
+        assertThat(value).isEqualTo(5);
 
-	}
+    }
 }

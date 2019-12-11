@@ -7,11 +7,11 @@ import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfiguration;
 import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
-public interface ResourceServerConfigurationEnricher  {
+public interface ResourceServerConfigurationEnricher {
 
-	void beforeAll(List<AuthorizationServerImplementation> authorizationServers, ExtensionContext context) throws IOException; 
+    void beforeAll(List<AuthorizationServerImplementation> authorizationServers, ExtensionContext context) throws IOException;
 
-	void beforeEach(ResourceServerConfiguration configuration, ExtensionContext context);
+    void beforeEach(ResourceServerConfiguration configuration, ExtensionContext context);
 
-	void afterAll(ExtensionContext context) throws IOException;
+    void afterAll(ExtensionContext context) throws IOException;
 }

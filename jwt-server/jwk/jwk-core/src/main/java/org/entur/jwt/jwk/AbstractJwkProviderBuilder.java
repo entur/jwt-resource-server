@@ -3,30 +3,31 @@ package org.entur.jwt.jwk;
 /**
  * JwkProvider builder scaffold.
  * 
- * @see <a href="https://www.sitepoint.com/self-types-with-javas-generics/">https://www.sitepoint.com/self-types-with-javas-generics/</a> 
+ * @see <a href=
+ *      "https://www.sitepoint.com/self-types-with-javas-generics/">https://www.sitepoint.com/self-types-with-javas-generics/</a>
  */
 
-public abstract class AbstractJwkProviderBuilder<T, B extends AbstractJwkProviderBuilder<T, B>> extends AbstractJwksProviderBuilder<T, B>{
+public abstract class AbstractJwkProviderBuilder<T, B extends AbstractJwkProviderBuilder<T, B>> extends AbstractJwksProviderBuilder<T, B> {
 
-	protected JwkFieldExtractor<T> jwkFieldExtractor;
+    protected JwkFieldExtractor<T> jwkFieldExtractor;
 
-	public AbstractJwkProviderBuilder(JwksProvider<T> jwksProvider, JwkFieldExtractor<T> jwkFieldExtractor) {
-		super(jwksProvider);
+    public AbstractJwkProviderBuilder(JwksProvider<T> jwksProvider, JwkFieldExtractor<T> jwkFieldExtractor) {
+        super(jwksProvider);
 
-		this.jwkFieldExtractor = jwkFieldExtractor;
-	}
+        this.jwkFieldExtractor = jwkFieldExtractor;
+    }
 
-	/**
-	 * Creates a {@link JwkProvider}
-	 *
-	 * @return a newly created {@link JwkProvider}
-	 */
-	public JwkProvider<T> build() {
-		JwksProvider<T> provider = build(jwksProvider);
-		if(provider instanceof JwkProvider) {
-			return (JwkProvider<T>)provider;
-		}
-		return new DefaultJwkProvider<>(provider, jwkFieldExtractor);
+    /**
+     * Creates a {@link JwkProvider}
+     *
+     * @return a newly created {@link JwkProvider}
+     */
+    public JwkProvider<T> build() {
+        JwksProvider<T> provider = build(jwksProvider);
+        if (provider instanceof JwkProvider) {
+            return (JwkProvider<T>) provider;
+        }
+        return new DefaultJwkProvider<>(provider, jwkFieldExtractor);
 
-	}
+    }
 }

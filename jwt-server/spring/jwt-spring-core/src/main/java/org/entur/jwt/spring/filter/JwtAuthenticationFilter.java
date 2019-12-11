@@ -25,66 +25,67 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
 
-	public static final String AUTHORIZATION = "Authorization";
+    public static final String AUTHORIZATION = "Authorization";
 
-	private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
-	private final JwtVerifier<T> verifier;
-	private final JwtAuthorityMapper<T> authorityMapper;
-	private final JwtMappedDiagnosticContextMapper<T> mdcMapper;
-	private final JwtClaimExtractor<T> extractor;
-	private final boolean required;
+    private final JwtVerifier<T> verifier;
+    private final JwtAuthorityMapper<T> authorityMapper;
+    private final JwtMappedDiagnosticContextMapper<T> mdcMapper;
+    private final JwtClaimExtractor<T> extractor;
+    private final boolean required;
 
-	public JwtAuthenticationFilter(JwtVerifier<T> verifier, boolean required, JwtAuthorityMapper<T> authorityMapper, JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtClaimExtractor<T> extractor) {
-		this.verifier = verifier;
-		this.authorityMapper = authorityMapper;
-		this.mdcMapper = mdcMapper;
-		this.extractor = extractor;
-		this.required = required;
-	}
+    public JwtAuthenticationFilter(JwtVerifier<T> verifier, boolean required, JwtAuthorityMapper<T> authorityMapper, JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtClaimExtractor<T> extractor) {
+        this.verifier = verifier;
+        this.authorityMapper = authorityMapper;
+        this.mdcMapper = mdcMapper;
+        this.extractor = extractor;
+        this.required = required;
+    }
 
-	@Override
-	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws IOException, ServletException {
-		String header = request.getHeader(AUTHORIZATION);
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws IOException, ServletException {
+        String header = request.getHeader(AUTHORIZATION);
 
-		if (header != null) {
-			// if a token is present, it must be valid regardless of whether the endpoint requires autorization or not
-			T token;
-			try {
-				token = verifier.verify(header); // note: can return null
-				if(token != null) {
-					List<GrantedAuthority> authorities = authorityMapper.getGrantedAuthorities(token);
+        if (header != null) {
+            // if a token is present, it must be valid regardless of whether the endpoint
+            // requires autorization or not
+            T token;
+            try {
+                token = verifier.verify(header); // note: can return null
+                if (token != null) {
+                    List<GrantedAuthority> authorities = authorityMapper.getGrantedAuthorities(token);
 
-					Map<String, Object> claims = extractor.getClaims(token);
+                    Map<String, Object> claims = extractor.getClaims(token);
 
-					SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(claims, header, authorities));
+                    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(claims, header, authorities));
 
-					if(mdcMapper != null) {
-						mdcMapper.addContext(token);
-						try {
-							chain.doFilter(request,response);
-						} finally {
-							mdcMapper.removeContext(token);
-						}
-					} else {
-						chain.doFilter(request,response);
-					}
-				} else {
-					log.warn("Unable to verify token");
-					response.sendError(HttpStatus.UNAUTHORIZED.value());
-				}
-			} catch(JwksServiceException | JwtServiceException e) {
-				throw new JwtAuthenticationServiceUnavailableException("Unable to process token", e);
-			} catch(JwtException | JwksException e) { // assume client
-				log.info("Problem verifying token", e);
-				response.sendError(HttpStatus.UNAUTHORIZED.value());
-			}
-		} else if(!required) {
-			chain.doFilter(request,response);
-		} else {
-			log.warn("No token");
-			response.sendError(HttpStatus.UNAUTHORIZED.value());
-		}
-	}
+                    if (mdcMapper != null) {
+                        mdcMapper.addContext(token);
+                        try {
+                            chain.doFilter(request, response);
+                        } finally {
+                            mdcMapper.removeContext(token);
+                        }
+                    } else {
+                        chain.doFilter(request, response);
+                    }
+                } else {
+                    log.warn("Unable to verify token");
+                    response.sendError(HttpStatus.UNAUTHORIZED.value());
+                }
+            } catch (JwksServiceException | JwtServiceException e) {
+                throw new JwtAuthenticationServiceUnavailableException("Unable to process token", e);
+            } catch (JwtException | JwksException e) { // assume client
+                log.info("Problem verifying token", e);
+                response.sendError(HttpStatus.UNAUTHORIZED.value());
+            }
+        } else if (!required) {
+            chain.doFilter(request, response);
+        } else {
+            log.warn("No token");
+            response.sendError(HttpStatus.UNAUTHORIZED.value());
+        }
+    }
 
 }

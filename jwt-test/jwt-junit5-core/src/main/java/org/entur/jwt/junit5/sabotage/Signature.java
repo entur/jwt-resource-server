@@ -7,10 +7,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.PARAMETER, ElementType.TYPE})
+@Target({ ElementType.PARAMETER, ElementType.TYPE })
 @Inherited
 public @interface Signature {
 
-	public String value() default "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+    public String value() default "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
 
 }

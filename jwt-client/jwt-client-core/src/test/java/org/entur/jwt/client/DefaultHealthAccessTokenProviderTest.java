@@ -12,61 +12,58 @@ import org.mockito.Mockito;
 
 public class DefaultHealthAccessTokenProviderTest extends AbstractDelegateProviderTest {
 
-	private DefaultAccessTokenHealthProvider provider;
+    private DefaultAccessTokenHealthProvider provider;
 
-	@BeforeEach
-	public void setUp() throws Exception {
-		super.setUp();
-		provider = new DefaultAccessTokenHealthProvider(fallback);
-	}
+    @BeforeEach
+    public void setUp() throws Exception {
+        super.setUp();
+        provider = new DefaultAccessTokenHealthProvider(fallback);
+    }
 
-	@Test
-	public void shouldReturnGoodHealthWhenUnderlyingProviderReturnsJwks() throws Exception {
-		when(fallback.getAccessToken(false)).thenReturn(accessToken);
+    @Test
+    public void shouldReturnGoodHealthWhenUnderlyingProviderReturnsJwks() throws Exception {
+        when(fallback.getAccessToken(false)).thenReturn(accessToken);
 
-		// attempt to get jwks
-		provider.getAccessToken(false);
+        // attempt to get jwks
+        provider.getAccessToken(false);
 
-		AccessTokenHealth health = provider.getHealth(false);
-		assertTrue(health.isSuccess());
+        AccessTokenHealth health = provider.getHealth(false);
+        assertTrue(health.isSuccess());
 
-		// expected behavior: the health provider did not attempt to refresh
-		// a good health status.
-		Mockito.verify(fallback, times(1)).getAccessToken(false);        
-	}
+        // expected behavior: the health provider did not attempt to refresh
+        // a good health status.
+        Mockito.verify(fallback, times(1)).getAccessToken(false);
+    }
 
-	@Test
-	public void shouldReturnBadHealthWhenUnderlyingProviderThrowsException() throws Exception {
-		when(fallback.getAccessToken(false)).thenThrow(new AccessTokenException());
-		provider.setRefreshProvider(provider);
+    @Test
+    public void shouldReturnBadHealthWhenUnderlyingProviderThrowsException() throws Exception {
+        when(fallback.getAccessToken(false)).thenThrow(new AccessTokenException());
+        provider.setRefreshProvider(provider);
 
-		// attempt to get jwks
-		assertThrows(AccessTokenException.class,
-				()->{
-					provider.getAccessToken(false);
-				});
+        // attempt to get jwks
+        assertThrows(AccessTokenException.class, () -> {
+            provider.getAccessToken(false);
+        });
 
-		AccessTokenHealth health = provider.getHealth(true);
-		assertFalse(health.isSuccess());
-		Mockito.verify(fallback, times(2)).getAccessToken(false);
-	}
+        AccessTokenHealth health = provider.getHealth(true);
+        assertFalse(health.isSuccess());
+        Mockito.verify(fallback, times(2)).getAccessToken(false);
+    }
 
-	@Test
-	public void shouldRecoverFromBadHealth() throws Exception {
-		when(fallback.getAccessToken(false))
-		.thenThrow(new AccessTokenException()) // fail
-		.thenReturn(accessToken); // recover
-		provider.setRefreshProvider(provider);
+    @Test
+    public void shouldRecoverFromBadHealth() throws Exception {
+        when(fallback.getAccessToken(false)).thenThrow(new AccessTokenException()) // fail
+                .thenReturn(accessToken); // recover
+        provider.setRefreshProvider(provider);
 
-		// trigger fail
-		assertThrows(AccessTokenException.class,
-				()->{
-					provider.getAccessToken(false);
-				});
+        // trigger fail
+        assertThrows(AccessTokenException.class, () -> {
+            provider.getAccessToken(false);
+        });
 
-		AccessTokenHealth health = provider.getHealth(true); // trigger recover
-		assertTrue(health.isSuccess());
-		Mockito.verify(fallback, times(2)).getAccessToken(false);
-	}
+        AccessTokenHealth health = provider.getHealth(true); // trigger recover
+        assertTrue(health.isSuccess());
+        Mockito.verify(fallback, times(2)).getAccessToken(false);
+    }
 
 }

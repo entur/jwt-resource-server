@@ -20,13 +20,13 @@ import org.springframework.security.access.AccessDeniedException;
 
 public class NotAuthenticatedException extends AccessDeniedException {
 
-	private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
-	public NotAuthenticatedException(String message) {
-		super(message);
-	}
+    public NotAuthenticatedException(String message) {
+        super(message);
+    }
 
-	public NotAuthenticatedException(String message, Throwable cause) {
-		super(message, cause);
-	}
+    public NotAuthenticatedException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

@@ -31,47 +31,32 @@ import org.springframework.boot.web.server.LocalServerPort;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class PartnerHttpRouteBuilderTest {
 
-	// "{\"r\":\"adminEditRouteData\",\"o\":\"RB\"}")
-	// RoleAssignment.builder().withOrganisation("RB").withRole("adminEditRouteData").build().toJson();
-	private static final String adminEditRouteDataForRB = "{\"r\":\"adminEditRouteData\",\"o\":\"RB\"}";
-	
-	@LocalServerPort
-	public int port;
+    // "{\"r\":\"adminEditRouteData\",\"o\":\"RB\"}")
+    // RoleAssignment.builder().withOrganisation("RB").withRole("adminEditRouteData").build().toJson();
+    private static final String adminEditRouteDataForRB = "{\"r\":\"adminEditRouteData\",\"o\":\"RB\"}";
 
-	@Autowired
-	protected ModelCamelContext context;
+    @LocalServerPort
+    public int port;
 
-	@Test
-	public void testPartnerRouteWithPartnerToken(@PartnerAuth0Token(organisationId = 1) String token) throws Exception {
-		context.start();
-		
-		URI uri = new URI("http://localhost:" + port + "/services/myPath/myCodeSpace");
+    @Autowired
+    protected ModelCamelContext context;
 
-		given()
-			.header("Authorization", token)
-			.log().all()
-		.when()
-			.get(uri)
-		.then()
-			.log().all()
-			.assertThat()
-			.statusCode(200);
-	}
-	
-	@Test
-	public void testPartnerRouteWithoutToken() throws Exception {
-		context.start();
-		
-		URI uri = new URI("http://localhost:" + port + "/services/myPath/myCodeSpace");
-		
-		given()
-			.log().all()
-		.when()
-			.get(uri)
-		.then()
-			.log().all()
-			.assertThat()
-			.statusCode(403);
-	}
+    @Test
+    public void testPartnerRouteWithPartnerToken(@PartnerAuth0Token(organisationId = 1) String token) throws Exception {
+        context.start();
+
+        URI uri = new URI("http://localhost:" + port + "/services/myPath/myCodeSpace");
+
+        given().header("Authorization", token).log().all().when().get(uri).then().log().all().assertThat().statusCode(200);
+    }
+
+    @Test
+    public void testPartnerRouteWithoutToken() throws Exception {
+        context.start();
+
+        URI uri = new URI("http://localhost:" + port + "/services/myPath/myCodeSpace");
+
+        given().log().all().when().get(uri).then().log().all().assertThat().statusCode(403);
+    }
 
 }

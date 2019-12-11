@@ -38,46 +38,41 @@ public class KeycloakClientTest {
     @Autowired
     @Qualifier("jwtRestTemplate")
     private RestTemplate restTemplate;
-    
-	@Autowired
-	private AccessTokenProvider accessTokenProvider;
 
-	@Autowired
-	private AccessTokenProviderHealthIndicator healthIndicator;
+    @Autowired
+    private AccessTokenProvider accessTokenProvider;
 
-	@Value("classpath:keycloakClientCredentialsResponse.json")
-	private Resource resource;
-	
-	@BeforeEach
-	public void beforeEach() {
-		mockServer = MockRestServiceServer.bindTo(restTemplate).build();		
-	}
-	
-	@AfterEach
-	public void afterEach() {
-		mockServer.verify();		
-	}
-	
-	@Test
-	public void contextLoads() {
-		assertNotNull(accessTokenProvider);
-		assertNotNull(healthIndicator);
-	}
+    @Autowired
+    private AccessTokenProviderHealthIndicator healthIndicator;
 
-	@Test
-	public void testAccessToken() throws Exception {
-		mockServer.expect(ExpectedCount.once(), 
-		          requestTo(new URI("https://entur.org/auth/realms/myTenant/protocol/openid-connect/token")))
-		          .andExpect(method(HttpMethod.POST))
-		          .andRespond(withStatus(HttpStatus.OK)
-		          .contentType(MediaType.APPLICATION_JSON)
-		          .body(resource)
-		        );
-		AccessToken accessToken = accessTokenProvider.getAccessToken(false);
-		
-		assertThat(accessToken.getType()).isEqualTo("Bearer");
-		assertThat(accessToken.getValue()).isEqualTo("x.y.z");
-		assertThat(accessToken.getExpires()).isLessThan(System.currentTimeMillis() + 86400 * 1000);
-		
-	}
+    @Value("classpath:keycloakClientCredentialsResponse.json")
+    private Resource resource;
+
+    @BeforeEach
+    public void beforeEach() {
+        mockServer = MockRestServiceServer.bindTo(restTemplate).build();
+    }
+
+    @AfterEach
+    public void afterEach() {
+        mockServer.verify();
+    }
+
+    @Test
+    public void contextLoads() {
+        assertNotNull(accessTokenProvider);
+        assertNotNull(healthIndicator);
+    }
+
+    @Test
+    public void testAccessToken() throws Exception {
+        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://entur.org/auth/realms/myTenant/protocol/openid-connect/token"))).andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).body(resource));
+        AccessToken accessToken = accessTokenProvider.getAccessToken(false);
+
+        assertThat(accessToken.getType()).isEqualTo("Bearer");
+        assertThat(accessToken.getValue()).isEqualTo("x.y.z");
+        assertThat(accessToken.getExpires()).isLessThan(System.currentTimeMillis() + 86400 * 1000);
+
+    }
 }

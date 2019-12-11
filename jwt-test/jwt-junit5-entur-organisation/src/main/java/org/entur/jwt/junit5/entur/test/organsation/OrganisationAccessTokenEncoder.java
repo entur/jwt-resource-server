@@ -10,44 +10,38 @@ import org.junit.jupiter.api.extension.ParameterContext;
 
 public class OrganisationAccessTokenEncoder extends DefaultAccessTokenEncoder {
 
-	private static final String ROLES = "roles";
+    private static final String ROLES = "roles";
 
-	@Override
-	public Map<String, Object> encodeClaims(ParameterContext parameterContext, ResourceServerConfiguration resolver) {
-		Map<String, Object> encode = super.encodeClaims(parameterContext, resolver);
+    @Override
+    public Map<String, Object> encodeClaims(ParameterContext parameterContext, ResourceServerConfiguration resolver) {
+        Map<String, Object> encode = super.encodeClaims(parameterContext, resolver);
 
-		Optional<OrganisationToken> a = parameterContext.findAnnotation(OrganisationToken.class);
-		if(a.isPresent()) {
-			encode(encode, a.get());			
-		}
+        Optional<OrganisationToken> a = parameterContext.findAnnotation(OrganisationToken.class);
+        if (a.isPresent()) {
+            encode(encode, a.get());
+        }
 
-		return encode;
-	}
+        return encode;
+    }
 
-	private void encode(Map<String, Object> encode, OrganisationToken partnerAccessToken) {
+    private void encode(Map<String, Object> encode, OrganisationToken partnerAccessToken) {
 
-		// example:
-		/*
-		  "resource_access": {
-		    "xyz": {
-		      "roles": [
-		        "uma_protection"
-		      ]
-		    }
-		  }
-		 */
+        // example:
+        /*
+         * "resource_access": { "xyz": { "roles": [ "uma_protection" ] } }
+         */
 
-		Map<String, Object> resourceAccess = new HashMap<>();
-		encode.put("resource_access", resourceAccess);
+        Map<String, Object> resourceAccess = new HashMap<>();
+        encode.put("resource_access", resourceAccess);
 
-		Map<String, Object> resource = new HashMap<>();
-		resourceAccess.put(partnerAccessToken.resource(), resource);
-		resource.put(ROLES, partnerAccessToken.resourceAccess());
+        Map<String, Object> resource = new HashMap<>();
+        resourceAccess.put(partnerAccessToken.resource(), resource);
+        resource.put(ROLES, partnerAccessToken.resourceAccess());
 
-		Map<String, Object> realmAccess = new HashMap<>();
-		encode.put("realm_access", realmAccess);
-		realmAccess.put(ROLES, partnerAccessToken.realmAccess());
+        Map<String, Object> realmAccess = new HashMap<>();
+        encode.put("realm_access", realmAccess);
+        realmAccess.put(ROLES, partnerAccessToken.realmAccess());
 
-		encode.put(ROLES, partnerAccessToken.roles());
-	}
+        encode.put(ROLES, partnerAccessToken.roles());
+    }
 }

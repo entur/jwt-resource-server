@@ -8,18 +8,17 @@ package org.entur.jwt.jwk;
 
 public class JwksClientException extends JwksException {
 
-	private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
-	public JwksClientException() {
-	}
+    public JwksClientException() {
+    }
 
-	public JwksClientException(String message) {
-		super(message);
-	}
+    public JwksClientException(String message) {
+        super(message);
+    }
 
-	public JwksClientException(String message, Throwable cause) {
-		super(message, cause);
-	}
-
+    public JwksClientException(String message, Throwable cause) {
+        super(message, cause);
+    }
 
 }

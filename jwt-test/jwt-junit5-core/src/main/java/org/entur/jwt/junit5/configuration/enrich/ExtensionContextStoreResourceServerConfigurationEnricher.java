@@ -17,25 +17,25 @@ import org.junit.jupiter.api.extension.ExtensionContext.Store;
 
 public class ExtensionContextStoreResourceServerConfigurationEnricher implements ResourceServerConfigurationEnricher {
 
-	protected static final String KEY_AUTHORIZATION_SERVERS = "authorizationServers";
+    protected static final String KEY_AUTHORIZATION_SERVERS = "authorizationServers";
 
-	@Override
-	public void beforeAll(List<AuthorizationServerImplementation> authorizationServers, ExtensionContext context) throws IOException {
-		Store store = AuthorizationServerExtension.getStore(context);
+    @Override
+    public void beforeAll(List<AuthorizationServerImplementation> authorizationServers, ExtensionContext context) throws IOException {
+        Store store = AuthorizationServerExtension.getStore(context);
 
-		store.put(KEY_AUTHORIZATION_SERVERS, authorizationServers);
-	}
+        store.put(KEY_AUTHORIZATION_SERVERS, authorizationServers);
+    }
 
-	@Override
-	public void beforeEach(ResourceServerConfiguration configuration, ExtensionContext context) {
-		// do nothing
-	}
+    @Override
+    public void beforeEach(ResourceServerConfiguration configuration, ExtensionContext context) {
+        // do nothing
+    }
 
-	@Override
-	public void afterAll(ExtensionContext context) throws IOException {
-		Store store = AuthorizationServerExtension.getStore(context);
+    @Override
+    public void afterAll(ExtensionContext context) throws IOException {
+        Store store = AuthorizationServerExtension.getStore(context);
 
-		store.remove(KEY_AUTHORIZATION_SERVERS);		
-	}
+        store.remove(KEY_AUTHORIZATION_SERVERS);
+    }
 
 }

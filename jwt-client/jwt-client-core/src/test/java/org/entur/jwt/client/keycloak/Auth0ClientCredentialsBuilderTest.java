@@ -7,20 +7,15 @@ import org.junit.jupiter.api.Test;
 
 public class Auth0ClientCredentialsBuilderTest {
 
-	@Test
-	public void testBuilder() {
-		ClientCredentials build = KeycloakClientCredentialsBuilder.newInstance()
-				.withHost("my.auth0.com")
-				.withRealm("myRealm")
-				.withProtocol("https")
-				.withSecret("mySecret")
-				.withClientId("myClientID").build();
+    @Test
+    public void testBuilder() {
+        ClientCredentials build = KeycloakClientCredentialsBuilder.newInstance().withHost("my.auth0.com").withRealm("myRealm").withProtocol("https").withSecret("mySecret").withClientId("myClientID").build();
 
-		assertNotNull(build.getHeaders());
-		assertNotNull(build.getParameters());
-		assertNotNull(build.getIssueURL());
-		assertNotNull(build.getRefreshURL());
-		assertNotNull(build.getRevokeURL());
+        assertNotNull(build.getHeaders());
+        assertNotNull(build.getParameters());
+        assertNotNull(build.getIssueURL());
+        assertNotNull(build.getRefreshURL());
+        assertNotNull(build.getRevokeURL());
 
-	}
+    }
 }

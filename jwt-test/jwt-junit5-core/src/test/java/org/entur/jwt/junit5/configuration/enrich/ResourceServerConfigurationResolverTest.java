@@ -9,10 +9,10 @@ import static com.google.common.truth.Truth.*;
 
 public class ResourceServerConfigurationResolverTest {
 
-	@Test
-	public void testResolvesDummy() {
-		List<ResourceServerConfigurationEnricher> load = ResourceServerConfigurationEnricherServiceLoader.load();
+    @Test
+    public void testResolvesDummy() {
+        List<ResourceServerConfigurationEnricher> load = ResourceServerConfigurationEnricherServiceLoader.load();
 
-		assertThat(load).hasSize(1);
-	}
+        assertThat(load).hasSize(1);
+    }
 }

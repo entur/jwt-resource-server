@@ -15,28 +15,28 @@ import static com.google.common.truth.Truth.assertThat;
 
 public class RoleAssignmentDeserializerTest {
 
-	@Test
-	public void testDeserializer() throws Exception {
-		String body = IOUtils.resourceToString("/jwt.txt", StandardCharsets.UTF_8);
-		
-		ObjectMapper mapper = new ObjectMapper();
+    @Test
+    public void testDeserializer() throws Exception {
+        String body = IOUtils.resourceToString("/jwt.txt", StandardCharsets.UTF_8);
 
-		Map<String, Object> token = mapper.readValue(body, Map.class);
+        ObjectMapper mapper = new ObjectMapper();
 
-		ObjectReader reader = mapper.readerFor(RoleAssignment.class);
+        Map<String, Object> token = mapper.readValue(body, Map.class);
 
-		List<RoleAssignment> result = new ArrayList<>();
-		
-		List<String> roles = (List<String>) token.get("roles");
-		assertThat(roles).hasSize(6);
-		
-		for(String role : roles) {
-			result.add(reader.readValue(role));
-		}
-		
-		assertThat(result.get(2).getRole()).isEqualTo("editStops");
-		assertThat(result.get(2).getOrganisation()).isEqualTo("NSB");
-		assertThat(result.get(2).getEntityClassifications().get("StopPlaceType")).containsExactly("*");
-		
-	}
+        ObjectReader reader = mapper.readerFor(RoleAssignment.class);
+
+        List<RoleAssignment> result = new ArrayList<>();
+
+        List<String> roles = (List<String>) token.get("roles");
+        assertThat(roles).hasSize(6);
+
+        for (String role : roles) {
+            result.add(reader.readValue(role));
+        }
+
+        assertThat(result.get(2).getRole()).isEqualTo("editStops");
+        assertThat(result.get(2).getOrganisation()).isEqualTo("NSB");
+        assertThat(result.get(2).getEntityClassifications().get("StopPlaceType")).containsExactly("*");
+
+    }
 }

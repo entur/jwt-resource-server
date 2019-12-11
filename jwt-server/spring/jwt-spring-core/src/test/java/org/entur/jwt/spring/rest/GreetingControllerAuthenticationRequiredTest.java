@@ -18,72 +18,69 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+
 /**
  * 
- * Test accessing methods without a token, with the global setting of requiring an Authorization header
- * for all requests.
+ * Test accessing methods without a token, with the global setting of requiring
+ * an Authorization header for all requests.
  * 
  */
 
 @AuthorizationServer
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@TestPropertySource(properties = {
-		"entur.jwt.authorization.mode=required",
-		"entur.jwt.authorization.filter=/actuator/health"
-})
+@TestPropertySource(properties = { "entur.jwt.authorization.mode=required", "entur.jwt.authorization.filter=/actuator/health" })
 public class GreetingControllerAuthenticationRequiredTest {
 
-	@LocalServerPort
-	private int randomServerPort;
+    @LocalServerPort
+    private int randomServerPort;
 
-	@Autowired
-	private TestRestTemplate restTemplate;
+    @Autowired
+    private TestRestTemplate restTemplate;
 
-	@Test 
-	public void testUnprotectedResource() {
-		HttpHeaders headers = new HttpHeaders();
-		HttpEntity<String> entity = new HttpEntity<String>(headers);
+    @Test
+    public void testUnprotectedResource() {
+        HttpHeaders headers = new HttpHeaders();
+        HttpEntity<String> entity = new HttpEntity<String>(headers);
 
-		String url = "http://localhost:" + randomServerPort + "/unprotected";
+        String url = "http://localhost:" + randomServerPort + "/unprotected";
 
-		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-	}
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
 
-	@Test 
-	public void testProtectedResource() {
-		HttpHeaders headers = new HttpHeaders();
-		HttpEntity<String> entity = new HttpEntity<String>(headers);
+    @Test
+    public void testProtectedResource() {
+        HttpHeaders headers = new HttpHeaders();
+        HttpEntity<String> entity = new HttpEntity<String>(headers);
 
-		String url = "http://localhost:" + randomServerPort + "/protected";
+        String url = "http://localhost:" + randomServerPort + "/protected";
 
-		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-	}
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
 
-	@Test 
-	public void testActuatorResource() {
-		HttpHeaders headers = new HttpHeaders();
-		HttpEntity<String> entity = new HttpEntity<String>(headers);
+    @Test
+    public void testActuatorResource() {
+        HttpHeaders headers = new HttpHeaders();
+        HttpEntity<String> entity = new HttpEntity<String>(headers);
 
-		String url = "http://localhost:" + randomServerPort + "/actuator/health";
+        String url = "http://localhost:" + randomServerPort + "/actuator/health";
 
-		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-	}
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
 
-	@Test 
-	public void testProtectedResourceWithToken(@AccessToken(audience = "mock.my.audience") String token) {
-		HttpHeaders headers = new HttpHeaders();
-		headers.add("Authorization", token);
-		HttpEntity<String> entity = new HttpEntity<String>(headers);
+    @Test
+    public void testProtectedResourceWithToken(@AccessToken(audience = "mock.my.audience") String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", token);
+        HttpEntity<String> entity = new HttpEntity<String>(headers);
 
-		String url = "http://localhost:" + randomServerPort + "/protected";
+        String url = "http://localhost:" + randomServerPort + "/protected";
 
-		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-	}
-
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
 
 }

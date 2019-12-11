@@ -11,26 +11,26 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 
 public class PropertiesFileAuthorizationServerConfigurationResolver implements ResourceServerConfigurationResolver {
 
-	private Path path;
-	private String prefix;
+    private Path path;
+    private String prefix;
 
-	public PropertiesFileAuthorizationServerConfigurationResolver() throws IOException {
-		this(Paths.get("jwt.junit5.properties"), "entur.jwt.tenants");
-	}
+    public PropertiesFileAuthorizationServerConfigurationResolver() throws IOException {
+        this(Paths.get("jwt.junit5.properties"), "entur.jwt.tenants");
+    }
 
-	public PropertiesFileAuthorizationServerConfigurationResolver(Path path, String prefix) {
-		this.path = path;
-		this.prefix = prefix;
-	}
+    public PropertiesFileAuthorizationServerConfigurationResolver(Path path, String prefix) {
+        this.path = path;
+        this.prefix = prefix;
+    }
 
-	@Override
-	public ResourceServerConfiguration resolve(ExtensionContext context) throws Exception {
-		Properties properties = new Properties();
-		try (InputStream in = Files.newInputStream(path)) {
-			properties.load(in);
-		}
+    @Override
+    public ResourceServerConfiguration resolve(ExtensionContext context) throws Exception {
+        Properties properties = new Properties();
+        try (InputStream in = Files.newInputStream(path)) {
+            properties.load(in);
+        }
 
-		return new PropertiesAuthorizationServerConfiguration(prefix, properties);
-	}
+        return new PropertiesAuthorizationServerConfiguration(prefix, properties);
+    }
 
 }

@@ -11,60 +11,61 @@ import org.springframework.security.core.GrantedAuthority;
 
 public class Greeting {
 
-	private long id;
-	@NotNull
-	private String content;
+    private long id;
+    @NotNull
+    private String content;
 
-	private String className;
-	private List<String> authorities = new ArrayList<>();
+    private String className;
+    private List<String> authorities = new ArrayList<>();
 
-	public Greeting() {
-	}
-	public Greeting(long id, String content) {
-		this.id = id;
-		this.content = content;
-	}
+    public Greeting() {
+    }
 
-	public Greeting(long id, String content, Class<?> argument, Collection<GrantedAuthority> authorities) {
-		this.id = id;
-		this.content = content;
-		if(argument != null) {
-			this.className = argument.getName();
-		}
-		if(authorities != null) {
-			this.authorities = authorities.stream().map(a -> a.getAuthority()).collect(Collectors.toList());
-		}
-	}
+    public Greeting(long id, String content) {
+        this.id = id;
+        this.content = content;
+    }
 
-	public long getId() {
-		return id;
-	}
+    public Greeting(long id, String content, Class<?> argument, Collection<GrantedAuthority> authorities) {
+        this.id = id;
+        this.content = content;
+        if (argument != null) {
+            this.className = argument.getName();
+        }
+        if (authorities != null) {
+            this.authorities = authorities.stream().map(a -> a.getAuthority()).collect(Collectors.toList());
+        }
+    }
 
-	public String getContent() {
-		return content;
-	}
+    public long getId() {
+        return id;
+    }
 
-	public String getClassName() {
-		return className;
-	}
+    public String getContent() {
+        return content;
+    }
 
-	public void setClassName(String className) {
-		this.className = className;
-	}
+    public String getClassName() {
+        return className;
+    }
 
-	public List<String> getAuthorities() {
-		return authorities;
-	}
+    public void setClassName(String className) {
+        this.className = className;
+    }
 
-	public void setAuthorities(List<String> authorities) {
-		this.authorities = authorities;
-	}
+    public List<String> getAuthorities() {
+        return authorities;
+    }
 
-	public void setId(long id) {
-		this.id = id;
-	}
+    public void setAuthorities(List<String> authorities) {
+        this.authorities = authorities;
+    }
 
-	public void setContent(String content) {
-		this.content = content;
-	}
+    public void setId(long id) {
+        this.id = id;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
 }

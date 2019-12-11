@@ -4,71 +4,72 @@ import java.util.List;
 
 /**
  * 
- * Default implementation of health provider. <br><br>
- * Returns bad health if<br> 
- *  - a previous invocation has failed, and<br> 
- *  - a new invocation fails as well. <br>
- *  <br>
- *  Returns good health if<br>
- *  - a previous invocation was successful, or<br> 
- *  - a previous invocation has failed, but a new invocation is successful.<br> 
- *   
+ * Default implementation of health provider. <br>
+ * <br>
+ * Returns bad health if<br>
+ * - a previous invocation has failed, and<br>
+ * - a new invocation fails as well. <br>
+ * <br>
+ * Returns good health if<br>
+ * - a previous invocation was successful, or<br>
+ * - a previous invocation has failed, but a new invocation is successful.<br>
+ * 
  */
 
 public class DefaultHealthJwksProvider<T> extends BaseJwksProvider<T> {
 
-	private volatile JwksHealth status;
+    private volatile JwksHealth status;
 
-	/** 
-	 * Provider to invoke when refreshing state. This should be the top level provider,
-	 * so that caches are actually populated and so on. 
-	 */
-	private JwksProvider<T> refreshProvider;
+    /**
+     * Provider to invoke when refreshing state. This should be the top level
+     * provider, so that caches are actually populated and so on.
+     */
+    private JwksProvider<T> refreshProvider;
 
-	public DefaultHealthJwksProvider(JwksProvider<T> provider) {
-		super(provider);
-	}
+    public DefaultHealthJwksProvider(JwksProvider<T> provider) {
+        super(provider);
+    }
 
-	@Override
-	public List<T> getJwks(boolean forceUpdate) throws JwksException {
-		long time = System.currentTimeMillis();
+    @Override
+    public List<T> getJwks(boolean forceUpdate) throws JwksException {
+        long time = System.currentTimeMillis();
 
-		List<T> list = null;
-		try {
-			list = provider.getJwks(forceUpdate);
-		} finally {
-			this.status = new JwksHealth(time, list != null);
-		}
+        List<T> list = null;
+        try {
+            list = provider.getJwks(forceUpdate);
+        } finally {
+            this.status = new JwksHealth(time, list != null);
+        }
 
-		return list;
-	}
+        return list;
+    }
 
-	@Override
-	public JwksHealth getHealth(boolean refresh) {
-		JwksHealth threadSafeStatus = this.status; // defensive copy
-		if(refresh && (threadSafeStatus == null || !threadSafeStatus.isSuccess())) { 
-			// get a fresh status
-			try {
-				refreshProvider.getJwks(false);
-			} catch(Exception e) {
-				// ignore
-				logger.warn("Exception refreshing health status.", e);
-			} finally {
-				// so was this provider actually invoked?
-				// check whether we got a new status
-				if(this.status != threadSafeStatus) {
-					threadSafeStatus = this.status;
-				} else {
-					// assume a provider above this instance
-					// was able to compensate somehow
-					threadSafeStatus = new JwksHealth(System.currentTimeMillis(), true);
-				}
-			}
-		}
-		return threadSafeStatus;
-	}
+    @Override
+    public JwksHealth getHealth(boolean refresh) {
+        JwksHealth threadSafeStatus = this.status; // defensive copy
+        if (refresh && (threadSafeStatus == null || !threadSafeStatus.isSuccess())) {
+            // get a fresh status
+            try {
+                refreshProvider.getJwks(false);
+            } catch (Exception e) {
+                // ignore
+                logger.warn("Exception refreshing health status.", e);
+            } finally {
+                // so was this provider actually invoked?
+                // check whether we got a new status
+                if (this.status != threadSafeStatus) {
+                    threadSafeStatus = this.status;
+                } else {
+                    // assume a provider above this instance
+                    // was able to compensate somehow
+                    threadSafeStatus = new JwksHealth(System.currentTimeMillis(), true);
+                }
+            }
+        }
+        return threadSafeStatus;
+    }
 
-	public void setRefreshProvider(JwksProvider<T> top) {
-		this.refreshProvider = top;
-	}
+    public void setRefreshProvider(JwksProvider<T> top) {
+        this.refreshProvider = top;
+    }
 }

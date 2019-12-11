@@ -15,11 +15,11 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 public class SingleAuthorizationServerTest {
 
-	@Autowired
-	private JwtVerifier<?> verifier;
+    @Autowired
+    private JwtVerifier<?> verifier;
 
-	@Test
-	public void test(@MyAccessToken(myId = 1) String token) throws Exception {
-		verifier.verify(token);
-	}
+    @Test
+    public void test(@MyAccessToken(myId = 1) String token) throws Exception {
+        verifier.verify(token);
+    }
 }

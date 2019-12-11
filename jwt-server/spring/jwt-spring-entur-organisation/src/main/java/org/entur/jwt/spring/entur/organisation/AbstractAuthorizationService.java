@@ -24,36 +24,36 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 public abstract class AbstractAuthorizationService {
 
-	public AbstractAuthorizationService(RoleAssignmentExtractor roleAssignmentExtractor) {
-		super();
-		this.roleAssignmentExtractor = roleAssignmentExtractor;
-	}
+    public AbstractAuthorizationService(RoleAssignmentExtractor roleAssignmentExtractor) {
+        super();
+        this.roleAssignmentExtractor = roleAssignmentExtractor;
+    }
 
-	protected RoleAssignmentExtractor roleAssignmentExtractor;
+    protected RoleAssignmentExtractor roleAssignmentExtractor;
 
-	public void verifyAtLeastOne(AuthorizationClaim... claims) {
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		verifyAtLeastOne(authentication, claims);
-	}
+    public void verifyAtLeastOne(AuthorizationClaim... claims) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        verifyAtLeastOne(authentication, claims);
+    }
 
-	public void verifyAtLeastOne(Authentication authentication, AuthorizationClaim... claims) {
-		List<RoleAssignment> roleAssignments = roleAssignmentExtractor.getRoleAssignmentsForUser(authentication);
+    public void verifyAtLeastOne(Authentication authentication, AuthorizationClaim... claims) {
+        List<RoleAssignment> roleAssignments = roleAssignmentExtractor.getRoleAssignmentsForUser(authentication);
 
-		boolean authorized = false;
-		for (AuthorizationClaim claim : claims) {
-			if (claim.getProviderId() == null) {
-				authorized |= roleAssignments.stream().anyMatch(ra -> claim.getRequiredRole().equals(ra.getRole()));
-			} else {
-				authorized |= hasRoleForProvider(roleAssignments, claim);
-			}
-		}
+        boolean authorized = false;
+        for (AuthorizationClaim claim : claims) {
+            if (claim.getProviderId() == null) {
+                authorized |= roleAssignments.stream().anyMatch(ra -> claim.getRequiredRole().equals(ra.getRole()));
+            } else {
+                authorized |= hasRoleForProvider(roleAssignments, claim);
+            }
+        }
 
-		if (!authorized) {
-			throw new AccessDeniedException("Insufficient privileges for operation");
-		}
+        if (!authorized) {
+            throw new AccessDeniedException("Insufficient privileges for operation");
+        }
 
-	}
+    }
 
-	protected abstract boolean hasRoleForProvider(List<RoleAssignment> roleAssignments, AuthorizationClaim claim);
+    protected abstract boolean hasRoleForProvider(List<RoleAssignment> roleAssignments, AuthorizationClaim claim);
 
 }

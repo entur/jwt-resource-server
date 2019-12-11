@@ -13,78 +13,77 @@ import org.slf4j.LoggerFactory;
 
 public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider<HttpURLConnection> {
 
-	protected static final Logger logger = LoggerFactory.getLogger(UrlAccessTokenProvider.class);
+    protected static final Logger logger = LoggerFactory.getLogger(UrlAccessTokenProvider.class);
 
-	protected static StringBuilder printHttpURLConnectionHeadersIfPresent(HttpURLConnection c, String ... headerNames) {
-		StringBuilder builder = new StringBuilder();
-		for(String headerName : headerNames) {
-			String value = c.getHeaderField(headerName);
-			if(value != null) {
-				builder.append(headerName);
-				builder.append(':');
-				builder.append(value);
-				builder.append(", ");
-			}
-		}
-		if(builder.length() > 0) {
-			builder.setLength(builder.length() - 2);
-		}
-		return builder;
-	}
-	
-	
-	protected final Integer connectTimeout;
-	protected final Integer readTimeout;
+    protected static StringBuilder printHttpURLConnectionHeadersIfPresent(HttpURLConnection c, String... headerNames) {
+        StringBuilder builder = new StringBuilder();
+        for (String headerName : headerNames) {
+            String value = c.getHeaderField(headerName);
+            if (value != null) {
+                builder.append(headerName);
+                builder.append(':');
+                builder.append(value);
+                builder.append(", ");
+            }
+        }
+        if (builder.length() > 0) {
+            builder.setLength(builder.length() - 2);
+        }
+        return builder;
+    }
 
-	// https://www.oauth.com/oauth2-servers/access-tokens/client-credentials/
+    protected final Integer connectTimeout;
+    protected final Integer readTimeout;
 
-	public UrlAccessTokenProvider(URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers, Integer connectTimeout, Integer readTimeout) {
-		super(issueUrl, parameters, headers);
-		
-		checkArgument(connectTimeout == null || connectTimeout >= 0, "Invalid connect timeout value '" + connectTimeout + "'. Must be a non-negative integer.");
-		checkArgument(readTimeout == null || readTimeout >= 0, "Invalid read timeout value '" + readTimeout + "'. Must be a non-negative integer.");
+    // https://www.oauth.com/oauth2-servers/access-tokens/client-credentials/
 
-		this.connectTimeout = connectTimeout;
-		this.readTimeout = readTimeout;
-	}
+    public UrlAccessTokenProvider(URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers, Integer connectTimeout, Integer readTimeout) {
+        super(issueUrl, parameters, headers);
 
-	protected HttpURLConnection request(URL url, byte[] body, Map<String, Object> headers) throws IOException {
-		final HttpURLConnection c = (HttpURLConnection)url.openConnection();
-		if (connectTimeout != null) {
-			c.setConnectTimeout(connectTimeout);
-		}
-		if (readTimeout != null) {
-			c.setReadTimeout(readTimeout);
-		}
-		c.setRequestProperty("Accept", "application/json");
-		c.setRequestProperty("Content-Type", CONTENT_TYPE);
+        checkArgument(connectTimeout == null || connectTimeout >= 0, "Invalid connect timeout value '" + connectTimeout + "'. Must be a non-negative integer.");
+        checkArgument(readTimeout == null || readTimeout >= 0, "Invalid read timeout value '" + readTimeout + "'. Must be a non-negative integer.");
 
-		for (Entry<String, Object> entry : headers.entrySet()) {
-			c.setRequestProperty(entry.getKey(), entry.getValue().toString());
-		}
+        this.connectTimeout = connectTimeout;
+        this.readTimeout = readTimeout;
+    }
 
-		c.setDoOutput(true);
+    protected HttpURLConnection request(URL url, byte[] body, Map<String, Object> headers) throws IOException {
+        final HttpURLConnection c = (HttpURLConnection) url.openConnection();
+        if (connectTimeout != null) {
+            c.setConnectTimeout(connectTimeout);
+        }
+        if (readTimeout != null) {
+            c.setReadTimeout(readTimeout);
+        }
+        c.setRequestProperty("Accept", "application/json");
+        c.setRequestProperty("Content-Type", CONTENT_TYPE);
 
-		try (OutputStream os = c.getOutputStream()) {
-			os.write(body);
-		}
+        for (Entry<String, Object> entry : headers.entrySet()) {
+            c.setRequestProperty(entry.getKey(), entry.getValue().toString());
+        }
 
-		return c;
+        c.setDoOutput(true);
 
-	}
+        try (OutputStream os = c.getOutputStream()) {
+            os.write(body);
+        }
 
-	@Override
-	protected int getResponseStatusCode(HttpURLConnection response) throws IOException {
-		return response.getResponseCode();
-	}
+        return c;
 
-	@Override
-	protected InputStream getResponseContent(HttpURLConnection response) throws IOException {
-		return response.getInputStream();
-	}
+    }
 
-	protected StringBuilder printHeadersIfPresent(HttpURLConnection c, String ... headerNames) {
-		return printHttpURLConnectionHeadersIfPresent(c, headerNames);
-	}
-	
+    @Override
+    protected int getResponseStatusCode(HttpURLConnection response) throws IOException {
+        return response.getResponseCode();
+    }
+
+    @Override
+    protected InputStream getResponseContent(HttpURLConnection response) throws IOException {
+        return response.getInputStream();
+    }
+
+    protected StringBuilder printHeadersIfPresent(HttpURLConnection c, String... headerNames) {
+        return printHttpURLConnectionHeadersIfPresent(c, headerNames);
+    }
+
 }

@@ -4,5 +4,5 @@ import java.util.Map;
 
 public interface AccessTokenEncoder {
 
-	String encode(Map<String, Object> claims);
+    String encode(Map<String, Object> claims);
 }

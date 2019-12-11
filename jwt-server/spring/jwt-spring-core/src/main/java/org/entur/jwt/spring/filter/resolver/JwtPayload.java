@@ -10,24 +10,24 @@ import java.util.Map;
 
 public class JwtPayload implements Serializable {
 
-	private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
-	private final Map<String, Object> claims;
+    private final Map<String, Object> claims;
 
-	/**
-	 * Constructor. Note that all claims, and the map it self is assumed to be serializable.
-	 * 
-	 * @param claims map with claims
-	 */
+    /**
+     * Constructor. Note that all claims, and the map it self is assumed to be
+     * serializable.
+     * 
+     * @param claims map with claims
+     */
 
-	public JwtPayload(Map<String, Object> claims) {
-		super();
-		this.claims = claims;
-	}
+    public JwtPayload(Map<String, Object> claims) {
+        super();
+        this.claims = claims;
+    }
 
-	public Map<String, Object> getClaims() {
-		return claims;
-	}
-
+    public Map<String, Object> getClaims() {
+        return claims;
+    }
 
 }

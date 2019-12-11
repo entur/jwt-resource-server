@@ -13,21 +13,20 @@ import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.util.IOUtils;
 
-
 public class Connect2IdJwkReader implements JwksReader<JWK> {
 
-	@Override
-	public List<JWK> readJwks(InputStream inputStream) throws IOException, InvalidSigningKeysException {
-		String content = IOUtils.readInputStreamToString(inputStream, StandardCharsets.UTF_8);
+    @Override
+    public List<JWK> readJwks(InputStream inputStream) throws IOException, InvalidSigningKeysException {
+        String content = IOUtils.readInputStreamToString(inputStream, StandardCharsets.UTF_8);
 
-		JWKSet parse;
-		try {
-			parse = JWKSet.parse(content);
-		} catch (ParseException e) {
-			throw new InvalidSigningKeysException("Unable to parse keys", e);
-		}
+        JWKSet parse;
+        try {
+            parse = JWKSet.parse(content);
+        } catch (ParseException e) {
+            throw new InvalidSigningKeysException("Unable to parse keys", e);
+        }
 
-		return parse.getKeys();
-	}
+        return parse.getKeys();
+    }
 
 }

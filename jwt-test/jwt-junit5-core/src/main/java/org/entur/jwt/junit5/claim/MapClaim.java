@@ -8,31 +8,34 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.PARAMETER, ElementType.TYPE})
+@Target({ ElementType.PARAMETER, ElementType.TYPE })
 @Repeatable(MapClaim.List.class)
 @Inherited
 public @interface MapClaim {
 
-	public String[] path();
+    public String[] path();
 
-	public Entry[] entries() default {};
+    public Entry[] entries() default {};
 
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target({ElementType.PARAMETER})
-	@Inherited
-	@interface List {
-		MapClaim[] value();
-	}
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ ElementType.PARAMETER })
+    @Inherited
+    @interface List {
+        MapClaim[] value();
+    }
 
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target({ElementType.PARAMETER, ElementType.TYPE})
-	@Inherited
-	public @interface Entry {
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ ElementType.PARAMETER, ElementType.TYPE })
+    @Inherited
+    public @interface Entry {
 
-		public String name();
-		public Class<?> type() default String.class;
-		public String[] value() default {};
-		public boolean alwaysArray() default false;    	
-	}
+        public String name();
+
+        public Class<?> type() default String.class;
+
+        public String[] value() default {};
+
+        public boolean alwaysArray() default false;
+    }
 
 }

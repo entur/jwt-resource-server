@@ -13,18 +13,18 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 
 public class SimpleJwtAuthorityMapper implements JwtAuthorityMapper<DecodedJWT> {
 
-	@Override
-	public List<GrantedAuthority> getGrantedAuthorities(DecodedJWT token) {
-		List<GrantedAuthority> authorities = new ArrayList<>();
+    @Override
+    public List<GrantedAuthority> getGrantedAuthorities(DecodedJWT token) {
+        List<GrantedAuthority> authorities = new ArrayList<>();
 
-		Claim scopeClaim = token.getClaim("scope");
-		if(scopeClaim != null && !(scopeClaim instanceof NullClaim)) {
-			String[] scopes = scopeClaim.asString().split("\\s");
-			for(String scope : scopes) {
-				authorities.add(new SimpleGrantedAuthority(scope));
-			}
-		}
-		return authorities;
-	}
+        Claim scopeClaim = token.getClaim("scope");
+        if (scopeClaim != null && !(scopeClaim instanceof NullClaim)) {
+            String[] scopes = scopeClaim.asString().split("\\s");
+            for (String scope : scopes) {
+                authorities.add(new SimpleGrantedAuthority(scope));
+            }
+        }
+        return authorities;
+    }
 
 }

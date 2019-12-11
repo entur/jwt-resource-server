@@ -11,17 +11,11 @@ import org.entur.jwt.junit5.claim.MapClaim;
 import org.entur.jwt.junit5.claim.MapClaim.Entry;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.PARAMETER, ElementType.TYPE})
+@Target({ ElementType.PARAMETER, ElementType.TYPE })
 @Inherited
-@AccessToken(
-		audience = "mock.my.partner.audience",
-		by = "myServer",
-		encoder = KeycloakResourceAccessTokenEncoder.class
-		)
-@MapClaim(path = {"resources_access", "abcdef"}, entries = {
-		@Entry(name = "roles", alwaysArray = true, value = {"admin"})
-})
+@AccessToken(audience = "mock.my.partner.audience", by = "myServer", encoder = KeycloakResourceAccessTokenEncoder.class)
+@MapClaim(path = { "resources_access", "abcdef" }, entries = { @Entry(name = "roles", alwaysArray = true, value = { "admin" }) })
 public @interface KeycloakResourceAccessToken {
 
-	public long myId();
+    public long myId();
 }

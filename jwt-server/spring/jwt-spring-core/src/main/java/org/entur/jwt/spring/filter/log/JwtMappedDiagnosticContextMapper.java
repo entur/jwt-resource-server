@@ -4,7 +4,7 @@ import org.entur.jwt.verifier.JwtClaimException;
 
 public interface JwtMappedDiagnosticContextMapper<T> {
 
-	void addContext(T token) throws JwtClaimException;
+    void addContext(T token) throws JwtClaimException;
 
-	void removeContext(T token);
+    void removeContext(T token);
 }

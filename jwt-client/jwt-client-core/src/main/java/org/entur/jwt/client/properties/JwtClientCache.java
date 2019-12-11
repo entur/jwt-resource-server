@@ -2,45 +2,45 @@ package org.entur.jwt.client.properties;
 
 public class JwtClientCache {
 
-	private boolean enabled = true;
+    private boolean enabled = true;
 
-	/** Minimum number of seconds left before the returned (cached) token expires */ 
-	private int minimumTimeToLive = 15; // in seconds
+    /** Minimum number of seconds left before the returned (cached) token expires */
+    private int minimumTimeToLive = 15; // in seconds
 
-	/** Number of seconds to wait for a token, if it must be refreshed */
-	private int refreshTimeout = 15; // cache refresh timeout in seconds
+    /** Number of seconds to wait for a token, if it must be refreshed */
+    private int refreshTimeout = 15; // cache refresh timeout in seconds
 
-	private PreemptiveRefresh preemptiveRefresh = new PreemptiveRefresh();
+    private PreemptiveRefresh preemptiveRefresh = new PreemptiveRefresh();
 
-	public boolean isEnabled() {
-		return enabled;
-	}
+    public boolean isEnabled() {
+        return enabled;
+    }
 
-	public void setEnabled(boolean enabled) {
-		this.enabled = enabled;
-	}
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 
-	public int getMinimumTimeToLive() {
-		return minimumTimeToLive;
-	}
+    public int getMinimumTimeToLive() {
+        return minimumTimeToLive;
+    }
 
-	public void setMinimumTimeToLive(int minimumTimeToLive) {
-		this.minimumTimeToLive = minimumTimeToLive;
-	}
+    public void setMinimumTimeToLive(int minimumTimeToLive) {
+        this.minimumTimeToLive = minimumTimeToLive;
+    }
 
-	public PreemptiveRefresh getPreemptiveRefresh() {
-		return preemptiveRefresh;
-	}
+    public PreemptiveRefresh getPreemptiveRefresh() {
+        return preemptiveRefresh;
+    }
 
-	public void setPreemptiveRefresh(PreemptiveRefresh preemptiveRefresh) {
-		this.preemptiveRefresh = preemptiveRefresh;
-	}
+    public void setPreemptiveRefresh(PreemptiveRefresh preemptiveRefresh) {
+        this.preemptiveRefresh = preemptiveRefresh;
+    }
 
-	public int getRefreshTimeout() {
-		return refreshTimeout;
-	}
+    public int getRefreshTimeout() {
+        return refreshTimeout;
+    }
 
-	public void setRefreshTimeout(int refreshTimeout) {
-		this.refreshTimeout = refreshTimeout;
-	}
+    public void setRefreshTimeout(int refreshTimeout) {
+        this.refreshTimeout = refreshTimeout;
+    }
 }

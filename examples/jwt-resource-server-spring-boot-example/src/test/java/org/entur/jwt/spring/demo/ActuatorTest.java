@@ -1,4 +1,5 @@
 package org.entur.jwt.spring.demo;
+
 import static io.restassured.RestAssured.given;
 
 import org.entur.jwt.junit5.AuthorizationServer;
@@ -11,22 +12,14 @@ import org.springframework.http.HttpStatus;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class ActuatorTest {
 
-    // see also alternative approach with com.jayway.restassured:spring-mock-mvc 
-    
+    // see also alternative approach with com.jayway.restassured:spring-mock-mvc
+
     @LocalServerPort
     private Integer port;
 
     @Test
     public void actuatorHealth() {
-        given()
-            .port(port)
-            .log().all()
-        .when()
-            .get("/actuator/health")
-        .then()
-            .log().all()
-            .assertThat()
-            .statusCode(HttpStatus.OK.value());
+        given().port(port).log().all().when().get("/actuator/health").then().log().all().assertThat().statusCode(HttpStatus.OK.value());
     }
 
 }

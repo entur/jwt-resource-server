@@ -4,14 +4,14 @@ import org.springframework.security.authentication.AuthenticationServiceExceptio
 
 public class JwtAuthenticationServiceUnavailableException extends AuthenticationServiceException {
 
-	private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
-	public JwtAuthenticationServiceUnavailableException(String msg, Throwable cause) {
-		super(msg, cause);
-	}
+    public JwtAuthenticationServiceUnavailableException(String msg, Throwable cause) {
+        super(msg, cause);
+    }
 
-	public JwtAuthenticationServiceUnavailableException(String msg) {
-		super(msg);
-	}
+    public JwtAuthenticationServiceUnavailableException(String msg) {
+        super(msg);
+    }
 
 }

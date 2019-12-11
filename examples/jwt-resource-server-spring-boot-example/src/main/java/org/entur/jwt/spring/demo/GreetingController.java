@@ -1,6 +1,5 @@
 package org.entur.jwt.spring.demo;
 
-
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.entur.jwt.spring.filter.JwtAuthenticationToken;
@@ -25,16 +24,16 @@ public class GreetingController {
 
         return new Greeting(counter.incrementAndGet(), "Hello unprotected");
     }
-    
+
     @GetMapping("/protected")
     @PreAuthorize("isFullyAuthenticated()")
     public Greeting body() {
         log.info("Get protected method");
-        
-        JwtAuthenticationToken authentication = (JwtAuthenticationToken)SecurityContextHolder.getContext().getAuthentication();
-        
-    	log.info("Authorization header: {}", authentication.getCredentials());
-    	
+
+        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+
+        log.info("Authorization header: {}", authentication.getCredentials());
+
         return new Greeting(counter.incrementAndGet(), "Hello protected.");
     }
 
@@ -43,21 +42,19 @@ public class GreetingController {
     public Greeting protectedWithPartnerTenant(JwtPayload body) {
         log.info("Get method protected with argument resolver");
 
-    	log.info("Claims: {}", body.getClaims());
-    	
+        log.info("Claims: {}", body.getClaims());
+
         return new Greeting(counter.incrementAndGet(), "Hello protected tenant.");
     }
 
     @PreAuthorize("isFullyAuthenticated() && hasAnyAuthority('configure')")
-    @GetMapping("/protected/withPermission") 
+    @GetMapping("/protected/withPermission")
     public Greeting protectedWithPermission(JwtPayload body) {
         log.info("Get method protected by permission");
-        
-    	log.info("Claims: {}", body.getClaims());
-        
+
+        log.info("Claims: {}", body.getClaims());
+
         return new Greeting(counter.incrementAndGet(), "Hello protected tenant.");
     }
-    
-    
 
 }

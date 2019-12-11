@@ -15,24 +15,24 @@ import org.springframework.boot.actuate.health.Health;
 
 public class JwksHealthIndicator extends AbstractHealthIndicator {
 
-	protected static final Logger logger = LoggerFactory.getLogger(JwksHealthIndicator.class);
+    protected static final Logger logger = LoggerFactory.getLogger(JwksHealthIndicator.class);
 
-	private final JwtVerifier<?> jwtVerifier;
+    private final JwtVerifier<?> jwtVerifier;
 
-	public JwksHealthIndicator(JwtVerifier<?> jwtVerifier) {
-		this.jwtVerifier = jwtVerifier;
-	}
+    public JwksHealthIndicator(JwtVerifier<?> jwtVerifier) {
+        this.jwtVerifier = jwtVerifier;
+    }
 
-	@Override
-	protected void doHealthCheck(Health.Builder builder) throws Exception {
-		JwksHealth health = jwtVerifier.getHealth(true);
+    @Override
+    protected void doHealthCheck(Health.Builder builder) throws Exception {
+        JwksHealth health = jwtVerifier.getHealth(true);
 
-		if(health.isSuccess()) {
-			builder.up();
-		} else {
-			builder.down();
-		}
-		builder.withDetail("timestamp", health.getTimestamp());
-	}
+        if (health.isSuccess()) {
+            builder.up();
+        } else {
+            builder.down();
+        }
+        builder.withDetail("timestamp", health.getTimestamp());
+    }
 
 }

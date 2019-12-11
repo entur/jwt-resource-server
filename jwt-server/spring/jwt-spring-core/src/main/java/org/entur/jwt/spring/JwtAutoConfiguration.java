@@ -60,240 +60,225 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 @ConditionalOnClass(WebSecurityConfigurerAdapter.class)
-@EnableConfigurationProperties({SecurityProperties.class})
-@ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = false)
+@EnableConfigurationProperties({ SecurityProperties.class })
+@ConditionalOnProperty(name = { "entur.jwt.enabled" }, havingValue = "true", matchIfMissing = false)
 public class JwtAutoConfiguration {
 
-	private static Logger log = LoggerFactory.getLogger(JwtAutoConfiguration.class);
+    private static Logger log = LoggerFactory.getLogger(JwtAutoConfiguration.class);
 
-	private static class NoUserDetailsService implements UserDetailsService {
-		@Override
-		public UserDetails loadUserByUsername(String username) {
-			throw new UsernameNotFoundException("");
-		}
-	}
+    private static class NoUserDetailsService implements UserDetailsService {
+        @Override
+        public UserDetails loadUserByUsername(String username) {
+            throw new UsernameNotFoundException("");
+        }
+    }
 
-	@Configuration
-	@ConditionalOnMissingBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
-	@EnableGlobalMethodSecurity(prePostEnabled = true)
-	public static class DefaultEnturWebSecurityConfig extends WebSecurityConfigurerAdapter implements WebMvcConfigurer {
+    @Configuration
+    @ConditionalOnMissingBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
+    @EnableGlobalMethodSecurity(prePostEnabled = true)
+    public static class DefaultEnturWebSecurityConfig extends WebSecurityConfigurerAdapter implements WebMvcConfigurer {
 
-		private final JwtAuthenticationFilter<?> filter;
-		private final JwtArgumentResolver resolver;
+        private final JwtAuthenticationFilter<?> filter;
+        private final JwtArgumentResolver resolver;
 
-		@Autowired
-		public DefaultEnturWebSecurityConfig(JwtAuthenticationFilter<?> filter, JwtArgumentResolver resolver) {
-			this.filter = filter;
-			this.resolver = resolver;
-		}
+        @Autowired
+        public DefaultEnturWebSecurityConfig(JwtAuthenticationFilter<?> filter, JwtArgumentResolver resolver) {
+            this.filter = filter;
+            this.resolver = resolver;
+        }
 
-		@Bean
-		@Override
-		public UserDetailsService userDetailsService() {
-			// avoid the default user.
-			return new NoUserDetailsService();
-		}
+        @Bean
+        @Override
+        public UserDetailsService userDetailsService() {
+            // avoid the default user.
+            return new NoUserDetailsService();
+        }
 
-		@Override
-		protected void configure(HttpSecurity http) throws Exception {
-			// implementation note: this filter runs  before the dispatcher servlet, and so is out of reach of any ControllerAdvice
-			http
-			.sessionManagement()
-			.sessionCreationPolicy(STATELESS)
-			.and()
-			.csrf().disable()
-			.formLogin().disable()
-			.httpBasic().disable()
-			.logout().disable()
-			.cors()
-			.and()
-			.addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class);
-		}
+        @Override
+        protected void configure(HttpSecurity http) throws Exception {
+            // implementation note: this filter runs before the dispatcher servlet, and so
+            // is out of reach of any ControllerAdvice
+            http.sessionManagement().sessionCreationPolicy(STATELESS).and().csrf().disable().formLogin().disable().httpBasic().disable().logout().disable().cors().and().addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class);
+        }
 
-		@Override
-		public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
-			resolvers.add(resolver);
-		}
-	}
+        @Override
+        public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+            resolvers.add(resolver);
+        }
+    }
 
-	@Configuration
-	@ConditionalOnBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
-	public static class DefaultEnturWebMvcConfigurer implements WebMvcConfigurer {
+    @Configuration
+    @ConditionalOnBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
+    public static class DefaultEnturWebMvcConfigurer implements WebMvcConfigurer {
 
-		private final JwtArgumentResolver resolver;
+        private final JwtArgumentResolver resolver;
 
-		@Autowired
-		public DefaultEnturWebMvcConfigurer(JwtArgumentResolver resolver) {
-			this.resolver = resolver;
-		}
-		@Override
-		public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
-			resolvers.add(resolver);
-		}
-	}
+        @Autowired
+        public DefaultEnturWebMvcConfigurer(JwtArgumentResolver resolver) {
+            this.resolver = resolver;
+        }
 
-	@Bean
-	@ConditionalOnMissingBean(JwtMappedDiagnosticContextMapper.class)
-	@ConditionalOnProperty(name = {"entur.jwt.mdc.enabled"}, havingValue = "true", matchIfMissing = false)
-	public <T> JwtMappedDiagnosticContextMapper<T> mapper(SecurityProperties properties, JwtClaimExtractor<T> extractor) {
-		MdcProperties mdc = properties.getJwt().getMdc();
-		List<MdcPair> items = mdc.getMappings();
-		List<String> to = new ArrayList<>();
-		List<String> from = new ArrayList<>();
+        @Override
+        public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+            resolvers.add(resolver);
+        }
+    }
 
-		// note: possible to map the same claim to different values
-		for(int i = 0; i < items.size(); i++) {
-			MdcPair item = items.get(i);
-			to.add(item.getTo());
-			from.add(item.getFrom());
+    @Bean
+    @ConditionalOnMissingBean(JwtMappedDiagnosticContextMapper.class)
+    @ConditionalOnProperty(name = { "entur.jwt.mdc.enabled" }, havingValue = "true", matchIfMissing = false)
+    public <T> JwtMappedDiagnosticContextMapper<T> mapper(SecurityProperties properties, JwtClaimExtractor<T> extractor) {
+        MdcProperties mdc = properties.getJwt().getMdc();
+        List<MdcPair> items = mdc.getMappings();
+        List<String> to = new ArrayList<>();
+        List<String> from = new ArrayList<>();
 
-			log.info("Map JWT claim '{}' to MDC key '{}'", item.getFrom(), item.getTo());
-		}
-		return new DefaultJwtMappedDiagnosticContextMapper<>(from, to, extractor);
-	}
+        // note: possible to map the same claim to different values
+        for (int i = 0; i < items.size(); i++) {
+            MdcPair item = items.get(i);
+            to.add(item.getTo());
+            from.add(item.getFrom());
 
-	@Bean
-	@ConditionalOnMissingBean(JwtVerifier.class)
-	public <T> JwtVerifier<T> verifier(SecurityProperties properties, JwtVerifierFactory<T> factory) {
-		Map<String, JwtTenantProperties> tenants = new HashMap<>();
+            log.info("Map JWT claim '{}' to MDC key '{}'", item.getFrom(), item.getTo());
+        }
+        return new DefaultJwtMappedDiagnosticContextMapper<>(from, to, extractor);
+    }
 
-		JwtProperties jwtProperties = properties.getJwt();
+    @Bean
+    @ConditionalOnMissingBean(JwtVerifier.class)
+    public <T> JwtVerifier<T> verifier(SecurityProperties properties, JwtVerifierFactory<T> factory) {
+        Map<String, JwtTenantProperties> tenants = new HashMap<>();
 
-		List<String> filter = jwtProperties.getFilter();
-		if(filter != null) {
-			if(filter.isEmpty()) {
-				throw new IllegalStateException("Tenant filter is empty");
-			}
-			// filter on name
-			for (Entry<String, JwtTenantProperties> entry : jwtProperties.getTenants().entrySet()) {
-				String id = entry.getKey();
-				if(id != null && filter.contains(id)) {
-					tenants.put(id, entry.getValue());
-				}
-			}
-		} else {
-			tenants.putAll(jwtProperties.getTenants());
-		}
-		if(tenants.isEmpty()) {
-			if(filter != null) {
-				throw new IllegalStateException("No configured tenants for filter '" + filter + "'");
-			} else {
-				throw new IllegalStateException("No configured tenants");
-			}
-		}
+        JwtProperties jwtProperties = properties.getJwt();
 
-		return factory.getVerifier(tenants, jwtProperties.getJwk(), jwtProperties.getClaims());
-	}
+        List<String> filter = jwtProperties.getFilter();
+        if (filter != null) {
+            if (filter.isEmpty()) {
+                throw new IllegalStateException("Tenant filter is empty");
+            }
+            // filter on name
+            for (Entry<String, JwtTenantProperties> entry : jwtProperties.getTenants().entrySet()) {
+                String id = entry.getKey();
+                if (id != null && filter.contains(id)) {
+                    tenants.put(id, entry.getValue());
+                }
+            }
+        } else {
+            tenants.putAll(jwtProperties.getTenants());
+        }
+        if (tenants.isEmpty()) {
+            if (filter != null) {
+                throw new IllegalStateException("No configured tenants for filter '" + filter + "'");
+            } else {
+                throw new IllegalStateException("No configured tenants");
+            }
+        }
 
-	@Bean
-	@ConditionalOnMissingBean(JwtAuthenticationFilter.class)
-	public <T> JwtAuthenticationFilter<T> auth(SecurityProperties properties, JwtVerifier<T> verifier, @Autowired(required = false) JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtAuthorityMapper<T> authorityMapper, JwtClaimExtractor<T> extractor) {
-		JwtProperties jwt = properties.getJwt();
+        return factory.getVerifier(tenants, jwtProperties.getJwk(), jwtProperties.getClaims());
+    }
 
-		AuthorizationProperties authorization = jwt.getAuthorization();
+    @Bean
+    @ConditionalOnMissingBean(JwtAuthenticationFilter.class)
+    public <T> JwtAuthenticationFilter<T> auth(SecurityProperties properties, JwtVerifier<T> verifier, @Autowired(required = false) JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtAuthorityMapper<T> authorityMapper,
+            JwtClaimExtractor<T> extractor) {
+        JwtProperties jwt = properties.getJwt();
 
-		// add an extra layer of checks if auth is required
-		boolean required = authorization.getFilter().isEmpty() && !Objects.equals(authorization.getMode(), "optional");
-		if(required) {
-			log.info("Authentication with Json Web Token is required");
-		} else {
-			log.info("Authentication with Json Web Token is optional");
-		}
-		return new JwtAuthenticationFilter<>(verifier, required, authorityMapper, mdcMapper, extractor);
-	}
+        AuthorizationProperties authorization = jwt.getAuthorization();
 
-	@ConditionalOnProperty(name = {"entur.jwt.authorization.mode"}, havingValue = "required", matchIfMissing = false)
-	static class SecurityServletFilterConfiguration {
+        // add an extra layer of checks if auth is required
+        boolean required = authorization.getFilter().isEmpty() && !Objects.equals(authorization.getMode(), "optional");
+        if (required) {
+            log.info("Authentication with Json Web Token is required");
+        } else {
+            log.info("Authentication with Json Web Token is optional");
+        }
+        return new JwtAuthenticationFilter<>(verifier, required, authorityMapper, mdcMapper, extractor);
+    }
 
-		private static final String FILTER_NAME = "authorizationPrefilter";
+    @ConditionalOnProperty(name = { "entur.jwt.authorization.mode" }, havingValue = "required", matchIfMissing = false)
+    static class SecurityServletFilterConfiguration {
 
-		@Bean
-		@ConditionalOnMissingBean(name = FILTER_NAME)
-		public FilterRegistrationBean<Filter> authorizationPrefilter(SecurityProperties properties) {
-			final Filter filter = new JwtFilter(properties.getJwt().getAuthorization().getFilter());
-			final FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>(filter);
-			registration.setName(FILTER_NAME);
-			registration.setDispatcherTypes(REQUEST, ASYNC);
-			/*
-			 * Get the order value of this object.
-			 * <p>Higher values are interpreted as lower priority. As a consequence,
-			 * the object with the lowest value has the highest priority (somewhat
-			 * analogous to Servlet {@code load-on-startup} values).
-			 */
-			registration.setOrder(Ordered.HIGHEST_PRECEDENCE - 100); // i.e. filter early, but after mdc filter
-			return registration;
-		}
-	}
+        private static final String FILTER_NAME = "authorizationPrefilter";
 
-	@Bean("corsConfigurationSource")
-	@ConditionalOnProperty(name = {"entur.cors.enabled"}, havingValue = "true", matchIfMissing = false)
-	public CorsConfigurationSource corsConfigurationSource(SecurityProperties oidcAuthProperties) {
+        @Bean
+        @ConditionalOnMissingBean(name = FILTER_NAME)
+        public FilterRegistrationBean<Filter> authorizationPrefilter(SecurityProperties properties) {
+            final Filter filter = new JwtFilter(properties.getJwt().getAuthorization().getFilter());
+            final FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>(filter);
+            registration.setName(FILTER_NAME);
+            registration.setDispatcherTypes(REQUEST, ASYNC);
+            /*
+             * Get the order value of this object. <p>Higher values are interpreted as lower
+             * priority. As a consequence, the object with the lowest value has the highest
+             * priority (somewhat analogous to Servlet {@code load-on-startup} values).
+             */
+            registration.setOrder(Ordered.HIGHEST_PRECEDENCE - 100); // i.e. filter early, but after mdc filter
+            return registration;
+        }
+    }
 
-		CorsProperties cors = oidcAuthProperties.getCors();
-		if(cors.getMode().equals("api")) {
-			List<String> hosts = cors.getHosts();
-			log.info("Enable CORS request with hosts {} for API mode", hosts);
-			return getCorsConfiguration(hosts);
-		} else {
-			if(!cors.getHosts().isEmpty()) {
-				throw new IllegalStateException("Expected empty hosts configuration for CORS mode '" + cors.getMode() + "'");
-			}
-			log.info("Disable CORS requests for webapp mode");
+    @Bean("corsConfigurationSource")
+    @ConditionalOnProperty(name = { "entur.cors.enabled" }, havingValue = "true", matchIfMissing = false)
+    public CorsConfigurationSource corsConfigurationSource(SecurityProperties oidcAuthProperties) {
 
-			UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        CorsProperties cors = oidcAuthProperties.getCors();
+        if (cors.getMode().equals("api")) {
+            List<String> hosts = cors.getHosts();
+            log.info("Enable CORS request with hosts {} for API mode", hosts);
+            return getCorsConfiguration(hosts);
+        } else {
+            if (!cors.getHosts().isEmpty()) {
+                throw new IllegalStateException("Expected empty hosts configuration for CORS mode '" + cors.getMode() + "'");
+            }
+            log.info("Disable CORS requests for webapp mode");
 
-			CorsConfiguration config = new CorsConfiguration();
-			config.setAllowedOrigins(Collections.emptyList());
-			config.setAllowedHeaders(Collections.emptyList());
-			config.setAllowedMethods(Collections.emptyList());
+            UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 
-			source.registerCorsConfiguration("/**", config);
+            CorsConfiguration config = new CorsConfiguration();
+            config.setAllowedOrigins(Collections.emptyList());
+            config.setAllowedHeaders(Collections.emptyList());
+            config.setAllowedMethods(Collections.emptyList());
 
-			return source;
-		}
-	}
+            source.registerCorsConfiguration("/**", config);
 
-	@Bean("corsConfigurationSource")
-	@ConditionalOnProperty(name = {"entur.security.cors.mode"}, havingValue = "webapp", matchIfMissing = false)
-	public CorsConfigurationSource corsConfigurationSourceForWebapp(SecurityProperties properties) {
-		log.info("Disable CORS requests for webapp mode");
-		return getCorsConfiguration(Collections.emptyList());
-	}
+            return source;
+        }
+    }
 
-	public static CorsConfigurationSource getCorsConfiguration(List<String> hosts) {
+    @Bean("corsConfigurationSource")
+    @ConditionalOnProperty(name = { "entur.security.cors.mode" }, havingValue = "webapp", matchIfMissing = false)
+    public CorsConfigurationSource corsConfigurationSourceForWebapp(SecurityProperties properties) {
+        log.info("Disable CORS requests for webapp mode");
+        return getCorsConfiguration(Collections.emptyList());
+    }
 
-		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    public static CorsConfigurationSource getCorsConfiguration(List<String> hosts) {
 
-		CorsConfiguration config = new CorsConfiguration();
-		config.setAllowedOrigins(hosts);
-		config.setAllowedHeaders(Arrays.asList("*"));
-		config.setAllowedMethods(Arrays.asList(
-				"GET",
-				"HEAD",
-				"POST",
-				"PUT",
-				"DELETE",
-				"PATCH",
-				"OPTIONS" // XXX
-				));
-		config.setMaxAge(86400L);
-		config.setAllowCredentials(true);
-		source.registerCorsConfiguration("/**", config);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 
-		return source;
-	}
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(hosts);
+        config.setAllowedHeaders(Arrays.asList("*"));
+        config.setAllowedMethods(Arrays.asList("GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS" // XXX
+        ));
+        config.setMaxAge(86400L);
+        config.setAllowCredentials(true);
+        source.registerCorsConfiguration("/**", config);
 
-	@Bean
-	@ConditionalOnProperty(name = {"entur.jwt.jwk.health-indicator.enabled"}, havingValue = "true", matchIfMissing = true)
-	@ConditionalOnBean(JwtVerifier.class)
-	public <T> JwksHealthIndicator jwksProviderHealthIndicator(JwtVerifier<T> verifier) {
-		return new JwksHealthIndicator(verifier);
-	}
+        return source;
+    }
 
-	@Bean
-	@ConditionalOnMissingBean(JwtAuthenticationExceptionAdvice.class) // allow for customization
-	public JwtAuthenticationExceptionAdvice advice() {
-		return new JwtAuthenticationExceptionAdvice();
-	}
+    @Bean
+    @ConditionalOnProperty(name = { "entur.jwt.jwk.health-indicator.enabled" }, havingValue = "true", matchIfMissing = true)
+    @ConditionalOnBean(JwtVerifier.class)
+    public <T> JwksHealthIndicator jwksProviderHealthIndicator(JwtVerifier<T> verifier) {
+        return new JwksHealthIndicator(verifier);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(JwtAuthenticationExceptionAdvice.class) // allow for customization
+    public JwtAuthenticationExceptionAdvice advice() {
+        return new JwtAuthenticationExceptionAdvice();
+    }
 
 }

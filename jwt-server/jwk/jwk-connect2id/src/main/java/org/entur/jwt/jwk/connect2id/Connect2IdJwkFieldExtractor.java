@@ -6,9 +6,9 @@ import com.nimbusds.jose.jwk.JWK;
 
 public class Connect2IdJwkFieldExtractor implements JwkFieldExtractor<JWK> {
 
-	@Override
-	public String getJwkId(JWK jwk) {
-		return jwk.getKeyID();
-	}
+    @Override
+    public String getJwkId(JWK jwk) {
+        return jwk.getKeyID();
+    }
 
 }

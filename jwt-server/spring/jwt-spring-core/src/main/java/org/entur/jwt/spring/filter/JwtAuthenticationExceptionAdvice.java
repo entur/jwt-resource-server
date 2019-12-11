@@ -8,13 +8,13 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 @ControllerAdvice
-public class JwtAuthenticationExceptionAdvice extends ResponseEntityExceptionHandler  {
+public class JwtAuthenticationExceptionAdvice extends ResponseEntityExceptionHandler {
 
-	@ExceptionHandler(JwtAuthenticationServiceUnavailableException.class)
-	public ResponseEntity<Object> handleHttpRequestMethodNotSupportedException(JwtAuthenticationServiceUnavailableException ex, WebRequest request) {
-		logger.warn("Unable to verify token, returning service unavailable", ex);
+    @ExceptionHandler(JwtAuthenticationServiceUnavailableException.class)
+    public ResponseEntity<Object> handleHttpRequestMethodNotSupportedException(JwtAuthenticationServiceUnavailableException ex, WebRequest request) {
+        logger.warn("Unable to verify token, returning service unavailable", ex);
 
-		return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
-	}
+        return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
 
 }

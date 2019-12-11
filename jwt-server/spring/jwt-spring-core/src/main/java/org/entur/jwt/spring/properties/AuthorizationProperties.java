@@ -5,26 +5,28 @@ import java.util.List;
 
 public class AuthorizationProperties {
 
-	private String mode = "optional"; // optional or required;
+    private String mode = "optional"; // optional or required;
 
-	/** Simple path filter. Effectively refuse requests with paths not included in this list. */
-	private List<String> filter = new ArrayList<>();
+    /**
+     * Simple path filter. Effectively refuse requests with paths not included in
+     * this list.
+     */
+    private List<String> filter = new ArrayList<>();
 
-	public String getMode() {
-		return mode;
-	}
+    public String getMode() {
+        return mode;
+    }
 
-	public void setMode(String mode) {
-		this.mode = mode;
-	}
+    public void setMode(String mode) {
+        this.mode = mode;
+    }
 
-	public List<String> getFilter() {
-		return filter;
-	}
+    public List<String> getFilter() {
+        return filter;
+    }
 
-	public void setFilter(List<String> filter) {
-		this.filter = filter;
-	}
-
+    public void setFilter(List<String> filter) {
+        this.filter = filter;
+    }
 
 }

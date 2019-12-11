@@ -18,14 +18,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(AuthorizationServerExtension.class)
 public @interface AuthorizationServer {
 
-	public String value() default "";
+    public String value() default "";
 
-	public Class<? extends AuthorizationServerEncoder> encoder() default DefaultAuthorizationServerEncoder.class;
+    public Class<? extends AuthorizationServerEncoder> encoder() default DefaultAuthorizationServerEncoder.class;
 
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target({ElementType.TYPE})
-	@Inherited
-	@interface List {
-		AuthorizationServer[] value();
-	}
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ ElementType.TYPE })
+    @Inherited
+    @interface List {
+        AuthorizationServer[] value();
+    }
 }

@@ -11,37 +11,35 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 
 public class SystemPropertiesResourceServerConfigurationEnricher extends AbstractPropertiesResourceServerConfigurationEnricher {
 
-	private Set<String> propertyNames;
+    private Set<String> propertyNames;
 
-	public SystemPropertiesResourceServerConfigurationEnricher() throws IOException {
-		super();
-	}
+    public SystemPropertiesResourceServerConfigurationEnricher() throws IOException {
+        super();
+    }
 
-	@Override
-	public void beforeAll(List<AuthorizationServerImplementation> authorizationServers, ExtensionContext context) throws IOException {
-		Properties properties = super.getProperties(authorizationServers);
+    @Override
+    public void beforeAll(List<AuthorizationServerImplementation> authorizationServers, ExtensionContext context) throws IOException {
+        Properties properties = super.getProperties(authorizationServers);
 
-		propertyNames = properties.stringPropertyNames();
-		for (String string : propertyNames) {
-			System.setProperty(string, properties.getProperty(string));
-		}
-	}
+        propertyNames = properties.stringPropertyNames();
+        for (String string : propertyNames) {
+            System.setProperty(string, properties.getProperty(string));
+        }
+    }
 
-	@Override
-	public void afterAll(ExtensionContext context) throws IOException {
-		if(propertyNames != null) {
-			for (String string : propertyNames) {
-				System.clearProperty(string);
-			}
-		}
-	}
+    @Override
+    public void afterAll(ExtensionContext context) throws IOException {
+        if (propertyNames != null) {
+            for (String string : propertyNames) {
+                System.clearProperty(string);
+            }
+        }
+    }
 
-	@Override
-	public void beforeEach(ResourceServerConfiguration configuration, ExtensionContext context) {
-		// do nothing
-		// TODO generate keys here
-	}
-
-
+    @Override
+    public void beforeEach(ResourceServerConfiguration configuration, ExtensionContext context) {
+        // do nothing
+        // TODO generate keys here
+    }
 
 }

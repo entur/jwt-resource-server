@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
 import org.entur.jwt.junit5.headers.KeyIdHeader;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.PARAMETER, ElementType.TYPE})
+@Target({ ElementType.PARAMETER, ElementType.TYPE })
 @Inherited
 @PartnerAuth0Token(organisationId = 0)
 @KeyIdHeader("unknown-kid")

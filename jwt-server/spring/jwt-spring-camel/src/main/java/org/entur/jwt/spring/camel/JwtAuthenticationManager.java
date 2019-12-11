@@ -7,13 +7,13 @@ import org.springframework.security.core.Authentication;
 
 public class JwtAuthenticationManager implements AuthenticationManager {
 
-	@Override
-	public Authentication authenticate(Authentication authentication) {
-		if(authentication instanceof JwtAuthenticationToken) {
-			return authentication;
-		}
+    @Override
+    public Authentication authenticate(Authentication authentication) {
+        if (authentication instanceof JwtAuthenticationToken) {
+            return authentication;
+        }
 
-		throw new AuthenticationCredentialsNotFoundException("Expected " + JwtAuthenticationToken.class.getName());
-	}
+        throw new AuthenticationCredentialsNotFoundException("Expected " + JwtAuthenticationToken.class.getName());
+    }
 
 }

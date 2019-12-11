@@ -17,6 +17,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+
 /**
  * 
  * Test accessing methods without a token.
@@ -28,67 +29,68 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 public class GreetingControllerUnauthenticatedTest {
 
-	@LocalServerPort
-	private int randomServerPort;
+    @LocalServerPort
+    private int randomServerPort;
 
-	@Autowired
-	private TestRestTemplate restTemplate;
+    @Autowired
+    private TestRestTemplate restTemplate;
 
-	@Test 
-	public void testUnprotectedResource() {
-		HttpHeaders headers = new HttpHeaders();
-		HttpEntity<String> entity = new HttpEntity<String>(headers);
+    @Test
+    public void testUnprotectedResource() {
+        HttpHeaders headers = new HttpHeaders();
+        HttpEntity<String> entity = new HttpEntity<String>(headers);
 
-		String url = "http://localhost:" + randomServerPort + "/unprotected";
+        String url = "http://localhost:" + randomServerPort + "/unprotected";
 
-		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
 
-		assertTrue(response.getStatusCode().is2xxSuccessful());
-	}
+        assertTrue(response.getStatusCode().is2xxSuccessful());
+    }
 
-	@Test 
-	public void testProtectedResource() {
-		HttpHeaders headers = new HttpHeaders();
-		HttpEntity<String> entity = new HttpEntity<String>(headers);
+    @Test
+    public void testProtectedResource() {
+        HttpHeaders headers = new HttpHeaders();
+        HttpEntity<String> entity = new HttpEntity<String>(headers);
 
-		String url = "http://localhost:" + randomServerPort + "/protected";
+        String url = "http://localhost:" + randomServerPort + "/protected";
 
-		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-	}
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
 
-	@Test 
-	public void testUnprotectedResourceWithOptionalTenantNotPresent() {
-		HttpHeaders headers = new HttpHeaders();
-		HttpEntity<String> entity = new HttpEntity<String>(headers);
+    @Test
+    public void testUnprotectedResourceWithOptionalTenantNotPresent() {
+        HttpHeaders headers = new HttpHeaders();
+        HttpEntity<String> entity = new HttpEntity<String>(headers);
 
-		String url = "http://localhost:" + randomServerPort + "/unprotected/optionalTenant";
+        String url = "http://localhost:" + randomServerPort + "/unprotected/optionalTenant";
 
-		ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
-		assertTrue(response.getStatusCode().is2xxSuccessful());
-	}
+        ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
+        assertTrue(response.getStatusCode().is2xxSuccessful());
+    }
 
-	@Test 
-	public void testUnprotectedResourceWithRequiredTenantNotPresent() {
-		HttpHeaders headers = new HttpHeaders();
-		HttpEntity<String> entity = new HttpEntity<String>(headers);
+    @Test
+    public void testUnprotectedResourceWithRequiredTenantNotPresent() {
+        HttpHeaders headers = new HttpHeaders();
+        HttpEntity<String> entity = new HttpEntity<String>(headers);
 
-		String url = "http://localhost:" + randomServerPort + "/unprotected/requiredTenant";
+        String url = "http://localhost:" + randomServerPort + "/unprotected/requiredTenant";
 
-		ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
-		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-	}
+        ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
 
-	@Test
-	public void testProtectedWithSpecificTenantArgument() {
-		// note to self: this illustrates that the argument resolver runs BEFORE the method permissions
-		HttpHeaders headers = new HttpHeaders();
-		HttpEntity<String> entity = new HttpEntity<String>(headers);
+    @Test
+    public void testProtectedWithSpecificTenantArgument() {
+        // note to self: this illustrates that the argument resolver runs BEFORE the
+        // method permissions
+        HttpHeaders headers = new HttpHeaders();
+        HttpEntity<String> entity = new HttpEntity<String>(headers);
 
-		String url = "http://localhost:" + randomServerPort + "/protected/requiredTenant";
+        String url = "http://localhost:" + randomServerPort + "/protected/requiredTenant";
 
-		ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
-		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-	}
+        ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
 
 }

@@ -16,31 +16,31 @@ import org.springframework.boot.actuate.health.Health;
 
 public class AccessTokenProviderHealthIndicator extends AbstractHealthIndicator {
 
-	protected static final Logger logger = LoggerFactory.getLogger(AccessTokenProviderHealthIndicator.class);
+    protected static final Logger logger = LoggerFactory.getLogger(AccessTokenProviderHealthIndicator.class);
 
-	private final AccessTokenHealthProvider provider;
+    private final AccessTokenHealthProvider provider;
 
-	public AccessTokenProviderHealthIndicator(AccessTokenHealthProvider statusProvider) {
-		super();
-		this.provider = statusProvider;
-	}
+    public AccessTokenProviderHealthIndicator(AccessTokenHealthProvider statusProvider) {
+        super();
+        this.provider = statusProvider;
+    }
 
-	@Override
-	protected void doHealthCheck(Health.Builder builder) throws Exception {
-		try {
-			AccessTokenHealth status = provider.getHealth(true);
-			if(status.isSuccess()) {
-				builder.up();
-			} else {
-				builder.down();
-			}
+    @Override
+    protected void doHealthCheck(Health.Builder builder) throws Exception {
+        try {
+            AccessTokenHealth status = provider.getHealth(true);
+            if (status.isSuccess()) {
+                builder.up();
+            } else {
+                builder.down();
+            }
 
-			builder.withDetail("timestamp", status.getTimestamp());
-		} catch(AccessTokenHealthNotSupportedException e) {
-			logger.error("Health checks are not supported", e);
+            builder.withDetail("timestamp", status.getTimestamp());
+        } catch (AccessTokenHealthNotSupportedException e) {
+            logger.error("Health checks are not supported", e);
 
-			builder.down();
-		}
-	}
+            builder.down();
+        }
+    }
 
 }
