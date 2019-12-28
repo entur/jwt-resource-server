@@ -5,42 +5,38 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
-import org.entur.jwt.junit5.AuthorizationServerEncoder;
 import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
 
 public class AuthorizationServerTestContext {
 
-    private Map<Annotation, AuthorizationServerImplementation> authorizationServers;
+    private Map<Annotation, List<AuthorizationServerImplementation>> authorizationServers;
 
     public AuthorizationServerTestContext(List<AuthorizationServerImplementation> list) {
         super();
 
-        Map<Annotation, AuthorizationServerImplementation> values = new HashMap<>();
+        Map<Annotation, List<AuthorizationServerImplementation>> values = new HashMap<>();
         for (AuthorizationServerImplementation item : list) {
-            values.put(item.getAnnotation(), item);
+            List<AuthorizationServerImplementation> itemList = new ArrayList<>();
+            itemList.add(item);
+            values.put(item.getAnnotation(), itemList);
         }
 
         this.authorizationServers = values;
     }
 
-    public AuthorizationServerEncoder getEncoder(AuthorizationServerImplementation impl) {
-        return authorizationServers.get(impl.getAnnotation()).getEncoder();
+    public List<AuthorizationServerImplementation> getAuthorizationServers(AuthorizationServerImplementation impl) {
+        return authorizationServers.get(impl.getAnnotation());
     }
-
-    public boolean isDirty(List<AuthorizationServerImplementation> current) {
-        if (current.size() != authorizationServers.size()) {
-            return true;
+    
+    public void add(AuthorizationServerImplementation impl) {
+        List<AuthorizationServerImplementation> list = authorizationServers.get(impl.getAnnotation());
+        if(list == null) {
+            list = new ArrayList<>();
+            
+            authorizationServers.put(impl.getAnnotation(), list);
         }
-
-        Set<Annotation> currentKeys = current.stream().map(AuthorizationServerImplementation::getAnnotation).collect(Collectors.toSet());
-
-        return !currentKeys.containsAll(authorizationServers.keySet());
+        list.add(impl);
     }
 
-    public List<AuthorizationServerImplementation> toList() {
-        return new ArrayList<>(authorizationServers.values());
-    }
 }

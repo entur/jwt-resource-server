@@ -1,6 +1,5 @@
 package org.entur.jwt.spring.entur.organisation;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;

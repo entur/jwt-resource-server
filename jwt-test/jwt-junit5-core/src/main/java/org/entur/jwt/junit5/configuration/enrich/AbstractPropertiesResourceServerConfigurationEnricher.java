@@ -42,7 +42,12 @@ public abstract class AbstractPropertiesResourceServerConfigurationEnricher impl
             // also, delete on exit, do not delete after use.
             // for certain frameworks (i.e. spring), context is reused and this
             // file might come in handy later
-            File tempFile = File.createTempFile("jwk", ".tmp");
+            
+            String tempDir = System.getProperty("java.io.tmpdir");
+            
+            String jsonWebKeys = implementation.getJsonWebKeys();
+            
+            File tempFile = new File(tempDir, jsonWebKeys.hashCode() + ".jwk.json");
             tempFile.deleteOnExit(); // https://stackoverflow.com/questions/28752006/alternative-to-file-deleteonexit-in-java-nio
             Path path = tempFile.toPath();
             try (BufferedWriter writer = Files.newBufferedWriter(tempFile.toPath(), StandardCharsets.UTF_8)) {

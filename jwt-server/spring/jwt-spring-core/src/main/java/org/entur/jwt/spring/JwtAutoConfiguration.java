@@ -159,7 +159,7 @@ public class JwtAutoConfiguration {
             // filter on name
             for (Entry<String, JwtTenantProperties> entry : jwtProperties.getTenants().entrySet()) {
                 String id = entry.getKey();
-                if (id != null && filter.contains(id)) {
+                if (id != null && filter.contains(id) && entry.getValue().isEnabled()) {
                     tenants.put(id, entry.getValue());
                 }
             }

@@ -60,13 +60,15 @@ public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT> {
         List<JwtClaimConstraintProperties> valueConstraints = getValueConstraints(claims);
         for (Entry<String, JwtTenantProperties> entry : tenants.entrySet()) {
             JwtTenantProperties tenantConfiguration = entry.getValue();
-
-            log.info("Configure tenant '{}' with issuer '{}'", entry.getKey(), tenantConfiguration.getIssuer());
+            if(!tenantConfiguration.isEnabled()) {
+                continue;
+            }
 
             JwkLocationProperties tenantJwkConfiguration = tenantConfiguration.getJwk();
             if (tenantJwkConfiguration == null) {
                 throw new IllegalStateException("Missing JWK location for " + entry.getKey());
             }
+            log.info("Configure tenant '{}' with issuer '{}' and JWK location {}", entry.getKey(), tenantConfiguration.getIssuer(), tenantConfiguration.getJwk().getLocation());
 
             String location = tenantJwkConfiguration.getLocation();
             if (location == null) {
