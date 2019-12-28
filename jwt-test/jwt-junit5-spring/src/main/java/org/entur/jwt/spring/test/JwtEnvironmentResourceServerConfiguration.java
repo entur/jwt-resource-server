@@ -32,7 +32,7 @@ public class JwtEnvironmentResourceServerConfiguration implements ResourceServer
 
                 MutablePropertySources propertySources = configurableEnvironment.getPropertySources();
 
-                Map<String, String> props = extractEnabled(propertySources, propertyName);
+                Map<String, String> props = extractEnabledProperty(propertySources, propertyName);
                 if (props.size() == 1) {
                     return props.entrySet().iterator().next().getValue();
                 } else {
@@ -43,7 +43,7 @@ public class JwtEnvironmentResourceServerConfiguration implements ResourceServer
         return environment.getProperty(prefix + '.' + id + "." + propertyName);
     }
 
-    public Map<String, String> extractEnabled(MutablePropertySources sources, String propertyName) {
+    public Map<String, String> extractEnabledProperty(MutablePropertySources sources, String propertyName) {
         Map<String, String> props = new HashMap<>();
 
         for(PropertySource<?> propertySource : sources) {

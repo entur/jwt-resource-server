@@ -3,8 +3,11 @@ package org.entur.jwt.junit5.extention;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
 
@@ -36,7 +39,19 @@ public class AuthorizationServerTestContext {
             
             authorizationServers.put(impl.getAnnotation(), list);
         }
-        list.add(impl);
+        
+        if(!list.contains(impl)) {
+            list.add(impl);
+        }
     }
+  
+    public Set<String> getServerNames() {
+        Set<String> set = new HashSet<>();
+        for (Entry<Annotation, List<AuthorizationServerImplementation>> entry : authorizationServers.entrySet()) {
+            set.add(entry.getValue().get(0).getId());
+        }
+        return set;
+    }
+   
 
 }
