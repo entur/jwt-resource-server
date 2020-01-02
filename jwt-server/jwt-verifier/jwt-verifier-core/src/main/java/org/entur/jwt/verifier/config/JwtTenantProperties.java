@@ -2,6 +2,8 @@ package org.entur.jwt.verifier.config;
 
 public class JwtTenantProperties {
 
+    private boolean enabled = true;
+
     protected String type;
     protected String issuer;
 
@@ -29,5 +31,13 @@ public class JwtTenantProperties {
 
     public void setIssuer(String issuer) {
         this.issuer = issuer;
+    }
+    
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+    
+    public boolean isEnabled() {
+        return enabled;
     }
 }

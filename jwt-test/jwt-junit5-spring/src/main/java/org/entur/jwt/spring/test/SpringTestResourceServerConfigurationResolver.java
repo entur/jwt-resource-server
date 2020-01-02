@@ -32,7 +32,7 @@ public class SpringTestResourceServerConfigurationResolver implements ResourceSe
 
         Environment environment = applicationContext.getEnvironment();
 
-        return new JwtEnvironmentResourceServerConfiguration(environment, "entur.jwt.tenants");
+        return new JwtEnvironmentResourceServerConfiguration(environment, "entur.jwt.tenants", ".enabled");
     }
 
     public static ApplicationContext getApplicationContext(ExtensionContext context) {

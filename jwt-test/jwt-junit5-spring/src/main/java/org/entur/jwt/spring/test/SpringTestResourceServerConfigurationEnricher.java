@@ -1,7 +1,10 @@
 package org.entur.jwt.spring.test;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -13,6 +16,8 @@ import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
 import org.junit.jupiter.api.extension.ExtensionContext.Store;
+import org.springframework.context.ApplicationContext;
+import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.test.annotation.DirtiesContext.HierarchyMode;
 import org.springframework.test.context.TestContext;
 import org.springframework.test.context.TestContextManager;
@@ -24,6 +29,18 @@ import org.springframework.util.Assert;
 
 public class SpringTestResourceServerConfigurationEnricher extends PropertiesFileResourceServerConfigurationEnricher {
 
+    private static boolean canCheckForApplicationContext;
+    
+    static {
+        try {
+            Method method = TestContext.class.getMethod("hasApplicationContext");
+            canCheckForApplicationContext = method != null;
+        } catch (Exception e) {
+            canCheckForApplicationContext = false;
+        }
+    }
+    
+    
     private static final Log logger = LogFactory.getLog(SpringTestResourceServerConfigurationEnricher.class);
 
     /**
@@ -38,57 +55,97 @@ public class SpringTestResourceServerConfigurationEnricher extends PropertiesFil
 
     @Override
     public void beforeAll(List<AuthorizationServerImplementation> authorizationServers, ExtensionContext context) throws IOException {
-        AuthorizationServerTestManager jwtTestContextManager = getJwtTestContextManager(context);
+        TestContextManager testContextManager = getSpringTestContextManager(context);
+        
+        TestContext testContext = testContextManager.getTestContext(); // note: loads test context, but not main context
+        if(canCheckForApplicationContext) {
+            AuthorizationServerTestManager jwtTestContextManager = getJwtTestContextManager(context);
+            AuthorizationServerTestContext jwtTestContext = jwtTestContextManager.getTestContext();
 
-        // try to reuse the spring context
-        // check if all our authorization servers were already loaded into the context
+            if(jwtTestContext != null) {
+                if(testContext.hasApplicationContext()) { // Spring 2.2. method
+                    // try to reuse the spring context
+                    // note that the spring context caches multiple contexts
+                    // so the last authorization states are not necessarily the right ones
+                    // check if all our authorization servers were already loaded into the context
+        
+                    // compare the configured with the required mocks
+                    ApplicationContext applicationContext = testContext.getApplicationContext();
+                    
+                    ConfigurableEnvironment environment = (ConfigurableEnvironment) applicationContext.getEnvironment();
+                    
+                    JwtEnvironmentResourceServerConfiguration config = new JwtEnvironmentResourceServerConfiguration(environment, "entur.jwt.tenants", ".enabled");
 
-        // TODO use testContext.hasApplicationContext() for cleaner approach
-        boolean dirty = checkDirty(authorizationServers, context);
-        if (dirty) {
-            if (logger.isDebugEnabled())
-                logger.debug("Authorization servers have changed, refresh spring context");
+                    // note: the context might be marked dirty already 
+                    if(!canReuse(authorizationServers, jwtTestContext, environment, config)) {
+                        // see DirtiesContextBeforeModesTestExecutionListener and
+                        // DirtiesContextTestExecutionListener
+                        testContext.markApplicationContextDirty(HierarchyMode.EXHAUSTIVE);
+                        testContext.setAttribute(DependencyInjectionTestExecutionListener.REINJECT_DEPENDENCIES_ATTRIBUTE, Boolean.TRUE);
+                    }
+                    
+                }
+                super.beforeAll(authorizationServers, context);
 
-            // save context
-            jwtTestContextManager.setTestContext(new AuthorizationServerTestContext(authorizationServers));
-
-            // write new properties file
+                for (AuthorizationServerImplementation impl : authorizationServers) {
+                    jwtTestContext.add(impl);
+                }
+            } else {
+                jwtTestContextManager.setTestContext(new AuthorizationServerTestContext(authorizationServers));
+    
+                super.beforeAll(authorizationServers, context);
+            }
+        } else {
             super.beforeAll(authorizationServers, context);
-
-            // get the spring context, approach copied from SpringExtention
-            TestContextManager testContextManager = getSpringTestContextManager(context);
-            TestContext testContext = testContextManager.getTestContext(); // note: loads test context, but not main context
-
+            
             // see DirtiesContextBeforeModesTestExecutionListener and
             // DirtiesContextTestExecutionListener
             testContext.markApplicationContextDirty(HierarchyMode.EXHAUSTIVE);
             testContext.setAttribute(DependencyInjectionTestExecutionListener.REINJECT_DEPENDENCIES_ATTRIBUTE, Boolean.TRUE);
-        } else {
-            // reconfigure mock authorization servers according to what was loaded into the
-            // context
-            // this way, the (expensive) spring context can be kept
-            if (logger.isDebugEnabled())
-                logger.debug("Authorization servers have not changed, copy keys from previuos context");
-            AuthorizationServerTestContext jwtTestContext = jwtTestContextManager.getTestContext();
-
-            // write properties, the context might be dirty even if we think its not
-            super.beforeAll(jwtTestContext.toList(), context);
-
-            // set previous encoder on the current mocks
-            // so that they generate tokens signed with previous (the right) certificates
-            for (AuthorizationServerImplementation authorizationServerImplementation : authorizationServers) {
-                authorizationServerImplementation.setEncoder(jwtTestContext.getEncoder(authorizationServerImplementation));
-            }
         }
     }
 
-    protected boolean checkDirty(List<AuthorizationServerImplementation> authorizationServers, ExtensionContext context) {
-        AuthorizationServerTestManager jwtTestContextManager = getJwtTestContextManager(context);
-
-        AuthorizationServerTestContext testContext = jwtTestContextManager.getTestContext();
-
-        return testContext == null || testContext.isDirty(authorizationServers);
+    private boolean canReuse(List<AuthorizationServerImplementation> authorizationServers, AuthorizationServerTestContext jwtTestContext, ConfigurableEnvironment environment, JwtEnvironmentResourceServerConfiguration config) {
+        Map<String, String> currentlyConfigured = config.extractEnabledProperty(environment.getPropertySources(), ".jwk.location");
+        Map<String, String> desiredConfigured = getRequired(authorizationServers);
+        
+        boolean reuse;
+        if(currentlyConfigured.keySet().containsAll(desiredConfigured.keySet())) {
+            reuse = true;
+            
+            // reconfigure current mock servers to have the correct certificates
+            reconfigure: 
+            for (AuthorizationServerImplementation impl : authorizationServers) {
+                String configured = currentlyConfigured.get(impl.getId());
+                
+                for (AuthorizationServerImplementation candidate : jwtTestContext.getAuthorizationServers(impl)) {
+                    // check for matches using filename convention; TODO improve matching by comparing content
+                    if(configured.contains(Integer.toString(candidate.getJsonWebKeys().hashCode()))) {
+                        impl.setEncoder(candidate.getEncoder());
+                        
+                        continue reconfigure;
+                    }
+                }
+                reuse = false;
+                
+                break;
+            }
+            
+        } else {
+            reuse = false;
+        }
+        return reuse;
     }
+
+    private Map<String, String> getRequired(List<AuthorizationServerImplementation> authorizationServers) {
+        Map<String, String> props = new HashMap<>();
+        for (AuthorizationServerImplementation authorizationServerImplementation : authorizationServers) {
+            props.put(authorizationServerImplementation.getId(), "entur.jwt.tenants." + authorizationServerImplementation.getId() + ".jwk.location");
+        }
+        
+        return props;
+    }
+
 
     /**
      * Get the {@link TestContextManager} associated with the supplied
