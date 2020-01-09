@@ -40,7 +40,7 @@ public class GreetingControllerAuthenticationRequiredTest {
 
     /**
      * 
-     * Test endpoint that requires no permissions, but is not on the required mode.
+     * Test endpoint that requires no permissions, but is not on the filter list.
      * 
      */
     
