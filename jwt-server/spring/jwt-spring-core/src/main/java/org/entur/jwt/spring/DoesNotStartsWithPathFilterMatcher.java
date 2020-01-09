@@ -14,10 +14,15 @@ public class DoesNotStartsWithPathFilterMatcher implements RequestMatcher {
         this.filters = paths.toArray(new String[paths.size()]);
     }
     
+    /**
+     * 
+     * Return true if the current request is NOT matches by the filter(s).
+     * 
+     */
+    
     @Override
     public boolean matches(HttpServletRequest httpRequest) {
-        boolean mustBeAuthenticated = !isPath(httpRequest);
-        return mustBeAuthenticated;
+        return !isPath(httpRequest);
     }
 
     private boolean isPath(HttpServletRequest httpRequest) {
