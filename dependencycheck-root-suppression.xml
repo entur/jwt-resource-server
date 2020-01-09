@@ -9,4 +9,9 @@
 		<!-- spring security -->
 		<cve>CVE-2019-3795</cve>
 	</suppress>
+	<suppress>
+		<!-- tomcat 9.0.29 -->
+		<cve>CVE-2019-17563</cve>
+	</suppress>
+	
 </suppressions>
