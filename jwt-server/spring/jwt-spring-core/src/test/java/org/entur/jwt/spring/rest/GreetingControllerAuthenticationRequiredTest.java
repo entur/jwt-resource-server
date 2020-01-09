@@ -38,6 +38,12 @@ public class GreetingControllerAuthenticationRequiredTest {
     @Autowired
     private TestRestTemplate restTemplate;
 
+    /**
+     * 
+     * Test endpoint that requires no permissions, but is not on the filter list.
+     * 
+     */
+    
     @Test
     public void testUnprotectedResource() {
         HttpHeaders headers = new HttpHeaders();

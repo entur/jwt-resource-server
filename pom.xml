@@ -62,11 +62,11 @@
 		<junit.version>5.5.2</junit.version>
 		<mocktio.version>3.1.0</mocktio.version>
 		<hamcrest.version>2.1</hamcrest.version>
-		<slf4j.version>1.7.29</slf4j.version>
+		<slf4j.version>1.7.30</slf4j.version>
 		<jjwt.version>0.10.7</jjwt.version>
 		<nimbus-jose-jwt.version>7.9</nimbus-jose-jwt.version>
 		<bucket4j-core.version>4.6.0</bucket4j-core.version>
-		<jackson-databind.version>2.10.0</jackson-databind.version>
+		<jackson-databind.version>2.10.1</jackson-databind.version>
 		<camel.version>2.24.2</camel.version>
 		<jwks-rsa.version>0.8.3</jwks-rsa.version>
 		<java-jwt.version>3.8.3</java-jwt.version>
