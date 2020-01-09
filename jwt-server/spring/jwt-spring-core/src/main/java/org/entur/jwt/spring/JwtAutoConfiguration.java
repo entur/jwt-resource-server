@@ -48,6 +48,7 @@ import org.springframework.security.config.BeanIds;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.annotation.web.configurers.ExpressionUrlAuthorizationConfigurer;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -80,11 +81,13 @@ public class JwtAutoConfiguration {
 
         private final JwtAuthenticationFilter<?> filter;
         private final JwtArgumentResolver resolver;
+        private final SecurityProperties properties;
 
         @Autowired
-        public DefaultEnturWebSecurityConfig(JwtAuthenticationFilter<?> filter, JwtArgumentResolver resolver) {
+        public DefaultEnturWebSecurityConfig(JwtAuthenticationFilter<?> filter, JwtArgumentResolver resolver, SecurityProperties properties) {
             this.filter = filter;
             this.resolver = resolver;
+            this.properties = properties;
         }
 
         @Bean
@@ -99,6 +102,12 @@ public class JwtAutoConfiguration {
             // implementation note: this filter runs before the dispatcher servlet, and so
             // is out of reach of any ControllerAdvice
             http.sessionManagement().sessionCreationPolicy(STATELESS).and().csrf().disable().formLogin().disable().httpBasic().disable().logout().disable().cors().and().addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class);
+            
+            AuthorizationProperties authorizationProperties = properties.getJwt().getAuthorization();
+            if(Objects.equals(authorizationProperties.getMode(), "required")) {
+                // add security configuration here too, as to be full authenticated is a minimum
+                http.authorizeRequests().requestMatchers(new DoesNotStartsWithPathFilterMatcher(authorizationProperties.getFilter())).fullyAuthenticated();
+            }
         }
 
         @Override
@@ -195,6 +204,7 @@ public class JwtAutoConfiguration {
         return new JwtAuthenticationFilter<>(verifier, required, authorityMapper, mdcMapper, extractor);
     }
 
+    
     @ConditionalOnProperty(name = { "entur.jwt.authorization.mode" }, havingValue = "required", matchIfMissing = false)
     static class SecurityServletFilterConfiguration {
 
@@ -207,15 +217,16 @@ public class JwtAutoConfiguration {
             final FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>(filter);
             registration.setName(FILTER_NAME);
             registration.setDispatcherTypes(REQUEST, ASYNC);
-            /*
-             * Get the order value of this object. <p>Higher values are interpreted as lower
-             * priority. As a consequence, the object with the lowest value has the highest
-             * priority (somewhat analogous to Servlet {@code load-on-startup} values).
-             */
-            registration.setOrder(Ordered.HIGHEST_PRECEDENCE - 100); // i.e. filter early, but after mdc filter
+            
+            // Get the order value of this object. <p>Higher values are interpreted as lower
+            // priority. As a consequence, the object with the lowest value has the highest
+            // priority (somewhat analogous to Servlet {@code load-on-startup} values).
+             
+            registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 100); // i.e. filter early
             return registration;
         }
     }
+
 
     @Bean("corsConfigurationSource")
     @ConditionalOnProperty(name = { "entur.cors.enabled" }, havingValue = "true", matchIfMissing = false)
