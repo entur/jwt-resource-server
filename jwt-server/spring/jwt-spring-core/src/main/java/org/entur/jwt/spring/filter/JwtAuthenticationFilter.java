@@ -49,7 +49,7 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
 
         if (header != null) {
             // if a token is present, it must be valid regardless of whether the endpoint
-            // requires autorization or not
+            // requires authorization or not
             T token;
             try {
                 token = verifier.verify(header); // note: can return null
@@ -72,19 +72,19 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
                     }
                 } else {
                     log.warn("Unable to verify token");
-                    response.sendError(HttpStatus.UNAUTHORIZED.value());
+                    response.setStatus(HttpStatus.UNAUTHORIZED.value());
                 }
             } catch (JwksServiceException | JwtServiceException e) {
                 throw new JwtAuthenticationServiceUnavailableException("Unable to process token", e);
             } catch (JwtException | JwksException e) { // assume client
                 log.info("Problem verifying token", e);
-                response.sendError(HttpStatus.UNAUTHORIZED.value());
+                response.setStatus(HttpStatus.UNAUTHORIZED.value());
             }
         } else if (!required) {
             chain.doFilter(request, response);
         } else {
-            log.warn("No token");
-            response.sendError(HttpStatus.UNAUTHORIZED.value());
+            log.warn("Authentication is required, however there was no bearer token");
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
         }
     }
 

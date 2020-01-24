@@ -55,7 +55,21 @@ entur:
 
 A tenant id-filter can be used to conveniently enable/disable specific tenants. Using this filter could also simplify sharing configuration, for example using a ConfigMap in Kubernetes.
 
-### Adding security to your Controller
+## Security configuration
+By default, all requests must be so-called 'fully authenticated'. In other words all requests must have a valid JWT token. Open endpoints (i.e. permitted for all, open to the world) must be explicitly configured using MVC matchers. This includes the actuator.
+
+```
+entur:
+  jwt:
+    authorization:
+      permit-all:
+        mvc-matcher:
+          patterns:
+           - /actuator/health
+           - /unprotected
+```
+
+### Adding fine-grained security to your Controller
 Secure endpoints using [method access-control expressions] by adding the `@PreAuthorize` and `@PostAuthorize` annotations. See the following code example to see a basic implementation.
 
 ```java

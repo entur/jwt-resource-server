@@ -24,9 +24,13 @@ import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
 import org.entur.jwt.spring.filter.resolver.JwtArgumentResolver;
 import org.entur.jwt.spring.properties.AuthorizationProperties;
 import org.entur.jwt.spring.properties.CorsProperties;
+import org.entur.jwt.spring.properties.HttpMethodMatcher;
 import org.entur.jwt.spring.properties.JwtProperties;
+import org.entur.jwt.spring.properties.MatcherConfiguration;
 import org.entur.jwt.spring.properties.MdcPair;
 import org.entur.jwt.spring.properties.MdcProperties;
+import org.entur.jwt.spring.properties.MethodMatcherConfiguration;
+import org.entur.jwt.spring.properties.PermitAll;
 import org.entur.jwt.spring.properties.SecurityProperties;
 import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.entur.jwt.verifier.JwtVerifier;
@@ -103,10 +107,32 @@ public class JwtAutoConfiguration {
             http.sessionManagement().sessionCreationPolicy(STATELESS).and().csrf().disable().formLogin().disable().httpBasic().disable().logout().disable().cors().and().addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class);
             
             AuthorizationProperties authorizationProperties = properties.getJwt().getAuthorization();
-            if(Objects.equals(authorizationProperties.getMode(), "required")) {
-                // add security configuration here too, as to be full authenticated is a minimum
-                http.authorizeRequests().requestMatchers(new DoesNotStartsWithPathFilterMatcher(authorizationProperties.getFilter())).fullyAuthenticated();
+            
+            PermitAll permitAll = authorizationProperties.getPermitAll();
+            if(permitAll.isActive()) {
+                configurePermitAll(http, permitAll);
             }
+            http.authorizeRequests().anyRequest().fullyAuthenticated();
+        }
+
+        protected void configurePermitAll(HttpSecurity http, PermitAll permitAll) throws Exception {
+            
+            MatcherConfiguration mvcMatchers = permitAll.getMvcMatcher();
+            if(mvcMatchers.isActive()) {
+                
+                if(mvcMatchers.hasPatterns()) {
+                    http.authorizeRequests().mvcMatchers(mvcMatchers.getPatternsAsArray()).permitAll();
+                }
+                
+                List<HttpMethodMatcher> activeMethods = mvcMatchers.getHttpMethod().getActiveMethods();
+                if(!activeMethods.isEmpty()) {
+                    for (HttpMethodMatcher httpMethodMatcher : activeMethods) {
+                        http.authorizeRequests().mvcMatchers(httpMethodMatcher.getPatternsAsArray()).permitAll();
+                    }
+                }
+                
+            }
+            
         }
 
         @Override
@@ -191,10 +217,12 @@ public class JwtAutoConfiguration {
             JwtClaimExtractor<T> extractor) {
         JwtProperties jwt = properties.getJwt();
 
-        AuthorizationProperties authorization = jwt.getAuthorization();
+        AuthorizationProperties authorizationProperties = jwt.getAuthorization();
 
-        // add an extra layer of checks if auth is required
-        boolean required = authorization.getFilter().isEmpty() && !Objects.equals(authorization.getMode(), "optional");
+        PermitAll permitAll = authorizationProperties.getPermitAll();
+
+        // add an extra layer of checks if auth is always required
+        boolean required = !permitAll.isActive();
         if (required) {
             log.info("Authentication with Json Web Token is required");
         } else {
@@ -203,7 +231,7 @@ public class JwtAutoConfiguration {
         return new JwtAuthenticationFilter<>(verifier, required, authorityMapper, mdcMapper, extractor);
     }
 
-    
+    /*
     @ConditionalOnProperty(name = { "entur.jwt.authorization.mode" }, havingValue = "required", matchIfMissing = false)
     static class SecurityServletFilterConfiguration {
 
@@ -225,6 +253,7 @@ public class JwtAutoConfiguration {
             return registration;
         }
     }
+    */
 
 
     @Bean("corsConfigurationSource")

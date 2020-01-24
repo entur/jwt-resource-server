@@ -1,32 +1,20 @@
 package org.entur.jwt.spring.properties;
-
-import java.util.ArrayList;
-import java.util.List;
+/**
+ * 
+ * By default all calls must be fully authenticated. Exceptions must be explicitly specified, included for the actuator.
+ *
+ */
 
 public class AuthorizationProperties {
 
-    private String mode = "optional"; // optional or required;
-
-    /**
-     * Simple path filter. Effectively refuse requests with paths not included in
-     * this list.
-     */
-    private List<String> filter = new ArrayList<>();
-
-    public String getMode() {
-        return mode;
+    private PermitAll permitAll = new PermitAll();
+    
+    public void setPermitAll(PermitAll permitAll) {
+        this.permitAll = permitAll;
     }
-
-    public void setMode(String mode) {
-        this.mode = mode;
-    }
-
-    public List<String> getFilter() {
-        return filter;
-    }
-
-    public void setFilter(List<String> filter) {
-        this.filter = filter;
+    
+    public PermitAll getPermitAll() {
+        return permitAll;
     }
 
 }

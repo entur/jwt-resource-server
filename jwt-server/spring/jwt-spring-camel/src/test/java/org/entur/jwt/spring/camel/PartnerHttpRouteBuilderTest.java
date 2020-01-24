@@ -56,7 +56,7 @@ public class PartnerHttpRouteBuilderTest {
 
         URI uri = new URI("http://localhost:" + port + "/services/myPath/myCodeSpace");
 
-        given().log().all().when().get(uri).then().log().all().assertThat().statusCode(403);
+        given().log().all().when().get(uri).then().log().all().assertThat().statusCode(401);
     }
 
 }
