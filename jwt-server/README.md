@@ -110,6 +110,7 @@ entur:
         ant-matcher:
           patterns:
            - /actuator/**
+```
 
 ### Adding fine-grained security to your Controller
 Secure endpoints using [method access-control expressions] by adding the `@PreAuthorize` and `@PostAuthorize` annotations. See the following code example to see a basic implementation.
