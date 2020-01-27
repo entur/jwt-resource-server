@@ -121,18 +121,28 @@ public class JwtAutoConfiguration {
             if(mvcMatchers.isActive()) {
                 
                 if(mvcMatchers.hasPatterns()) {
+                    // for all methods
                     http.authorizeRequests().mvcMatchers(mvcMatchers.getPatternsAsArray()).permitAll();
                 }
                 
-                List<HttpMethodMatcher> activeMethods = mvcMatchers.getHttpMethod().getActiveMethods();
-                if(!activeMethods.isEmpty()) {
-                    for (HttpMethodMatcher httpMethodMatcher : activeMethods) {
-                        http.authorizeRequests().mvcMatchers(httpMethodMatcher.getPatternsAsArray()).permitAll();
-                    }
+                // for specific methods
+                for (HttpMethodMatcher httpMethodMatcher : mvcMatchers.getMethod().getActiveMethods()) {
+                    http.authorizeRequests().mvcMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();
+                }
+            }
+
+            MatcherConfiguration antMatchers = permitAll.getAntMatcher();
+            if(antMatchers.isActive()) {
+                if(antMatchers.hasPatterns()) {
+                    // for all methods
+                    http.authorizeRequests().antMatchers(antMatchers.getPatternsAsArray()).permitAll();
                 }
                 
+                // for specific methods
+                for (HttpMethodMatcher httpMethodMatcher : antMatchers.getMethod().getActiveMethods()) {
+                    http.authorizeRequests().antMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();
+                }
             }
-            
         }
 
         @Override

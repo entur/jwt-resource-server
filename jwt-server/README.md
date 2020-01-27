@@ -56,7 +56,31 @@ entur:
 A tenant id-filter can be used to conveniently enable/disable specific tenants. Using this filter could also simplify sharing configuration, for example using a ConfigMap in Kubernetes.
 
 ## Security configuration
-By default, all requests must be so-called 'fully authenticated'. In other words all requests must have a valid JWT token. Open endpoints (i.e. permitted for all, open to the world) must be explicitly configured using MVC matchers. This includes the actuator.
+By default, all requests must be so-called _fully authenticated_. In other words all requests must have a valid JWT token. Open endpoints (i.e. permitted for all, open to the world) must be explicitly configured using MVC or Ant matchers:
+
+```
+entur:
+  jwt:
+    authorization:
+      permit-all:
+        ant-matcher:
+          patterns:
+           - /unprotected/**
+        mvc-matcher:
+          patterns:
+           - /some/path/{myVariable}
+```
+
+Note that Spring Web uses MVC matchers. In other words, for a `@RestController` with a method
+
+```
+@GetMapping(value = "/open/country/{countryCode}")
+public String authenticatedEndpoint(){
+    // your code here
+}
+```
+
+add the MVC matcher `/open/country/{countryCode}`. Optionally also specify the HTTP method using
 
 ```
 entur:
@@ -64,27 +88,31 @@ entur:
     authorization:
       permit-all:
         mvc-matcher:
-          patterns:
-           - /actuator/health
-           - /unprotected
+          method:
+            get:
+              patterns:
+               - /some/path/{myVariable}
 ```
+
+MVC matchers are in general __broader than Ant matchers__:
+
+ * antMatchers("/unprotected") matches only the exact `/unprotected` URL
+ * mvcMatchers("/unprotected") matches `/unprotected` as well as `/unprotected/`, `/unprotected.html`, `/unprotected.xyz`
+
+#### Actuator
+To expose [actuator endpoints](https://docs.spring.io/spring-boot/docs/current/reference/html/production-ready-features.html), add
+
+```
+entur:
+  jwt:
+    authorization:
+      permit-all:
+        ant-matcher:
+          patterns:
+           - /actuator/**
 
 ### Adding fine-grained security to your Controller
 Secure endpoints using [method access-control expressions] by adding the `@PreAuthorize` and `@PostAuthorize` annotations. See the following code example to see a basic implementation.
-
-```java
-@RestController
-public class TestController {
-
-    @GetMapping(value = "/myService",  produces = arrayOf(MediaType.TEXT_PLAIN_VALUE))
-    @PreAuthorize("isFullyAuthenticated()")
-    public String authenticatedEndpoint(){
-        // your code here
-    }
-}
-```
-
-or more fine-grained access using for example
 
 ```java
 @RestController

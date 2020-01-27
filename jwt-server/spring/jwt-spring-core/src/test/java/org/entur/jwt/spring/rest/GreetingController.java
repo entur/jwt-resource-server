@@ -11,6 +11,7 @@ import org.springframework.lang.Nullable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -25,6 +26,13 @@ public class GreetingController {
         log.info("Get unprotected method");
 
         return new Greeting(counter.incrementAndGet(), "Hello unprotected");
+    }
+
+    @GetMapping("/unprotected/path/{pathVariable}")
+    public Greeting unprotectedWithPathVariable(@PathVariable("pathVariable") String value) {
+        log.info("Get unprotected method with path variable " + value);
+
+        return new Greeting(counter.incrementAndGet(), "Hello unprotected with path variable " + value);
     }
 
     @GetMapping("/unprotected/optionalTenant")

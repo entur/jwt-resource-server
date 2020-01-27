@@ -1,11 +1,17 @@
 package org.entur.jwt.spring.properties;
 
-// TODO possibly add ant and path matchers as well, but we prefer mvc matchers for now
+/**
+ * 
+ * Note that Ant matchers are stricter than MVC matchers.
+ *
+ */
+
 public class PermitAll {
 
     private boolean enabled = true;
 
     private MatcherConfiguration mvcMatcher = new MatcherConfiguration();
+    private MatcherConfiguration antMatcher = new MatcherConfiguration();
     
     public void setMvcMatcher(MatcherConfiguration mvcMatchers) {
         this.mvcMatcher = mvcMatchers;
@@ -24,6 +30,14 @@ public class PermitAll {
     }
     
     public boolean isActive() {
-        return enabled && mvcMatcher.isActive();
+        return enabled && (mvcMatcher.isActive() || antMatcher.isActive());
+    }
+    
+    public void setAntMatcher(MatcherConfiguration antMatcher) {
+        this.antMatcher = antMatcher;
+    }
+    
+    public MatcherConfiguration getAntMatcher() {
+        return antMatcher;
     }
 }

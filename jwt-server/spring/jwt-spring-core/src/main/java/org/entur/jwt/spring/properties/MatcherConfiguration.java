@@ -27,11 +27,11 @@ public class MatcherConfiguration {
         return patterns;
     }
     
-    public void setHttpMethod(MethodMatcherConfiguration httpMethod) {
+    public void setMethod(MethodMatcherConfiguration httpMethod) {
         this.method = httpMethod;
     }
     
-    public MethodMatcherConfiguration getHttpMethod() {
+    public MethodMatcherConfiguration getMethod() {
         return method;
     }
     
