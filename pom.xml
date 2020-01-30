@@ -233,11 +233,6 @@
 				<version>${jwks-rsa.version}</version>
 			</dependency>
 			<dependency>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-starter-security</artifactId>
-				<version>${spring-boot.version}</version>
-			</dependency>
-			<dependency>
 			    <groupId>org.springframework</groupId>
 			    <artifactId>spring-web</artifactId>
 				<version>${spring.version}</version>
@@ -282,6 +277,12 @@
 				<artifactId>camel-spring-security</artifactId>
 				<version>${camel.version}</version>
 			</dependency>
+			<dependency>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-starter-security</artifactId>
+				<version>${spring-boot.version}</version>
+			</dependency>
+			
 			<!-- test dependencies -->
 			<dependency>
 				<groupId>commons-io</groupId>
