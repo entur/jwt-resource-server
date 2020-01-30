@@ -21,7 +21,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 @AuthorizationServer
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@TestPropertySource(properties = { "entur.jwt.authorization.permit-all.ant-matcher.method.get.patterns=/actuator/**,/unprotected/path/{pathVariable}" })
+@TestPropertySource(properties = { "entur.authorization.permit-all.ant-matcher.method.get.patterns=/actuator/**,/unprotected/path/{pathVariable}" })
 public class PermitAllGetHttpMethodMvcPatternTest {
 
     @LocalServerPort

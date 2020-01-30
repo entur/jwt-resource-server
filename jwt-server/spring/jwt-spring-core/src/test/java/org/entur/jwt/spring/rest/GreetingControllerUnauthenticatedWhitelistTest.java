@@ -28,7 +28,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 @AuthorizationServer
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@TestPropertySource(properties = { "entur.jwt.authorization.permit-all.mvc-matcher.patterns=/actuator/health,/unprotected/**" })
+@TestPropertySource(properties = { "entur.authorization.permit-all.mvc-matcher.patterns=/actuator/health,/unprotected/**" })
 public class GreetingControllerUnauthenticatedWhitelistTest {
 
     @LocalServerPort

@@ -104,15 +104,25 @@ public class JwtAutoConfiguration {
         protected void configure(HttpSecurity http) throws Exception {
             // implementation note: this filter runs before the dispatcher servlet, and so
             // is out of reach of any ControllerAdvice
-            http.sessionManagement().sessionCreationPolicy(STATELESS).and().csrf().disable().formLogin().disable().httpBasic().disable().logout().disable().cors().and().addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class);
+            http.sessionManagement()
+                    .sessionCreationPolicy(STATELESS)
+                .and()
+                    .csrf().disable()
+                    .formLogin().disable()
+                    .httpBasic().disable()
+                    .logout().disable()
+                    .cors()
+                .and()
+                    .addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class);
             
-            AuthorizationProperties authorizationProperties = properties.getJwt().getAuthorization();
-            
-            PermitAll permitAll = authorizationProperties.getPermitAll();
-            if(permitAll.isActive()) {
-                configurePermitAll(http, permitAll);
+            AuthorizationProperties authorizationProperties = properties.getAuthorization();
+            if(authorizationProperties.isEnabled()) {
+                PermitAll permitAll = authorizationProperties.getPermitAll();
+                if(permitAll.isActive()) {
+                    configurePermitAll(http, permitAll);
+                }
+                http.authorizeRequests().anyRequest().fullyAuthenticated();
             }
-            http.authorizeRequests().anyRequest().fullyAuthenticated();
         }
 
         protected void configurePermitAll(HttpSecurity http, PermitAll permitAll) throws Exception {
@@ -151,6 +161,8 @@ public class JwtAutoConfiguration {
         }
     }
 
+    
+    
     @Configuration
     @ConditionalOnBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
     public static class DefaultEnturWebMvcConfigurer implements WebMvcConfigurer {
@@ -225,20 +237,18 @@ public class JwtAutoConfiguration {
     @ConditionalOnMissingBean(JwtAuthenticationFilter.class)
     public <T> JwtAuthenticationFilter<T> auth(SecurityProperties properties, JwtVerifier<T> verifier, @Autowired(required = false) JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtAuthorityMapper<T> authorityMapper,
             JwtClaimExtractor<T> extractor) {
-        JwtProperties jwt = properties.getJwt();
-
-        AuthorizationProperties authorizationProperties = jwt.getAuthorization();
+        AuthorizationProperties authorizationProperties = properties.getAuthorization();
 
         PermitAll permitAll = authorizationProperties.getPermitAll();
 
         // add an extra layer of checks if auth is always required
-        boolean required = !permitAll.isActive();
-        if (required) {
+        boolean tokenMustBePresent = authorizationProperties.isEnabled() && !permitAll.isActive();
+        if (tokenMustBePresent) {
             log.info("Authentication with Json Web Token is required");
         } else {
             log.info("Authentication with Json Web Token is optional");
         }
-        return new JwtAuthenticationFilter<>(verifier, required, authorityMapper, mdcMapper, extractor);
+        return new JwtAuthenticationFilter<>(verifier, tokenMustBePresent, authorityMapper, mdcMapper, extractor);
     }
 
     /*

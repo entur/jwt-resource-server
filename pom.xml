@@ -71,7 +71,7 @@
 		<jwks-rsa.version>0.8.3</jwks-rsa.version>
 		<java-jwt.version>3.8.3</java-jwt.version>
 		<jadler.version>1.1.1</jadler.version>
-		<spring-boot.version>2.2.2.RELEASE</spring-boot.version>
+		<spring-boot.version>2.2.4.RELEASE</spring-boot.version>
 		<spring.version>5.2.2.RELEASE</spring.version>
 		<!-- plugins -->
 		<build-helper-maven-plugin.version>1.9.1</build-helper-maven-plugin.version>

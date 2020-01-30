@@ -56,19 +56,20 @@ entur:
 A tenant id-filter can be used to conveniently enable/disable specific tenants. Using this filter could also simplify sharing configuration, for example using a ConfigMap in Kubernetes.
 
 ## Security configuration
-By default, all requests must be so-called _fully authenticated_. In other words all requests must have a valid JWT token. Open endpoints (i.e. permitted for all, open to the world) must be explicitly configured using MVC or Ant matchers:
+By default, all requests must be so-called _fully authenticated_. In other words all requests must have a valid JWT token (of any of the configured tenants). 
+
+Open endpoints (i.e. permitted for all, open to the world) must be explicitly configured using MVC or Ant matchers:
 
 ```
 entur:
-  jwt:
-    authorization:
-      permit-all:
-        ant-matcher:
-          patterns:
-           - /unprotected/**
-        mvc-matcher:
-          patterns:
-           - /some/path/{myVariable}
+  authorization:
+    permit-all:
+      ant-matcher:
+        patterns:
+         - /unprotected/**
+      mvc-matcher:
+        patterns:
+         - /some/path/{myVariable}
 ```
 
 Note that Spring Web uses MVC matchers. In other words, for a `@RestController` with a method
@@ -84,14 +85,13 @@ add the MVC matcher `/open/country/{countryCode}`. Optionally also specify the H
 
 ```
 entur:
-  jwt:
-    authorization:
-      permit-all:
-        mvc-matcher:
-          method:
-            get:
-              patterns:
-               - /some/path/{myVariable}
+  authorization:
+    permit-all:
+      mvc-matcher:
+        method:
+          get:
+            patterns:
+             - /some/path/{myVariable}
 ```
 
 MVC matchers are in general __broader than Ant matchers__:
