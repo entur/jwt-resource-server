@@ -58,21 +58,21 @@
 
 		<commons-codec.version>1.13</commons-codec.version>
 		<commons-io.version>2.6</commons-io.version>
-		<google-truth.version>1.0</google-truth.version>
-		<junit.version>5.5.2</junit.version>
-		<mocktio.version>3.1.0</mocktio.version>
+		<google-truth.version>1.0.1</google-truth.version>
+		<junit.version>5.6.0</junit.version>
+		<mocktio.version>3.2.4</mocktio.version>
 		<hamcrest.version>2.1</hamcrest.version>
 		<slf4j.version>1.7.30</slf4j.version>
 		<jjwt.version>0.10.7</jjwt.version>
 		<nimbus-jose-jwt.version>7.9</nimbus-jose-jwt.version>
 		<bucket4j-core.version>4.6.0</bucket4j-core.version>
-		<jackson-databind.version>2.10.1</jackson-databind.version>
+		<jackson-databind.version>2.10.2</jackson-databind.version>
 		<camel.version>2.24.2</camel.version>
-		<jwks-rsa.version>0.8.3</jwks-rsa.version>
-		<java-jwt.version>3.8.3</java-jwt.version>
+		<jwks-rsa.version>0.9.0</jwks-rsa.version>
+		<java-jwt.version>3.9.0</java-jwt.version>
 		<jadler.version>1.1.1</jadler.version>
 		<spring-boot.version>2.2.4.RELEASE</spring-boot.version>
-		<spring.version>5.2.2.RELEASE</spring.version>
+		<spring.version>5.2.3.RELEASE</spring.version>
 		<!-- plugins -->
 		<build-helper-maven-plugin.version>1.9.1</build-helper-maven-plugin.version>
 		<jacoco-maven-plugin.version>0.8.5</jacoco-maven-plugin.version>
@@ -86,7 +86,7 @@
 		<maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
 		<maven-shade-plugin.version>3.1.1</maven-shade-plugin.version>
 		<maven-war-plugin.version>3.2.2</maven-war-plugin.version>
-		<owasp-dependency-check.version>5.2.4</owasp-dependency-check.version>
+		<owasp-dependency-check.version>5.3.0</owasp-dependency-check.version>
 
 		<!-- aggregated jacoco report; for cross-module code coverage -->
 		<sonar.jacoco.reportPath>${maven.multiModuleProjectDirectory}/target/jacoco.exec</sonar.jacoco.reportPath>
