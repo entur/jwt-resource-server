@@ -137,7 +137,10 @@ public class JwtAutoConfiguration {
                 
                 // for specific methods
                 for (HttpMethodMatcher httpMethodMatcher : mvcMatchers.getMethod().getActiveMethods()) {
-                    http.authorizeRequests().mvcMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();
+        			// check that active, empty patterns will be interpreted as permit all of the method type (empty patterns vs varargs)
+        			if(httpMethodMatcher.isActive()) {
+        				http.authorizeRequests().mvcMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();
+        			}
                 }
             }
 
@@ -150,7 +153,10 @@ public class JwtAutoConfiguration {
                 
                 // for specific methods
                 for (HttpMethodMatcher httpMethodMatcher : antMatchers.getMethod().getActiveMethods()) {
-                    http.authorizeRequests().antMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();
+        			// check that active, empty patterns will be interpreted as permit all of the method type (empty patterns vs varargs)
+        			if(httpMethodMatcher.isActive()) {
+        				http.authorizeRequests().antMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();
+        			}
                 }
             }
         }
