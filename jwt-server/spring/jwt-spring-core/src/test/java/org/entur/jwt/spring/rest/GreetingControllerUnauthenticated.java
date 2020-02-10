@@ -19,7 +19,9 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 /**
  * 
- * Test accessing methods without a token, and without any whitelist
+ * Test accessing methods without a token, and without any whitelist. 
+ * 
+ * So all request must be authenticated.
  * 
  */
 
@@ -43,7 +45,7 @@ public class GreetingControllerUnauthenticated {
 
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test
@@ -54,7 +56,7 @@ public class GreetingControllerUnauthenticated {
         String url = "http://localhost:" + randomServerPort + "/unprotected/optionalTenant";
 
         ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test
@@ -65,7 +67,7 @@ public class GreetingControllerUnauthenticated {
         String url = "http://localhost:" + randomServerPort + "/unprotected/requiredTenant";
 
         ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
     
 
@@ -77,7 +79,7 @@ public class GreetingControllerUnauthenticated {
         String url = "http://localhost:" + randomServerPort + "/protected";
 
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
 
@@ -91,7 +93,7 @@ public class GreetingControllerUnauthenticated {
         String url = "http://localhost:" + randomServerPort + "/protected/requiredTenant";
 
         ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     
@@ -104,6 +106,6 @@ public class GreetingControllerUnauthenticated {
 
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 }

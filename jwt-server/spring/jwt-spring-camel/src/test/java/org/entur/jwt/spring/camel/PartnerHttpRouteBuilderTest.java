@@ -33,7 +33,6 @@ public class PartnerHttpRouteBuilderTest {
 
     // "{\"r\":\"adminEditRouteData\",\"o\":\"RB\"}")
     // RoleAssignment.builder().withOrganisation("RB").withRole("adminEditRouteData").build().toJson();
-    private static final String adminEditRouteDataForRB = "{\"r\":\"adminEditRouteData\",\"o\":\"RB\"}";
 
     @LocalServerPort
     public int port;

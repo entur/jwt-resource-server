@@ -14,6 +14,7 @@ import static com.google.common.truth.Truth.assertThat;
 
 public class RoleAssignmentDeserializerTest {
 
+    @SuppressWarnings("unchecked")
     @Test
     public void testDeserializer() throws Exception {
         String body = IOUtils.resourceToString("/jwt.txt", StandardCharsets.UTF_8);

@@ -1,7 +1,5 @@
 package org.entur.jwt.spring;
 
-import static javax.servlet.DispatcherType.ASYNC;
-import static javax.servlet.DispatcherType.REQUEST;
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
 import java.util.ArrayList;
@@ -11,9 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
-
-import javax.servlet.Filter;
 
 import org.entur.jwt.spring.actuate.JwksHealthIndicator;
 import org.entur.jwt.spring.filter.JwtAuthenticationExceptionAdvice;
@@ -29,7 +24,6 @@ import org.entur.jwt.spring.properties.JwtProperties;
 import org.entur.jwt.spring.properties.MatcherConfiguration;
 import org.entur.jwt.spring.properties.MdcPair;
 import org.entur.jwt.spring.properties.MdcProperties;
-import org.entur.jwt.spring.properties.MethodMatcherConfiguration;
 import org.entur.jwt.spring.properties.PermitAll;
 import org.entur.jwt.spring.properties.SecurityProperties;
 import org.entur.jwt.verifier.JwtClaimExtractor;
@@ -44,11 +38,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.core.Ordered;
 import org.springframework.security.config.BeanIds;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -258,31 +250,6 @@ public class JwtAutoConfiguration {
         }
         return new JwtAuthenticationFilter<>(verifier, tokenMustBePresent, authorityMapper, mdcMapper, extractor, handlerExceptionResolver);
     }
-
-    /*
-    @ConditionalOnProperty(name = { "entur.jwt.authorization.mode" }, havingValue = "required", matchIfMissing = false)
-    static class SecurityServletFilterConfiguration {
-
-        private static final String FILTER_NAME = "authorizationPrefilter";
-
-        @Bean
-        @ConditionalOnMissingBean(name = FILTER_NAME)
-        public FilterRegistrationBean<Filter> authorizationPrefilter(SecurityProperties properties) {
-            final Filter filter = new JwtFilter(properties.getJwt().getAuthorization().getFilter());
-            final FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>(filter);
-            registration.setName(FILTER_NAME);
-            registration.setDispatcherTypes(REQUEST, ASYNC);
-            
-            // Get the order value of this object. <p>Higher values are interpreted as lower
-            // priority. As a consequence, the object with the lowest value has the highest
-            // priority (somewhat analogous to Servlet {@code load-on-startup} values).
-             
-            registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 100); // i.e. filter early
-            return registration;
-        }
-    }
-    */
-
 
     @Bean("corsConfigurationSource")
     @ConditionalOnProperty(name = { "entur.cors.enabled" }, havingValue = "true", matchIfMissing = false)

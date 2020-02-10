@@ -1,7 +1,6 @@
 package org.entur.jwt.spring.properties;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import org.springframework.http.HttpMethod;
