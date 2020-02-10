@@ -12,6 +12,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -24,6 +26,13 @@ public class GreetingController {
     @GetMapping("/unprotected")
     public Greeting unprotected() {
         log.info("Get unprotected method");
+
+        return new Greeting(counter.incrementAndGet(), "Hello unprotected");
+    }
+
+    @PostMapping(path = "/unprotected", consumes = "application/json", produces = "application/json")
+    public Greeting unprotectedPost(@RequestBody Greeting greeting) {
+        log.info("Get unprotected method with POST");
 
         return new Greeting(counter.incrementAndGet(), "Hello unprotected");
     }
@@ -74,8 +83,8 @@ public class GreetingController {
             log.info("Get protected method with optional tenant not present");
             return new Greeting(counter.incrementAndGet(), "Hello protected without optional tenant");
         }
-    }    
-
+    }
+    
     @GetMapping("/protected/requiredTenant")
     @PreAuthorize("isFullyAuthenticated()")
     public Greeting protectedWithPartnerTenant(Tenant tenant) {

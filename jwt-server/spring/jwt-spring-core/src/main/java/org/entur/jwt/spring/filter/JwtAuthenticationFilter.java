@@ -19,9 +19,11 @@ import org.entur.jwt.verifier.JwtVerifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 
 public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
 
@@ -34,13 +36,15 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
     private final JwtMappedDiagnosticContextMapper<T> mdcMapper;
     private final JwtClaimExtractor<T> extractor;
     private final boolean required;
+    private final HandlerExceptionResolver handlerExceptionResolver;
 
-    public JwtAuthenticationFilter(JwtVerifier<T> verifier, boolean required, JwtAuthorityMapper<T> authorityMapper, JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtClaimExtractor<T> extractor) {
+    public JwtAuthenticationFilter(JwtVerifier<T> verifier, boolean required, JwtAuthorityMapper<T> authorityMapper, JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtClaimExtractor<T> extractor, HandlerExceptionResolver handlerExceptionResolver) {
         this.verifier = verifier;
         this.authorityMapper = authorityMapper;
         this.mdcMapper = mdcMapper;
         this.extractor = extractor;
         this.required = required;
+        this.handlerExceptionResolver = handlerExceptionResolver;
     }
 
     @Override
@@ -73,18 +77,22 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
                 } else {
                     log.warn("Unable to verify token");
                     response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                    handlerExceptionResolver.resolveException(request, response, null, new BadCredentialsException("Unable to verify token"));
                 }
             } catch (JwksServiceException | JwtServiceException e) {
-                throw new JwtAuthenticationServiceUnavailableException("Unable to process token", e);
+                response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
+                handlerExceptionResolver.resolveException(request, response, null, new JwtAuthenticationServiceUnavailableException("Unable to process token", e));
             } catch (JwtException | JwksException e) { // assume client
                 log.info("Problem verifying token", e);
                 response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                handlerExceptionResolver.resolveException(request, response, null, new BadCredentialsException("Unable to verify token", e));
             }
         } else if (!required) {
             chain.doFilter(request, response);
         } else {
             log.warn("Authentication is required, however there was no bearer token");
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            handlerExceptionResolver.resolveException(request, response, null, new BadCredentialsException("Expected token"));
         }
     }
 
