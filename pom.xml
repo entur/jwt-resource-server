@@ -91,8 +91,7 @@
 		<owasp-dependency-check.version>5.3.0</owasp-dependency-check.version>
 
 		<!-- aggregated jacoco report; for cross-module code coverage -->
-		<sonar.jacoco.reportPath>${maven.multiModuleProjectDirectory}/target/jacoco.exec</sonar.jacoco.reportPath>
-		
+		<sonar.coverage.jacoco.xmlReportPaths>./examples/jwt-resource-server-spring-boot-example/target/site/jacoco/jacoco.xml,./jwt-test/jwt-junit5-entur/target/site/jacoco/jacoco.xml,./jwt-test/jwt-junit5-core/target/site/jacoco/jacoco.xml,./jwt-test/jwt-junit5-spring/target/site/jacoco/jacoco.xml,./jwt-client/jwt-client-core/target/site/jacoco/jacoco.xml,./jwt-client/jwt-client-spring/target/site/jacoco/jacoco.xml,./jwt-server/jwt-verifier/jwt-verifier-core/target/site/jacoco/jacoco.xml,./jwt-server/jwk/jwk-core/target/site/jacoco/jacoco.xml,./jwt-server/jwk/jwk-auth0/target/site/jacoco/jacoco.xml,./jwt-server/jwk/jwk-connect2id/target/site/jacoco/jacoco.xml,./jwt-server/spring/jwt-spring-camel/target/site/jacoco/jacoco.xml,./jwt-server/spring/jwt-spring-core/target/site/jacoco/jacoco.xml,./jwt-server/spring/jwt-spring-auth0/target/site/jacoco/jacoco.xml,./jwt-server/spring/jwt-spring-entur-organisation/target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
 		<distribution-respository-id>ossrh</distribution-respository-id>
 	</properties>
 
@@ -414,10 +413,12 @@
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 				<version>${jacoco-maven-plugin.version}</version>
+				<!-- 
 				<configuration>
 					<sessionId>${project.artifactId}</sessionId>
 					<destFile>${maven.multiModuleProjectDirectory}/target/jacoco.exec</destFile>
 				</configuration>
+				 -->
 			</plugin>
 			<plugin>
 				<groupId>org.owasp</groupId>
