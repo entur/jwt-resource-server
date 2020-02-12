@@ -37,7 +37,7 @@ Claim validation (common for all tenants) can also be added:
  
 For YAML, this amounts to something like
 
-```
+```yaml
 entur:
   jwt:
     enabled: true
@@ -60,7 +60,7 @@ By default, all requests must be so-called _fully authenticated_. In other words
 
 Open endpoints (i.e. permitted for all, open to the world) must be explicitly configured using MVC or Ant matchers:
 
-```
+```yaml
 entur:
   authorization:
     permit-all:
@@ -74,7 +74,7 @@ entur:
 
 Note that Spring Web uses MVC matchers. In other words, for a `@RestController` with a method
 
-```
+```java
 @GetMapping(value = "/open/country/{countryCode}")
 public String authenticatedEndpoint(){
     // your code here
@@ -83,7 +83,7 @@ public String authenticatedEndpoint(){
 
 add the MVC matcher `/open/country/{countryCode}`. Optionally also specify the HTTP method using
 
-```
+```yaml
 entur:
   authorization:
     permit-all:
@@ -102,7 +102,7 @@ MVC matchers are in general __broader than Ant matchers__:
 #### Actuator
 To expose [actuator endpoints](https://docs.spring.io/spring-boot/docs/current/reference/html/production-ready-features.html), add
 
-```
+```yaml
 entur:
   jwt:
     authorization:
@@ -146,7 +146,7 @@ public class TestController {
 
 See configuration of `JwtArgumentResolver` for further details. Alternatively get to the token via the security context:
 
-```
+```java
 JwtAuthenticationToken authentication = (JwtAuthenticationToken)SecurityContextHolder.getContext().getAuthentication();
 
 // get token value (including Bearer)
@@ -277,7 +277,7 @@ where `xyz` is from the following list
 
 If no mode is set, no configuration is added by this starter. This allows for adding your own custom implementation.
 
-```
+```java
 @Bean("corsConfigurationSource")
 public CorsConfigurationSource myCorsConfigurationSource() {
 	// ...

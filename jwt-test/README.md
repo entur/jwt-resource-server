@@ -12,7 +12,7 @@ The library does __no traditional mocking__ (i.e. not using [Mockito]), it inste
 ## Usage
 Use `@AuthorizationServer` and `@AccessToken` annotations to configure one or more tenants:
 
-```
+```java
 @AuthorizationServer
 public class AuthorizationServerTest {
 
@@ -25,7 +25,7 @@ public class AuthorizationServerTest {
 
 Tokens can be adjusted by using additional annotations, for example
 
-```
+```java
 @Test
 public void myTest(@AccessToken @NumberClaim(name="https://my.organisation", value=1) String token) {
     // ..
@@ -53,7 +53,7 @@ public @interface MyAccessToken {
 
 will allow for writing unit tests like
 
-```
+```java
 @Test
 public void testMyId(@MyAccessToken(myId = 5) String token) {
     // ..
@@ -63,14 +63,14 @@ public void testMyId(@MyAccessToken(myId = 5) String token) {
 ## Multi-tenant support
 Add an `key` to identify the servers
 
-```
+```java
 @AuthorizationServer("myKeycloak")
 @AuthorizationServer("myAuth0")
 ```
 
 then specify the correct source in the method signature annotation:
 
-```
+```java
 @Test
 public void testMyId(@AccessToken(by="myAuth0") String token) {
 	// ..
