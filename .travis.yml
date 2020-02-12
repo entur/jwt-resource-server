@@ -18,5 +18,5 @@ addons:
 script:
   # the following command line builds the project, runs the tests with coverage and then execute the SonarCloud analysis
   - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent install org.jacoco:jacoco-maven-plugin:report
-  - mvn sonar:sonar -Dsonar.projectKey=entur_jwt-resource-server -Dsonar.coverage.jacoco.xmlReportPaths=$(find . -path '*jacoco.xml' | sed 's/.*/${maven.multiModuleProjectDirectory}\/&/' | tr '\n' ',')
+  - mvn sonar:sonar -Dsonar.projectKey=entur_jwt-resource-server -Dsonar.coverage.jacoco.xmlReportPaths=$(find . -path '*jacoco.xml' | sed 's/.*/&/' | tr '\n' ',')
   - mvn dependency-check:aggregate
