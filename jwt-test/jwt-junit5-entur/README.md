@@ -1,7 +1,7 @@
-# jwt-test-entur
-Entur-specific test classes:
+# jwt-junit5-entur
+Entur-specific JUnit 5 test-support.
 
-Class level annotations (i.e. JUnit5 extension):
+Class level annotations (i.e. JUnit5 Extension):
 
 * `PartnerAuth0AuthorizationServer` mock authentication server
     * id `partner-auth0`
@@ -17,9 +17,9 @@ Method level annotations:
         * scopes - scopes claim
         * permission - Auth0-managed permissions
 
-Example of use with RestAssured:
+Example of use with `RestAssured`:
 
-```
+```java
 @PartnerAuth0AuthorizationServer
 public class PartnerAccessTokenTest {
 
@@ -45,7 +45,7 @@ public class PartnerAccessTokenTest {
 
 With [fine-grained permissions](https://auth0.com/docs/dashboard/guides/apis/add-permissions-apis)
 
-```
+```java
 @PartnerAuth0AuthorizationServer
 public class PartnerAccessTokenTest {
 
