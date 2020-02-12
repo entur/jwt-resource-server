@@ -1,7 +1,7 @@
 # jwt-spring-camel
 Basic support for Apache Camel. Adds a policy that can be used to verifies that the Json Web Token is valid (i.e. the user is authenticated).
 
-```
+```java
 @Autowired
 @Qualifier("validTokenAccessPolicy")
 private SpringSecurityAuthorizationPolicy validAccessTokenPolicy;
