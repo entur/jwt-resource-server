@@ -258,7 +258,8 @@ The CORS support is intended for use-cases where your customers do NOT normally 
 This is so __that API-keys, client credentials, access-tokens and/or other secrets are not compromised__. Webapps are intended to have a dedicated backend service on the same domain, so no CORS request are necessary.
 
 Configuration example:
-```
+
+```yaml
 entur:
   cors: 
     enabled: true
