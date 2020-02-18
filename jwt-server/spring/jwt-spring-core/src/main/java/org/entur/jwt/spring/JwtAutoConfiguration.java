@@ -1,7 +1,5 @@
 package org.entur.jwt.spring;
 
-import static javax.servlet.DispatcherType.ASYNC;
-import static javax.servlet.DispatcherType.REQUEST;
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
 import java.util.ArrayList;
@@ -11,9 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
-
-import javax.servlet.Filter;
 
 import org.entur.jwt.spring.actuate.JwksHealthIndicator;
 import org.entur.jwt.spring.filter.JwtAuthenticationExceptionAdvice;
@@ -24,9 +19,12 @@ import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
 import org.entur.jwt.spring.filter.resolver.JwtArgumentResolver;
 import org.entur.jwt.spring.properties.AuthorizationProperties;
 import org.entur.jwt.spring.properties.CorsProperties;
+import org.entur.jwt.spring.properties.HttpMethodMatcher;
 import org.entur.jwt.spring.properties.JwtProperties;
+import org.entur.jwt.spring.properties.MatcherConfiguration;
 import org.entur.jwt.spring.properties.MdcPair;
 import org.entur.jwt.spring.properties.MdcProperties;
+import org.entur.jwt.spring.properties.PermitAll;
 import org.entur.jwt.spring.properties.SecurityProperties;
 import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.entur.jwt.verifier.JwtVerifier;
@@ -40,10 +38,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.Ordered;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.config.BeanIds;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -56,6 +53,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
@@ -100,12 +98,60 @@ public class JwtAutoConfiguration {
         protected void configure(HttpSecurity http) throws Exception {
             // implementation note: this filter runs before the dispatcher servlet, and so
             // is out of reach of any ControllerAdvice
-            http.sessionManagement().sessionCreationPolicy(STATELESS).and().csrf().disable().formLogin().disable().httpBasic().disable().logout().disable().cors().and().addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class);
+            http.sessionManagement()
+                    .sessionCreationPolicy(STATELESS)
+                .and()
+                    .csrf().disable()
+                    .formLogin().disable()
+                    .httpBasic().disable()
+                    .logout().disable()
+                    .cors()
+                .and()
+                    .addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class);
             
-            AuthorizationProperties authorizationProperties = properties.getJwt().getAuthorization();
-            if(Objects.equals(authorizationProperties.getMode(), "required")) {
-                // add security configuration here too, as to be full authenticated is a minimum
-                http.authorizeRequests().requestMatchers(new DoesNotStartsWithPathFilterMatcher(authorizationProperties.getFilter())).fullyAuthenticated();
+            AuthorizationProperties authorizationProperties = properties.getAuthorization();
+            if(authorizationProperties.isEnabled()) {
+                PermitAll permitAll = authorizationProperties.getPermitAll();
+                if(permitAll.isActive()) {
+                    configurePermitAll(http, permitAll);
+                }
+                http.authorizeRequests().anyRequest().fullyAuthenticated();
+            }
+        }
+
+        protected void configurePermitAll(HttpSecurity http, PermitAll permitAll) throws Exception {
+            
+            MatcherConfiguration mvcMatchers = permitAll.getMvcMatcher();
+            if(mvcMatchers.isActive()) {
+                
+                if(mvcMatchers.hasPatterns()) {
+                    // for all methods
+                    http.authorizeRequests().mvcMatchers(mvcMatchers.getPatternsAsArray()).permitAll();
+                }
+                
+                // for specific methods
+                for (HttpMethodMatcher httpMethodMatcher : mvcMatchers.getMethod().getActiveMethods()) {
+        			// check that active, empty patterns will be interpreted as permit all of the method type (empty patterns vs varargs)
+        			if(httpMethodMatcher.isActive()) {
+        				http.authorizeRequests().mvcMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();
+        			}
+                }
+            }
+
+            MatcherConfiguration antMatchers = permitAll.getAntMatcher();
+            if(antMatchers.isActive()) {
+                if(antMatchers.hasPatterns()) {
+                    // for all methods
+                    http.authorizeRequests().antMatchers(antMatchers.getPatternsAsArray()).permitAll();
+                }
+                
+                // for specific methods
+                for (HttpMethodMatcher httpMethodMatcher : antMatchers.getMethod().getActiveMethods()) {
+        			// check that active, empty patterns will be interpreted as permit all of the method type (empty patterns vs varargs)
+        			if(httpMethodMatcher.isActive()) {
+        				http.authorizeRequests().antMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();
+        			}
+                }
             }
         }
 
@@ -115,6 +161,8 @@ public class JwtAutoConfiguration {
         }
     }
 
+    
+    
     @Configuration
     @ConditionalOnBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
     public static class DefaultEnturWebMvcConfigurer implements WebMvcConfigurer {
@@ -188,44 +236,20 @@ public class JwtAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(JwtAuthenticationFilter.class)
     public <T> JwtAuthenticationFilter<T> auth(SecurityProperties properties, JwtVerifier<T> verifier, @Autowired(required = false) JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtAuthorityMapper<T> authorityMapper,
-            JwtClaimExtractor<T> extractor) {
-        JwtProperties jwt = properties.getJwt();
+            JwtClaimExtractor<T> extractor, @Lazy HandlerExceptionResolver handlerExceptionResolver) {
+        AuthorizationProperties authorizationProperties = properties.getAuthorization();
 
-        AuthorizationProperties authorization = jwt.getAuthorization();
+        PermitAll permitAll = authorizationProperties.getPermitAll();
 
-        // add an extra layer of checks if auth is required
-        boolean required = authorization.getFilter().isEmpty() && !Objects.equals(authorization.getMode(), "optional");
-        if (required) {
+        // add an extra layer of checks if auth is always required
+        boolean tokenMustBePresent = authorizationProperties.isEnabled() && !permitAll.isActive();
+        if (tokenMustBePresent) {
             log.info("Authentication with Json Web Token is required");
         } else {
             log.info("Authentication with Json Web Token is optional");
         }
-        return new JwtAuthenticationFilter<>(verifier, required, authorityMapper, mdcMapper, extractor);
+        return new JwtAuthenticationFilter<>(verifier, tokenMustBePresent, authorityMapper, mdcMapper, extractor, handlerExceptionResolver);
     }
-
-    
-    @ConditionalOnProperty(name = { "entur.jwt.authorization.mode" }, havingValue = "required", matchIfMissing = false)
-    static class SecurityServletFilterConfiguration {
-
-        private static final String FILTER_NAME = "authorizationPrefilter";
-
-        @Bean
-        @ConditionalOnMissingBean(name = FILTER_NAME)
-        public FilterRegistrationBean<Filter> authorizationPrefilter(SecurityProperties properties) {
-            final Filter filter = new JwtFilter(properties.getJwt().getAuthorization().getFilter());
-            final FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>(filter);
-            registration.setName(FILTER_NAME);
-            registration.setDispatcherTypes(REQUEST, ASYNC);
-            
-            // Get the order value of this object. <p>Higher values are interpreted as lower
-            // priority. As a consequence, the object with the lowest value has the highest
-            // priority (somewhat analogous to Servlet {@code load-on-startup} values).
-             
-            registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 100); // i.e. filter early
-            return registration;
-        }
-    }
-
 
     @Bean("corsConfigurationSource")
     @ConditionalOnProperty(name = { "entur.cors.enabled" }, havingValue = "true", matchIfMissing = false)

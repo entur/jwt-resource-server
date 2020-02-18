@@ -48,7 +48,7 @@ public class AudienceJWTVerifier implements JWTVerifier {
 
         List<String> jwtAudiences = decodedJWT.getAudience();
         if (jwtAudiences == null || jwtAudiences.isEmpty()) {
-            throw new InvalidClaimException("No audience specified.");
+            throw new InvalidClaimException("No audience specified in JWT.");
         }
 
         // if there is a list of approved audiences, check that at least one of the JWT

@@ -37,7 +37,7 @@ Claim validation (common for all tenants) can also be added:
  
 For YAML, this amounts to something like
 
-```
+```yaml
 entur:
   jwt:
     enabled: true
@@ -55,22 +55,65 @@ entur:
 
 A tenant id-filter can be used to conveniently enable/disable specific tenants. Using this filter could also simplify sharing configuration, for example using a ConfigMap in Kubernetes.
 
-### Adding security to your Controller
-Secure endpoints using [method access-control expressions] by adding the `@PreAuthorize` and `@PostAuthorize` annotations. See the following code example to see a basic implementation.
+## Security configuration
+By default, all requests must be so-called _fully authenticated_. In other words all requests must have a valid JWT token (of any of the configured tenants). 
+
+Open endpoints (i.e. permitted for all, open to the world) must be explicitly configured using MVC or Ant matchers:
+
+```yaml
+entur:
+  authorization:
+    permit-all:
+      ant-matcher:
+        patterns:
+         - /unprotected/**
+      mvc-matcher:
+        patterns:
+         - /some/path/{myVariable}
+```
+
+Note that Spring Web uses MVC matchers. In other words, for a `@RestController` with a method
 
 ```java
-@RestController
-public class TestController {
-
-    @GetMapping(value = "/myService",  produces = arrayOf(MediaType.TEXT_PLAIN_VALUE))
-    @PreAuthorize("isFullyAuthenticated()")
-    public String authenticatedEndpoint(){
-        // your code here
-    }
+@GetMapping(value = "/open/country/{countryCode}")
+public String authenticatedEndpoint(){
+    // your code here
 }
 ```
 
-or more fine-grained access using for example
+add the MVC matcher `/open/country/{countryCode}`. Optionally also specify the HTTP method using
+
+```yaml
+entur:
+  authorization:
+    permit-all:
+      mvc-matcher:
+        method:
+          get:
+            patterns:
+             - /some/path/{myVariable}
+```
+
+MVC matchers are in general __broader than Ant matchers__:
+
+ * antMatchers("/unprotected") matches only the exact `/unprotected` URL
+ * mvcMatchers("/unprotected") matches `/unprotected` as well as `/unprotected/`, `/unprotected.html`, `/unprotected.xyz`
+
+#### Actuator
+To expose [actuator endpoints](https://docs.spring.io/spring-boot/docs/current/reference/html/production-ready-features.html), add
+
+```yaml
+entur:
+  jwt:
+    authorization:
+      permit-all:
+        ant-matcher:
+          patterns:
+           - /actuator/**
+```
+
+### Adding fine-grained security to your Controller
+Secure endpoints using [method access-control expressions] by adding the `@PreAuthorize` and `@PostAuthorize` annotations. See the following code example to see a basic implementation.
 
 ```java
 @RestController
@@ -103,7 +146,7 @@ public class TestController {
 
 See configuration of `JwtArgumentResolver` for further details. Alternatively get to the token via the security context:
 
-```
+```java
 JwtAuthenticationToken authentication = (JwtAuthenticationToken)SecurityContextHolder.getContext().getAuthentication();
 
 // get token value (including Bearer)
@@ -215,7 +258,8 @@ The CORS support is intended for use-cases where your customers do NOT normally 
 This is so __that API-keys, client credentials, access-tokens and/or other secrets are not compromised__. Webapps are intended to have a dedicated backend service on the same domain, so no CORS request are necessary.
 
 Configuration example:
-```
+
+```yaml
 entur:
   cors: 
     enabled: true
@@ -234,7 +278,7 @@ where `xyz` is from the following list
 
 If no mode is set, no configuration is added by this starter. This allows for adding your own custom implementation.
 
-```
+```java
 @Bean("corsConfigurationSource")
 public CorsConfigurationSource myCorsConfigurationSource() {
 	// ...

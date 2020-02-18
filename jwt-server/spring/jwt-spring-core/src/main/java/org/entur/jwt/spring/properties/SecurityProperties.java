@@ -5,6 +5,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "entur")
 public class SecurityProperties {
 
+    private AuthorizationProperties authorization = new AuthorizationProperties();
+
     private CorsProperties cors = new CorsProperties();
 
     private JwtProperties jwt = new JwtProperties();
@@ -25,4 +27,11 @@ public class SecurityProperties {
         return jwt;
     }
 
+    public AuthorizationProperties getAuthorization() {
+        return authorization;
+    }
+    
+    public void setAuthorization(AuthorizationProperties authorization) {
+        this.authorization = authorization;
+    }
 }

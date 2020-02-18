@@ -6,8 +6,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.entur.jwt.junit5.configuration.enrich.PropertiesFileResourceServerConfigurationEnricher;
 import org.entur.jwt.junit5.extention.AuthorizationServerExtension;
 import org.entur.jwt.junit5.extention.AuthorizationServerTestContext;
@@ -40,9 +38,6 @@ public class SpringTestResourceServerConfigurationEnricher extends PropertiesFil
         }
     }
     
-    
-    private static final Log logger = LogFactory.getLog(SpringTestResourceServerConfigurationEnricher.class);
-
     /**
      * {@link Namespace} in which {@code TestContextManagers} are stored, keyed by
      * test class.

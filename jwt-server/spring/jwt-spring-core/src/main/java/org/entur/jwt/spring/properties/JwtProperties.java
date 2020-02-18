@@ -12,8 +12,6 @@ public class JwtProperties {
 
     private boolean enabled = true;
 
-    private AuthorizationProperties authorization = new AuthorizationProperties();
-
     private MdcProperties mdc = new MdcProperties();
 
     private Map<String, JwtTenantProperties> tenants = new HashMap<>();
@@ -59,14 +57,6 @@ public class JwtProperties {
 
     public void setMdc(MdcProperties mdc) {
         this.mdc = mdc;
-    }
-
-    public void setAuthorization(AuthorizationProperties authorization) {
-        this.authorization = authorization;
-    }
-
-    public AuthorizationProperties getAuthorization() {
-        return authorization;
     }
 
     public List<String> getFilter() {

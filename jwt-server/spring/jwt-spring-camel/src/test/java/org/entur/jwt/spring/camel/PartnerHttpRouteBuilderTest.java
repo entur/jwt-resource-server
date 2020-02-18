@@ -33,7 +33,6 @@ public class PartnerHttpRouteBuilderTest {
 
     // "{\"r\":\"adminEditRouteData\",\"o\":\"RB\"}")
     // RoleAssignment.builder().withOrganisation("RB").withRole("adminEditRouteData").build().toJson();
-    private static final String adminEditRouteDataForRB = "{\"r\":\"adminEditRouteData\",\"o\":\"RB\"}";
 
     @LocalServerPort
     public int port;
@@ -56,7 +55,7 @@ public class PartnerHttpRouteBuilderTest {
 
         URI uri = new URI("http://localhost:" + port + "/services/myPath/myCodeSpace");
 
-        given().log().all().when().get(uri).then().log().all().assertThat().statusCode(403);
+        given().log().all().when().get(uri).then().log().all().assertThat().statusCode(401);
     }
 
 }

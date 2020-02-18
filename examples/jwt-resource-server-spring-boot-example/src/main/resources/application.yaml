@@ -16,6 +16,12 @@ entur:
     jwk:
       health-indicator:
         enabled: true
+    authorization:
+      permit-all:
+        mvc-matcher:
+          patterns:
+           - /actuator/health
+           - /unprotected
   cors:
     enabled: true
     mode: api

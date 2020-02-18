@@ -11,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
+import org.springframework.test.context.TestPropertySource;
 
 /**
  * 
@@ -21,6 +22,7 @@ import org.springframework.http.HttpStatus;
 @AuthorizationServer
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
+@TestPropertySource(properties = { "entur.authorization.permit-all.ant-matcher.method.get.patterns=/actuator/**,/unprotected" })
 public class GreetingControllerTest {
 
     @LocalServerPort
