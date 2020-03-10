@@ -69,7 +69,7 @@ entur:
 ```
 
 ### Multiple clients
-Configure additional clients by adding keys under `entur.jwt.client.keycloak` and `entur.jwt.client.auth0` (like `myClient`) in above examples, i.e.
+Configure additional clients by adding keys under `entur.jwt.clients.keycloak` and `entur.jwt.clients.auth0` (like `myClient`) in above examples, i.e.
 
 ```yaml
 entur:
