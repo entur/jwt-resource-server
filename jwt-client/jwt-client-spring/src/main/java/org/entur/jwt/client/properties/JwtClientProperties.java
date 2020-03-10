@@ -1,12 +1,15 @@
 package org.entur.jwt.client.properties;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class JwtClientProperties {
 
     protected JwtHealthIndicator healthIndicator = new JwtHealthIndicator();
 
-    protected Auth0JwtClientProperties auth0 = new Auth0JwtClientProperties();
+    protected Map<String, Auth0JwtClientProperties> auth0 = new HashMap<>();
 
-    protected KeycloakJwtClientProperties keycloak = new KeycloakJwtClientProperties();
+    protected Map<String, KeycloakJwtClientProperties> keycloak = new HashMap<>();
 
     protected Integer connectTimeout;
     protected Integer readTimeout;
@@ -19,19 +22,19 @@ public class JwtClientProperties {
         return healthIndicator;
     }
 
-    public Auth0JwtClientProperties getAuth0() {
+    public Map<String, Auth0JwtClientProperties> getAuth0() {
         return auth0;
     }
-
-    public void setAuth0(Auth0JwtClientProperties auth0) {
-        this.auth0 = auth0;
-    }
-
-    public KeycloakJwtClientProperties getKeycloak() {
+    
+    public Map<String, KeycloakJwtClientProperties> getKeycloak() {
         return keycloak;
     }
-
-    public void setKeycloak(KeycloakJwtClientProperties keycloak) {
+    
+    public void setAuth0(Map<String, Auth0JwtClientProperties> auth0) {
+        this.auth0 = auth0;
+    }
+    
+    public void setKeycloak(Map<String, KeycloakJwtClientProperties> keycloak) {
         this.keycloak = keycloak;
     }
 

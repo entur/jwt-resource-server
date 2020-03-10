@@ -29,8 +29,8 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import java.net.URI;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@TestPropertySource(locations = "/application-auth0.properties")
-public class Auth0ClientTest {
+@TestPropertySource(locations = "/application-auth0-multiple.properties")
+public class Auth0MultipleClientsTest {
 
     private MockRestServiceServer mockServer;
 
@@ -39,13 +39,21 @@ public class Auth0ClientTest {
     private RestTemplate restTemplate;
 
     @Autowired
-    private AccessTokenProvider accessTokenProvider;
+    @Qualifier("firstClient")
+    private AccessTokenProvider firstAccessTokenProvider;
+
+    @Autowired
+    @Qualifier("secondClient")
+    private AccessTokenProvider secondAccessTokenProvider;
 
     @Autowired
     private AccessTokenProviderHealthIndicator healthIndicator;
 
-    @Value("classpath:auth0ClientCredentialsResponse.json")
-    private Resource resource;
+    @Value("classpath:auth0ClientCredentialsResponse1.json")
+    private Resource resource1;
+
+    @Value("classpath:auth0ClientCredentialsResponse2.json")
+    private Resource resource2;
 
     @BeforeEach
     public void beforeEach() {
@@ -59,19 +67,26 @@ public class Auth0ClientTest {
 
     @Test
     public void contextLoads() {
-        assertNotNull(accessTokenProvider);
+        assertNotNull(firstAccessTokenProvider);
+        assertNotNull(secondAccessTokenProvider);
         assertNotNull(healthIndicator);
     }
-
+    
     @Test
     public void testAccessToken() throws Exception {
-        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://entur.org/oauth/token"))).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).body(resource));
-        AccessToken accessToken = accessTokenProvider.getAccessToken(false);
+        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://second.entur.org/oauth/token"))).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).body(resource1));
+        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://first.entur.org/oauth/token"))).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).body(resource2));
 
-        assertThat(accessToken.getType()).isEqualTo("Bearer");
-        assertThat(accessToken.getValue()).isEqualTo("a.b.c");
-        assertThat(accessToken.getExpires()).isLessThan(System.currentTimeMillis() + 86400 * 1000);
+        AccessToken accessToken1 = secondAccessTokenProvider.getAccessToken(false);
 
-    }
+        assertThat(accessToken1.getType()).isEqualTo("Bearer");
+        assertThat(accessToken1.getValue()).isEqualTo("a.b.c");
 
+        AccessToken accessToken2 = firstAccessTokenProvider.getAccessToken(false);
+
+        assertThat(accessToken2.getType()).isEqualTo("Bearer");
+        assertThat(accessToken2.getValue()).isEqualTo("d.e.f");
+
+        
+    }    
 }

@@ -9,7 +9,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * 
  */
 
-@ConfigurationProperties(prefix = "entur.jwt.client")
+@ConfigurationProperties(prefix = "entur.jwt.clients")
 public class SpringJwtClientProperties extends JwtClientProperties {
 
 }

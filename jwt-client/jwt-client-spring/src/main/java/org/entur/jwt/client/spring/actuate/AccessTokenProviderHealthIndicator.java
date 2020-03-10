@@ -18,28 +18,53 @@ public class AccessTokenProviderHealthIndicator extends AbstractHealthIndicator 
 
     protected static final Logger logger = LoggerFactory.getLogger(AccessTokenProviderHealthIndicator.class);
 
-    private final AccessTokenHealthProvider provider;
+    private final AccessTokenHealthProvider[] providers;
 
-    public AccessTokenProviderHealthIndicator(AccessTokenHealthProvider statusProvider) {
+    public AccessTokenProviderHealthIndicator(AccessTokenHealthProvider[] statusProviders) {
         super();
-        this.provider = statusProvider;
+        this.providers = statusProviders;
     }
 
     @Override
     protected void doHealthCheck(Health.Builder builder) throws Exception {
         try {
-            AccessTokenHealth status = provider.getHealth(true);
-            if (status.isSuccess()) {
-                builder.up();
-            } else {
-                builder.down();
+            
+            // iterate over clients, and record the min / max timestamps.
+            boolean down = false;
+            long mostRecentTimestamp = Long.MIN_VALUE;
+            long leastRecentTimestamp = Long.MAX_VALUE;
+            
+            for(AccessTokenHealthProvider provider : providers) {
+                AccessTokenHealth status = provider.getHealth(true);
+                if (!status.isSuccess()) {
+                    down = true;
+                }
+                
+                if(mostRecentTimestamp < status.getTimestamp()) {
+                    mostRecentTimestamp = status.getTimestamp();
+                }
+                if(leastRecentTimestamp > status.getTimestamp()) {
+                    leastRecentTimestamp = status.getTimestamp();
+                }
             }
 
-            builder.withDetail("timestamp", status.getTimestamp());
+            long time = System.currentTimeMillis();
+            if(mostRecentTimestamp != Long.MIN_VALUE) {
+                builder.withDetail("youngestTimestamp", (time - mostRecentTimestamp) / 1000);
+            } 
+            if(leastRecentTimestamp != Long.MAX_VALUE) {
+                builder.withDetail("oldestTimestamp", (time - leastRecentTimestamp) / 1000);
+            }
+
+            if (down) {
+                builder.down();
+            } else {
+                builder.up();
+            }
         } catch (AccessTokenHealthNotSupportedException e) {
             logger.error("Health checks are not supported", e);
 
-            builder.down();
+            builder.unknown();
         }
     }
 
