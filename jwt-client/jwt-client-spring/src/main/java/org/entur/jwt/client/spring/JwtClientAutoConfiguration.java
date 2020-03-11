@@ -91,6 +91,12 @@ public class JwtClientAutoConfiguration {
         return timeout;
     }
 
+    @Bean
+    public static BeanDefinitionRegistryPostProcessor jwtClientBeanDefinitionRegistryPostProcessor() {
+        // note : adding @Configuration to JwtClientBeanDefinitionRegistryPostProcessor works (as an alternative to @Bean), 
+        // but gives an ugly warning message.
+        return new JwtClientBeanDefinitionRegistryPostProcessor();
+    }
     
     /**
      * Dynamically inject beans with ids so that they can be easily referenced with {@linkplain Qualifier} annotation. 
@@ -98,15 +104,14 @@ public class JwtClientAutoConfiguration {
      */
     
     // https://stackoverflow.com/questions/53462889/create-n-number-of-beans-with-beandefinitionregistrypostprocessor
-    @Configuration
     public static class JwtClientBeanDefinitionRegistryPostProcessor implements BeanDefinitionRegistryPostProcessor, EnvironmentAware {
 
-        // note: autowiring does not work
+     // note: autowiring does not work, must bind via environment
         private SpringJwtClientProperties properties;
         
         @Override
         public void postProcessBeanFactory(ConfigurableListableBeanFactory factory) throws BeansException {
-            
+            // noop
         }
 
         @Override
@@ -135,7 +140,7 @@ public class JwtClientAutoConfiguration {
                 beanDefinition.setFactoryMethodName(method);
                 ConstructorArgumentValues constructorArgumentValues = new ConstructorArgumentValues();
                 constructorArgumentValues.addGenericArgumentValue(key);
-                
+                beanDefinition.setAutowireCandidate(true);
                 beanDefinition.setConstructorArgumentValues(constructorArgumentValues);
                 
                 registry.registerBeanDefinition(key, beanDefinition);
