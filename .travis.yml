@@ -15,6 +15,9 @@ addons:
     token:
       secure: "rwdFEomwRMyPoq1eCCEshaulGSaZFkEqS61NYC8Ua5qK0TtMXIoWPgWaqzE/dkWN/bJkmf9C/IgPEL1+rqHLczz6X9Iay/ZPIdjR4Bvpjg7S7QaefU21hqrafjD9VT4OWXjmKnfm89lL44ihK5B4Gy3OvBJT7srZQ74jY366iRmW+BiR3nLmk9iF3VuWcA2oYc5LaPZhbOak7C4iDJA+KE2hZRkDm4eLMJb2l1XtUFw0Hdc4ZMTGE4t1IDFbCNz4tCXHQ76rqg0mxi1U/qkoeA4OYu5IkcLFUjdMPvPdj0lO3rbJ1k7xjyjNByl9c3g0ZIctcvK5bAFqUAB6FzyGHm052J538y1HvdUU+BiyiLk99ttvKvad85lh6QBfUD6gkboXdO0qVzfD5Bu7l+tX36melvhy3OEsKPKdu/CyA28sW6dE/gUmX1N8WBJYGxniq7N6hlT9zMl9xiJ0IilHa2M0B1lP4wm8iaNckej6LMqx9oqWDeKJubB4yMFIxwDqqYa4n3FEhzxQUzOSiQFZbzHggZi9g+ET5Tm/CAWROZU0Vxj8rKlm5XwlJGgnw2uDT9k0KbitDA93/ysPTHh46KFzHBtqLBw5VfMTUUILw6AYB+U9t9c9nFw1pK5Tk2sMnjWwoKGK4UztJsIXqGSSr5LimMgAROAf68RjbyQBJUo="
 
+before_script:
+  - echo "MAVEN_OPTS='-Xmx2g -XX:MaxPermSize=256m'" > ~/.mavenrc
+
 script:
   # the following command line builds the project, runs the tests with coverage and then execute the SonarCloud analysis
   - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent install org.jacoco:jacoco-maven-plugin:report

@@ -35,20 +35,21 @@ Actively refreshing the cache is possible, if desired.
 # Framework support
 
 ## jwt-client-spring
-Spring Boot starter for configuration of an `AccessTokenProvider` bean.
+Spring Boot starter for configuration of `AccessTokenProvider` beans.
 
 ### Auth0 configuration
 
 ```yaml
 entur:
     jwt:
-        client:
+        clients:
             auth0:
-                audience: myAudience
-                client-id: myClientId
-                host: entur.org
-                scope: myScope
-                secret: mySecret
+                myClient:
+                    audience: myAudience
+                    client-id: myClientId
+                    host: entur.org
+                    scope: myScope
+                    secret: mySecret
 ```
 
 ### Keycloak configuration
@@ -58,12 +59,49 @@ entur:
     jwt:
         client:
             keycloak:
-                audience: myAudience
-                client-id: myClientId
-                host: entur.org
-                realm: myTenant
-                scope: myScope
-                secret: mySecret
+                myClient:
+                    audience: myAudience
+                    client-id: myClientId
+                    host: entur.org
+                    realm: myTenant
+                    scope: myScope
+                    secret: mySecret
+```
+
+### Multiple clients
+Configure additional clients by adding keys under `entur.jwt.clients.keycloak` and `entur.jwt.clients.auth0` (like `myClient`) in above examples, i.e.
+
+```yaml
+entur:
+    jwt:
+        client:
+            keycloak:
+                myFirstClient:
+                    audience: myFirstAudience
+                    client-id: myFirstClientId
+                    host: first.entur.org
+                    realm: myFirstTenant
+                    scope: myFirstScope
+                    secret: myFirstSecret
+                mySecondClient:
+                    audience: mySecondAudience
+                    client-id: mySecondClientId
+                    host: second.entur.org
+                    realm: mySecondTenant
+                    scope: mySecondScope
+                    secret: mySecondSecret
+```
+
+Then use a `Qualifier`to autowire:
+
+```
+@Autowired
+@Qualifier("myFirstClient")
+private AccessTokenProvider firstAccessTokenProvider;
+
+@Autowired
+@Qualifier("mySecondClient")
+private AccessTokenProvider secondAccessTokenProvider;
 ```
 
 ### Health indicator configuration
