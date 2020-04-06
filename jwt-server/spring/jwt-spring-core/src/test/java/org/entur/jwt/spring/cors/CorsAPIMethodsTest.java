@@ -18,20 +18,21 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 @AuthorizationServer
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@TestPropertySource(properties = { "entur.cors.mode=api", "entur.cors.origins[0]=https://petstore.swagger.io", "entur.cors.origins[1]=https://developer.entur.org", "entur.cors.origins[2]=https://myportal.apigee.io", "entur.authorization.permit-all.mvc-matcher.patterns=/unprotected"})
-public class CorsAPIHostsTest {
+@TestPropertySource(properties = { "entur.cors.mode=api", "entur.cors.origins[0]=https://petstore.swagger.io", "entur.cors.origins[1]=https://developer.entur.org", "entur.cors.origins[2]=https://myportal.apigee.io", "entur.authorization.permit-all.mvc-matcher.patterns=/unprotected", "entur.cors.methods[0]=GET", "entur.cors.methods[1]=POST", "entur.cors.methods[2]=OPTIONS"})
+public class CorsAPIMethodsTest {
 
     @LocalServerPort
     protected int port;
 
-    private List<String> methods = Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS");
+    private List<String> allowedMethods = Arrays.asList("GET", "POST", "OPTIONS");
+    private List<String> forbiddenMethods = Arrays.asList("PUT", "DELETE");
 
     private List<String> hosts = Arrays.asList("https://petstore.swagger.io", "https://myportal.apigee.io", "https://developer.entur.org");
 
     @Test
-    public void cors_options_is_allowed() {
+    public void cors_is_allowed() {
         hosts.forEach(host -> {
-            methods.forEach(method -> {
+        	allowedMethods.forEach(method -> {
                 given().header("Origin", host).header("Access-Control-Request-Method", method).when().log().all().options("http://localhost:" + port + "/unprotected").then().log().all().assertThat().statusCode(HttpStatus.OK.value())
                         .header("Access-Control-Allow-Origin", host);
             });
@@ -39,9 +40,11 @@ public class CorsAPIHostsTest {
     }
 
     @Test
-    public void cors_request_is_allowed() {
+    public void cors_is_forbidden() {
         hosts.forEach(host -> {
-            given().header("Origin", host).when().log().all().get("http://localhost:" + port + "/unprotected").then().log().all().assertThat().statusCode(HttpStatus.OK.value());
+        	forbiddenMethods.forEach(method -> {
+                given().header("Origin", host).header("Access-Control-Request-Method", method).when().log().all().options("http://localhost:" + port + "/unprotected").then().log().all().assertThat().statusCode(HttpStatus.FORBIDDEN.value());
+            });
         });
     }
 }

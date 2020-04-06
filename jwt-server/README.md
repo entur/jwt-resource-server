@@ -264,7 +264,7 @@ entur:
   cors: 
     enabled: true
     mode: xyz
-    hosts:
+    origins:
       - https://myapp.entur.org
       - https://myotherpetstore.swagger.io
 ```

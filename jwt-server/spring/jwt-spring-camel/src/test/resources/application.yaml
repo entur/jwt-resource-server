@@ -21,7 +21,7 @@ entur:
   cors:
     enabled: true
     mode: api
-    hosts:
+    origins:
     - https://my.published.api
 
 camel.component.servlet.mapping.contextPath: /services/*

@@ -25,5 +25,5 @@ entur:
   cors:
     enabled: true
     mode: api
-    hosts:
+    origins:
     - https://my.published.api

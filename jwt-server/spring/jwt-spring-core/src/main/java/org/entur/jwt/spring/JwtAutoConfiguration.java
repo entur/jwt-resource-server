@@ -257,25 +257,14 @@ public class JwtAutoConfiguration {
 
         CorsProperties cors = oidcAuthProperties.getCors();
         if (cors.getMode().equals("api")) {
-            List<String> hosts = cors.getHosts();
-            log.info("Enable CORS request with hosts {} for API mode", hosts);
-            return getCorsConfiguration(hosts);
+            return getCorsConfiguration(cors);
         } else {
-            if (!cors.getHosts().isEmpty()) {
+            if (!cors.getOrigins().isEmpty()) {
                 throw new IllegalStateException("Expected empty hosts configuration for CORS mode '" + cors.getMode() + "'");
             }
             log.info("Disable CORS requests for webapp mode");
 
-            UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-
-            CorsConfiguration config = new CorsConfiguration();
-            config.setAllowedOrigins(Collections.emptyList());
-            config.setAllowedHeaders(Collections.emptyList());
-            config.setAllowedMethods(Collections.emptyList());
-
-            source.registerCorsConfiguration("/**", config);
-
-            return source;
+            return getEmptyCorsConfiguration();
         }
     }
 
@@ -283,24 +272,62 @@ public class JwtAutoConfiguration {
     @ConditionalOnProperty(name = { "entur.security.cors.mode" }, havingValue = "webapp", matchIfMissing = false)
     public CorsConfigurationSource corsConfigurationSourceForWebapp(SecurityProperties properties) {
         log.info("Disable CORS requests for webapp mode");
-        return getCorsConfiguration(Collections.emptyList());
+        return getEmptyCorsConfiguration();
     }
-
-    public static CorsConfigurationSource getCorsConfiguration(List<String> hosts) {
-
+    
+    public static CorsConfigurationSource getEmptyCorsConfiguration() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(hosts);
-        config.setAllowedHeaders(Arrays.asList("*"));
-        config.setAllowedMethods(Arrays.asList("GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS" // XXX
-        ));
+        config.setAllowedOrigins(Collections.emptyList());
+        config.setAllowedHeaders(Collections.emptyList());
+        config.setAllowedMethods(Collections.emptyList());
+
+        source.registerCorsConfiguration("/**", config);
+
+        return source;
+    }
+
+    public static CorsConfigurationSource getCorsConfiguration(CorsProperties properties) {
+
+    	List<String> defaultAllowedMethods = Arrays.asList("GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS");
+    	List<String> defaultAllowedHeaders = Arrays.asList("*");
+    	
+        List<String> origins = properties.getOrigins();
+        log.info("Enable CORS request with origins {}, methods {} and headers {} for API mode", 
+        		properties.getOrigins(),
+        		properties.hasMethods() ? properties.getMethods() : "default (" + defaultAllowedMethods + ")",
+        		properties.hasHeaders() ? properties.getHeaders() : "default (" + defaultAllowedHeaders + ")"
+        		);
+    	
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(origins);
+        if(properties.hasHeaders()) {
+        	config.setAllowedHeaders(properties.getHeaders());
+        } else {
+            config.setAllowedHeaders(defaultAllowedHeaders);
+        }
+        if(properties.hasMethods()) {
+        	config.setAllowedMethods(properties.getMethods());
+        } else {
+            config.setAllowedMethods(defaultAllowedMethods); // XXX
+        }
         config.setMaxAge(86400L);
         config.setAllowCredentials(true);
         source.registerCorsConfiguration("/**", config);
 
         return source;
     }
+
+	protected List<String> getDefaultMethods() {
+		return Arrays.asList("GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS");
+	}
+
+	protected List<String> getDefaultAllowedHeaders() {
+		return Arrays.asList("*");
+	}
 
     @Bean
     @ConditionalOnProperty(name = { "entur.jwt.jwk.health-indicator.enabled" }, havingValue = "true", matchIfMissing = true)
