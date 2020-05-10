@@ -24,7 +24,7 @@ public class AccessTokenProviderBuilderTest {
         AccessTokenProvider provider = builder().cached(true).health(false).build();
 
         List<AccessTokenProvider> accessTokenProviders = accessTokenProviders(provider);
-        assertThat(accessTokenProviders).hasSize(2);
+        assertThat(accessTokenProviders).hasSize(3);
 
         assertThat(accessTokenProviders.get(0)).isInstanceOf(DefaultCachedAccessTokenProvider.class);
         assertThat(accessTokenProviders.get(1)).isInstanceOf(AccessTokenProvider.class);
@@ -35,7 +35,7 @@ public class AccessTokenProviderBuilderTest {
         AccessTokenProvider provider = builder().cached(10, TimeUnit.SECONDS, 15, TimeUnit.SECONDS).health(false).build();
 
         List<AccessTokenProvider> accessTokenProviders = accessTokenProviders(provider);
-        assertThat(accessTokenProviders).hasSize(2);
+        assertThat(accessTokenProviders).hasSize(3);
 
         DefaultCachedAccessTokenProvider cachedAccessTokenProvider = (DefaultCachedAccessTokenProvider) accessTokenProviders.get(0);
 
@@ -46,12 +46,13 @@ public class AccessTokenProviderBuilderTest {
     public void shouldCreateCachedProviderByDefault() {
         AccessTokenProvider provider = builder().build();
 
-        List<AccessTokenProvider> AccessTokenProviders = accessTokenProviders(provider);
-        assertThat(AccessTokenProviders).hasSize(3);
+        List<AccessTokenProvider> accessTokenProviders = accessTokenProviders(provider);
+        assertThat(accessTokenProviders).hasSize(4);
 
-        assertThat(AccessTokenProviders.get(0)).isInstanceOf(DefaultCachedAccessTokenProvider.class);
-        assertThat(AccessTokenProviders.get(1)).isInstanceOf(DefaultAccessTokenHealthProvider.class);
-        assertThat(AccessTokenProviders.get(2)).isInstanceOf(AccessTokenProvider.class);
+        assertThat(accessTokenProviders.get(0)).isInstanceOf(DefaultCachedAccessTokenProvider.class);
+        assertThat(accessTokenProviders.get(1)).isInstanceOf(DefaultAccessTokenHealthProvider.class);
+        assertThat(accessTokenProviders.get(2)).isInstanceOf(RetryingAccessTokenProvider.class);
+        assertThat(accessTokenProviders.get(3)).isInstanceOf(AccessTokenProvider.class);
     }
 
     private List<AccessTokenProvider> accessTokenProviders(AccessTokenProvider accessTokenProvider) {
@@ -88,7 +89,7 @@ public class AccessTokenProviderBuilderTest {
         AccessTokenProvider provider = new AccessTokenProviderBuilder(customAccessTokenProvider).build();
 
         List<AccessTokenProvider> accessTokenProviders = accessTokenProviders(provider);
-        assertThat(accessTokenProviders).hasSize(3);
+        assertThat(accessTokenProviders).hasSize(4);
 
         assertThat(accessTokenProviders.get(accessTokenProviders.size() - 1)).isSameInstanceAs(customAccessTokenProvider);
     }
@@ -98,10 +99,11 @@ public class AccessTokenProviderBuilderTest {
         AccessTokenProvider provider = builder().preemptiveCacheRefresh(20, TimeUnit.SECONDS).health(false).build();
 
         List<AccessTokenProvider> accessTokenProviders = accessTokenProviders(provider);
-        assertThat(accessTokenProviders).hasSize(2);
+        assertThat(accessTokenProviders).hasSize(3);
 
         assertThat(accessTokenProviders.get(0)).isInstanceOf(PreemptiveCachedAccessTokenProvider.class);
-        assertThat(accessTokenProviders.get(1)).isInstanceOf(AccessTokenProvider.class);
+        assertThat(accessTokenProviders.get(1)).isInstanceOf(RetryingAccessTokenProvider.class);
+        assertThat(accessTokenProviders.get(2)).isInstanceOf(AccessTokenProvider.class);
     }
 
     @Test
@@ -109,10 +111,11 @@ public class AccessTokenProviderBuilderTest {
         AccessTokenProvider provider = builder().cached(false).health(false).preemptiveCacheRefresh(true).build();
 
         List<AccessTokenProvider> accessTokenProviders = accessTokenProviders(provider);
-        assertThat(accessTokenProviders).hasSize(2);
+        assertThat(accessTokenProviders).hasSize(3);
 
         assertThat(accessTokenProviders.get(0)).isInstanceOf(PreemptiveCachedAccessTokenProvider.class);
-        assertThat(accessTokenProviders.get(1)).isInstanceOf(AccessTokenProvider.class);
+        assertThat(accessTokenProviders.get(1)).isInstanceOf(RetryingAccessTokenProvider.class);
+        assertThat(accessTokenProviders.get(2)).isInstanceOf(AccessTokenProvider.class);
     }
 
     private AccessTokenProviderBuilder builder() {

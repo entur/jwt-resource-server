@@ -31,7 +31,7 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
     protected boolean health = true;
 
     // retrying
-    protected boolean retrying = false;
+    protected boolean retrying = true;
 
     /**
      * Wrap a specific {@linkplain AccessTokenProvider}. Access to this instance

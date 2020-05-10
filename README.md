@@ -7,7 +7,7 @@
 
 > work in progress
 
-Tools for synchronous (servlet-based) __OpenID resource servers__ relying on use of [Access Tokens]([https://auth0.com/docs/tokens/access-tokens](https://auth0.com/docs/tokens/access-tokens)) for authorization. These come in the form of JSON Web Tokens (JWT) issued by Authorization Servers like Auth0 and Keycloak.
+Tools for synchronous (servlet-based) __OpenID resource servers__ relying on use of [Access Tokens]([https://auth0.com/docs/tokens/access-tokens](https://auth0.com/docs/tokens/access-tokens)) for authorization. These come in the form of JSON Web Tokens (JWT) issued by Authorization Servers like Auth0 and Keycloak. Authorization Servers __sign JWTs__ with private keys, resource servers then download the corresponding public keys from the Authorization Servers and __validate the JWTs__ by verifying the signature.
 
 ## Primer
 Technically, this library deals with HTTP requests using the __Authorization__ header. Example HTTP request:
@@ -37,7 +37,7 @@ Users of this library will benefit from:
 
 In order to keep complexity (and risk) down, the library wraps existing third party libraries for low-level parsing, signature validation and authorization enforcement. Notable features:
 
- * thread-safe sharing of keys and tokens within each JVM
+ * thread-safe sharing of keys (for signature verification) and access-tokens within each JVM
  * proactive background refresh of keys and tokens
  * keys and token health status (on last remote invocation)
  * annotation-based token mocking with test method signature argument support

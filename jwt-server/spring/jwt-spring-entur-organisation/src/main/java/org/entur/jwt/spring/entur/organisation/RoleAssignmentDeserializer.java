@@ -27,7 +27,7 @@ public class RoleAssignmentDeserializer extends StdDeserializer<RoleAssignment> 
     }
 
     @Override
-    public RoleAssignment deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+    public RoleAssignment deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
         JsonNode node = jp.getCodec().readTree(jp);
 
         Builder builder = RoleAssignment.builder().withRole(node.get("r").asText()).withOrganisation(node.get("o").asText());

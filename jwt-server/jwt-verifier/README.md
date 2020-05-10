@@ -19,6 +19,9 @@ Features:
 
 Essentially this allows a single JWK instance to be shared within a single JVM.
 
+## Usage
+Create an instance of `JwtVerifier` per application-context. Instances of `JwtVerifier` cache the public keys (JWK) necessary to validate access-tokens and are thread-safe. 
+
 ## Details 
 The JWK cache behaves in a __lazy, proactive__ way:
 

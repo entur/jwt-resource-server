@@ -19,7 +19,6 @@ import org.entur.jwt.client.properties.JwtClientCache;
 import org.entur.jwt.client.properties.KeycloakJwtClientProperties;
 import org.entur.jwt.client.properties.PreemptiveRefresh;
 import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
-import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.config.ConstructorArgumentValues;
@@ -110,7 +109,7 @@ public class JwtClientAutoConfiguration {
         private SpringJwtClientProperties properties;
         
         @Override
-        public void postProcessBeanFactory(ConfigurableListableBeanFactory factory) throws BeansException {
+        public void postProcessBeanFactory(ConfigurableListableBeanFactory factory) {
             // noop
         }
 
@@ -126,7 +125,7 @@ public class JwtClientAutoConfiguration {
         }
         
         @Override
-        public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
+        public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) {
             // populate default values
             add(registry, "newAuth0Instance", properties.getAuth0().keySet());
             add(registry, "newKeycloakInstance", properties.getKeycloak().keySet());

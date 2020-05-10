@@ -32,6 +32,30 @@ Since we're refreshing the cache before the token expires, there will normally n
 
 Actively refreshing the cache is possible, if desired.
 
+## Usage
+Create an instance of `AccessTokenProvider` per application-context (per Authorization Server). Instances of `AccessTokenProvider` cache og refresh access-tokens and are thread-safe. Example:
+
+```
+ClientCredentials credentials = Auth0ClientCredentialsBuilder.newInstance()
+                                                             .withHost("my.auth0.com")
+                                                             .withProtocol("https")
+                                                             .withSecret("mySecret")
+                                                             .withClientId("myClientID")
+                                                             .build();
+
+AccessTokenProvider accessTokenProvider = AccessTokenProviderBuilder.newBuilder(credentials).build();
+```
+
+Store the `accessTokenProvider` in your application context, then get an access token:
+
+```java
+AccessToken accessToken = accessTokenProvider.getAccessToken(false); // or true for force refresh token
+
+String jwt = accessToken.getValue(); // on the form x.y.z
+
+// do remote requests (your code here)
+```
+
 # Framework support
 
 ## jwt-client-spring
