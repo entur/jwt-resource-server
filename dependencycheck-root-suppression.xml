@@ -19,4 +19,10 @@
 	   <cve>CVE-2020-5398</cve>
 	</suppress>
 	
+	<suppress>
+	   <!-- SAML component -->
+	   <cve>CVE-2020-5407</cve>
+	</suppress>
+	
+	
 </suppressions>
