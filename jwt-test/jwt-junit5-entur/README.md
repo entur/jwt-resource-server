@@ -68,5 +68,23 @@ Additional mock tokens for testing:
  * `@InvalidSignaturePartnerAuth0Token` - token with invalid signature
  * `@UnknownKeyIdPartnerAuth0Token` - token with unknown signature key id
 
- 
+## Maven / Gradle coordinates
+
+Maven coordinates:
+
+```xml
+<dependency>
+    <groupId>org.entur.jwt-rs</groupId>
+    <artifactId>jwt-verifier-auth0</artifactId>
+    <version>${jwt-junit5-entur}</version>
+    <scope>test</scope>
+</dependency>
+```
+
+Gradle coordinates:
+
+```groovy
+api("org.entur.jwt-rs:jwt-junit5-entur:${jwtResourceServerVersion}")
+```
+
 

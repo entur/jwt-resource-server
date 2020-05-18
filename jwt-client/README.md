@@ -19,6 +19,8 @@ Supported servers:
  * Auth0
  * Keycloak
 
+See submodules for Maven / Gradle coordinates.
+
 ## Details 
     
 The cache behaves in a __lazy, proactive__  way:
@@ -145,6 +147,5 @@ The health indicator looks at __the last attempt to get credentials__. It will t
  * last attempt was unsuccessful
 
 In other words, the health check will not refresh expired credentials, but repeated calls to the health-check will result in a positive result once downstream services are back up. As a positive side-effect, on startup, calling the health-check before opening for traffic will result in the cache being populated (read: warmed up).
-
 
 [client credentials]: https://auth0.com/docs/flows/concepts/client-credentials

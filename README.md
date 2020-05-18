@@ -56,6 +56,10 @@ See documentation contained in each folder to get started. Or skip right to the 
 # License
 [European Union Public Licence v1.2](https://eupl.eu/).
 
+# History
+
+ - 1.0.0: Initial release. 
+
 [jwk]:                    jwt-server/jwk
 [jwt-verifier]:           jwt-server/jwk-verifier
 [jwt-server]:             jwt-server
