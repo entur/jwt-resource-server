@@ -53,12 +53,12 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
         String header = request.getHeader(AUTHORIZATION);
 
         if (header != null && header.startsWith(BEARER)) {
-        	String bearerToken = header.substring(BEARER.length());
+        String bearerToken = header.substring(BEARER.length());
             // if a token is present, it must be valid regardless of whether the endpoint
             // requires authorization or not
             T token;
             try {
-            	
+            
                 token = verifier.verify(bearerToken); // note: can return null
                 if (token != null) {
                     List<GrantedAuthority> authorities = authorityMapper.getGrantedAuthorities(token);

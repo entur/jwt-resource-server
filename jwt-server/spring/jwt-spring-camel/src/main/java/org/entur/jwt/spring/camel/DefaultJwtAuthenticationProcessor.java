@@ -69,8 +69,8 @@ public class DefaultJwtAuthenticationProcessor implements JwtAuthenticationProce
             if (request != null) {
                 String header = request.getHeader(AUTHORIZATION);
                 if (header != null && header.startsWith(BEARER)) {
-                	String bearerToken = header.substring(BEARER.length());
-                	
+                    String bearerToken = header.substring(BEARER.length());
+                    
                     // if a token is present, it must be valid regardless of whether the end-point
                     // requires authorization or not
                     try {
