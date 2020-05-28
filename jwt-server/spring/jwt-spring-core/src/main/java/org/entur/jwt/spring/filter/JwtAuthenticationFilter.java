@@ -28,6 +28,7 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
 public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
 
     public static final String AUTHORIZATION = "Authorization";
+    public static final String BEARER = "Bearer ";
 
     private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
@@ -51,18 +52,20 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws IOException, ServletException {
         String header = request.getHeader(AUTHORIZATION);
 
-        if (header != null) {
+        if (header != null && header.startsWith(BEARER)) {
+        	String bearerToken = header.substring(BEARER.length());
             // if a token is present, it must be valid regardless of whether the endpoint
             // requires authorization or not
             T token;
             try {
-                token = verifier.verify(header); // note: can return null
+            	
+                token = verifier.verify(bearerToken); // note: can return null
                 if (token != null) {
                     List<GrantedAuthority> authorities = authorityMapper.getGrantedAuthorities(token);
 
                     Map<String, Object> claims = extractor.getClaims(token);
 
-                    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(claims, header, authorities));
+                    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(claims, bearerToken, authorities));
 
                     if (mdcMapper != null) {
                         mdcMapper.addContext(token);

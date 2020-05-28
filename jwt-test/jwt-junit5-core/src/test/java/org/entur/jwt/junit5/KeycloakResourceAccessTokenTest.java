@@ -15,7 +15,7 @@ public class KeycloakResourceAccessTokenTest {
 
     @Test
     public void testTokenIsValid(@KeycloakResourceAccessToken(myId = 5) String token) throws IOException {
-        DecodedJWT decoded = JWT.decode(token);
+        DecodedJWT decoded = JWT.decode(token.substring(7));
 
         Integer value = decoded.getClaim("https://www.mock.com/organisationID").asInt();
         assertThat(value).isEqualTo(5);

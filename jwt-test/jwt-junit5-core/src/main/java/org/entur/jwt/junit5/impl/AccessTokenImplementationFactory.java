@@ -14,6 +14,16 @@ public class AccessTokenImplementationFactory {
         super();
         this.server = server;
     }
+    
+    /**
+     * Create authorization (i.e. access-token) string representation
+     * 
+     * @param token target token
+     * @param parameterContext context
+     * @param extensionContext extension
+     * @param resolver configuration resolver
+     * @return token as text
+     */
 
     public String create(AccessToken token, ParameterContext parameterContext, ExtensionContext extensionContext, ResourceServerConfiguration resolver) {
         AccessTokenEncoder encoder = getAccessTokenEncoder(token);

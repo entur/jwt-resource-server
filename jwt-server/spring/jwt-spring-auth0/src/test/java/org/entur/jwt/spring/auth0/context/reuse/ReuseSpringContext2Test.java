@@ -31,7 +31,7 @@ public class ReuseSpringContext2Test {
     public void testTokenIsValid1(@MyAccessToken(myId = 5) String token) throws Exception {
         System.out.println("Run " + getClass().getName());
 
-        DecodedJWT verified = jwtVerifier.verify(token);
+        DecodedJWT verified = jwtVerifier.verify(token.substring(7));
 
         assertNotNull(verified);
     }
@@ -40,7 +40,7 @@ public class ReuseSpringContext2Test {
     public void testTokenIsValid2(@MyAccessToken(myId = 5) String token) throws Exception {
         System.out.println("Run " + getClass().getName());
 
-        DecodedJWT verified = jwtVerifier.verify(token);
+        DecodedJWT verified = jwtVerifier.verify(token.substring(7));
 
         assertNotNull(verified);
     }
