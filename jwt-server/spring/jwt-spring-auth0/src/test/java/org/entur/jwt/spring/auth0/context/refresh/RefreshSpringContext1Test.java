@@ -31,7 +31,7 @@ public class RefreshSpringContext1Test {
     public void testTokenIsValid1(@AccessToken(audience = "mock.my.audience") String token) throws Exception {
         System.out.println("Run " + getClass().getName());
 
-        DecodedJWT verified = jwtVerifier.verify(token);
+        DecodedJWT verified = jwtVerifier.verify(token.substring(7));
 
         assertNotNull(verified);
     }
@@ -40,7 +40,7 @@ public class RefreshSpringContext1Test {
     public void testTokenIsValid2(@AccessToken(audience = "mock.my.audience") String token) throws Exception {
         System.out.println("Run " + getClass().getName());
 
-        DecodedJWT verified = jwtVerifier.verify(token);
+        DecodedJWT verified = jwtVerifier.verify(token.substring(7));
 
         assertNotNull(verified);
     }

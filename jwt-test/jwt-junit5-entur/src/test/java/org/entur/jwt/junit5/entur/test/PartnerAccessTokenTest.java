@@ -20,7 +20,7 @@ public class PartnerAccessTokenTest {
 
     @Test
     public void testTokenWithOrganisation(@PartnerAuth0Token(organisationId = 5) String token) throws IOException {
-        DecodedJWT decodedJWT = JWT.decode(token);
+        DecodedJWT decodedJWT = decode(token);
         Claim claim = decodedJWT.getClaim("https://entur.io/organisationID");
 
         assertThat(claim.asInt()).isEqualTo(5);
@@ -28,7 +28,7 @@ public class PartnerAccessTokenTest {
 
     @Test
     public void testTokenWithPermissions(@PartnerAuth0Token(organisationId = 5, permissions = { "configure" }) String token) throws IOException {
-        DecodedJWT decodedJWT = JWT.decode(token);
+        DecodedJWT decodedJWT = decode(token);
         Claim claim = decodedJWT.getClaim("permissions");
 
         String[] asArray = claim.asArray(String.class);
@@ -37,7 +37,7 @@ public class PartnerAccessTokenTest {
 
     @Test
     public void testTokenIsExpired(@ExpiredPartnerAuth0Token String token) throws IOException {
-        DecodedJWT decodedJWT = JWT.decode(token);
+        DecodedJWT decodedJWT = decode(token);
 
         Claim claim = decodedJWT.getClaim("exp"); // in seconds
 
@@ -46,7 +46,7 @@ public class PartnerAccessTokenTest {
 
     @Test
     public void testTokenIsNotYetIssued(@NotYetIssuedPartnerAuth0Token String token) throws IOException {
-        DecodedJWT decodedJWT = JWT.decode(token);
+        DecodedJWT decodedJWT = decode(token);
 
         Claim claim = decodedJWT.getClaim("iat"); // in seconds
 
@@ -60,7 +60,7 @@ public class PartnerAccessTokenTest {
 
     @Test
     public void testTokenUnknownIssuer(@UnknownIssuerPartnerAuth0Token String token) throws IOException {
-        DecodedJWT decodedJWT = JWT.decode(token);
+        DecodedJWT decodedJWT = decode(token);
 
         Claim claim = decodedJWT.getClaim("iss");
 
@@ -69,7 +69,7 @@ public class PartnerAccessTokenTest {
 
     @Test
     public void testTokenUnknownAudience(@UnknownAudiencePartnerAuth0Token String token) throws IOException {
-        DecodedJWT decodedJWT = JWT.decode(token);
+        DecodedJWT decodedJWT = decode(token);
 
         Claim claim = decodedJWT.getClaim("aud");
 
@@ -78,9 +78,13 @@ public class PartnerAccessTokenTest {
 
     @Test
     public void testTokenUnknownKeyId(@UnknownKeyIdPartnerAuth0Token String token) throws IOException {
-        DecodedJWT decodedJWT = JWT.decode(token);
+        DecodedJWT decodedJWT = decode(token);
 
         assertThat(decodedJWT.getHeaderClaim("kid").asString()).isEqualTo("unknown-kid");
     }
+
+	private DecodedJWT decode(String token) {
+		return JWT.decode(token.substring(7));
+	}
 
 }

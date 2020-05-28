@@ -41,6 +41,7 @@ public class DefaultJwtAuthenticationProcessor implements JwtAuthenticationProce
     private static Authentication anonymous = new AnonymousAuthenticationToken("anonymous", "anonymous", AuthorityUtils.createAuthorityList("ROLE_ANONYMOUS"));
 
     public static final String AUTHORIZATION = "Authorization";
+    public static final String BEARER = "Bearer ";
 
     private final JwtVerifier verifier;
     private final JwtAuthorityMapper authorityMapper;
@@ -67,17 +68,19 @@ public class DefaultJwtAuthenticationProcessor implements JwtAuthenticationProce
             Authentication authentication;
             if (request != null) {
                 String header = request.getHeader(AUTHORIZATION);
-                if (header != null) {
+                if (header != null && header.startsWith(BEARER)) {
+                    String bearerToken = header.substring(BEARER.length());
+                    
                     // if a token is present, it must be valid regardless of whether the end-point
                     // requires authorization or not
                     try {
-                        Object token = verifier.verify(header); // note: can return null
+                        Object token = verifier.verify(bearerToken); // note: can return null
                         if (token != null) {
                             List<GrantedAuthority> authorities = authorityMapper.getGrantedAuthorities(token);
 
                             Map<String, Object> claims = extractor.getClaims(token);
 
-                            authentication = new JwtAuthenticationToken(claims, header, authorities);
+                            authentication = new JwtAuthenticationToken(claims, bearerToken, authorities);
                         } else {
                             throw new BadCredentialsException("Unknown issuer");
                         }

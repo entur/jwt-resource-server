@@ -103,7 +103,9 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
 
             AccessTokenImplementationFactory factory = authorizationServerImplementation.createAccessTokenFactory();
 
-            return factory.create(accessToken, parameterContext, extensionContext, this);
+            String token = factory.create(accessToken, parameterContext, extensionContext, this);
+            
+            return "Bearer " + token;
         }
         throw new IllegalArgumentException("Unable to resolve parameter");
     }
