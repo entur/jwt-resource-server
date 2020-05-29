@@ -4,9 +4,9 @@ import java.io.Serializable;
 import java.util.Map;
 
 /**
- * Extract claims from a token. Basic JSON-types are supported. Note that some
- * implementations will return an Integer instead of Long, so use the Number
- * class.
+ * Extract claims from a token. Basic JSON-types are supported. 
+ * 
+ * Note that all integer numbers must be of Long type.
  * 
  * @param <T> token type
  */

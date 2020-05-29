@@ -10,6 +10,7 @@ import org.entur.jwt.verifier.JwtClaimExtractor;
 import com.auth0.jwt.impl.NullClaim;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 
@@ -21,8 +22,7 @@ import java.util.Base64;
  * 'namespace' prefix. This class removes that prefix so that (for multi-tenant
  * use-cases), the same key can be used to extract claim values.
  * 
- * Note that integer and long usually are interchangeable; use
- * Number.longValue().
+ * Integer types are not used, only Long.
  */
 
 public class Auth0JwtClaimExtractor implements JwtClaimExtractor<DecodedJWT> {
@@ -31,13 +31,13 @@ public class Auth0JwtClaimExtractor implements JwtClaimExtractor<DecodedJWT> {
 
     private final String normalizer; // assume non-standard claim names must be normalized
 
-    private ObjectReader objectReader;
+    private final ObjectReader objectReader;
 
     public Auth0JwtClaimExtractor(String namespace) {
         super();
         this.normalizer = namespace;
 
-        this.objectReader = new ObjectMapper().readerFor(Map.class);
+        this.objectReader = new ObjectMapper().readerFor(Map.class).with(DeserializationFeature.USE_LONG_FOR_INTS);
     }
 
     @Override
