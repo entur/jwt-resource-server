@@ -68,7 +68,7 @@ public class GreetingController {
 
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
 
-        log.info("Authorization header: {}", authentication.getCredentials());
+        log.info("Authorization header for {}: {}", authentication.getPrincipal(), authentication.getCredentials());
 
         return new Greeting(counter.incrementAndGet(), "Hello protected", null, authentication.getAuthorities());
     }
@@ -92,7 +92,7 @@ public class GreetingController {
 
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
 
-        log.info("Authorization header: {}", authentication.getCredentials());
+        log.info("Authorization header for {}: {}", authentication.getPrincipal(), authentication.getCredentials());
 
         return new Greeting(counter.incrementAndGet(), "Hello protected tenant " + tenant.getOrganisationId(), tenant.getClass(), authentication.getAuthorities());
     }
@@ -104,7 +104,7 @@ public class GreetingController {
 
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
 
-        log.info("Authorization header: {}", authentication.getCredentials());
+        log.info("Authorization header for {}: {}", authentication.getPrincipal(), authentication.getCredentials());
 
         return new Greeting(counter.incrementAndGet(), "Hello protected partner tenant " + partner.getOrganisationId(), partner.getClass(), authentication.getAuthorities());
     }
@@ -116,7 +116,7 @@ public class GreetingController {
 
         JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
 
-        log.info("Authorization header: {}", authentication.getCredentials());
+        log.info("Authorization header for {}: {}", authentication.getPrincipal(), authentication.getCredentials());
 
         return new Greeting(counter.incrementAndGet(), "Hello protected partner tenant " + partner.getOrganisationId() + " with authority", partner.getClass(), authentication.getAuthorities());
     }

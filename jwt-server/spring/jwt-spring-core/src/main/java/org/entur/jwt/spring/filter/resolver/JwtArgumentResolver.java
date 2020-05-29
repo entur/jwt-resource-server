@@ -43,7 +43,7 @@ public class JwtArgumentResolver implements HandlerMethodArgumentResolver {
 
                 Class<?> target = parameter.getParameterType();
 
-                Object tenant = transformer.apply(token.getPrincipal(), target);
+                Object tenant = transformer.apply(token.getClaims(), target);
 
                 Class<?> resolved = tenant.getClass();
                 if (target.isAssignableFrom(resolved)) {

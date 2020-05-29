@@ -16,30 +16,53 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
 
     private static final long serialVersionUID = SpringSecurityCoreVersion.SERIAL_VERSION_UID;
 
+	private static final String CLAIM_SUBJECT = "sub";
+	private static final String CLAIM_NAME = "name";
+
     // instead of principal we might have used the original token types here,
     // but for some of our reference libraries, these are not serializable classes
     // also this is more generic
-    private final Map<String, Object> principal;
+    private final Map<String, Object> claims;
     private String credentials;
 
-    public JwtAuthenticationToken(Map<String, Object> principal, String credentials, Collection<? extends GrantedAuthority> authorities) {
+    public JwtAuthenticationToken(Map<String, Object> claims, String credentials, Collection<? extends GrantedAuthority> authorities) {
         super(authorities);
-        if (!(principal instanceof Serializable)) {
+        if (!(claims instanceof Serializable)) {
             throw new IllegalArgumentException("Map of claims must be serializable");
         }
-        this.principal = principal;
+        this.claims = claims;
         this.credentials = credentials;
         super.setAuthenticated(true); // must use super, as we override
+        super.setDetails(claims);
     }
 
     public String getCredentials() {
         return this.credentials;
     }
 
-    public Map<String, Object> getPrincipal() {
-        return this.principal;
+    /**
+     * 
+     * Return principal as found in the subject (sub) claim
+     * 
+     * @return princial, or null
+     */
+
+    public String getPrincipal() {
+        return (String) claims.get(CLAIM_SUBJECT);
     }
 
+    /**
+     * 
+     * Return name as found in the claims, usually this will be null for an access-token.
+     * 
+     * @return name, or null
+     */
+    
+    @Override
+    public String getName() {
+    	return (String) claims.get(CLAIM_NAME);
+    }
+    
     @Override
     public void setAuthenticated(boolean isAuthenticated) {
         if (isAuthenticated) {
@@ -57,7 +80,7 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
 
     @SuppressWarnings("unchecked")
     public <V> V getClaim(String name, Class<V> type) {
-        Object object = principal.get(name);
+        Object object = claims.get(name);
         if (object != null) {
             if (type.isAssignableFrom(object.getClass())) {
                 return (V) object;
@@ -68,7 +91,7 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
     }
 
     public Map<String, Object> getClaims() {
-        return principal;
+        return claims;
     }
 
     @Override
@@ -76,7 +99,7 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
         final int prime = 31;
         int result = super.hashCode();
         result = prime * result + ((credentials == null) ? 0 : credentials.hashCode());
-        result = prime * result + ((principal == null) ? 0 : principal.hashCode());
+        result = prime * result + ((claims == null) ? 0 : claims.hashCode());
         return result;
     }
 
@@ -95,10 +118,10 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
         } else if (!credentials.equals(other.credentials)) {
             return false;
         }
-        if (principal == null) {
-            if (other.principal != null)
+        if (claims == null) {
+            if (other.claims != null)
                 return false;
-        } else if (!principal.equals(other.principal)) {
+        } else if (!claims.equals(other.claims)) {
             return false;
         }
         return true;

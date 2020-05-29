@@ -11,12 +11,13 @@ import java.util.Properties;
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.junit5.claim.IntegerClaim;
+import org.entur.jwt.junit5.claim.Subject;
 
 @AuthorizationServer("partner-auth0")
 public class AuthorizationServerTest {
 
     @org.junit.jupiter.api.Test
-    public void test(@AccessToken @IntegerClaim(name = "https://entur.io/organisationID", value = 1) String token) throws IOException {
+    public void test(@AccessToken @IntegerClaim(name = "https://entur.io/organisationID", value = 1) @Subject("user1") String token) throws IOException {
 
         Path path = Paths.get("jwt.junit5.properties");
 
@@ -24,6 +25,5 @@ public class AuthorizationServerTest {
         properties.load(Files.newInputStream(path));
 
         assertNotNull(properties.get("entur.jwt.tenants.partner-auth0.jwk.location"));
-
     }
 }

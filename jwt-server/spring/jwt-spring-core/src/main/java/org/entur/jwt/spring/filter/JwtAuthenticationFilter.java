@@ -64,7 +64,7 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
                     List<GrantedAuthority> authorities = authorityMapper.getGrantedAuthorities(token);
 
                     Map<String, Object> claims = extractor.getClaims(token);
-
+                    
                     SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(claims, bearerToken, authorities));
 
                     if (mdcMapper != null) {
