@@ -15,7 +15,7 @@ public @interface AccessToken {
 
     public String by() default "";
 
-    public String subject() default "";
+    public String subject() default "mockSubject";
 
     public long issuedAt() default 0;
 
