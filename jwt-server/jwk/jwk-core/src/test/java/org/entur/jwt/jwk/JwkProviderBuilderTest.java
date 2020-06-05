@@ -10,25 +10,17 @@ import static org.junit.Assert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.github.bucket4j.Bucket;
 
 @SuppressWarnings("rawtypes")
-public class JwkProviderBuilderTest {
-
-    private JwksProvider rootProvider;
-    private JwkFieldExtractor fieldExtractor;
-
-    @BeforeEach
-    public void setUp() throws Exception {
-        rootProvider = mock(JwksProvider.class);
-    }
+public class JwkProviderBuilderTest extends AbstractDelegateProviderTest {
 
     @Test
     public void shouldCreateCachedProvider() {
@@ -44,7 +36,7 @@ public class JwkProviderBuilderTest {
 
     @Test
     public void shouldCreateCachedProviderWithCustomValues() {
-        JwkProvider<?> provider = builder().rateLimited(false).cached(24, TimeUnit.HOURS, 15, TimeUnit.SECONDS).health(false).build();
+        JwkProvider<?> provider = builder().rateLimited(false).cached(Duration.ofHours(24), Duration.ofSeconds(15)).health(false).build();
 
         List<JwksProvider<?>> jwksProviders = jwksProviders(provider);
         assertThat(jwksProviders, hasSize(2));
@@ -69,7 +61,7 @@ public class JwkProviderBuilderTest {
 
     @Test
     public void shouldCreateRateLimitedProviderWithCustomValues() {
-        JwkProvider<?> provider = builder().rateLimited(100, 24, TimeUnit.HOURS).build();
+        JwkProvider<?> provider = builder().rateLimited(100, 24, Duration.ofHours(1)).build();
 
         List<JwksProvider<?>> jwksProviders = jwksProviders(provider);
         assertThat(jwksProviders, hasSize(4));
@@ -97,7 +89,7 @@ public class JwkProviderBuilderTest {
 
     @Test
     public void shouldCreateCachedAndRateLimitedProviderWithCustomValues() {
-        JwkProvider<?> provider = builder().cached(24, TimeUnit.HOURS, 15, TimeUnit.SECONDS).rateLimited(10, 24, TimeUnit.HOURS).build();
+        JwkProvider<?> provider = builder().cached(Duration.ofHours(24), Duration.ofSeconds(15)).rateLimited(10, 1, Duration.ofHours(24)).build();
 
         assertThat(provider, notNullValue());
 
@@ -174,7 +166,7 @@ public class JwkProviderBuilderTest {
 
     @Test
     public void shouldCreateOutageCachedProviderWithCustomValues() {
-        JwkProvider<?> provider = builder().rateLimited(false).cached(false).health(false).preemptiveCacheRefresh(false).outageCached(24, TimeUnit.HOURS).build();
+        JwkProvider<?> provider = builder().rateLimited(false).cached(false).health(false).preemptiveCacheRefresh(false).outageCached(Duration.ofHours(24)).build();
 
         List<JwksProvider<?>> jwksProviders = jwksProviders(provider);
         assertThat(jwksProviders, hasSize(2));
@@ -216,7 +208,7 @@ public class JwkProviderBuilderTest {
 
     @Test
     public void shouldCreatePreemptiveCachedProvider() {
-        JwkProvider<?> provider = builder().rateLimited(false).preemptiveCacheRefresh(10, TimeUnit.SECONDS).health(false).build();
+        JwkProvider<?> provider = builder().rateLimited(false).preemptiveCacheRefresh(Duration.ofSeconds(10)).health(false).build();
         assertThat(provider, notNullValue());
 
         List<JwksProvider<?>> jwksProviders = jwksProviders(provider);
@@ -244,11 +236,6 @@ public class JwkProviderBuilderTest {
 
         assertThat(jwksProviders.get(0), instanceOf(PreemptiveCachedJwksProvider.class));
         assertThat(jwksProviders.get(1), instanceOf(JwksProvider.class));
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> JwkProviderBuilder<T> builder() {
-        return new JwkProviderBuilder<>(rootProvider, fieldExtractor);
     }
 
 }

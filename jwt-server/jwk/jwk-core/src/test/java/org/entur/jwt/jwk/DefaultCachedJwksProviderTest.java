@@ -10,10 +10,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.Thread.State;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -40,7 +39,7 @@ public class DefaultCachedJwksProviderTest extends AbstractDelegateProviderTest 
     @BeforeEach
     public void setUp() throws Exception {
         super.setUp();
-        provider = new DefaultCachedJwksProvider<>(delegate, 10, TimeUnit.HOURS, 2, TimeUnit.SECONDS);
+        provider = new DefaultCachedJwksProvider<>(delegate, Duration.ofHours(10), Duration.ofSeconds(2));
     }
 
     @Test

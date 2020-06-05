@@ -1,5 +1,6 @@
 package org.entur.jwt.jwk;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -18,14 +19,12 @@ public class DefaultCachedJwksProvider<T> extends AbstractCachedJwksProvider<T> 
      * Construct new instance.
      * 
      * @param provider            Jwk provider
-     * @param timeToLiveUnits     cache hold time
-     * @param timeToLiveUnit      cache hold time unit
-     * @param refreshTimeoutUnits cache refresh timeout
-     * @param refreshTimeoutUnit  cache refresh timeout unit
+     * @param timeToLive          cache hold time
+     * @param refreshTimeout      cache refresh timeout
      */
 
-    public DefaultCachedJwksProvider(JwksProvider<T> provider, long timeToLiveUnits, TimeUnit timeToLiveUnit, long refreshTimeoutUnits, TimeUnit refreshTimeoutUnit) {
-        this(provider, timeToLiveUnit.toMillis(timeToLiveUnits), refreshTimeoutUnit.toMillis(refreshTimeoutUnits));
+    public DefaultCachedJwksProvider(JwksProvider<T> provider, Duration timeToLive, Duration refreshTimeout) {
+        this(provider, timeToLive.toMillis(), refreshTimeout.toMillis());
     }
 
     /**

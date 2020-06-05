@@ -38,13 +38,17 @@ public class DefaultHealthJwksProvider<T> extends BaseJwksProvider<T> {
         try {
             list = provider.getJwks(forceUpdate);
         } finally {
-            this.status = new JwksHealth(time, list != null);
+            setStatus(new JwksHealth(time, list != null));
         }
 
         return list;
     }
 
-    @Override
+    protected void setStatus(JwksHealth status) {
+    	this.status = status;
+	}
+
+	@Override
     public JwksHealth getHealth(boolean refresh) {
         JwksHealth threadSafeStatus = this.status; // defensive copy
         if (refresh && (threadSafeStatus == null || !threadSafeStatus.isSuccess())) {

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -44,7 +45,7 @@ public class PreemptivceCachedJwksProviderTest extends AbstractDelegateProviderT
     @BeforeEach
     public void setUp() throws Exception {
         super.setUp();
-        provider = new PreemptiveCachedJwksProvider<>(delegate, 10, TimeUnit.HOURS, 15, TimeUnit.SECONDS, 10, TimeUnit.SECONDS);
+        provider = new PreemptiveCachedJwksProvider<>(delegate, Duration.ofHours(10), Duration.ofSeconds(15), Duration.ofSeconds(10));
 
         wrapper = new DefaultJwkProvider<>(provider, new JwkFieldExtractorImpl());
 
