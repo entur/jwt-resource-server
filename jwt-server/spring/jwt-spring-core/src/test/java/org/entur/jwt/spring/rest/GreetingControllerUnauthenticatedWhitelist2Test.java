@@ -36,7 +36,7 @@ public class GreetingControllerUnauthenticatedWhitelist2Test {
     public void getIsAllowed() throws Exception {
         given()
         .when()
-        	.log().all()
+            .log().all()
             .get("http://localhost:" + port + "/unprotected")
         .then()
             .log().all()
@@ -47,10 +47,10 @@ public class GreetingControllerUnauthenticatedWhitelist2Test {
     @Test
     public void postIsNotAllowed() throws Exception {
         given()
-        	.contentType(ContentType.JSON)
-        	.body(new ObjectMapper().writeValueAsString(new Greeting(1, "x")))
+            .contentType(ContentType.JSON)
+            .body(new ObjectMapper().writeValueAsString(new Greeting(1, "x")))
         .when()
-        	.log().all()
+            .log().all()
             .post("http://localhost:" + port + "/unprotected")
         .then()
             .log().all()

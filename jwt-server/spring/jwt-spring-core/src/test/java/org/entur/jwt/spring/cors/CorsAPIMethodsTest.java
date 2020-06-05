@@ -32,7 +32,7 @@ public class CorsAPIMethodsTest {
     @Test
     public void cors_is_allowed() {
         hosts.forEach(host -> {
-        	allowedMethods.forEach(method -> {
+            allowedMethods.forEach(method -> {
                 given().header("Origin", host).header("Access-Control-Request-Method", method).when().log().all().options("http://localhost:" + port + "/unprotected").then().log().all().assertThat().statusCode(HttpStatus.OK.value())
                         .header("Access-Control-Allow-Origin", host);
             });
@@ -42,7 +42,7 @@ public class CorsAPIMethodsTest {
     @Test
     public void cors_is_forbidden() {
         hosts.forEach(host -> {
-        	forbiddenMethods.forEach(method -> {
+            forbiddenMethods.forEach(method -> {
                 given().header("Origin", host).header("Access-Control-Request-Method", method).when().log().all().options("http://localhost:" + port + "/unprotected").then().log().all().assertThat().statusCode(HttpStatus.FORBIDDEN.value());
             });
         });

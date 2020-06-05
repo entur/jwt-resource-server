@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 public class CustomJwtFilterControllerAdvice {
 
     public static final String CONTROLLER_ADVICE = "Controller-Advice";
-	private static Logger log = LoggerFactory.getLogger(CustomJwtFilterControllerAdvice.class);
+    private static Logger log = LoggerFactory.getLogger(CustomJwtFilterControllerAdvice.class);
 
     @ExceptionHandler(value = BadCredentialsException.class)
     public void defaultErrorHandler(HttpServletResponse response, BadCredentialsException e) throws Exception {

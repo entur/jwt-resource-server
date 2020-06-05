@@ -16,8 +16,8 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
 
     private static final long serialVersionUID = SpringSecurityCoreVersion.SERIAL_VERSION_UID;
 
-	private static final String CLAIM_SUBJECT = "sub";
-	private static final String CLAIM_NAME = "name";
+    private static final String CLAIM_SUBJECT = "sub";
+    private static final String CLAIM_NAME = "name";
 
     // instead of principal we might have used the original token types here,
     // but for some of our reference libraries, these are not serializable classes
@@ -60,7 +60,7 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
     
     @Override
     public String getName() {
-    	return (String) claims.get(CLAIM_NAME);
+        return (String) claims.get(CLAIM_NAME);
     }
     
     @Override

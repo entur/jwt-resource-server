@@ -87,12 +87,12 @@ public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT> {
 
             JwkRateLimitProperties rateLimiting = jwkConfiguration.getRateLimit();
             if (rateLimiting != null && rateLimiting.isEnabled()) {
-            	double tokensPerSecond = rateLimiting.getRefillRate();
-            	
-            	double secondsPerToken = 1d / tokensPerSecond;
-            	
-            	int millisecondsPerToken = (int)(secondsPerToken * 1000); // note quantization, ms precision is sufficient
-            	
+                double tokensPerSecond = rateLimiting.getRefillRate();
+                
+                double secondsPerToken = 1d / tokensPerSecond;
+                
+                int millisecondsPerToken = (int)(secondsPerToken * 1000); // note quantization, ms precision is sufficient
+                
                 builder.rateLimited(rateLimiting.getBucketSize(), 1, Duration.ofMillis(millisecondsPerToken));
             } else {
                 builder.rateLimited(false);

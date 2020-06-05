@@ -45,10 +45,10 @@ public class DefaultHealthJwksProvider<T> extends BaseJwksProvider<T> {
     }
 
     protected void setStatus(JwksHealth status) {
-    	this.status = status;
-	}
+        this.status = status;
+    }
 
-	@Override
+    @Override
     public JwksHealth getHealth(boolean refresh) {
         JwksHealth threadSafeStatus = this.status; // defensive copy
         if (refresh && (threadSafeStatus == null || !threadSafeStatus.isSuccess())) {

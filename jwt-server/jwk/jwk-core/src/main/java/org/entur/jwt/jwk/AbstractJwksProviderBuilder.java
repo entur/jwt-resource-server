@@ -15,7 +15,7 @@ import io.github.bucket4j.Refill;
 
 public abstract class AbstractJwksProviderBuilder<T, B extends AbstractJwksProviderBuilder<T, B>> {
 
-	// root provider
+    // root provider
     protected final JwksProvider<T> jwksProvider;
 
     // cache
@@ -180,13 +180,13 @@ public abstract class AbstractJwksProviderBuilder<T, B extends AbstractJwksProvi
         return provider;
     }
 
-	protected JwksProvider<T> getRateLimitedProvider(JwksProvider<T> provider) {
-		Refill refill = Refill.greedy(refillSize, refillDuration);
+    protected JwksProvider<T> getRateLimitedProvider(JwksProvider<T> provider) {
+        Refill refill = Refill.greedy(refillSize, refillDuration);
 
-		Bandwidth limit = Bandwidth.classic(bucketSize, refill);
+        Bandwidth limit = Bandwidth.classic(bucketSize, refill);
 
-		return new RateLimitedJwksProvider<>(provider, Bucket4j.builder().addLimit(limit).build());
-	}
+        return new RateLimitedJwksProvider<>(provider, Bucket4j.builder().addLimit(limit).build());
+    }
 
     @SuppressWarnings("unchecked")
     public B retrying(boolean retrying) {
