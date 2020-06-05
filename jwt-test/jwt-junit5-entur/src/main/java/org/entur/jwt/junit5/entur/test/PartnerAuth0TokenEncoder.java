@@ -11,18 +11,16 @@ import org.junit.jupiter.api.extension.ParameterContext;
 public class PartnerAuth0TokenEncoder extends DefaultAccessTokenEncoder {
 
     @Override
-    public Map<String, Object> encodeClaims(ParameterContext parameterContext, ResourceServerConfiguration resolver) {
-        Map<String, Object> encode = super.encodeClaims(parameterContext, resolver);
+    protected void encodeCustomClaims(ParameterContext parameterContext, Map<String, Object> result, ResourceServerConfiguration resolver) {
+        super.encodeCustomClaims(parameterContext, result, resolver);
 
         Optional<PartnerAuth0Token> a = parameterContext.findAnnotation(PartnerAuth0Token.class);
         if (a.isPresent()) {
-            encode(encode, a.get());
+            encode(result, a.get());
         }
-
-        return encode;
     }
-
-    private void encode(Map<String, Object> encode, PartnerAuth0Token partnerAccessToken) {
+    
+    protected void encode(Map<String, Object> encode, PartnerAuth0Token partnerAccessToken) {
         encode.put("organisationID", partnerAccessToken.organisationId());
         String[] permissions = partnerAccessToken.permissions();
         if (permissions.length > 0) {
@@ -31,6 +29,17 @@ public class PartnerAuth0TokenEncoder extends DefaultAccessTokenEncoder {
         String[] scope = partnerAccessToken.scopes();
         if (scope.length > 0) {
             encode.put("scope", toString(scope));
+        }
+
+        // these fields might have already been populated.
+        // but ignore the existing values
+        if (!isBlank(partnerAccessToken.subject())) {
+            encode.put(SUB, partnerAccessToken.subject());
+        }
+
+        String[] audience = partnerAccessToken.audience();
+        if (audience != null && audience.length > 0) {
+            encode.put(AUD, audience);
         }
     }
 

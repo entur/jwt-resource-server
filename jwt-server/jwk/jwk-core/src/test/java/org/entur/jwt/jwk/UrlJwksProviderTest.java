@@ -97,7 +97,7 @@ public class UrlJwksProviderTest {
 
     @Test
     public void shouldFailToLoadSingleWhenKeysIsEmpty() throws Exception {
-        assertThrows(JwkNotFoundException.class, () -> {
+        assertThrows(JwksTransferException.class, () -> {
             JwkProvider<?> provider = providerForResource("/empty-jwks.json");
             provider.getJwk(KID);
         });

@@ -27,6 +27,8 @@ import org.entur.jwt.junit5.claim.StringArrayClaim;
 import org.entur.jwt.junit5.claim.StringClaim;
 import org.entur.jwt.junit5.claim.Subject;
 import org.entur.jwt.junit5.claim.MapClaim;
+import org.entur.jwt.junit5.claim.NullClaim;
+import org.entur.jwt.junit5.claim.MissingClaim;
 import org.entur.jwt.junit5.claim.MapClaim.Entry;
 import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfiguration;
 import org.entur.jwt.junit5.headers.AlgorithmHeader;
@@ -42,28 +44,28 @@ import com.fasterxml.jackson.databind.util.RawValue;
 public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 
     // header claims
-    private static final String TYP = "typ";
-    private static final String KID = "kid";
-    private static final String ALG = "alg";
+    protected static final String TYP = "typ";
+    protected static final String KID = "kid";
+    protected static final String ALG = "alg";
 
     // payload claims
-    private static final String ISS = "iss";
-    private static final String SUB = "sub";
-    private static final String AUD = "aud";
-    private static final String IAT = "iat";
-    private static final String EXP = "exp";
-    private static final String AZP = "azp";
-    private static final String SCOPE = "scope";
+    protected static final String ISS = "iss";
+    protected static final String SUB = "sub";
+    protected static final String AUD = "aud";
+    protected static final String IAT = "iat";
+    protected static final String EXP = "exp";
+    protected static final String AZP = "azp";
+    protected static final String SCOPE = "scope";
 
     @SuppressWarnings("unchecked")
     private static final Class<? extends Annotation>[] fixedClaims = new Class[] { Audience.class, AuthorizedParty.class, ExpiresAt.class, IssuedAt.class, Issuer.class, Scope.class, Subject.class };
 
     @SuppressWarnings("unchecked")
     private static final Class<? extends Annotation>[] customClaims = new Class[] { MapClaim.class, BooleanClaim.class, IntegerClaim.class, StringClaim.class, DoubleClaim.class, BooleanArrayClaim.class, IntegerArrayClaim.class,
-            StringArrayClaim.class, DoubleArrayClaim.class, JsonClaim.class };
+            StringArrayClaim.class, DoubleArrayClaim.class, JsonClaim.class, NullClaim.class, MissingClaim.class};
 
     @SuppressWarnings("unchecked")
-    private static final Class<? extends Annotation>[] fixedSabotages = new Class[] { Signature.class, };
+    private static final Class<? extends Annotation>[] fixedSabotages = new Class[] {Signature.class};
 
     @SuppressWarnings("unchecked")
     private static final Class<? extends Annotation>[] fixedHeaders = new Class[] { AlgorithmHeader.class, KeyIdHeader.class, TypeHeader.class };
@@ -130,12 +132,19 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
             encode(result, a.get(), resolver);
         }
 
-        encodeKnownClaims(parameterContext, result, resolver);
         encodeCustomClaims(parameterContext, result, resolver);
+        
+        encodeKnownAnnotationClaims(parameterContext, result, resolver);
+        encodeGenericAnnotationClaims(parameterContext, result, resolver);
 
         transformParameters(result);
 
         return result;
+    }
+
+    protected void encodeCustomClaims(ParameterContext parameterContext, Map<String, Object> result, ResourceServerConfiguration resolver) {
+        // for subclassing using additional annotations (which themselves are annotated with Accesstoken)
+        // adding them here makes sure that any singular claim annotation always takes precedence 
     }
 
     protected void transformParameters(Map<String, Object> result) {
@@ -146,7 +155,7 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
         result.put(EXP, System.currentTimeMillis() / 1000 + expiresAt);
     }
 
-    protected void encodeKnownClaims(ParameterContext parameterContext, Map<String, Object> result, ResourceServerConfiguration resolver) {
+    protected void encodeKnownAnnotationClaims(ParameterContext parameterContext, Map<String, Object> result, ResourceServerConfiguration resolver) {
         List<Object> parameters = extractKnownClaims(parameterContext);
         if (!parameters.isEmpty()) {
             for (Object c : parameters) {
@@ -179,7 +188,7 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
     }
 
     @SuppressWarnings("unchecked")
-    protected void encodeCustomClaims(ParameterContext parameterContext, Map<String, Object> result, ResourceServerConfiguration resolver) {
+    protected void encodeGenericAnnotationClaims(ParameterContext parameterContext, Map<String, Object> result, ResourceServerConfiguration resolver) {
         List<Object> parameters = extractCustomClaims(parameterContext);
         if (!parameters.isEmpty()) {
             for (Object c : parameters) {
@@ -246,6 +255,12 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
                     JsonClaim jsonClaim = (JsonClaim) c;
 
                     result.put(jsonClaim.name(), new RawValue(jsonClaim.value()));
+                } else if (c instanceof NullClaim) {
+                    NullClaim b = (NullClaim) c;
+                    result.put(b.value(), null);
+                } else if (c instanceof MissingClaim) {
+                    MissingClaim b = (MissingClaim) c;
+                    result.remove(b.value());
                 } else {
                     throw new IllegalArgumentException("Unsupported claim type " + c);
                 }
@@ -341,11 +356,11 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
         }
     }
 
-    private boolean isBlank(String[] scope) {
+    protected boolean isBlank(String[] scope) {
         return scope == null || scope.length == 0;
     }
 
-    private boolean isBlank(String subject) {
+    protected boolean isBlank(String subject) {
         return subject == null || subject.isEmpty();
     }
 }

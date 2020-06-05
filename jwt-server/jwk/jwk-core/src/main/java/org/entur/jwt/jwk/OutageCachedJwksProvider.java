@@ -1,8 +1,7 @@
 package org.entur.jwt.jwk;
 
+import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,8 +19,8 @@ public class OutageCachedJwksProvider<T> extends AbstractCachedJwksProvider<T> {
 
     protected static final Logger logger = LoggerFactory.getLogger(OutageCachedJwksProvider.class);
 
-    public OutageCachedJwksProvider(JwksProvider<T> delegate, long timeToLiveUnits, TimeUnit timeToLiveUnit) {
-        super(delegate, timeToLiveUnit.toMillis(timeToLiveUnits));
+    public OutageCachedJwksProvider(JwksProvider<T> delegate, Duration duration) {
+        super(delegate, duration.toMillis());
     }
 
     @Override

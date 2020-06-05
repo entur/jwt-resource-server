@@ -1,8 +1,7 @@
 package org.entur.jwt.jwk;
 
 import java.time.Duration;
-import java.util.concurrent.TimeUnit;
-
+import java.time.temporal.ChronoUnit;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket4j;
 import io.github.bucket4j.Refill;
@@ -14,36 +13,31 @@ import io.github.bucket4j.Refill;
  *      "https://www.sitepoint.com/self-types-with-javas-generics/">https://www.sitepoint.com/self-types-with-javas-generics/</a>
  */
 
-public class AbstractJwksProviderBuilder<T, B extends AbstractJwksProviderBuilder<T, B>> {
+public abstract class AbstractJwksProviderBuilder<T, B extends AbstractJwksProviderBuilder<T, B>> {
 
     // root provider
     protected final JwksProvider<T> jwksProvider;
 
     // cache
     protected boolean cached = true;
-    protected TimeUnit expiresUnit = TimeUnit.HOURS;
-    protected long expiresIn = 10;
-
-    protected TimeUnit refreshExpiresUnit = TimeUnit.SECONDS;
-    protected long refreshExpiresIn = 15;
+    protected Duration cacheDuration = Duration.ofHours(1);
+    protected Duration cacheRefreshTimeoutDuration = Duration.ofSeconds(15);
 
     protected boolean preemptiveRefresh = true;
-    protected TimeUnit preemptiveRefreshTimeUnit = TimeUnit.SECONDS;
-    protected long preemptiveRefreshTimeUnits = 30;
+    protected Duration preemptiveRefreshDuration = Duration.ofSeconds(30);
 
     // rate limiting
     protected boolean rateLimited = true;
     protected long bucketSize = 10;
-    protected long refillRate = 1;
-    protected TimeUnit refilllUnit = TimeUnit.MINUTES;
+    protected long refillSize = 1;
+    protected Duration refillDuration = Duration.ofMinutes(1);
 
     // retrying
     protected boolean retrying = false;
 
     // outage
     protected boolean outageCached = false;
-    protected long outageCachedExpiresIn = this.expiresIn * 10;
-    protected TimeUnit outageCachedExpiresUnit = this.expiresUnit;
+    protected Duration outageCachedDuration = Duration.ofSeconds(cacheDuration.get(ChronoUnit.SECONDS) * 10);
 
     // health indicator support
     protected boolean health = true;
@@ -76,37 +70,31 @@ public class AbstractJwksProviderBuilder<T, B extends AbstractJwksProviderBuilde
      * Enable the cache specifying size, expire time and maximum wait time for cache
      * refresh.
      * 
-     * @param expiresIn            cache hold time
-     * @param expiresInUnit        cache hold time unit
-     * @param refreshExpiresIn     cache refresh timeout
-     * @param refreshExpiresInUnit cache refresh timeout unit
+     * @param expires            cache hold time
+     * @param refreshExpires     cache refresh timeout
      * @return the builder
      */
-
+    
     @SuppressWarnings("unchecked")
-    public B cached(long expiresIn, TimeUnit expiresInUnit, long refreshExpiresIn, TimeUnit refreshExpiresInUnit) {
+    public B cached(Duration expires, Duration refreshExpires) {
         this.cached = true;
-        this.expiresIn = expiresIn;
-        this.expiresUnit = expiresInUnit;
-        this.refreshExpiresIn = refreshExpiresIn;
-        this.refreshExpiresUnit = refreshExpiresInUnit;
+        this.cacheDuration = expires;
+        this.cacheRefreshTimeoutDuration = refreshExpires;
         return (B) this;
     }
-
+    
     /**
      * Enable the preemptive cache. This also enables caching.
      *
-     * @param units Preemptive limit, relative to cache time to live, i.e. "15
+     * @param duration Preemptive limit, relative to cache time to live, i.e. "15
      *              seconds before timeout, refresh time cached value".
-     * @param unit  unit of preemptive limit
      * @return the builder
      */
     @SuppressWarnings("unchecked")
-    public B preemptiveCacheRefresh(long units, TimeUnit unit) {
+    public B preemptiveCacheRefresh(Duration duration) {
         this.cached = true;
         this.preemptiveRefresh = true;
-        this.preemptiveRefreshTimeUnits = units;
-        this.preemptiveRefreshTimeUnit = unit;
+        this.preemptiveRefreshDuration = duration;
         return (B) this;
     }
 
@@ -133,11 +121,7 @@ public class AbstractJwksProviderBuilder<T, B extends AbstractJwksProviderBuilde
      */
     @SuppressWarnings("unchecked")
     public B rateLimited(boolean rateLimited) {
-        if (rateLimited) {
-            return rateLimited(10, 1, TimeUnit.MINUTES);
-        } else {
-            this.rateLimited = false;
-        }
+        this.rateLimited = rateLimited;
         return (B) this;
     }
 
@@ -148,18 +132,17 @@ public class AbstractJwksProviderBuilder<T, B extends AbstractJwksProviderBuilde
      * service.
      * 
      * @param bucketSize max number of jwks to deliver in the given rate.
-     * @param refillRate amount of time to wait before a jwk can the jwk will be
-     *                   cached
-     * @param unit       unit of time for the expire of jwk
+     * @param refillSize number of jwks to refill
+     * @param refillDuration duration between refills 
      * @return the builder
      */
 
     @SuppressWarnings("unchecked")
-    public B rateLimited(long bucketSize, long refillRate, TimeUnit unit) {
+    public B rateLimited(long bucketSize, long refillSize, Duration refillDuration) {
         this.rateLimited = true;
         this.bucketSize = bucketSize;
-        this.refillRate = refillRate;
-        this.refilllUnit = unit;
+        this.refillSize = refillSize;
+        this.refillDuration = refillDuration;
         return (B) this;
     }
 
@@ -174,7 +157,7 @@ public class AbstractJwksProviderBuilder<T, B extends AbstractJwksProviderBuilde
             provider = new RetryingJwksProvider<>(provider);
         }
         if (outageCached) {
-            provider = new OutageCachedJwksProvider<>(provider, outageCachedExpiresIn, outageCachedExpiresUnit);
+            provider = new OutageCachedJwksProvider<>(provider, outageCachedDuration);
         }
 
         DefaultHealthJwksProvider<T> healthProvider = null;
@@ -183,22 +166,26 @@ public class AbstractJwksProviderBuilder<T, B extends AbstractJwksProviderBuilde
         }
 
         if (rateLimited) {
-            Refill refill = Refill.greedy(refillRate, Duration.ofMillis(refilllUnit.toMillis(refillRate)));
-
-            Bandwidth limit = Bandwidth.classic(bucketSize, refill);
-
-            provider = new RateLimitedJwksProvider<>(provider, Bucket4j.builder().addLimit(limit).build());
+            provider = getRateLimitedProvider(provider);
         }
         if (preemptiveRefresh) {
-            provider = new PreemptiveCachedJwksProvider<>(provider, expiresIn, expiresUnit, refreshExpiresIn, refreshExpiresUnit, preemptiveRefreshTimeUnits, preemptiveRefreshTimeUnit);
+            provider = new PreemptiveCachedJwksProvider<>(provider, cacheDuration, cacheRefreshTimeoutDuration, preemptiveRefreshDuration);
         } else if (cached) {
-            provider = new DefaultCachedJwksProvider<>(provider, expiresIn, expiresUnit, refreshExpiresIn, refreshExpiresUnit);
+            provider = new DefaultCachedJwksProvider<>(provider, cacheDuration, cacheRefreshTimeoutDuration);
         }
         if (health) {
             // set the top level on the health provider, for refreshing from the top.
             healthProvider.setRefreshProvider(provider);
         }
         return provider;
+    }
+
+    protected JwksProvider<T> getRateLimitedProvider(JwksProvider<T> provider) {
+        Refill refill = Refill.greedy(refillSize, refillDuration);
+
+        Bandwidth limit = Bandwidth.classic(bucketSize, refill);
+
+        return new RateLimitedJwksProvider<>(provider, Bucket4j.builder().addLimit(limit).build());
     }
 
     @SuppressWarnings("unchecked")
@@ -236,15 +223,13 @@ public class AbstractJwksProviderBuilder<T, B extends AbstractJwksProviderBuilde
     /**
      * Enable the shadow cache specifying size and expire time.
      *
-     * @param expiresIn amount of time the jwk will be cached
-     * @param unit      unit of time for the expire of jwk
+     * @param duration amount of time the jwk will be cached
      * @return the builder
      */
     @SuppressWarnings("unchecked")
-    public B outageCached(long expiresIn, TimeUnit unit) {
+    public B outageCached(Duration duration) {
         this.outageCached = true;
-        this.outageCachedExpiresIn = expiresIn;
-        this.outageCachedExpiresUnit = unit;
+        this.outageCachedDuration = duration;
         return (B) this;
     }
 

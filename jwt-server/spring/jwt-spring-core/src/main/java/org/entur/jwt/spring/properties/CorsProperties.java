@@ -42,27 +42,27 @@ public class CorsProperties {
         return enabled;
     }
 
-	public List<String> getMethods() {
-		return methods;
-	}
+    public List<String> getMethods() {
+        return methods;
+    }
 
-	public void setMethods(List<String> methods) {
-		this.methods = methods;
-	}
+    public void setMethods(List<String> methods) {
+        this.methods = methods;
+    }
 
-	public List<String> getHeaders() {
-		return headers;
-	}
+    public List<String> getHeaders() {
+        return headers;
+    }
 
-	public void setHeaders(List<String> headers) {
-		this.headers = headers;
-	}
+    public void setHeaders(List<String> headers) {
+        this.headers = headers;
+    }
 
-	public boolean hasHeaders() {
-		return headers != null && !headers.isEmpty();
-	}
+    public boolean hasHeaders() {
+        return headers != null && !headers.isEmpty();
+    }
 
-	public boolean hasMethods() {
-		return methods != null && !methods.isEmpty();
-	}
+    public boolean hasMethods() {
+        return methods != null && !methods.isEmpty();
+    }
 }

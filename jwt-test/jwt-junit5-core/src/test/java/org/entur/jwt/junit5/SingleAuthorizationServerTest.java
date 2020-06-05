@@ -8,8 +8,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Properties;
 
-import org.entur.jwt.junit5.AccessToken;
-import org.entur.jwt.junit5.AuthorizationServer;
 import org.junit.jupiter.api.Test;
 
 @AuthorizationServer

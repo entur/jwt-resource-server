@@ -43,4 +43,9 @@ public abstract class AbstractDelegateProviderTest {
             }
         });
     }
+    
+    @SuppressWarnings("unchecked")
+    protected <T> JwkProviderBuilder<T> builder() {
+        return new JwkProviderBuilder(delegate, fieldExtractor);
+    }    
 }

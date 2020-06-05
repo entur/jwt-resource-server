@@ -2,14 +2,13 @@ package org.entur.jwt.verifier.auth0;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
-
 import org.entur.jwt.jwk.JwkProvider;
 import org.entur.jwt.jwk.JwksProvider;
 import org.entur.jwt.jwk.UrlJwksProvider;
@@ -88,20 +87,24 @@ public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT> {
 
             JwkRateLimitProperties rateLimiting = jwkConfiguration.getRateLimit();
             if (rateLimiting != null && rateLimiting.isEnabled()) {
-                int refillRatePerDay = (int) (rateLimiting.getRefillRate() * (24 * 3600));
-
-                builder.rateLimited(rateLimiting.getBucketSize(), refillRatePerDay, TimeUnit.DAYS);
+                double tokensPerSecond = rateLimiting.getRefillRate();
+                
+                double secondsPerToken = 1d / tokensPerSecond;
+                
+                int millisecondsPerToken = (int)(secondsPerToken * 1000); // note quantization, ms precision is sufficient
+                
+                builder.rateLimited(rateLimiting.getBucketSize(), 1, Duration.ofMillis(millisecondsPerToken));
             } else {
                 builder.rateLimited(false);
             }
 
             JwkCacheProperties cache = jwkConfiguration.getCache();
             if (cache != null && cache.isEnabled()) {
-                builder.cached(cache.getTimeToLive(), TimeUnit.SECONDS, cache.getRefreshTimeout(), TimeUnit.SECONDS);
+                builder.cached(Duration.ofSeconds(cache.getTimeToLive()), Duration.ofSeconds(cache.getRefreshTimeout()));
 
                 JwkPreemptiveCacheProperties preemptive = cache.getPreemptive();
                 if (preemptive != null && preemptive.isEnabled()) {
-                    builder.preemptiveCacheRefresh(preemptive.getTimeToExpires(), TimeUnit.SECONDS);
+                    builder.preemptiveCacheRefresh(Duration.ofSeconds(preemptive.getTimeToExpires()));
                 } else {
                     builder.preemptiveCacheRefresh(false);
                 }
@@ -115,7 +118,7 @@ public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT> {
 
             JwkOutageCacheProperties outageCache = jwkConfiguration.getOutageCache();
             if (outageCache != null && outageCache.isEnabled()) {
-                builder.outageCached(outageCache.getTimeToLive(), TimeUnit.SECONDS);
+                builder.outageCached(Duration.ofSeconds(outageCache.getTimeToLive()));
             } else {
                 builder.outageCached(false);
             }

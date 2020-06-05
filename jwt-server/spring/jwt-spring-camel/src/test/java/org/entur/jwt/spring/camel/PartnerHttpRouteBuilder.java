@@ -23,9 +23,6 @@ import org.apache.camel.component.spring.security.SpringSecurityAuthorizationPol
 import org.apache.camel.model.rest.RestBindingMode;
 import org.apache.camel.model.rest.RestParamType;
 import org.apache.camel.spring.SpringRouteBuilder;
-import org.entur.jwt.spring.camel.ExchangeJwtClaimExtractor;
-import org.entur.jwt.spring.camel.JwtAuthenticationProcessor;
-import org.entur.jwt.spring.camel.JwtAuthenticationRoutePolicyFactory;
 import org.entur.jwt.verifier.JwtClaimException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;

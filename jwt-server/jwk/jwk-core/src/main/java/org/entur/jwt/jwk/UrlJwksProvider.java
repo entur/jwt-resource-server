@@ -69,17 +69,18 @@ public class UrlJwksProvider<T> implements JwksProvider<T> {
                 List<T> jwks = reader.readJwks(inputStream);
 
                 if (jwks == null || jwks.isEmpty()) {
-                    throw new JwkNotFoundException("No keys found");
+                    // assume the server returns some kind of incomplete document, treat this
+                    // equivalent to an input/output exception.
+                    throw new JwksTransferException("No keys found");
                 }
                 return jwks;
             }
         } catch (InvalidSigningKeysException e) {
-            // assume the server returns some kind of generic document, threat this
-            // equivalent to
-            // an input/output exception.
-            throw new JwksUnavailableException("Invalid jwks from url " + url.toString(), e);
+            // assume the server returns some kind of generic document, treat this
+            // equivalent to an input/output exception.
+            throw new JwksTransferException("Invalid jwks from url " + url.toString(), e);
         } catch (IOException e) {
-            throw new JwksUnavailableException("Cannot obtain jwks from url " + url.toString(), e);
+            throw new JwksTransferException("Cannot obtain jwks from url " + url.toString(), e);
         }
     }
 

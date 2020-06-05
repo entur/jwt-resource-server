@@ -38,10 +38,14 @@ public class DefaultHealthJwksProvider<T> extends BaseJwksProvider<T> {
         try {
             list = provider.getJwks(forceUpdate);
         } finally {
-            this.status = new JwksHealth(time, list != null);
+            setStatus(new JwksHealth(time, list != null));
         }
 
         return list;
+    }
+
+    protected void setStatus(JwksHealth status) {
+        this.status = status;
     }
 
     @Override

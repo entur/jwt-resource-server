@@ -1,9 +1,9 @@
 package org.entur.jwt.jwk;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.slf4j.Logger;
@@ -43,19 +43,17 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
     /**
      * Construct new instance.
      * 
-     * @param provider               Jwk provider
-     * @param timeToLiveUnits        cache hold time
-     * @param timeToLiveUnit         cache hold time unit
-     * @param refreshTimeoutUnits    cache refresh timeout
-     * @param refreshTimeoutUnit     cache refresh timeout unit
-     * @param preemptiveRefreshUnits preemptive timeout. This parameter is relative
-     *                               to time to live, i.e. "15 seconds before
-     *                               timeout, refresh time cached value".
-     * @param preemptiveRefreshUnit  preemptive timeout unit
+     * @param provider          Jwk provider
+     * @param timeToLive        cache hold time (in milliseconds)
+     * @param refreshTimeout    cache refresh timeout unit (in milliseconds)
+     * @param preemptiveRefresh preemptive timeout (in milliseconds). This parameter
+     *                          is relative to time to live, i.e. "15000
+     *                          milliseconds before timeout, refresh time cached
+     *                          value".
      */
 
-    public PreemptiveCachedJwksProvider(JwksProvider<T> provider, long timeToLiveUnits, TimeUnit timeToLiveUnit, long refreshTimeoutUnits, TimeUnit refreshTimeoutUnit, long preemptiveRefreshUnits, TimeUnit preemptiveRefreshUnit) {
-        this(provider, timeToLiveUnit.toMillis(timeToLiveUnits), refreshTimeoutUnit.toMillis(refreshTimeoutUnits), preemptiveRefreshUnit.toMillis(preemptiveRefreshUnits), Executors.newSingleThreadExecutor());
+    public PreemptiveCachedJwksProvider(JwksProvider<T> provider, Duration timeToLive, Duration refreshTimeout, Duration preemptiveRefresh) {
+        this(provider, timeToLive.toMillis(), refreshTimeout.toMillis(), preemptiveRefresh.toMillis(), Executors.newSingleThreadExecutor());
     }
 
     /**

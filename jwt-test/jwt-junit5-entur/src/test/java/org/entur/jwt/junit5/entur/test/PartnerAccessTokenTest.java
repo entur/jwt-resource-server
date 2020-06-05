@@ -3,6 +3,7 @@ package org.entur.jwt.junit5.entur.test;
 import java.io.IOException;
 import org.entur.jwt.junit5.entur.test.auth0.PartnerAuth0AuthorizationServer;
 import org.entur.jwt.junit5.entur.test.auth0.PartnerAuth0Token;
+import org.entur.jwt.junit5.claim.MissingClaim;
 import org.entur.jwt.junit5.entur.test.auth0.ExpiredPartnerAuth0Token;
 import org.entur.jwt.junit5.entur.test.auth0.InvalidSignaturePartnerAuth0Token;
 import org.entur.jwt.junit5.entur.test.auth0.NotYetIssuedPartnerAuth0Token;
@@ -25,6 +26,19 @@ public class PartnerAccessTokenTest {
 
         assertThat(claim.asInt()).isEqualTo(5);
     }
+    
+    @Test
+    public void testTokenWithConvenienceAttributes(@PartnerAuth0Token(organisationId = 5, audience = "https://myAudience", subject = "mySubject") String token) throws IOException {
+        DecodedJWT decodedJWT = decode(token);
+        Claim claim = decodedJWT.getClaim("aud");
+
+        String[] asArray = claim.asArray(String.class);
+        assertThat(asArray[0]).isEqualTo("https://myAudience");
+        
+        Claim subject = decodedJWT.getClaim("sub");
+        assertThat(subject.asString()).isEqualTo("mySubject");
+        
+    }    
 
     @Test
     public void testTokenWithPermissions(@PartnerAuth0Token(organisationId = 5, permissions = { "configure" }) String token) throws IOException {
@@ -66,6 +80,15 @@ public class PartnerAccessTokenTest {
 
         assertThat(claim.asString()).isEqualTo("https://unknown.issuer");
     }
+    
+    @Test
+    public void testTokenNullIssuer(@PartnerAuth0Token(organisationId = 5) @MissingClaim("iss") String token) throws IOException {
+        DecodedJWT decodedJWT = decode(token);
+
+        Claim claim = decodedJWT.getClaim("iss");
+
+        assertThat(claim.asString()).isNull();
+    }    
 
     @Test
     public void testTokenUnknownAudience(@UnknownAudiencePartnerAuth0Token String token) throws IOException {
@@ -83,8 +106,8 @@ public class PartnerAccessTokenTest {
         assertThat(decodedJWT.getHeaderClaim("kid").asString()).isEqualTo("unknown-kid");
     }
 
-	private DecodedJWT decode(String token) {
-		return JWT.decode(token.substring(7));
-	}
+    private DecodedJWT decode(String token) {
+        return JWT.decode(token.substring(7));
+    }
 
 }

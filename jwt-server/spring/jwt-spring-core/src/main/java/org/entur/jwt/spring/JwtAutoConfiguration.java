@@ -131,10 +131,10 @@ public class JwtAutoConfiguration {
                 
                 // for specific methods
                 for (HttpMethodMatcher httpMethodMatcher : mvcMatchers.getMethod().getActiveMethods()) {
-        			// check that active, empty patterns will be interpreted as permit all of the method type (empty patterns vs varargs)
-        			if(httpMethodMatcher.isActive()) {
-        				http.authorizeRequests().mvcMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();
-        			}
+                    // check that active, empty patterns will be interpreted as permit all of the method type (empty patterns vs varargs)
+                    if(httpMethodMatcher.isActive()) {
+                        http.authorizeRequests().mvcMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();
+                    }
                 }
             }
 
@@ -147,10 +147,10 @@ public class JwtAutoConfiguration {
                 
                 // for specific methods
                 for (HttpMethodMatcher httpMethodMatcher : antMatchers.getMethod().getActiveMethods()) {
-        			// check that active, empty patterns will be interpreted as permit all of the method type (empty patterns vs varargs)
-        			if(httpMethodMatcher.isActive()) {
-        				http.authorizeRequests().antMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();
-        			}
+                    // check that active, empty patterns will be interpreted as permit all of the method type (empty patterns vs varargs)
+                    if(httpMethodMatcher.isActive()) {
+                        http.authorizeRequests().antMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();
+                    }
                 }
             }
         }
@@ -290,27 +290,27 @@ public class JwtAutoConfiguration {
 
     public static CorsConfigurationSource getCorsConfiguration(CorsProperties properties) {
 
-    	List<String> defaultAllowedMethods = Arrays.asList("GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS");
-    	List<String> defaultAllowedHeaders = Arrays.asList("*");
-    	
+        List<String> defaultAllowedMethods = Arrays.asList("GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS");
+        List<String> defaultAllowedHeaders = Arrays.asList("*");
+        
         List<String> origins = properties.getOrigins();
         log.info("Enable CORS request with origins {}, methods {} and headers {} for API mode", 
-        		properties.getOrigins(),
-        		properties.hasMethods() ? properties.getMethods() : "default (" + defaultAllowedMethods + ")",
-        		properties.hasHeaders() ? properties.getHeaders() : "default (" + defaultAllowedHeaders + ")"
-        		);
-    	
+                properties.getOrigins(),
+                properties.hasMethods() ? properties.getMethods() : "default (" + defaultAllowedMethods + ")",
+                properties.hasHeaders() ? properties.getHeaders() : "default (" + defaultAllowedHeaders + ")"
+                );
+        
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(origins);
         if(properties.hasHeaders()) {
-        	config.setAllowedHeaders(properties.getHeaders());
+            config.setAllowedHeaders(properties.getHeaders());
         } else {
             config.setAllowedHeaders(defaultAllowedHeaders);
         }
         if(properties.hasMethods()) {
-        	config.setAllowedMethods(properties.getMethods());
+            config.setAllowedMethods(properties.getMethods());
         } else {
             config.setAllowedMethods(defaultAllowedMethods); // XXX
         }
@@ -321,13 +321,13 @@ public class JwtAutoConfiguration {
         return source;
     }
 
-	protected List<String> getDefaultMethods() {
-		return Arrays.asList("GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS");
-	}
+    protected List<String> getDefaultMethods() {
+        return Arrays.asList("GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS");
+    }
 
-	protected List<String> getDefaultAllowedHeaders() {
-		return Arrays.asList("*");
-	}
+    protected List<String> getDefaultAllowedHeaders() {
+        return Arrays.asList("*");
+    }
 
     @Bean
     @ConditionalOnProperty(name = { "entur.jwt.jwk.health-indicator.enabled" }, havingValue = "true", matchIfMissing = true)

@@ -7,10 +7,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -21,7 +20,7 @@ public class OutageCachedJwksProviderTest extends AbstractDelegateProviderTest {
     @BeforeEach
     public void setUp() throws Exception {
         super.setUp();
-        provider = new OutageCachedJwksProvider<>(delegate, 10, TimeUnit.HOURS);
+        provider = new OutageCachedJwksProvider<>(delegate, Duration.ofHours(10));
     }
 
     @Test

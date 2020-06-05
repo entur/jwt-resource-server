@@ -33,7 +33,14 @@ public class RateLimitedJwksProvider<T> extends BaseJwksProvider<T> {
         if (!bucket.tryConsume(1)) {
             throw new RateLimitReachedException();
         }
-        return provider.getJwks(forceUpdate);
+        try {
+            return provider.getJwks(forceUpdate);
+        } catch(JwksTransferException e) {
+            // assume network is down, don't count as a consumed token
+            bucket.addTokens(1);
+            
+            throw e;
+        }
     }
 
     Bucket getBucket() {
