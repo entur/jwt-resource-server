@@ -79,24 +79,23 @@ public class DefaultCachedAccessTokenProvider extends AbstractCachedAccessTokenP
 
         try {
             if (lock.tryLock(refreshTimeout, TimeUnit.MILLISECONDS)) {
-                // see if anyone already refreshed the cache while we were
-                // hold getting the lock
-                if (cache == this.cache) {
-                    // Seems cache was not updated.
-                    // We hold the lock, so safe to update it now
-                    try {
+                try {
+                    // see if anyone already refreshed the cache while we were
+                    // hold getting the lock
+                    if (cache == this.cache) {
+                        // Seems cache was not updated.
+                        // We hold the lock, so safe to update it now
                         // get and save to cache
                         AccessToken accessToken = provider.getAccessToken(false);
 
                         // reduce cache expiry according to the minimum time to live
                         this.cache = cache = new AccessTokenCacheItem(accessToken, accessToken.getExpires() - minimumTimeToLive);
-                    } finally {
-                        lock.unlock();
+                    } else {
+                        // load updated value
+                        cache = this.cache;
                     }
-                } else {
-                    // load updated value
-                    cache = this.cache;
-
+                } finally {
+                    lock.unlock();
                 }
             } else {
                 throw new AccessTokenUnavailableException("Timeout while waiting for refreshed cache (limit of " + refreshTimeout + "ms exceed).");
