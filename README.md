@@ -56,7 +56,7 @@ See documentation contained in each folder to get started. Or skip right to the 
 
 # History
 
- - 1.0.1: Initial release. 
+ - 1.0.x: Initial release and adjustments for first use. 
 
 [jwk]:                    jwt-server/jwk
 [jwt-verifier]:           jwt-server/jwk-verifier
