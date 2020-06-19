@@ -1,5 +1,5 @@
 # jwt-junit5-spring
-This test artifact add Spring Boot support for [jwt-junit-entur](../jwt-junit5-core). 
+This test artifact add Spring Boot support for [jwt-junit-core](../jwt-junit5-core). 
 
 ## Maven / Gradle coordinates
 
