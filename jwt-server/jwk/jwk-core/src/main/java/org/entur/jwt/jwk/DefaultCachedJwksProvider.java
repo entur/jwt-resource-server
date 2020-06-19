@@ -69,23 +69,22 @@ public class DefaultCachedJwksProvider<T> extends AbstractCachedJwksProvider<T> 
 
         try {
             if (lock.tryLock(refreshTimeout, TimeUnit.MILLISECONDS)) {
-                // see if anyone already refreshed the cache while we were
-                // hold getting the lock
-                if (cache == this.cache) {
-                    // Seems cache was not updated.
-                    // We hold the lock, so safe to update it now
-                    try {
+                try {
+                    // see if anyone already refreshed the cache while we were
+                    // hold getting the lock
+                    if (cache == this.cache) {
+                        // Seems cache was not updated.
+                        // We hold the lock, so safe to update it now
                         List<T> all = provider.getJwks(false);
 
                         // save to cache
                         this.cache = cache = new JwkListCacheItem<>(all, getExpires(time));
-                    } finally {
-                        lock.unlock();
+                    } else {
+                        // load updated value
+                        cache = this.cache;
                     }
-                } else {
-                    // load updated value
-                    cache = this.cache;
-
+                } finally {
+                    lock.unlock();
                 }
             } else {
                 throw new JwksUnavailableException("Timeout while waiting for refreshed cache (limit of " + refreshTimeout + "ms exceed).");
