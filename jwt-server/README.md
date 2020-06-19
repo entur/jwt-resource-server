@@ -55,6 +55,13 @@ entur:
 
 A tenant id-filter can be used to conveniently enable/disable specific tenants. Using this filter could also simplify sharing configuration, for example using a ConfigMap in Kubernetes.
 
+```
+entur:
+  jwt:
+    filter:
+      - partner-auth0
+```
+
 ## Security configuration
 By default, all requests must be so-called _fully authenticated_. In other words all requests must have a valid JWT token (of any of the configured tenants). 
 
@@ -281,7 +288,7 @@ If no mode is set, no configuration is added by this starter. This allows for ad
 ```java
 @Bean("corsConfigurationSource")
 public CorsConfigurationSource myCorsConfigurationSource() {
-	// ...
+    // ...
 } 
 ```
 
