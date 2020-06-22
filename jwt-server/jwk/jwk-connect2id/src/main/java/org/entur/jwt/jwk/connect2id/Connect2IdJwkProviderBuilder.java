@@ -10,12 +10,8 @@ import com.nimbusds.jose.proc.SecurityContext;
 
 public class Connect2IdJwkProviderBuilder<C extends SecurityContext> extends AbstractJWKSourceBuilder<C, Connect2IdJwkProviderBuilder<C>> {
 
-    public static <C extends SecurityContext> Connect2IdJwkProviderBuilder<C> newBuilder(URL url) {
-        UrlJwksProvider<JWK> jwksProvider = new UrlJwksProvider<>(url, new Connect2IdJwkReader());
-        return new Connect2IdJwkProviderBuilder<>(jwksProvider);
-    }
 
-    public static <C extends SecurityContext> Connect2IdJwkProviderBuilder<C> newBuilder(URL url, Integer connectTimeout, Integer readTimeout) {
+    public static <C extends SecurityContext> Connect2IdJwkProviderBuilder<C> newBuilder(URL url, long connectTimeout, long readTimeout) {
         UrlJwksProvider<JWK> jwksProvider = new UrlJwksProvider<>(url, new Connect2IdJwkReader(), connectTimeout, readTimeout);
         return new Connect2IdJwkProviderBuilder<>(jwksProvider);
     }

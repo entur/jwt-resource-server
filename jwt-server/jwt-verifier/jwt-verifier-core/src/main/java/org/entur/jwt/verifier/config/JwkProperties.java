@@ -20,22 +20,25 @@ public class JwkProperties {
 
     protected JwkHealthIndicator healthIndicator = new JwkHealthIndicator();
 
-    protected Integer connectTimeout;
-    protected Integer readTimeout;
+    /** HTTP connect timeout, in seconds */
+    protected long connectTimeout = 15; // seconds
+    
+    /** HTTP read timeout, in seconds */
+    protected long readTimeout = 15; // seconds
 
-    public Integer getConnectTimeout() {
+    public long getConnectTimeout() {
         return connectTimeout;
     }
 
-    public void setConnectTimeout(Integer connectTimeout) {
+    public void setConnectTimeout(long connectTimeout) {
         this.connectTimeout = connectTimeout;
     }
 
-    public Integer getReadTimeout() {
+    public long getReadTimeout() {
         return readTimeout;
     }
 
-    public void setReadTimeout(Integer readTimeout) {
+    public void setReadTimeout(long readTimeout) {
         this.readTimeout = readTimeout;
     }
 

@@ -36,7 +36,7 @@ public class Auth0JwkProviderBuilderTest {
         } else {
             url = getClass().getResource(resource);
         }
-        return Auth0JwkProviderBuilder.newBuilder(url);
+        return Auth0JwkProviderBuilder.newBuilder(url, 15000, 15000);
     }
 
 }

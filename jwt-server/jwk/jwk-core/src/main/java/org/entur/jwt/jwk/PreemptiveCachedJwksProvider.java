@@ -134,8 +134,9 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
                             // run update in the background
                             executorService.execute(() -> {
                                 try {
+                                    logger.info("Perform preemptive refresh");
                                     PreemptiveCachedJwksProvider.super.getJwksBlocking(time, cache);
-                                } catch (JwksException e) {
+                                } catch (Throwable e) {
                                     // update failed, but another thread can retry
                                     cacheExpires = -1L;
                                     // ignore, unable to update

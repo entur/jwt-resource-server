@@ -44,36 +44,31 @@ public class JwtClientAutoConfiguration {
     @Qualifier("jwtRestTemplate")
     public RestTemplate jwtRestTemplate(RestTemplateBuilder restTemplateBuilder, SpringJwtClientProperties properties) {
 
-        Integer connectTimeout = properties.getConnectTimeout();
-        Integer readTimeout = properties.getReadTimeout();
+        long connectTimeout = properties.getConnectTimeout();
+        long readTimeout = properties.getReadTimeout();
 
-        // get connect timeout from cache refresh, if none is specified
-        if (connectTimeout == null || readTimeout == null) {
-            Integer timeout = getTimeout(properties);
-            
-            if (connectTimeout == null) {
-                connectTimeout = timeout;
+        Long timeout = getTimeout(properties);
+        
+        if(timeout != null) {
+            if(connectTimeout > timeout) {
+                throw new IllegalArgumentException("Connect timeout of " + connectTimeout + "s exceeds cache refresh time of " + timeout + "s");
             }
-            if (readTimeout == null) {
-                readTimeout = timeout;
+            if(readTimeout > timeout) {
+                throw new IllegalArgumentException("Read timeout of " + readTimeout + "s exceeds cache refresh time of " + timeout + "s");
             }
         }
-
-        if (connectTimeout != null) {
-            restTemplateBuilder = restTemplateBuilder.setConnectTimeout(Duration.of(connectTimeout.longValue(), ChronoUnit.SECONDS));
-        }
-        if (readTimeout != null) {
-            restTemplateBuilder = restTemplateBuilder.setReadTimeout(Duration.of(readTimeout.longValue(), ChronoUnit.SECONDS));
-        }
+        
+        restTemplateBuilder = restTemplateBuilder.setConnectTimeout(Duration.of(connectTimeout, ChronoUnit.SECONDS));
+        restTemplateBuilder = restTemplateBuilder.setReadTimeout(Duration.of(readTimeout, ChronoUnit.SECONDS));
 
         return restTemplateBuilder.build();
     }
     
-    private Integer getTimeout(SpringJwtClientProperties properties) {
+    private Long getTimeout(SpringJwtClientProperties properties) {
         return getTimeout(properties.getAuth0(), getTimeout(properties.getKeycloak(), null));
     }
 
-    private Integer getTimeout(Map<String, ? extends AbstractJwtClientProperties> map, Integer timeout) {
+    private Long getTimeout(Map<String, ? extends AbstractJwtClientProperties> map, Long timeout) {
         for (Entry<String, ? extends AbstractJwtClientProperties> entry : map.entrySet()) {
             AbstractJwtClientProperties client = entry.getValue();
             if (client.isEnabled()) {

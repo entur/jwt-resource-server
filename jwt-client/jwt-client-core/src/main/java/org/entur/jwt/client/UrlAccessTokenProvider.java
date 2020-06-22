@@ -32,29 +32,25 @@ public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider<HttpU
         return builder;
     }
 
-    protected final Integer connectTimeout;
-    protected final Integer readTimeout;
+    protected final int connectTimeout;
+    protected final int readTimeout;
 
     // https://www.oauth.com/oauth2-servers/access-tokens/client-credentials/
 
-    public UrlAccessTokenProvider(URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers, Integer connectTimeout, Integer readTimeout) {
+    public UrlAccessTokenProvider(URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers, long connectTimeout, long readTimeout) {
         super(issueUrl, parameters, headers);
 
-        checkArgument(connectTimeout == null || connectTimeout >= 0, "Invalid connect timeout value '" + connectTimeout + "'. Must be a non-negative integer.");
-        checkArgument(readTimeout == null || readTimeout >= 0, "Invalid read timeout value '" + readTimeout + "'. Must be a non-negative integer.");
+        checkArgument(connectTimeout > 0 && connectTimeout <= Integer.MAX_VALUE, "Invalid connect timeout value '" + connectTimeout + "'. Must be a positive integer below or equal to " + Integer.MAX_VALUE + ".");
+        checkArgument(readTimeout > 0 && readTimeout <= Integer.MAX_VALUE, "Invalid read timeout value '" + readTimeout + "'. Must be a positive integer below or equal to " + Integer.MAX_VALUE + ".");
 
-        this.connectTimeout = connectTimeout;
-        this.readTimeout = readTimeout;
+        this.connectTimeout = (int)connectTimeout;
+        this.readTimeout = (int)readTimeout;
     }
 
     protected HttpURLConnection request(URL url, byte[] body, Map<String, Object> headers) throws IOException {
         final HttpURLConnection c = (HttpURLConnection) url.openConnection();
-        if (connectTimeout != null) {
-            c.setConnectTimeout(connectTimeout);
-        }
-        if (readTimeout != null) {
-            c.setReadTimeout(readTimeout);
-        }
+        c.setConnectTimeout(connectTimeout);
+        c.setReadTimeout(readTimeout);
         c.setRequestProperty("Accept", "application/json");
         c.setRequestProperty("Content-Type", CONTENT_TYPE);
 
@@ -69,7 +65,6 @@ public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider<HttpU
         }
 
         return c;
-
     }
 
     @Override

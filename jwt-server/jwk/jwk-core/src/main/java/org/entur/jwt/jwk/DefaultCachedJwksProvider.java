@@ -79,6 +79,8 @@ public class DefaultCachedJwksProvider<T> extends AbstractCachedJwksProvider<T> 
 
                         // save to cache
                         this.cache = cache = new JwkListCacheItem<>(all, getExpires(time));
+                        
+                        System.out.println("Thread " + Thread.currentThread().getName() + " updated the while " + lock.getQueueLength() + " was waiting");
                     } else {
                         // load updated value
                         cache = this.cache;
