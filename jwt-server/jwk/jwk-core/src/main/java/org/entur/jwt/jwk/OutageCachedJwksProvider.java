@@ -50,7 +50,7 @@ public class OutageCachedJwksProvider<T> extends AbstractCachedJwksProvider<T> {
                     // 50% time left, or less than one hour -> error
                     // 50-100% time left -> warning
 
-                    long minutes = left % 60000;
+                    long minutes = (left % 3600000) / 60000;
                     long hours = left / 3600000;
 
                     long percent = (left * 100) / timeToLive;

@@ -4,11 +4,7 @@ import java.net.URL;
 
 public class AccessTokenProviderBuilder extends AbstractAccessTokenProvidersBuilder<AccessTokenProviderBuilder> {
 
-    public static AccessTokenProviderBuilder newBuilder(ClientCredentials credentials) {
-        return newBuilder(credentials, null, null);
-    }
-
-    public static AccessTokenProviderBuilder newBuilder(ClientCredentials credentials, Integer connectTimeout, Integer readTimeout) {
+    public static AccessTokenProviderBuilder newBuilder(ClientCredentials credentials, long connectTimeout, long readTimeout) {
 
         URL revokeUrl = credentials.getRevokeURL();
         URL refreshUrl = credentials.getRefreshURL();

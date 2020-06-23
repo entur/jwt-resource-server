@@ -11,3 +11,4 @@ public class Auth0JwkFieldExtractor implements JwkFieldExtractor<Jwk> {
         return jwk.getId();
     }
 }
+

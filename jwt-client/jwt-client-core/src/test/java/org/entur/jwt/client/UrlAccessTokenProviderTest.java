@@ -20,7 +20,7 @@ public class UrlAccessTokenProviderTest extends AbstractUrlAccessTokenProviderTe
 
     @Test
     public void shouldFailHealthCheck() throws Exception {
-        try (UrlAccessTokenProvider urlProvider = new UrlAccessTokenProvider(new URL("https://localhost"), Collections.emptyMap(), Collections.emptyMap(), null, null)) {
+        try (UrlAccessTokenProvider urlProvider = new UrlAccessTokenProvider(new URL("https://localhost"), Collections.emptyMap(), Collections.emptyMap(), 15000, 15000)) {
 
             assertThrows(AccessTokenHealthNotSupportedException.class, () -> {
                 urlProvider.getHealth(false);
@@ -31,7 +31,7 @@ public class UrlAccessTokenProviderTest extends AbstractUrlAccessTokenProviderTe
     private AccessTokenProvider providerForResource(String resource) throws Exception {
         when(urlConnection.getInputStream()).thenReturn(getClass().getResourceAsStream(resource));
 
-        return new DefaultAccessTokenHealthProvider(new UrlAccessTokenProvider(new URL("mock://localhost"), Collections.emptyMap(), Collections.emptyMap(), null, null));
+        return new DefaultAccessTokenHealthProvider(new UrlAccessTokenProvider(new URL("mock://localhost"), Collections.emptyMap(), Collections.emptyMap(), 15000, 15000));
     }
 
     @Test
@@ -85,14 +85,14 @@ public class UrlAccessTokenProviderTest extends AbstractUrlAccessTokenProviderTe
     @Test
     public void shouldFailWithNegativeConnectTimeout() throws MalformedURLException {
         assertThrows(IllegalArgumentException.class, () -> {
-            new UrlAccessTokenProvider(new URL("https://localhost"), Collections.emptyMap(), Collections.emptyMap(), -1, null);
+            new UrlAccessTokenProvider(new URL("https://localhost"), Collections.emptyMap(), Collections.emptyMap(), -1, 15000);
         });
     }
 
     @Test
     public void shouldFailWithNegativeReadTimeout() throws MalformedURLException {
         assertThrows(IllegalArgumentException.class, () -> {
-            new UrlAccessTokenProvider(new URL("https://localhost"), Collections.emptyMap(), Collections.emptyMap(), null, -1);
+            new UrlAccessTokenProvider(new URL("https://localhost"), Collections.emptyMap(), Collections.emptyMap(), 15000, -1);
         });
     }
 
@@ -100,7 +100,7 @@ public class UrlAccessTokenProviderTest extends AbstractUrlAccessTokenProviderTe
     public void shouldFailWithAccessTokenUnavailableExceptionWhenUnparsableEntity() throws Exception {
         when(urlConnection.getInputStream()).thenReturn(new ByteArrayInputStream("{unaparsable}".getBytes(StandardCharsets.UTF_8)));
 
-        try (DefaultAccessTokenHealthProvider provider = new DefaultAccessTokenHealthProvider(new UrlAccessTokenProvider(new URL("mock://localhost"), Collections.emptyMap(), Collections.emptyMap(), null, null))) {
+        try (DefaultAccessTokenHealthProvider provider = new DefaultAccessTokenHealthProvider(new UrlAccessTokenProvider(new URL("mock://localhost"), Collections.emptyMap(), Collections.emptyMap(), 15000, 15000))) {
 
             assertThrows(AccessTokenUnavailableException.class, () -> {
                 provider.getAccessToken(false);

@@ -80,8 +80,11 @@ public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT> {
             } catch (MalformedURLException e) {
                 throw new IllegalArgumentException("Invalid location " + tenantJwkConfiguration.getLocation() + " for " + entry.getKey());
             }
-
-            UrlJwksProvider<Jwk> urlProvider = new UrlJwksProvider<>(url, new Auth0JwkReader(), jwkConfiguration.getConnectTimeout(), jwkConfiguration.getReadTimeout());
+            
+            long connectTimeout = jwkConfiguration.getConnectTimeout();
+            long readTimeout = jwkConfiguration.getReadTimeout();
+            
+            UrlJwksProvider<Jwk> urlProvider = new UrlJwksProvider<>(url, new Auth0JwkReader(), connectTimeout * 1000, readTimeout * 1000);
 
             Auth0JwkProviderBuilder builder = new Auth0JwkProviderBuilder(urlProvider);
 

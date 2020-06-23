@@ -68,26 +68,60 @@ public class DefaultCachedJwksProvider<T> extends AbstractCachedJwksProvider<T> 
         // this is a necessary evil.
 
         try {
-            if (lock.tryLock(refreshTimeout, TimeUnit.MILLISECONDS)) {
+            if(lock.tryLock()) {
                 try {
                     // see if anyone already refreshed the cache while we were
                     // hold getting the lock
                     if (cache == this.cache) {
                         // Seems cache was not updated.
                         // We hold the lock, so safe to update it now
+                        logger.info("Perform JWK cache refresh..");
+                        
                         List<T> all = provider.getJwks(false);
 
                         // save to cache
                         this.cache = cache = new JwkListCacheItem<>(all, getExpires(time));
+                        
+                        logger.info("JWK cache refreshed (with {} waiting) ", lock.getQueueLength());
                     } else {
                         // load updated value
                         cache = this.cache;
+                        
+                        logger.info("JWK cache was previously refreshed");
                     }
                 } finally {
                     lock.unlock();
                 }
             } else {
-                throw new JwksUnavailableException("Timeout while waiting for refreshed cache (limit of " + refreshTimeout + "ms exceed).");
+                logger.info("Wait for up to {}ms for the JWK cache to be refreshed (with {} already waiting)", refreshTimeout, lock.getQueueLength());
+                
+                if(lock.tryLock(refreshTimeout, TimeUnit.MILLISECONDS)) {
+                    try {
+                        // see if anyone already refreshed the cache while we were
+                        // hold getting the lock
+                        if (cache == this.cache) {
+                            // Seems cache was not updated.
+                            // We hold the lock, so safe to update it now
+                            logger.warn("JWK cache was NOT successfully refreshed while waiting, retry now (with {} waiting)..", lock.getQueueLength());
+                                
+                            List<T> all = provider.getJwks(false);
+    
+                            // save to cache
+                            this.cache = cache = new JwkListCacheItem<>(all, getExpires(time));
+                            
+                            logger.info("JWK cache refreshed (with {} waiting) ", lock.getQueueLength());
+                        } else {
+                            // load updated value
+                            logger.info("JWK cache was successfully refreshed while waiting");
+                            
+                            cache = this.cache;
+                        }
+                    } finally {
+                        lock.unlock();
+                    }
+                } else {
+                    throw new JwksUnavailableException("Timeout while waiting for refreshed cache (limit of " + refreshTimeout + "ms exceed).");
+                }
             }
 
             if (cache != null && cache.isValid(time)) {

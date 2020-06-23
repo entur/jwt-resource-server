@@ -33,13 +33,13 @@ public class UrlJwksProviderTest {
     @Test
     public void shouldFailWithNullUrl() {
         assertThrows(IllegalArgumentException.class, () -> {
-            new UrlJwksProvider<>((URL) null, reader);
+            new UrlJwksProvider<>((URL) null, reader, 15000, 15000);
         });
     }
 
     @Test
     public void shouldFailHealthCheck() throws Exception {
-        UrlJwksProvider<JwkImpl> urlProvider = new UrlJwksProvider<>(new URL("https://localhost"), reader);
+        UrlJwksProvider<JwkImpl> urlProvider = new UrlJwksProvider<>(new URL("https://localhost"), reader, 15000, 15000);
 
         assertThrows(JwksHealthNotSupportedException.class, () -> {
             urlProvider.getHealth(false);
@@ -61,7 +61,7 @@ public class UrlJwksProviderTest {
             url = getClass().getResource(resource);
         }
 
-        return new DefaultJwkProvider<>(new UrlJwksProvider<>(url, reader), new JwkFieldExtractorImpl());
+        return new DefaultJwkProvider<>(new UrlJwksProvider<>(url, reader, 15000, 15000), new JwkFieldExtractorImpl());
     }
 
     @Test
@@ -106,14 +106,14 @@ public class UrlJwksProviderTest {
     @Test
     public void shouldFailWithNegativeConnectTimeout() throws MalformedURLException {
         assertThrows(IllegalArgumentException.class, () -> {
-            new UrlJwksProvider<>(new URL("https://localhost"), reader, -1, null);
+            new UrlJwksProvider<>(new URL("https://localhost"), reader, -1, 1);
         });
     }
 
     @Test
     public void shouldFailWithNegativeReadTimeout() throws MalformedURLException {
         assertThrows(IllegalArgumentException.class, () -> {
-            new UrlJwksProvider<>(new URL("https://localhost"), reader, null, -1);
+            new UrlJwksProvider<>(new URL("https://localhost"), reader, 1, -1);
         });
 
     }
@@ -126,7 +126,7 @@ public class UrlJwksProviderTest {
         when(reader.readJwks(any(InputStream.class))).thenThrow(new InvalidSigningKeysException(""));
 
         URL url = getClass().getResource("/jwks.json");
-        JwkProvider<?> provider = new DefaultJwkProvider<>(new UrlJwksProvider<>(url, reader), new JwkFieldExtractorImpl());
+        JwkProvider<?> provider = new DefaultJwkProvider<>(new UrlJwksProvider<>(url, reader, 15000, 15000), new JwkFieldExtractorImpl());
 
         assertThrows(JwksUnavailableException.class, () -> {
             provider.getJwk(null);

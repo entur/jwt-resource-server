@@ -72,7 +72,7 @@ public class EnturJWKSourceTest {
 
         onRequest().havingMethodEqualTo("GET").havingPathEqualTo("/jwks.json").respond().withStatus(200).withHeader("Content-Type", "application/json").withBody(jwkSet.toJSONObject(true).toJSONString());
 
-        JWKSource<SecurityContext> jwkSetSource = Connect2IdJwkProviderBuilder.newBuilder(jwkSetURL).build();
+        JWKSource<SecurityContext> jwkSetSource = Connect2IdJwkProviderBuilder.newBuilder(jwkSetURL, 15000, 15000).build();
 
         List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
 
@@ -103,7 +103,7 @@ public class EnturJWKSourceTest {
 
         onRequest().havingMethodEqualTo("GET").havingPathEqualTo("/jwks.json").respond().withStatus(200).withHeader("Content-Type", "application/json").withBody(jwkSet.toJSONObject(true).toJSONString());
 
-        JWKSource<SecurityContext> jwkSetSource = Connect2IdJwkProviderBuilder.newBuilder(jwkSetURL).build();
+        JWKSource<SecurityContext> jwkSetSource = Connect2IdJwkProviderBuilder.newBuilder(jwkSetURL, 15000, 15000).build();
 
         List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
 
@@ -155,7 +155,7 @@ public class EnturJWKSourceTest {
             }
         });
 
-        JWKSource<SecurityContext> jwkSetSource = Connect2IdJwkProviderBuilder.newBuilder(jwkSetURL).build();
+        JWKSource<SecurityContext> jwkSetSource = Connect2IdJwkProviderBuilder.newBuilder(jwkSetURL, 15000, 15000).build();
 
         List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
 
@@ -196,7 +196,7 @@ public class EnturJWKSourceTest {
 
         onRequest().havingMethodEqualTo("GET").havingPathEqualTo("/jwks.json").respond().withStatus(200).withHeader("Content-Type", "application/json").withBody(jwkSet.toJSONObject(true).toJSONString());
 
-        JWKSource<SecurityContext> jwkSetSource = Connect2IdJwkProviderBuilder.newBuilder(jwkSetURL).build();
+        JWKSource<SecurityContext> jwkSetSource = Connect2IdJwkProviderBuilder.newBuilder(jwkSetURL, 15000, 15000).build();
 
         try {
             jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);

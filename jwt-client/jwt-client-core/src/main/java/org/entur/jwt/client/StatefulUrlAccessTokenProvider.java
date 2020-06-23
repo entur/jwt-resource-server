@@ -20,17 +20,17 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
 
     protected static final Logger logger = LoggerFactory.getLogger(StatefulUrlAccessTokenProvider.class);
 
-    protected final Integer connectTimeout;
-    protected final Integer readTimeout;
+    protected final int connectTimeout;
+    protected final int readTimeout;
 
-    public StatefulUrlAccessTokenProvider(URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers, Integer connectTimeout, Integer readTimeout, URL refreshUrl, URL revokeUrl) {
+    public StatefulUrlAccessTokenProvider(URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers, long connectTimeout, long readTimeout, URL refreshUrl, URL revokeUrl) {
         super(issueUrl, parameters, headers, refreshUrl, revokeUrl);
 
-        checkArgument(connectTimeout == null || connectTimeout >= 0, "Invalid connect timeout value '" + connectTimeout + "'. Must be a non-negative integer.");
-        checkArgument(readTimeout == null || readTimeout >= 0, "Invalid read timeout value '" + readTimeout + "'. Must be a non-negative integer.");
+        checkArgument(connectTimeout > 0 && connectTimeout <= Integer.MAX_VALUE, "Invalid connect timeout value '" + connectTimeout + "'. Must be a positive integer below or equal to " + Integer.MAX_VALUE + ".");
+        checkArgument(readTimeout > 0 && readTimeout <= Integer.MAX_VALUE, "Invalid read timeout value '" + readTimeout + "'. Must be a positive integer below or equal to " + Integer.MAX_VALUE + ".");
 
-        this.connectTimeout = connectTimeout;
-        this.readTimeout = readTimeout;
+        this.connectTimeout = (int)connectTimeout;
+        this.readTimeout = (int)readTimeout;
     }
 
     @Override
@@ -49,12 +49,8 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
 
     protected HttpURLConnection request(URL url, byte[] body, Map<String, Object> headers) throws IOException {
         final HttpURLConnection c = (HttpURLConnection) url.openConnection();
-        if (connectTimeout != null) {
-            c.setConnectTimeout(connectTimeout);
-        }
-        if (readTimeout != null) {
-            c.setReadTimeout(readTimeout);
-        }
+        c.setConnectTimeout(connectTimeout);
+        c.setReadTimeout(readTimeout);
         c.setRequestProperty("Accept", "application/json");
         c.setRequestProperty("Content-Type", CONTENT_TYPE);
 
