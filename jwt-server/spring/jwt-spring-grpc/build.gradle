@@ -1,0 +1,84 @@
+buildscript {
+    ext {
+        springBootVersion = '2.3.3.RELEASE'
+    }
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+    }
+}
+
+plugins {
+    id "com.google.protobuf" version "0.8.11"
+}
+
+apply plugin: 'io.spring.dependency-management'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    api project(":frameworks:oidc-auth-spring-boot-starter")
+    api("org.springframework.boot:spring-boot-autoconfigure:${springBootVersion}")
+    api("org.springframework.boot:spring-boot-configuration-processor:${springBootVersion}")
+    api("org.springframework.boot:spring-boot-starter:${springBootVersion}")
+    api("org.springframework.boot:spring-boot-starter-web:${springBootVersion}")
+    api("org.springframework.boot:spring-boot-starter-logging:${springBootVersion}")
+
+    api("io.github.lognet:grpc-spring-boot-starter:${lognetGrpcSpringBootStarterVersion}")
+    api("io.grpc:grpc-netty:${grpcNettyVersion}") {
+    	force = true
+    }
+    api("io.grpc:grpc-services:${grpcNettyVersion}") {
+    	force = true
+    }    
+
+	// grpc dependencies
+    api("io.netty:netty-codec-http2:${nettyVersion}") {
+    	force = true
+    }   
+    api("io.netty:netty-handler-proxy:${nettyVersion}") {
+    	force = true
+    }  
+    
+    api("io.netty:netty-tcnative-boringssl-static:${nettyTcnativeBoringsslStaticVersion}") {
+    	force = true;
+    }
+    
+    testImplementation('org.springframework.boot:spring-boot-starter-test')
+    
+    testImplementation project(":oidc-auth-jwt-test")
+
+    testImplementation("org.springframework.boot:spring-boot-starter-test:${springBootVersion}")
+    testImplementation("com.google.code.findbugs:jsr305:${findBugsJsr305Version}")
+}
+
+spotbugs {
+    onlyAnalyze = [ 'org.entur.auth.grpc.*' ]
+}
+
+sourceSets {
+    test.java.srcDirs += "${protobuf.generatedFilesBaseDir}/test/java"
+    test.java.srcDirs += "${protobuf.generatedFilesBaseDir}/test/grpc"
+}
+
+protobuf {
+  protoc {
+    artifact = "com.google.protobuf:protoc:3.6.1"
+  }
+  plugins {
+    grpc {
+      artifact = 'io.grpc:protoc-gen-grpc-java:1.18.0'
+    }
+  }
+  generateProtoTasks {
+    all()*.plugins {
+      grpc {}
+    }
+  }
+}
