@@ -41,14 +41,14 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
     private final HandlerExceptionResolver handlerExceptionResolver;
 	private final JwtDetailsMapper<T> detailsMapper;
 
-    public JwtAuthenticationFilter(JwtVerifier<T> verifier, boolean required, JwtAuthorityMapper<T> authorityMapper, JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtClaimExtractor<T> extractor, HandlerExceptionResolver handlerExceptionResolver, JwtDetailsMapper<T> contextMapper) {
+    public JwtAuthenticationFilter(JwtVerifier<T> verifier, boolean required, JwtAuthorityMapper<T> authorityMapper, JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtClaimExtractor<T> extractor, HandlerExceptionResolver handlerExceptionResolver, JwtDetailsMapper<T> detailsMapper) {
         this.verifier = verifier;
         this.authorityMapper = authorityMapper;
         this.mdcMapper = mdcMapper;
         this.extractor = extractor;
         this.required = required;
         this.handlerExceptionResolver = handlerExceptionResolver;
-        this.detailsMapper = contextMapper;
+        this.detailsMapper = detailsMapper;
     }
 
     @Override

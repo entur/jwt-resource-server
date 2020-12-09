@@ -24,36 +24,36 @@ import org.springframework.security.access.vote.AuthenticatedVoter;
 @Configuration
 public class JwtCamelAutoConfiguration {
 
-    @Bean(name = "validTokenAccessPolicy")
-    public SpringSecurityAuthorizationPolicy validTokenAccessPolicy() {
-        SpringSecurityAuthorizationPolicy policy = new SpringSecurityAuthorizationPolicy();
-        policy.setAccessDecisionManager(accessDecisionManager());
-        policy.setAuthenticationManager(new JwtAuthenticationManager());
-        policy.setUseThreadSecurityContext(false); // rather set authentication on message
+	@Bean(name = "validTokenAccessPolicy")
+	public SpringSecurityAuthorizationPolicy validTokenAccessPolicy() {
+		SpringSecurityAuthorizationPolicy policy = new SpringSecurityAuthorizationPolicy();
+		policy.setAccessDecisionManager(accessDecisionManager());
+		policy.setAuthenticationManager(new JwtAuthenticationManager());
+		policy.setUseThreadSecurityContext(false); // rather set authentication on message
 
-        SpringSecurityAccessPolicy p = new SpringSecurityAccessPolicy(AuthenticatedVoter.IS_AUTHENTICATED_FULLY);
-        policy.setSpringSecurityAccessPolicy(p);
+		SpringSecurityAccessPolicy p = new SpringSecurityAccessPolicy(AuthenticatedVoter.IS_AUTHENTICATED_FULLY);
+		policy.setSpringSecurityAccessPolicy(p);
 
-        return policy;
-    }
+		return policy;
+	}
 
-    protected AccessDecisionManager accessDecisionManager() {
-        List<AccessDecisionVoter<?>> voters = new ArrayList<>();
-        voters.add(authenticatedVoter());
-        return new AffirmativeBased(voters);
-    }
+	protected AccessDecisionManager accessDecisionManager() {
+		List<AccessDecisionVoter<?>> voters = new ArrayList<>();
+		voters.add(authenticatedVoter());
+		return new AffirmativeBased(voters);
+	}
 
-    @Bean
-    @ConditionalOnMissingBean(AuthenticatedVoter.class)
-    public AuthenticatedVoter authenticatedVoter() {
-        return new AuthenticatedVoter();
-    }
-    
-    @Bean
-    @ConditionalOnMissingBean(JwtAuthenticationProcessor.class)
-    @ConditionalOnProperty(name = { "entur.jwt.enabled" }, havingValue = "true", matchIfMissing = false)
-    public <T> JwtAuthenticationProcessor jwtAuthenticationProcessor(JwtVerifier<T> verifier, JwtAuthorityMapper<T> authorityMapper, JwtClaimExtractor<T> extractor, JwtDetailsMapper<T> detailsMapper) {
-        return new DefaultJwtAuthenticationProcessor(verifier, authorityMapper, extractor, detailsMapper);
-    }
+	@Bean
+	@ConditionalOnMissingBean(AuthenticatedVoter.class)
+	public AuthenticatedVoter authenticatedVoter() {
+		return new AuthenticatedVoter();
+	}
+
+	@Bean
+	@ConditionalOnMissingBean(JwtAuthenticationProcessor.class)
+	@ConditionalOnProperty(name = { "entur.jwt.enabled" }, havingValue = "true", matchIfMissing = false)
+	public <T> JwtAuthenticationProcessor jwtAuthenticationProcessor(JwtVerifier<T> verifier, JwtAuthorityMapper<T> authorityMapper, JwtClaimExtractor<T> extractor, JwtDetailsMapper<T> detailsMapper) {
+		return new DefaultJwtAuthenticationProcessor(verifier, authorityMapper, extractor, detailsMapper);
+	}
 
 }
