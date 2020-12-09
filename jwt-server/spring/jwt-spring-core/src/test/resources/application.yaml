@@ -17,3 +17,18 @@ entur:
   cors:
     enabled: true
     mode: api
+  authorization:
+    permit-all:
+      mvc-matcher:
+        patterns:
+         - /actuator/health
+         - /actuator/health/*
+management:
+  health:
+    probes:
+      enabled: true
+  endpoint:
+    health:
+      group:
+        readiness:
+          include: readinessState,jwks

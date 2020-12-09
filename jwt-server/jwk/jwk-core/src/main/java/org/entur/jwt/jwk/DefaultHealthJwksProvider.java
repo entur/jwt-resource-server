@@ -62,10 +62,13 @@ public class DefaultHealthJwksProvider<T> extends BaseJwksProvider<T> {
                 // so was this provider actually invoked?
                 // check whether we got a new status
                 if (this.status != threadSafeStatus) {
+                	// status was updates, keep it
                     threadSafeStatus = this.status;
                 } else {
+                	// status was not updated. 
+                	// 
                     // assume a provider above this instance
-                    // was able to compensate somehow
+                    // was able to compensate somehow, i.e. by using a fallback cache
                     threadSafeStatus = new JwksHealth(System.currentTimeMillis(), true);
                 }
             }

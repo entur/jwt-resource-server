@@ -4,7 +4,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfiguration;
-import org.entur.jwt.junit5.impl.DefaultAccessTokenEncoder;
 import org.junit.jupiter.api.extension.ParameterContext;
 
 public class MyAccessTokenEncoder extends DefaultAccessTokenEncoder {

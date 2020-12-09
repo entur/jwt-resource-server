@@ -332,7 +332,7 @@ public class JwtAutoConfiguration {
     @Bean
     @ConditionalOnProperty(name = { "entur.jwt.jwk.health-indicator.enabled" }, havingValue = "true", matchIfMissing = true)
     @ConditionalOnBean(JwtVerifier.class)
-    public <T> JwksHealthIndicator jwksProviderHealthIndicator(JwtVerifier<T> verifier) {
+    public <T> JwksHealthIndicator jwksHealthIndicator(JwtVerifier<T> verifier) {
         return new JwksHealthIndicator(verifier);
     }
 
