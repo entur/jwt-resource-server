@@ -24,5 +24,11 @@
 	   <cve>CVE-2020-5407</cve>
 	</suppress>
 	
-	
+	<!-- micrometer false positive -->
+	<suppress>
+	   <cve>CVE-2008-1392</cve>
+	</suppress>
+	<suppress>
+	   <cve>CVE-2009-1147</cve>
+	</suppress>
 </suppressions>

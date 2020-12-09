@@ -42,7 +42,7 @@ import net.jadler.stubbing.StubResponse;
  */
 
 public class EnturJWKSourceTest {
-
+	
     @BeforeEach
     public void setUp() {
         initJadler();
@@ -70,7 +70,7 @@ public class EnturJWKSourceTest {
 
         URL jwkSetURL = new URL("http://localhost:" + port() + "/jwks.json");
 
-        onRequest().havingMethodEqualTo("GET").havingPathEqualTo("/jwks.json").respond().withStatus(200).withHeader("Content-Type", "application/json").withBody(jwkSet.toJSONObject(true).toJSONString());
+        onRequest().havingMethodEqualTo("GET").havingPathEqualTo("/jwks.json").respond().withStatus(200).withHeader("Content-Type", "application/json").withBody(jwkSet.toString());
 
         JWKSource<SecurityContext> jwkSetSource = Connect2IdJwkProviderBuilder.newBuilder(jwkSetURL, 15000, 15000).build();
 
@@ -101,7 +101,7 @@ public class EnturJWKSourceTest {
 
         URL jwkSetURL = new URL("http://localhost:" + port() + "/jwks.json");
 
-        onRequest().havingMethodEqualTo("GET").havingPathEqualTo("/jwks.json").respond().withStatus(200).withHeader("Content-Type", "application/json").withBody(jwkSet.toJSONObject(true).toJSONString());
+        onRequest().havingMethodEqualTo("GET").havingPathEqualTo("/jwks.json").respond().withStatus(200).withHeader("Content-Type", "application/json").withBody(jwkSet.toString());
 
         JWKSource<SecurityContext> jwkSetSource = Connect2IdJwkProviderBuilder.newBuilder(jwkSetURL, 15000, 15000).build();
 
@@ -146,11 +146,11 @@ public class EnturJWKSourceTest {
 
                 if (count == 0) {
                     ++count;
-                    return StubResponse.builder().status(200).header("Content-Type", "application/json").body(new JWKSet(Arrays.asList((JWK) rsaJWK1, (JWK) rsaJWK2)).toJSONObject().toJSONString(), Charset.forName("UTF-8")).build();
+                    return StubResponse.builder().status(200).header("Content-Type", "application/json").body(new JWKSet(Arrays.asList((JWK) rsaJWK1, (JWK) rsaJWK2)).toString(), Charset.forName("UTF-8")).build();
                 }
 
                 // Add 3rd key
-                return StubResponse.builder().status(200).header("Content-Type", "application/json").body(new JWKSet(Arrays.asList((JWK) rsaJWK1, (JWK) rsaJWK2, (JWK) rsaJWK3)).toJSONObject().toJSONString(), Charset.forName("UTF-8"))
+                return StubResponse.builder().status(200).header("Content-Type", "application/json").body(new JWKSet(Arrays.asList((JWK) rsaJWK1, (JWK) rsaJWK2, (JWK) rsaJWK3)).toString(), Charset.forName("UTF-8"))
                         .build();
             }
         });
@@ -194,7 +194,7 @@ public class EnturJWKSourceTest {
 
         URL jwkSetURL = new URL("http://localhost:" + port() + "/invalid-path");
 
-        onRequest().havingMethodEqualTo("GET").havingPathEqualTo("/jwks.json").respond().withStatus(200).withHeader("Content-Type", "application/json").withBody(jwkSet.toJSONObject(true).toJSONString());
+        onRequest().havingMethodEqualTo("GET").havingPathEqualTo("/jwks.json").respond().withStatus(200).withHeader("Content-Type", "application/json").withBody(jwkSet.toJSONObject(true).toString());
 
         JWKSource<SecurityContext> jwkSetSource = Connect2IdJwkProviderBuilder.newBuilder(jwkSetURL, 15000, 15000).build();
 

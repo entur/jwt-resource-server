@@ -10,10 +10,10 @@
 	<artifactId>jwt-spring-camel</artifactId>
 
 	<properties>
-		<spring-boot.version>2.1.14.RELEASE</spring-boot.version>
-		<spring.version>5.1.15.RELEASE</spring.version>
+		<spring-boot.version>2.1.18.RELEASE</spring-boot.version>
+		<spring.version>5.1.18.RELEASE</spring.version>
 		
-		<tomcat.version>9.0.35</tomcat.version>
+		<tomcat.version>9.0.40</tomcat.version>
 	</properties>
 
 	<dependencyManagement>
