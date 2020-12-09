@@ -19,7 +19,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 /**
  * 
  * Test readiness probe repair. 
@@ -29,9 +28,8 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
  * 
  */
 
-@ExtendWith(SpringExtension.class)
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @AuthorizationServer("unreliable")
+@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 public class ReadinessEndpointDownTest {
 
     @LocalServerPort

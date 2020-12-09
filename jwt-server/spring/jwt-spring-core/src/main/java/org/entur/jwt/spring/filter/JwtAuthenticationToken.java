@@ -25,7 +25,7 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
     private final Map<String, Object> claims;
     private String credentials;
 
-    public JwtAuthenticationToken(Map<String, Object> claims, String credentials, Collection<? extends GrantedAuthority> authorities) {
+    public JwtAuthenticationToken(Map<String, Object> claims, String credentials, Collection<? extends GrantedAuthority> authorities, Object details) {
         super(authorities);
         if (!(claims instanceof Serializable)) {
             throw new IllegalArgumentException("Map of claims must be serializable");
@@ -33,7 +33,7 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
         this.claims = claims;
         this.credentials = credentials;
         super.setAuthenticated(true); // must use super, as we override
-        super.setDetails(claims);
+        super.setDetails(details);
     }
 
     public String getCredentials() {

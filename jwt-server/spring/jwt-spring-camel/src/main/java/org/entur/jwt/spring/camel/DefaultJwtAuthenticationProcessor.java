@@ -14,6 +14,7 @@ import org.entur.jwt.jwk.JwksServiceException;
 import org.entur.jwt.spring.filter.JwtAuthenticationServiceUnavailableException;
 import org.entur.jwt.spring.filter.JwtAuthenticationToken;
 import org.entur.jwt.spring.filter.JwtAuthorityMapper;
+import org.entur.jwt.spring.filter.JwtDetailsMapper;
 import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.entur.jwt.verifier.JwtException;
 import org.entur.jwt.verifier.JwtServiceException;
@@ -46,12 +47,14 @@ public class DefaultJwtAuthenticationProcessor implements JwtAuthenticationProce
     private final JwtVerifier verifier;
     private final JwtAuthorityMapper authorityMapper;
     private final JwtClaimExtractor extractor;
+    private final JwtDetailsMapper detailsMapper;
 
-    public <T> DefaultJwtAuthenticationProcessor(JwtVerifier<T> verifier, JwtAuthorityMapper<T> authorityMapper, JwtClaimExtractor<T> extractor) {
+    public <T> DefaultJwtAuthenticationProcessor(JwtVerifier<T> verifier, JwtAuthorityMapper<T> authorityMapper, JwtClaimExtractor<T> extractor, JwtDetailsMapper detailsMapper) {
         super();
         this.verifier = verifier;
         this.authorityMapper = authorityMapper;
         this.extractor = extractor;
+        this.detailsMapper = detailsMapper;
     }
 
     @SuppressWarnings("unchecked")
@@ -80,7 +83,7 @@ public class DefaultJwtAuthenticationProcessor implements JwtAuthenticationProce
 
                             Map<String, Object> claims = extractor.getClaims(token);
 
-                            authentication = new JwtAuthenticationToken(claims, bearerToken, authorities);
+                            authentication = new JwtAuthenticationToken(claims, bearerToken, authorities, detailsMapper.getDetails(exchange, token));
                         } else {
                             throw new BadCredentialsException("Unknown issuer");
                         }

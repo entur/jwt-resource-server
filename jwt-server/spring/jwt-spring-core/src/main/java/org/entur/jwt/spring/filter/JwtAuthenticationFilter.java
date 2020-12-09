@@ -1,6 +1,7 @@
 package org.entur.jwt.spring.filter;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -38,14 +39,16 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
     private final JwtClaimExtractor<T> extractor;
     private final boolean required;
     private final HandlerExceptionResolver handlerExceptionResolver;
+	private final JwtDetailsMapper<T> detailsMapper;
 
-    public JwtAuthenticationFilter(JwtVerifier<T> verifier, boolean required, JwtAuthorityMapper<T> authorityMapper, JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtClaimExtractor<T> extractor, HandlerExceptionResolver handlerExceptionResolver) {
+    public JwtAuthenticationFilter(JwtVerifier<T> verifier, boolean required, JwtAuthorityMapper<T> authorityMapper, JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtClaimExtractor<T> extractor, HandlerExceptionResolver handlerExceptionResolver, JwtDetailsMapper<T> contextMapper) {
         this.verifier = verifier;
         this.authorityMapper = authorityMapper;
         this.mdcMapper = mdcMapper;
         this.extractor = extractor;
         this.required = required;
         this.handlerExceptionResolver = handlerExceptionResolver;
+        this.detailsMapper = contextMapper;
     }
 
     @Override
@@ -65,7 +68,9 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
 
                     Map<String, Object> claims = extractor.getClaims(token);
                     
-                    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(claims, bearerToken, authorities));
+                    Object details = detailsMapper.getDetails(request, token);
+                    
+                    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(claims, bearerToken, authorities, details));
 
                     if (mdcMapper != null) {
                         mdcMapper.addContext(token);

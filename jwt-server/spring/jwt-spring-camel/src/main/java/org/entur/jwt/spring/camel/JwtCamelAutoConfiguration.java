@@ -3,9 +3,11 @@ package org.entur.jwt.spring.camel;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.camel.Exchange;
 import org.apache.camel.component.spring.security.SpringSecurityAccessPolicy;
 import org.apache.camel.component.spring.security.SpringSecurityAuthorizationPolicy;
 import org.entur.jwt.spring.filter.JwtAuthorityMapper;
+import org.entur.jwt.spring.filter.JwtDetailsMapper;
 import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.entur.jwt.verifier.JwtVerifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -46,12 +48,12 @@ public class JwtCamelAutoConfiguration {
     public AuthenticatedVoter authenticatedVoter() {
         return new AuthenticatedVoter();
     }
-
+    
     @Bean
     @ConditionalOnMissingBean(JwtAuthenticationProcessor.class)
     @ConditionalOnProperty(name = { "entur.jwt.enabled" }, havingValue = "true", matchIfMissing = false)
-    public <T> JwtAuthenticationProcessor jwtAuthenticationProcessor(JwtVerifier<T> verifier, JwtAuthorityMapper<T> authorityMapper, JwtClaimExtractor<T> extractor) {
-        return new DefaultJwtAuthenticationProcessor(verifier, authorityMapper, extractor);
+    public <T> JwtAuthenticationProcessor jwtAuthenticationProcessor(JwtVerifier<T> verifier, JwtAuthorityMapper<T> authorityMapper, JwtClaimExtractor<T> extractor, JwtDetailsMapper<T> detailsMapper) {
+        return new DefaultJwtAuthenticationProcessor(verifier, authorityMapper, extractor, detailsMapper);
     }
 
 }
