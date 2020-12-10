@@ -1,5 +1,6 @@
 package org.entur.jwt.spring;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,8 +16,12 @@ public class TenantsProperties {
 	private Map<String, TenantProperties> names = new HashMap<>();
 	
 	public void add(TenantProperties properties) {
-		names.put(properties.getName(), properties);
-		issuers.put(properties.getIssuer(), properties);
+		if(names.put(properties.getName(), properties) != null) {
+			throw new IllegalStateException();
+		};
+		if(issuers.put(properties.getIssuer(), properties) != null) {
+			throw new IllegalStateException();
+		};
 	}
 	
 	public TenantProperties getByIssuer(String issuer) {
@@ -24,5 +29,9 @@ public class TenantsProperties {
 	}
 	public TenantProperties getByName(String issuer) {
 		return issuers.get(issuer);
+	}
+	
+	public Collection<TenantProperties> getAll() {
+		return issuers.values(); 
 	}
 }
