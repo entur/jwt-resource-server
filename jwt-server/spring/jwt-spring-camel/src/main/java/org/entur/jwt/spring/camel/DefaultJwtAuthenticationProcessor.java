@@ -1,5 +1,6 @@
 package org.entur.jwt.spring.camel;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -86,8 +87,8 @@ public class DefaultJwtAuthenticationProcessor implements JwtAuthenticationProce
 
                             Map<String, Object> claims = extractor.getClaims(token);
 
-                            Object principal = principalMapper.getPrincipal(claims);
-                            Object details = detailsMapper.getDetails(exchange, claims);
+                            Serializable principal = principalMapper.getPrincipal(claims);
+                            Serializable details = detailsMapper.getDetails(exchange, claims);
                             authentication = new JwtAuthenticationToken(claims, bearerToken, authorities, principal, details);
                         } else {
                             throw new BadCredentialsException("Unknown issuer");

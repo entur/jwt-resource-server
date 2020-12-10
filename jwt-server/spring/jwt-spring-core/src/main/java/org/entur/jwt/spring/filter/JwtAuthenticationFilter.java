@@ -1,7 +1,7 @@
 package org.entur.jwt.spring.filter;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -70,8 +70,8 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
 
                     Map<String, Object> claims = extractor.getClaims(token);
                     
-                    Object details = detailsMapper.getDetails(request, claims);
-                    Object principal = principalMapper.getPrincipal(claims);
+                    Serializable details = detailsMapper.getDetails(request, claims);
+                    Serializable principal = principalMapper.getPrincipal(claims);
                     
                     SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(claims, bearerToken, authorities, principal, details));
 

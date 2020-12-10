@@ -23,9 +23,9 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
     // also this is more generic
     private final Map<String, Object> claims;
     private String credentials;
-    private Object principal;
+    private Serializable principal;
 
-    public JwtAuthenticationToken(Map<String, Object> claims, String credentials, Collection<? extends GrantedAuthority> authorities, Object principal, Object details) {
+    public JwtAuthenticationToken(Map<String, Object> claims, String credentials, Collection<? extends GrantedAuthority> authorities, Serializable principal, Serializable details) {
         super(authorities);
         if (!(claims instanceof Serializable)) {
             throw new IllegalArgumentException("Map of claims must be serializable");

@@ -3,7 +3,6 @@ package org.entur.jwt.spring.camel;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.camel.Exchange;
 import org.apache.camel.component.spring.security.SpringSecurityAccessPolicy;
 import org.apache.camel.component.spring.security.SpringSecurityAuthorizationPolicy;
 import org.entur.jwt.spring.filter.JwtAuthorityMapper;

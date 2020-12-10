@@ -18,10 +18,10 @@ public class TenantsProperties {
 	public void add(TenantProperties properties) {
 		if(names.put(properties.getName(), properties) != null) {
 			throw new IllegalStateException();
-		};
+		}
 		if(issuers.put(properties.getIssuer(), properties) != null) {
 			throw new IllegalStateException();
-		};
+		}
 	}
 	
 	public TenantProperties getByIssuer(String issuer) {

@@ -1,5 +1,6 @@
 package org.entur.jwt.spring.filter;
 
+import java.io.Serializable;
 import java.util.Map;
 
 import org.entur.jwt.verifier.JwtException;
@@ -20,6 +21,6 @@ public interface JwtPrincipalMapper {
 	 * @throws JwtException if an unexpected error
 	 */
 	
-    Object getPrincipal(Map<String, Object> claims) throws JwtException;
+	Serializable getPrincipal(Map<String, Object> claims) throws JwtException;
 
 }
