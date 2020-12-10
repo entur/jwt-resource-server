@@ -8,6 +8,7 @@ import org.apache.camel.component.spring.security.SpringSecurityAccessPolicy;
 import org.apache.camel.component.spring.security.SpringSecurityAuthorizationPolicy;
 import org.entur.jwt.spring.filter.JwtAuthorityMapper;
 import org.entur.jwt.spring.filter.JwtDetailsMapper;
+import org.entur.jwt.spring.filter.JwtPrincipalMapper;
 import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.entur.jwt.verifier.JwtVerifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -52,8 +53,8 @@ public class JwtCamelAutoConfiguration {
 	@Bean
 	@ConditionalOnMissingBean(JwtAuthenticationProcessor.class)
 	@ConditionalOnProperty(name = { "entur.jwt.enabled" }, havingValue = "true", matchIfMissing = false)
-	public <T> JwtAuthenticationProcessor jwtAuthenticationProcessor(JwtVerifier<T> verifier, JwtAuthorityMapper<T> authorityMapper, JwtClaimExtractor<T> extractor, JwtDetailsMapper<T> detailsMapper) {
-		return new DefaultJwtAuthenticationProcessor(verifier, authorityMapper, extractor, detailsMapper);
+	public <T> JwtAuthenticationProcessor jwtAuthenticationProcessor(JwtVerifier<T> verifier, JwtAuthorityMapper<T> authorityMapper, JwtClaimExtractor<T> extractor, JwtPrincipalMapper jwtPrincipalMapper, JwtDetailsMapper detailsMapper) {
+		return new DefaultJwtAuthenticationProcessor(verifier, authorityMapper, extractor, jwtPrincipalMapper, detailsMapper);
 	}
 
 }

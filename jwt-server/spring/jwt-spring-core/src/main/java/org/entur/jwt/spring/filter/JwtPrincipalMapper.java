@@ -10,17 +10,16 @@ import org.entur.jwt.verifier.JwtException;
  * 
  */
 
-public interface JwtDetailsMapper {
+public interface JwtPrincipalMapper {
 
 	/**
-	 * Get details for token, in a context (servlet request, camel exchange etc)
+	 * Get principal for token, in a context (servlet request, camel exchange etc)
 	 * 
-	 * @param context current context
 	 * @param claims from verified token
-	 * @return authentication details
+	 * @return authentication principal
 	 * @throws JwtException if an unexpected error
 	 */
 	
-    Object getDetails(Object context, Map<String, Object> claims) throws JwtException;
+    Object getPrincipal(Map<String, Object> claims) throws JwtException;
 
 }

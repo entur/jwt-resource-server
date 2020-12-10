@@ -39,15 +39,17 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
     private final JwtClaimExtractor<T> extractor;
     private final boolean required;
     private final HandlerExceptionResolver handlerExceptionResolver;
-	private final JwtDetailsMapper<T> detailsMapper;
+	private final JwtDetailsMapper detailsMapper;
+	private final JwtPrincipalMapper principalMapper;
 
-    public JwtAuthenticationFilter(JwtVerifier<T> verifier, boolean required, JwtAuthorityMapper<T> authorityMapper, JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtClaimExtractor<T> extractor, HandlerExceptionResolver handlerExceptionResolver, JwtDetailsMapper<T> detailsMapper) {
+    public JwtAuthenticationFilter(JwtVerifier<T> verifier, boolean required, JwtAuthorityMapper<T> authorityMapper, JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtClaimExtractor<T> extractor, HandlerExceptionResolver handlerExceptionResolver, JwtPrincipalMapper principalMapper, JwtDetailsMapper detailsMapper) {
         this.verifier = verifier;
         this.authorityMapper = authorityMapper;
         this.mdcMapper = mdcMapper;
         this.extractor = extractor;
         this.required = required;
         this.handlerExceptionResolver = handlerExceptionResolver;
+        this.principalMapper = principalMapper;
         this.detailsMapper = detailsMapper;
     }
 
@@ -68,9 +70,10 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
 
                     Map<String, Object> claims = extractor.getClaims(token);
                     
-                    Object details = detailsMapper.getDetails(request, token);
+                    Object details = detailsMapper.getDetails(request, claims);
+                    Object principal = principalMapper.getPrincipal(claims);
                     
-                    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(claims, bearerToken, authorities, details));
+                    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(claims, bearerToken, authorities, principal, details));
 
                     if (mdcMapper != null) {
                         mdcMapper.addContext(token);
