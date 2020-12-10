@@ -240,8 +240,9 @@ public class JwtAutoConfiguration {
     	
     	for (Entry<String, JwtTenantProperties> entry : properties.getJwt().getTenants().entrySet()) {
 			JwtTenantProperties value = entry.getValue();
-			
-			tenantsProperties.add(new TenantProperties(entry.getKey(), value.getIssuer(), value.getProperties()));
+			if(value.isEnabled()) {
+				tenantsProperties.add(new TenantProperties(entry.getKey(), value.getIssuer(), value.getProperties()));
+			}
 		}
     	
     	return tenantsProperties;
