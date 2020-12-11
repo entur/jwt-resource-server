@@ -48,6 +48,10 @@ public interface GrpcAuthorization {
     	requireAnyAudience(set);
     }
 
+    public default void requireAnyAudience(Collection<String> audiences) {
+        requireAnyAudience(new HashSet<>(audiences));
+    }
+    
     public default void requireAnyAudience(Set<String> audiences) {
         Object object = GrpcAuthorization.SECURITY_CONTEXT_AUTHENTICATION.get();
         if(object instanceof JwtAuthenticationToken) {
@@ -58,6 +62,10 @@ public interface GrpcAuthorization {
         } else {
         	throw new AuthenticationCredentialsNotFoundException("");
         }
+    }
+
+    public default boolean hasAnyAudience(JwtAuthenticationToken authentication, Collection<String> audiences) {
+        return hasAnyAudience(authentication, new HashSet<>(audiences));
     }
 
 	public default boolean hasAnyAudience(JwtAuthenticationToken authentication, Set<String> audiences) {
@@ -89,6 +97,10 @@ public interface GrpcAuthorization {
 		}
 		return false;
 	}
+
+    public default void requireAllAuthorities(Collection<String> authorities) {
+        requireAllAuthorities(new HashSet<>(authorities));
+    }
 
     public default void requireAllAuthorities(String ... authorities) {
     	Set<String> set = new HashSet<>();
