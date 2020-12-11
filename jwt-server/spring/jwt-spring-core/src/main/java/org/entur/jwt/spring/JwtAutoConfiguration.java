@@ -32,6 +32,7 @@ import org.entur.jwt.spring.properties.MdcPair;
 import org.entur.jwt.spring.properties.MdcProperties;
 import org.entur.jwt.spring.properties.PermitAll;
 import org.entur.jwt.spring.properties.SecurityProperties;
+import org.entur.jwt.spring.properties.TenantFilter;
 import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.entur.jwt.verifier.JwtVerifier;
 import org.entur.jwt.verifier.JwtVerifierFactory;
@@ -217,18 +218,28 @@ public class JwtAutoConfiguration {
         }
 
         Map<String, JwtTenantProperties> tenants;
-        List<String> filter = jwtProperties.getFilter();
-        if (filter != null) {
-            if (filter.isEmpty()) {
-                throw new IllegalStateException("Tenant filter is empty");
-            }
+        TenantFilter filter = jwtProperties.getFilter();
+        if (!filter.isEmpty()) {
             tenants = new HashMap<>();
 
             // filter on key
-            for(String key : filter) {
-                JwtTenantProperties candidate = enabledTenants.get(key);
-                if(candidate != null) {
-                    tenants.put(key, candidate);
+            for(String key : filter.getKeys()) {
+                key = key.trim();
+
+                boolean endsWith = key.endsWith("*");
+                        
+                if(endsWith) {
+                    String prefix = key.substring(0, key.length() - 1);
+                    for (Entry<String, JwtTenantProperties> entry : enabledTenants.entrySet()) {
+                        if(entry.getKey().startsWith(prefix)) {
+                            tenants.put(key, entry.getValue());
+                        }
+                    }
+                } else {
+                    JwtTenantProperties candidate = enabledTenants.get(key);
+                    if(candidate != null) {
+                        tenants.put(key, candidate);
+                    }
                 }
             }
         } else {

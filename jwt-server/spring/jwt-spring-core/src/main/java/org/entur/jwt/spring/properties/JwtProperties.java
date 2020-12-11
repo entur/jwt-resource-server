@@ -1,7 +1,6 @@
 package org.entur.jwt.spring.properties;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.entur.jwt.verifier.config.JwtClaimsProperties;
@@ -21,7 +20,7 @@ public class JwtProperties {
      * is shared across multiple applications, i.e. like a common config-map in
      * Kubernetes.
      */
-    private List<String> filter = null; //
+    private TenantFilter filter = new TenantFilter(); //
 
     private JwkProperties jwk = new JwkProperties();
 
@@ -59,11 +58,11 @@ public class JwtProperties {
         this.mdc = mdc;
     }
 
-    public List<String> getFilter() {
+    public TenantFilter getFilter() {
         return filter;
     }
 
-    public void setFilter(List<String> filter) {
+    public void setFilter(TenantFilter filter) {
         this.filter = filter;
     }
 
