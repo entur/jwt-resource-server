@@ -6,9 +6,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.entur.jwt.spring.actuate.JwksHealthIndicator;
 import org.entur.jwt.spring.filter.JwtAuthenticationExceptionAdvice;
@@ -203,34 +205,44 @@ public class JwtAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(JwtVerifier.class)
     public <T> JwtVerifier<T> verifier(SecurityProperties properties, JwtVerifierFactory<T> factory) {
-        Map<String, JwtTenantProperties> tenants = new HashMap<>();
-
         JwtProperties jwtProperties = properties.getJwt();
 
+        Map<String, JwtTenantProperties> enabledTenants = new HashMap<>();
+        for (Entry<String, JwtTenantProperties> entry : jwtProperties.getTenants().entrySet()) {
+            if (entry.getValue().isEnabled()) {
+                enabledTenants.put(entry.getKey(), entry.getValue());
+            }
+        }
+
+        Map<String, JwtTenantProperties> tenants;
         List<String> filter = jwtProperties.getFilter();
         if (filter != null) {
             if (filter.isEmpty()) {
                 throw new IllegalStateException("Tenant filter is empty");
             }
-            // filter on name
-            for (Entry<String, JwtTenantProperties> entry : jwtProperties.getTenants().entrySet()) {
-                String id = entry.getKey();
-                if (id != null && filter.contains(id) && entry.getValue().isEnabled()) {
-                    tenants.put(id, entry.getValue());
+            tenants = new HashMap<>();
+
+            // filter on key
+            for(String key : filter) {
+                JwtTenantProperties candidate = enabledTenants.get(key);
+                if(candidate != null) {
+                    tenants.put(key, candidate);
                 }
             }
         } else {
-            tenants.putAll(jwtProperties.getTenants());
+            tenants = enabledTenants;
         }
         if (tenants.isEmpty()) {
+            Set<String> disabled = new HashSet<>(jwtProperties.getTenants().keySet());
+            disabled.removeAll(enabledTenants.keySet());
             if (filter != null) {
-                throw new IllegalStateException("No configured tenants for filter '" + filter + "'");
+                throw new IllegalStateException("No configured tenants for filter '" + filter + "', candidates were " + enabledTenants.keySet() + " (" + disabled + " were disabled)" );
             } else {
-                throw new IllegalStateException("No configured tenants");
+                throw new IllegalStateException("No configured tenants (" + disabled + " were disabled)");
             }
         }
 
-        return factory.getVerifier(tenants, jwtProperties.getJwk(), jwtProperties.getClaims());
+        return factory.getVerifier(enabledTenants, jwtProperties.getJwk(), jwtProperties.getClaims());
     }
 
     @Bean
