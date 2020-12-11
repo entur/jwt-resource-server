@@ -31,7 +31,7 @@ public class UnauthenticatedTest extends AbstractGrpcTest {
             stub().protectedWithPartnerTenant(greetingRequest);
         });
         assertThat(exception.getStatus().getCode()).isEqualTo(Status.Code.UNAUTHENTICATED);
-    }    
+    }
     
     @Test 
     public void testUnprotectedResource() {

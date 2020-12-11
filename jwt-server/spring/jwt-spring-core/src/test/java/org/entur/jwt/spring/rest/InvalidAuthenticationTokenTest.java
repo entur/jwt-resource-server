@@ -2,7 +2,10 @@ package org.entur.jwt.spring.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
+import org.entur.jwt.junit5.headers.KeyIdHeader;
+import org.entur.jwt.junit5.sabotage.Signature;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -55,4 +58,29 @@ public class InvalidAuthenticationTokenTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
+    @Test 
+    public void testProtectedResourceWithInvalidSignature(@AccessToken(audience = "https://my.audience") @Signature("cheat") String header) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "Bearer hvaomshelst");
+        HttpEntity<String> entity = new HttpEntity<String>(headers);
+        
+        String url = "http://localhost:" + randomServerPort + "/protected";
+        
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+    
+    @Test 
+    public void testProtectedResourceWithInvalidKeyId(@AccessToken(audience = "https://my.audience") @KeyIdHeader("abc") String header) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "Bearer hvaomshelst");
+        HttpEntity<String> entity = new HttpEntity<String>(headers);
+        
+        String url = "http://localhost:" + randomServerPort + "/protected";
+        
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+    
+    
 }
