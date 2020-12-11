@@ -224,17 +224,17 @@ public class JwtAutoConfiguration {
 
             // filter on key
             for(String key : filter) {
-            	JwtTenantProperties candidate = enabledTenants.get(key);
-            	if(candidate != null) {
-            		tenants.put(key, candidate);
-            	}
+                JwtTenantProperties candidate = enabledTenants.get(key);
+                if(candidate != null) {
+                    tenants.put(key, candidate);
+                }
             }
         } else {
-        	tenants = enabledTenants;
+            tenants = enabledTenants;
         }
         if (tenants.isEmpty()) {
-        	Set<String> disabled = new HashSet<>(jwtProperties.getTenants().keySet());
-        	disabled.removeAll(enabledTenants.keySet());
+            Set<String> disabled = new HashSet<>(jwtProperties.getTenants().keySet());
+            disabled.removeAll(enabledTenants.keySet());
             if (filter != null) {
                 throw new IllegalStateException("No configured tenants for filter '" + filter + "', candidates were " + enabledTenants.keySet() + " (" + disabled + " were disabled)" );
             } else {

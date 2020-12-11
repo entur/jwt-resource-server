@@ -35,7 +35,7 @@ import org.springframework.core.io.support.ResourcePropertySource;
 public class JwtEnvironmentPostProcessor implements EnvironmentPostProcessor {
 
     private static final Log logger = LogFactory.getLog(JwtEnvironmentPostProcessor.class);
-
+    
     public static final String PROPERTY_PREFIX = "entur.jwt.tenants.";
     public static final String PROPERTY_SOURCE_NAME = "jwtJunit5Properties";
 
@@ -59,32 +59,32 @@ public class JwtEnvironmentPostProcessor implements EnvironmentPostProcessor {
                 Set<String> configuredTentants = extractConfiguredTenants(environment.getPropertySources());
 
                 if(tenants.size() == 1 && configuredTentants.size() == 1) {
-                	// if only one mocked and one configured tenant
-                	// and no name for the mocked tenant was specified (i.e. its key was created on the fly)
-                	// then simplyify so that the configured tenant is mocked
-                	String mocked = tenants.iterator().next();
-                	String onTheFly = (String) junit5Properties.get(mocked + ON_THE_FLY_PROPERTY);
-                	if(onTheFly != null && Boolean.parseBoolean(onTheFly)) {
-                		// mock the configured one instead
-                		// TODO the mocked tenant will still have the on-the-fly name within the junit5 extension
-                		String target = configuredTentants.iterator().next();
+                    // if only one mocked and one configured tenant
+                    // and no name for the mocked tenant was specified (i.e. its key was created on the fly)
+                    // then simplyify so that the configured tenant is mocked
+                    String mocked = tenants.iterator().next();
+                    String onTheFly = (String) junit5Properties.get(mocked + ON_THE_FLY_PROPERTY);
+                    if(onTheFly != null && Boolean.parseBoolean(onTheFly)) {
+                        // mock the configured one instead
+                        // TODO the mocked tenant will still have the on-the-fly name within the junit5 extension
+                        String target = configuredTentants.iterator().next();
                         for (String string : new HashSet<>(junit5Properties.keySet())) {
-        					if(string.startsWith(mocked)) {
-        						String value = (String) junit5Properties.remove(string);
+                            if(string.startsWith(mocked)) {
+                                String value = (String) junit5Properties.remove(string);
 
-        						junit5Properties.put(target + string.substring(mocked.length()), value);
-        					}
-        				}
+                                junit5Properties.put(target + string.substring(mocked.length()), value);
+                            }
+                        }
                         tenants = new HashSet<>();
                         tenants.add(target);
-                	}
+                    }
                 }
 
                 for (String string : new HashSet<>(junit5Properties.keySet())) {
-					if(string.endsWith(ON_THE_FLY_PROPERTY)) {
-						junit5Properties.remove(string);
-					}
-				}
+                    if(string.endsWith(ON_THE_FLY_PROPERTY)) {
+                        junit5Properties.remove(string);
+                    }
+                }
                 // make sure that there is no mix of mocked and non-mocked issuers
                 if(!tenants.containsAll(configuredTentants)) {
                     configuredTentants.removeAll(tenants);
