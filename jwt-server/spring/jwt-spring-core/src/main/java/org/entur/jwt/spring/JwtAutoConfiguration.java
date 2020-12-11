@@ -13,9 +13,13 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.entur.jwt.spring.actuate.JwksHealthIndicator;
+import org.entur.jwt.spring.filter.DefaultJwtDetailsMapper;
+import org.entur.jwt.spring.filter.DefaultJwtPrincipalMapper;
 import org.entur.jwt.spring.filter.JwtAuthenticationExceptionAdvice;
 import org.entur.jwt.spring.filter.JwtAuthenticationFilter;
 import org.entur.jwt.spring.filter.JwtAuthorityMapper;
+import org.entur.jwt.spring.filter.JwtDetailsMapper;
+import org.entur.jwt.spring.filter.JwtPrincipalMapper;
 import org.entur.jwt.spring.filter.log.DefaultJwtMappedDiagnosticContextMapper;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
 import org.entur.jwt.spring.filter.resolver.JwtArgumentResolver;
@@ -162,8 +166,6 @@ public class JwtAutoConfiguration {
             resolvers.add(resolver);
         }
     }
-
-    
     
     @Configuration
     @ConditionalOnBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
@@ -245,10 +247,38 @@ public class JwtAutoConfiguration {
         return factory.getVerifier(enabledTenants, jwtProperties.getJwk(), jwtProperties.getClaims());
     }
 
+    
+    @Bean
+    @ConditionalOnMissingBean(TenantsProperties.class)
+    public TenantsProperties tenantsProperties(SecurityProperties properties) {
+        TenantsProperties tenantsProperties = new TenantsProperties();
+        
+        for (Entry<String, JwtTenantProperties> entry : properties.getJwt().getTenants().entrySet()) {
+            JwtTenantProperties value = entry.getValue();
+            if(value.isEnabled()) {
+                tenantsProperties.add(new TenantProperties(entry.getKey(), value.getIssuer(), value.getProperties()));
+            }
+        }
+        
+        return tenantsProperties;
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(JwtDetailsMapper.class)
+    public JwtDetailsMapper jwtDetailsMapper() {
+        return new DefaultJwtDetailsMapper();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(JwtPrincipalMapper.class)
+    public JwtPrincipalMapper jwtPrincipalMapper() {
+        return new DefaultJwtPrincipalMapper();
+    }
+
     @Bean
     @ConditionalOnMissingBean(JwtAuthenticationFilter.class)
     public <T> JwtAuthenticationFilter<T> auth(SecurityProperties properties, JwtVerifier<T> verifier, @Autowired(required = false) JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtAuthorityMapper<T> authorityMapper,
-            JwtClaimExtractor<T> extractor, @Lazy HandlerExceptionResolver handlerExceptionResolver) {
+            JwtClaimExtractor<T> extractor, @Lazy HandlerExceptionResolver handlerExceptionResolver, JwtPrincipalMapper jwtPrincipalMapper, JwtDetailsMapper jwtDetailsMapper) {
         AuthorizationProperties authorizationProperties = properties.getAuthorization();
 
         PermitAll permitAll = authorizationProperties.getPermitAll();
@@ -260,7 +290,7 @@ public class JwtAutoConfiguration {
         } else {
             log.info("Authentication with Json Web Token is optional");
         }
-        return new JwtAuthenticationFilter<>(verifier, tokenMustBePresent, authorityMapper, mdcMapper, extractor, handlerExceptionResolver);
+        return new JwtAuthenticationFilter<>(verifier, tokenMustBePresent, authorityMapper, mdcMapper, extractor, handlerExceptionResolver, jwtPrincipalMapper, jwtDetailsMapper);
     }
 
     @Bean("corsConfigurationSource")

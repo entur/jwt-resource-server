@@ -16,7 +16,6 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
 
     private static final long serialVersionUID = SpringSecurityCoreVersion.SERIAL_VERSION_UID;
 
-    private static final String CLAIM_SUBJECT = "sub";
     private static final String CLAIM_NAME = "name";
 
     // instead of principal we might have used the original token types here,
@@ -24,8 +23,9 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
     // also this is more generic
     private final Map<String, Object> claims;
     private String credentials;
+    private Serializable principal;
 
-    public JwtAuthenticationToken(Map<String, Object> claims, String credentials, Collection<? extends GrantedAuthority> authorities) {
+    public JwtAuthenticationToken(Map<String, Object> claims, String credentials, Collection<? extends GrantedAuthority> authorities, Serializable principal, Serializable details) {
         super(authorities);
         if (!(claims instanceof Serializable)) {
             throw new IllegalArgumentException("Map of claims must be serializable");
@@ -33,7 +33,8 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
         this.claims = claims;
         this.credentials = credentials;
         super.setAuthenticated(true); // must use super, as we override
-        super.setDetails(claims);
+        this.principal = principal;
+        super.setDetails(details);
     }
 
     public String getCredentials() {
@@ -47,8 +48,8 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
      * @return princial, or null
      */
 
-    public String getPrincipal() {
-        return (String) claims.get(CLAIM_SUBJECT);
+    public Object getPrincipal() {
+        return principal;
     }
 
     /**
