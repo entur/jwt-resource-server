@@ -50,7 +50,7 @@ public class GrpcAuthorizationTest implements GrpcAuthorization {
 		authorities.add(new SimpleGrantedAuthority("read"));
 		authorities.add(new SimpleGrantedAuthority("modify"));
 		
-		jwtAuthenticationToken = new JwtAuthenticationToken(claims, credentials, authorities);
+		jwtAuthenticationToken = new JwtAuthenticationToken(claims, credentials, authorities, "principal", "deails");
 
 	}
 

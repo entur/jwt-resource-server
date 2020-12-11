@@ -1,5 +1,6 @@
 package org.entur.jwt.spring.camel;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -14,6 +15,8 @@ import org.entur.jwt.jwk.JwksServiceException;
 import org.entur.jwt.spring.filter.JwtAuthenticationServiceUnavailableException;
 import org.entur.jwt.spring.filter.JwtAuthenticationToken;
 import org.entur.jwt.spring.filter.JwtAuthorityMapper;
+import org.entur.jwt.spring.filter.JwtDetailsMapper;
+import org.entur.jwt.spring.filter.JwtPrincipalMapper;
 import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.entur.jwt.verifier.JwtException;
 import org.entur.jwt.verifier.JwtServiceException;
@@ -46,12 +49,16 @@ public class DefaultJwtAuthenticationProcessor implements JwtAuthenticationProce
     private final JwtVerifier verifier;
     private final JwtAuthorityMapper authorityMapper;
     private final JwtClaimExtractor extractor;
+    private final JwtPrincipalMapper principalMapper;
+    private final JwtDetailsMapper detailsMapper;
 
-    public <T> DefaultJwtAuthenticationProcessor(JwtVerifier<T> verifier, JwtAuthorityMapper<T> authorityMapper, JwtClaimExtractor<T> extractor) {
+    public <T> DefaultJwtAuthenticationProcessor(JwtVerifier<T> verifier, JwtAuthorityMapper<T> authorityMapper, JwtClaimExtractor<T> extractor, JwtPrincipalMapper jwtPrincipalMapper, JwtDetailsMapper detailsMapper) {
         super();
         this.verifier = verifier;
         this.authorityMapper = authorityMapper;
         this.extractor = extractor;
+        this.principalMapper = jwtPrincipalMapper;
+        this.detailsMapper = detailsMapper;
     }
 
     @SuppressWarnings("unchecked")
@@ -80,7 +87,9 @@ public class DefaultJwtAuthenticationProcessor implements JwtAuthenticationProce
 
                             Map<String, Object> claims = extractor.getClaims(token);
 
-                            authentication = new JwtAuthenticationToken(claims, bearerToken, authorities);
+                            Serializable principal = principalMapper.getPrincipal(claims);
+                            Serializable details = detailsMapper.getDetails(exchange, claims);
+                            authentication = new JwtAuthenticationToken(claims, bearerToken, authorities, principal, details);
                         } else {
                             throw new BadCredentialsException("Unknown issuer");
                         }

@@ -7,7 +7,6 @@ import java.io.File;
 
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -19,7 +18,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 /**
  * 
  * Test readiness probe repair. 
@@ -29,9 +27,8 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
  * 
  */
 
-@ExtendWith(SpringExtension.class)
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @AuthorizationServer("unreliable")
+@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 public class ReadinessEndpointDownTest {
 
     @LocalServerPort

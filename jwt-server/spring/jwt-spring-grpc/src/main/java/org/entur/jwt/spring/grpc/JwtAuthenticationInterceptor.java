@@ -1,5 +1,6 @@
 package org.entur.jwt.spring.grpc;
 
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +10,8 @@ import org.entur.jwt.jwk.JwksException;
 import org.entur.jwt.jwk.JwksServiceException;
 import org.entur.jwt.spring.filter.JwtAuthenticationToken;
 import org.entur.jwt.spring.filter.JwtAuthorityMapper;
+import org.entur.jwt.spring.filter.JwtDetailsMapper;
+import org.entur.jwt.spring.filter.JwtPrincipalMapper;
 import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.entur.jwt.verifier.JwtException;
 import org.entur.jwt.verifier.JwtServiceException;
@@ -43,13 +46,17 @@ public class JwtAuthenticationInterceptor<T> implements ServerInterceptor {
     private final GrpcJwtMappedDiagnosticContextMapper<T> mdcMapper;
     private final JwtClaimExtractor<T> extractor;
     private final GrpcServiceMethodFilter anonymousMethodFilter;
+    private final JwtDetailsMapper detailsMapper;
+    private final JwtPrincipalMapper principalMapper;
 
-    public JwtAuthenticationInterceptor(JwtVerifier<T> verifier, GrpcServiceMethodFilter anonymousMethodFilter, JwtAuthorityMapper<T> authorityMapper, GrpcJwtMappedDiagnosticContextMapper<T> mdcMapper, JwtClaimExtractor<T> extractor) {
+    public JwtAuthenticationInterceptor(JwtVerifier<T> verifier, GrpcServiceMethodFilter anonymousMethodFilter, JwtAuthorityMapper<T> authorityMapper, GrpcJwtMappedDiagnosticContextMapper<T> mdcMapper, JwtClaimExtractor<T> extractor, JwtPrincipalMapper principalMapper, JwtDetailsMapper detailsMapper) {
         this.verifier = verifier;
         this.anonymousMethodFilter = anonymousMethodFilter;
         this.authorityMapper = authorityMapper;
         this.mdcMapper = mdcMapper;
         this.extractor = extractor;
+        this.principalMapper = principalMapper;
+        this.detailsMapper = detailsMapper;
     }
 	
 	@Override
@@ -59,8 +66,7 @@ public class JwtAuthenticationInterceptor<T> implements ServerInterceptor {
 
         if (header != null) {
         	if(!header.startsWith(BEARER)) {
-				log.warn("Unable to verify token");
-
+                log.warn("Invalid authorization header type");
 				call.close(Status.UNAUTHENTICATED.withDescription("Invalid authorization header type"), new Metadata());
 				return new Listener<ReqT>() {};
         	}
@@ -76,8 +82,10 @@ public class JwtAuthenticationInterceptor<T> implements ServerInterceptor {
 
                     Map<String, Object> claims = extractor.getClaims(token);
                     
-                    JwtAuthenticationToken jwtAuthenticationToken = new JwtAuthenticationToken(claims, bearerToken, authorities);
-                    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(claims, bearerToken, authorities));
+                    Serializable details = detailsMapper.getDetails(call, claims);
+                    Serializable principal = principalMapper.getPrincipal(claims);
+
+                    JwtAuthenticationToken jwtAuthenticationToken = new JwtAuthenticationToken(claims, bearerToken, authorities, principal, details);
 
     				Context context = Context.current().withValue(GrpcAuthorization.SECURITY_CONTEXT_AUTHENTICATION, jwtAuthenticationToken);
 

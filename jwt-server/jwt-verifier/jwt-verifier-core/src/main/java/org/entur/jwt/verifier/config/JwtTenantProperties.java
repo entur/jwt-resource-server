@@ -1,5 +1,8 @@
 package org.entur.jwt.verifier.config;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class JwtTenantProperties {
 
     private boolean enabled = true;
@@ -8,6 +11,8 @@ public class JwtTenantProperties {
     protected String issuer;
 
     protected JwkLocationProperties jwk;
+
+    protected Map<String, Object> properties = new HashMap<>();
 
     public String getType() {
         return type;
@@ -40,4 +45,13 @@ public class JwtTenantProperties {
     public boolean isEnabled() {
         return enabled;
     }
+    
+    public void setProperties(Map<String, Object> properties) {
+        this.properties = properties;
+    }
+    
+    public Map<String, Object> getProperties() {
+        return properties;
+    }
+
 }

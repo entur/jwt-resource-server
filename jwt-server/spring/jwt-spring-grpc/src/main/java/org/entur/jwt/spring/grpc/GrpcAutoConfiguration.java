@@ -4,6 +4,8 @@ import java.util.List;
 
 import org.entur.jwt.spring.JwtAutoConfiguration;
 import org.entur.jwt.spring.filter.JwtAuthorityMapper;
+import org.entur.jwt.spring.filter.JwtDetailsMapper;
+import org.entur.jwt.spring.filter.JwtPrincipalMapper;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
 import org.entur.jwt.spring.properties.AuthorizationProperties;
 import org.entur.jwt.spring.grpc.properties.GrpcPermitAll;
@@ -48,7 +50,7 @@ public class GrpcAutoConfiguration {
 	@Order(60)
     @ConditionalOnMissingBean(JwtAuthenticationInterceptor.class)
     public <T> JwtAuthenticationInterceptor<T> grpcAuth(SecurityProperties properties, JwtVerifier<T> verifier, @Autowired(required = false) JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtAuthorityMapper<T> authorityMapper,
-            JwtClaimExtractor<T> extractor, @Lazy HandlerExceptionResolver handlerExceptionResolver, GrpcPermitAll permitAll) {
+            JwtClaimExtractor<T> extractor, @Lazy HandlerExceptionResolver handlerExceptionResolver, GrpcPermitAll permitAll, JwtPrincipalMapper jwtPrincipalMapper, JwtDetailsMapper jwtDetailsMapper) {
 
         // add an extra layer of checks if auth is always required
         GrpcServiceMethodFilter anonymous;
@@ -59,7 +61,7 @@ public class GrpcAutoConfiguration {
         	anonymous = null;
         }
         
-        return new JwtAuthenticationInterceptor<>(verifier, anonymous, authorityMapper, mdcMapper != null ? new GrpcJwtMappedDiagnosticContextMapper<>(mdcMapper) : null, extractor);
+        return new JwtAuthenticationInterceptor<>(verifier, anonymous, authorityMapper, mdcMapper != null ? new GrpcJwtMappedDiagnosticContextMapper<>(mdcMapper) : null, extractor, jwtPrincipalMapper, jwtDetailsMapper);
     }
 
 	private GrpcServiceMethodFilter getGrpcServiceMethodFilter(GrpcServicesConfiguration grpc) {

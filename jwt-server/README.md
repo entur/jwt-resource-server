@@ -222,6 +222,8 @@ entur:
               enabled: true
               time-to-live: 3600 # seconds
               refresh-timeout: 15 # seconds
+              preemptive:
+                time-to-expires: 15 # seconds
             retry:
               enabled: true
             outage-cache:

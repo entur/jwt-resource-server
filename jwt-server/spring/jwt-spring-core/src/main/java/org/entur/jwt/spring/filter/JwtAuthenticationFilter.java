@@ -1,6 +1,7 @@
 package org.entur.jwt.spring.filter;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -38,34 +39,48 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
     private final JwtClaimExtractor<T> extractor;
     private final boolean required;
     private final HandlerExceptionResolver handlerExceptionResolver;
+    private final JwtDetailsMapper detailsMapper;
+    private final JwtPrincipalMapper principalMapper;
 
-    public JwtAuthenticationFilter(JwtVerifier<T> verifier, boolean required, JwtAuthorityMapper<T> authorityMapper, JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtClaimExtractor<T> extractor, HandlerExceptionResolver handlerExceptionResolver) {
+    public JwtAuthenticationFilter(JwtVerifier<T> verifier, boolean required, JwtAuthorityMapper<T> authorityMapper, JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtClaimExtractor<T> extractor, HandlerExceptionResolver handlerExceptionResolver, JwtPrincipalMapper principalMapper, JwtDetailsMapper detailsMapper) {
         this.verifier = verifier;
         this.authorityMapper = authorityMapper;
         this.mdcMapper = mdcMapper;
         this.extractor = extractor;
         this.required = required;
         this.handlerExceptionResolver = handlerExceptionResolver;
+        this.principalMapper = principalMapper;
+        this.detailsMapper = detailsMapper;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws IOException, ServletException {
         String header = request.getHeader(AUTHORIZATION);
 
-        if (header != null && header.startsWith(BEARER)) {
-        	String bearerToken = header.substring(BEARER.length());
+        if (header != null) {
+            if(!header.startsWith(BEARER)) {
+                log.warn("Invalid authorization header type");
+                response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                handlerExceptionResolver.resolveException(request, response, null, new BadCredentialsException("Expected token"));
+                return;
+            }
+            
+            String bearerToken = header.substring(BEARER.length());
             // if a token is present, it must be valid regardless of whether the endpoint
             // requires authorization or not
             T token;
             try {
-            
+
                 token = verifier.verify(bearerToken); // note: can return null
                 if (token != null) {
                     List<GrantedAuthority> authorities = authorityMapper.getGrantedAuthorities(token);
 
                     Map<String, Object> claims = extractor.getClaims(token);
-                    
-                    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(claims, bearerToken, authorities));
+
+                    Serializable details = detailsMapper.getDetails(request, claims);
+                    Serializable principal = principalMapper.getPrincipal(claims);
+
+                    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(claims, bearerToken, authorities, principal, details));
 
                     if (mdcMapper != null) {
                         mdcMapper.addContext(token);

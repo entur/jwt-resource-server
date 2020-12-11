@@ -14,6 +14,8 @@ import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
 
 public abstract class AbstractPropertiesResourceServerConfigurationEnricher implements ResourceServerConfigurationEnricher {
 
+    public static final String ON_THE_FLY_PROPERTY = ".on-the-fly";
+    
     protected String prefix;
 
     public AbstractPropertiesResourceServerConfigurationEnricher() throws IOException {
@@ -59,6 +61,7 @@ public abstract class AbstractPropertiesResourceServerConfigurationEnricher impl
                     throw new IllegalArgumentException("Specify authorization server id in multi-tenant tests.");
                 }
                 key = "mock";
+                properties.put(prefix + "." + key + ON_THE_FLY_PROPERTY, "true");
             }
             properties.put(prefix + "." + key + ".jwk.location", path.toUri().toString());
         }
