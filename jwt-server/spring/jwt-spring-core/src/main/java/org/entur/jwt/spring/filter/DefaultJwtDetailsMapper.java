@@ -7,9 +7,9 @@ import org.entur.jwt.verifier.JwtException;
 
 public class DefaultJwtDetailsMapper implements JwtDetailsMapper {
 
-	@Override
-	public Serializable getDetails(Object request, Map<String, Object> claims) throws JwtException {
-		return null;
-	}
+    @Override
+    public Serializable getDetails(Object request, Map<String, Object> claims) throws JwtException {
+        return null;
+    }
 
 }

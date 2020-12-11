@@ -47,11 +47,11 @@ public class JwtTenantProperties {
     }
     
     public void setProperties(Map<String, Object> properties) {
-		this.properties = properties;
-	}
+        this.properties = properties;
+    }
     
     public Map<String, Object> getProperties() {
-		return properties;
-	}
+        return properties;
+    }
 
 }

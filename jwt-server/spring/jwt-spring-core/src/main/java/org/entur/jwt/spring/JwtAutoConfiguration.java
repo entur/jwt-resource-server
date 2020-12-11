@@ -251,28 +251,28 @@ public class JwtAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(TenantsProperties.class)
     public TenantsProperties tenantsProperties(SecurityProperties properties) {
-    	TenantsProperties tenantsProperties = new TenantsProperties();
-    	
-    	for (Entry<String, JwtTenantProperties> entry : properties.getJwt().getTenants().entrySet()) {
-			JwtTenantProperties value = entry.getValue();
-			if(value.isEnabled()) {
-				tenantsProperties.add(new TenantProperties(entry.getKey(), value.getIssuer(), value.getProperties()));
-			}
-		}
-    	
-    	return tenantsProperties;
+        TenantsProperties tenantsProperties = new TenantsProperties();
+        
+        for (Entry<String, JwtTenantProperties> entry : properties.getJwt().getTenants().entrySet()) {
+            JwtTenantProperties value = entry.getValue();
+            if(value.isEnabled()) {
+                tenantsProperties.add(new TenantProperties(entry.getKey(), value.getIssuer(), value.getProperties()));
+            }
+        }
+        
+        return tenantsProperties;
     }
 
     @Bean
     @ConditionalOnMissingBean(JwtDetailsMapper.class)
     public JwtDetailsMapper jwtDetailsMapper() {
-    	return new DefaultJwtDetailsMapper();
+        return new DefaultJwtDetailsMapper();
     }
 
     @Bean
     @ConditionalOnMissingBean(JwtPrincipalMapper.class)
     public JwtPrincipalMapper jwtPrincipalMapper() {
-    	return new DefaultJwtPrincipalMapper();
+        return new DefaultJwtPrincipalMapper();
     }
 
     @Bean

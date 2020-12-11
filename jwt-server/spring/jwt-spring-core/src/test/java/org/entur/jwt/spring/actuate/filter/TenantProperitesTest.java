@@ -17,7 +17,7 @@ import org.springframework.test.context.TestPropertySource;
  * 
  */
 @TestPropertySource(properties = { 
-		"entur.jwt.tenants.myServer.properties.myParameter=myValue",
+        "entur.jwt.tenants.myServer.properties.myParameter=myValue",
 })
 
 @AuthorizationServer("myServer")
@@ -27,13 +27,13 @@ public class TenantProperitesTest {
     @Value("${entur.jwt.tenants.myServer.issuer}")
     private String issuer;
 
-	@Autowired
-	private TenantsProperties tenantsProperties;
-	
+    @Autowired
+    private TenantsProperties tenantsProperties;
+    
     @Test 
     public void testPropertyPresent() {
-    	TenantProperties properties = tenantsProperties.getByIssuer(issuer);
-    	assertEquals("myValue", properties.getProperty("myParameter"));
+        TenantProperties properties = tenantsProperties.getByIssuer(issuer);
+        assertEquals("myValue", properties.getProperty("myParameter"));
     }
 
 }

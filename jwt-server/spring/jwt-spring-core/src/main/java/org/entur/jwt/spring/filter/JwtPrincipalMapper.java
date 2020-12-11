@@ -13,14 +13,14 @@ import org.entur.jwt.verifier.JwtException;
 
 public interface JwtPrincipalMapper {
 
-	/**
-	 * Get principal for token, in a context (servlet request, camel exchange etc)
-	 * 
-	 * @param claims from verified token
-	 * @return authentication principal
-	 * @throws JwtException if an unexpected error
-	 */
-	
-	Serializable getPrincipal(Map<String, Object> claims) throws JwtException;
+    /**
+     * Get principal for token, in a context (servlet request, camel exchange etc)
+     * 
+     * @param claims from verified token
+     * @return authentication principal
+     * @throws JwtException if an unexpected error
+     */
+    
+    Serializable getPrincipal(Map<String, Object> claims) throws JwtException;
 
 }

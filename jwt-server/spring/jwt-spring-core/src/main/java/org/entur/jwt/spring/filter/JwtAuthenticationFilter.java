@@ -39,8 +39,8 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
     private final JwtClaimExtractor<T> extractor;
     private final boolean required;
     private final HandlerExceptionResolver handlerExceptionResolver;
-	private final JwtDetailsMapper detailsMapper;
-	private final JwtPrincipalMapper principalMapper;
+    private final JwtDetailsMapper detailsMapper;
+    private final JwtPrincipalMapper principalMapper;
 
     public JwtAuthenticationFilter(JwtVerifier<T> verifier, boolean required, JwtAuthorityMapper<T> authorityMapper, JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtClaimExtractor<T> extractor, HandlerExceptionResolver handlerExceptionResolver, JwtPrincipalMapper principalMapper, JwtDetailsMapper detailsMapper) {
         this.verifier = verifier;
@@ -58,21 +58,21 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
         String header = request.getHeader(AUTHORIZATION);
 
         if (header != null && header.startsWith(BEARER)) {
-        String bearerToken = header.substring(BEARER.length());
+            String bearerToken = header.substring(BEARER.length());
             // if a token is present, it must be valid regardless of whether the endpoint
             // requires authorization or not
             T token;
             try {
-            
+
                 token = verifier.verify(bearerToken); // note: can return null
                 if (token != null) {
                     List<GrantedAuthority> authorities = authorityMapper.getGrantedAuthorities(token);
 
                     Map<String, Object> claims = extractor.getClaims(token);
-                    
+
                     Serializable details = detailsMapper.getDetails(request, claims);
                     Serializable principal = principalMapper.getPrincipal(claims);
-                    
+
                     SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(claims, bearerToken, authorities, principal, details));
 
                     if (mdcMapper != null) {
