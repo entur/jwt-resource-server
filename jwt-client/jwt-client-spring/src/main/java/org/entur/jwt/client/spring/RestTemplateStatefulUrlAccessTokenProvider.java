@@ -60,7 +60,11 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
 
     @Override
     protected InputStream getResponseContent(ResponseEntity<Resource> response) throws IOException {
-        return response.getBody().getInputStream();
+        Resource body = response.getBody();
+        if(body != null) {
+            return body.getInputStream();
+        }
+        throw new IOException("Empty body");
     }
 
     @Override
