@@ -4,19 +4,19 @@ import java.util.Map;
 
 public class TenantProperties {
 
-    private String name;
+    private String id;
     private String issuer;
     private Map<String, Object> properties;
 
-    public TenantProperties(String name, String issuer, Map<String, Object> properties) {
+    public TenantProperties(String id, String issuer, Map<String, Object> properties) {
         super();
-        this.name = name;
+        this.id = id;
         this.issuer = issuer;
         this.properties = properties;
     }
 
-    public String getName() {
-        return name;
+    public String getId() {
+        return id;
     }
 
     public String getIssuer() {

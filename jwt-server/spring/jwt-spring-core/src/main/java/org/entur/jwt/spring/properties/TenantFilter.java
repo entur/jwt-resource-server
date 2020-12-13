@@ -5,17 +5,17 @@ import java.util.List;
 
 public class TenantFilter {
 
-    private List<String> keys = new ArrayList<>();
+    private List<String> ids = new ArrayList<>();
     
-    public List<String> getKeys() {
-        return keys;
+    public List<String> getIds() {
+        return ids;
     }
     
-    public void setKeys(List<String> keys) {
-        this.keys = keys;
+    public void setIds(List<String> keys) {
+        this.ids = keys;
     }
 
     public boolean isEmpty() {
-        return keys == null || keys.isEmpty();
+        return ids == null || ids.isEmpty();
     }
 }

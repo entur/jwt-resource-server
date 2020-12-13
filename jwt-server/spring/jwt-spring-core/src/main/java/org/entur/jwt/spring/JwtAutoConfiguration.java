@@ -223,22 +223,22 @@ public class JwtAutoConfiguration {
             tenants = new HashMap<>();
 
             // filter on key
-            for(String key : filter.getKeys()) {
-                key = key.trim();
+            for(String id : filter.getIds()) {
+                id = id.trim();
 
-                boolean endsWith = key.endsWith("*");
+                boolean endsWith = id.endsWith("*");
                         
                 if(endsWith) {
-                    String prefix = key.substring(0, key.length() - 1);
+                    String prefix = id.substring(0, id.length() - 1);
                     for (Entry<String, JwtTenantProperties> entry : enabledTenants.entrySet()) {
                         if(entry.getKey().startsWith(prefix)) {
-                            tenants.put(key, entry.getValue());
+                            tenants.put(id, entry.getValue());
                         }
                     }
                 } else {
-                    JwtTenantProperties candidate = enabledTenants.get(key);
+                    JwtTenantProperties candidate = enabledTenants.get(id);
                     if(candidate != null) {
-                        tenants.put(key, candidate);
+                        tenants.put(id, candidate);
                     }
                 }
             }
@@ -248,7 +248,7 @@ public class JwtAutoConfiguration {
         if (tenants.isEmpty()) {
             Set<String> disabled = new HashSet<>(jwtProperties.getTenants().keySet());
             disabled.removeAll(enabledTenants.keySet());
-            if (filter != null) {
+            if (filter != null && !filter.isEmpty()) {
                 throw new IllegalStateException("No configured tenants for filter '" + filter + "', candidates were " + enabledTenants.keySet() + " (" + disabled + " were disabled)" );
             } else {
                 throw new IllegalStateException("No configured tenants (" + disabled + " were disabled)");
