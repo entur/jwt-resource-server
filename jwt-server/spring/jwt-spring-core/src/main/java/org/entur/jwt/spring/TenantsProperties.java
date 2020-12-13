@@ -13,10 +13,10 @@ import java.util.Map;
 public class TenantsProperties {
 
     private Map<String, TenantProperties> issuers = new HashMap<>();
-    private Map<String, TenantProperties> names = new HashMap<>();
+    private Map<String, TenantProperties> ids = new HashMap<>();
     
     public void add(TenantProperties properties) {
-        if(names.put(properties.getName(), properties) != null) {
+        if(ids.put(properties.getId(), properties) != null) {
             throw new IllegalStateException();
         }
         if(issuers.put(properties.getIssuer(), properties) != null) {
@@ -27,7 +27,7 @@ public class TenantsProperties {
     public TenantProperties getByIssuer(String issuer) {
         return issuers.get(issuer);
     }
-    public TenantProperties getByName(String issuer) {
+    public TenantProperties getById(String issuer) {
         return issuers.get(issuer);
     }
     

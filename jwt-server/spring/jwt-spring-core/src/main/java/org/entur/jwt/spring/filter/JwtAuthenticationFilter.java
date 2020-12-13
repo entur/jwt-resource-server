@@ -57,7 +57,14 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws IOException, ServletException {
         String header = request.getHeader(AUTHORIZATION);
 
-        if (header != null && header.startsWith(BEARER)) {
+        if (header != null) {
+            if(!header.startsWith(BEARER)) {
+                log.warn("Invalid authorization header type");
+                response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                handlerExceptionResolver.resolveException(request, response, null, new BadCredentialsException("Expected token"));
+                return;
+            }
+            
             String bearerToken = header.substring(BEARER.length());
             // if a token is present, it must be valid regardless of whether the endpoint
             // requires authorization or not

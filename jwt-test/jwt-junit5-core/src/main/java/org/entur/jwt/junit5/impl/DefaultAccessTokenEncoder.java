@@ -89,8 +89,7 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
                 Signature s = (Signature) c;
 
                 int index = token.lastIndexOf('.');
-
-                token = token.substring(index + 1) + s.value();
+                token = token.substring(0, index + 1) + s.value();
             } else {
                 throw new IllegalArgumentException("Unsupported sabotage type " + c);
             }
