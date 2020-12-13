@@ -32,6 +32,7 @@ import org.entur.jwt.spring.properties.MdcPair;
 import org.entur.jwt.spring.properties.MdcProperties;
 import org.entur.jwt.spring.properties.PermitAll;
 import org.entur.jwt.spring.properties.SecurityProperties;
+import org.entur.jwt.spring.properties.TenantFilter;
 import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.entur.jwt.verifier.JwtVerifier;
 import org.entur.jwt.verifier.JwtVerifierFactory;
@@ -217,18 +218,28 @@ public class JwtAutoConfiguration {
         }
 
         Map<String, JwtTenantProperties> tenants;
-        List<String> filter = jwtProperties.getFilter();
-        if (filter != null) {
-            if (filter.isEmpty()) {
-                throw new IllegalStateException("Tenant filter is empty");
-            }
+        TenantFilter filter = jwtProperties.getFilter();
+        if (!filter.isEmpty()) {
             tenants = new HashMap<>();
 
             // filter on key
-            for(String key : filter) {
-                JwtTenantProperties candidate = enabledTenants.get(key);
-                if(candidate != null) {
-                    tenants.put(key, candidate);
+            for(String id : filter.getIds()) {
+                id = id.trim();
+
+                boolean endsWith = id.endsWith("*");
+                        
+                if(endsWith) {
+                    String prefix = id.substring(0, id.length() - 1);
+                    for (Entry<String, JwtTenantProperties> entry : enabledTenants.entrySet()) {
+                        if(entry.getKey().startsWith(prefix)) {
+                            tenants.put(id, entry.getValue());
+                        }
+                    }
+                } else {
+                    JwtTenantProperties candidate = enabledTenants.get(id);
+                    if(candidate != null) {
+                        tenants.put(id, candidate);
+                    }
                 }
             }
         } else {
@@ -237,7 +248,7 @@ public class JwtAutoConfiguration {
         if (tenants.isEmpty()) {
             Set<String> disabled = new HashSet<>(jwtProperties.getTenants().keySet());
             disabled.removeAll(enabledTenants.keySet());
-            if (filter != null) {
+            if (filter != null && !filter.isEmpty()) {
                 throw new IllegalStateException("No configured tenants for filter '" + filter + "', candidates were " + enabledTenants.keySet() + " (" + disabled + " were disabled)" );
             } else {
                 throw new IllegalStateException("No configured tenants (" + disabled + " were disabled)");
