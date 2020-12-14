@@ -1,6 +1,7 @@
 package org.entur.jwt.jwk;
 
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
@@ -8,15 +9,19 @@ import static org.mockito.Mockito.only;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static com.google.common.truth.Truth.*;
 
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.entur.jwt.jwk.AbstractCachedJwksProvider.JwkListCacheItem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import com.google.common.truth.Truth;
 
 public class PreemptivceCachedJwksProviderTest extends AbstractDelegateProviderTest {
 
@@ -45,7 +50,7 @@ public class PreemptivceCachedJwksProviderTest extends AbstractDelegateProviderT
     @BeforeEach
     public void setUp() throws Exception {
         super.setUp();
-        provider = new PreemptiveCachedJwksProvider<>(delegate, Duration.ofHours(10), Duration.ofSeconds(15), Duration.ofSeconds(10));
+        provider = new PreemptiveCachedJwksProvider<>(delegate, Duration.ofHours(10), Duration.ofSeconds(15), Duration.ofSeconds(10), false);
 
         wrapper = new DefaultJwkProvider<>(provider, new JwkFieldExtractorImpl());
 
@@ -201,7 +206,7 @@ public class PreemptivceCachedJwksProviderTest extends AbstractDelegateProviderT
 
         provider.getExecutorService().awaitTermination(1, TimeUnit.SECONDS);
 
-        provider.preemptiveUpdate(justBeforeExpiry, cache); // should not trigger a preemptive refresh attempt
+        provider.preemptiveRefresh(justBeforeExpiry, cache, false); // should not trigger a preemptive refresh attempt
 
         verify(delegate, times(2)).getJwks(false);
 
@@ -265,4 +270,49 @@ public class PreemptivceCachedJwksProviderTest extends AbstractDelegateProviderT
         }
     }
 
+    @Test
+    public void shouldSchedulePreemptivelyRefreshCacheForKeys() throws Exception {
+        long timeToLive = 1000; 
+        long refreshTimeout = 150;
+        long preemptiveRefresh = 300;
+        
+        PreemptiveCachedJwksProvider provider = new PreemptiveCachedJwksProvider<>(delegate, Duration.ofMillis(timeToLive), Duration.ofMillis(refreshTimeout), Duration.ofMillis(preemptiveRefresh), true);
+        DefaultJwkProvider wrapper = new DefaultJwkProvider<>(provider, new JwkFieldExtractorImpl());
+
+        JwkImpl a = mock(JwkImpl.class);
+        when(a.getId()).thenReturn("a");
+        JwkImpl b = mock(JwkImpl.class);
+        when(b.getId()).thenReturn("b");
+
+        List<JwkImpl> first = Arrays.asList(a);
+        List<JwkImpl> second = Arrays.asList(b);
+
+        when(delegate.getJwks(false)).thenReturn(first).thenReturn(second);
+
+        long time = System.currentTimeMillis();
+        
+        // first jwks
+        assertThat(wrapper.getJwk("a"), equalTo(a));
+        verify(delegate, only()).getJwks(false);
+
+        ScheduledFuture<?> alwaysOnJwkListCacheItem = provider.getEagerScheduledFuture();
+        assertNotNull(alwaysOnJwkListCacheItem);
+        
+        long left = alwaysOnJwkListCacheItem.getDelay(TimeUnit.MILLISECONDS);
+        
+        long skew = System.currentTimeMillis() - time;
+        
+        Truth.assertThat(left).isAtMost(timeToLive - refreshTimeout - preemptiveRefresh);
+        Truth.assertThat(left).isAtLeast(timeToLive - refreshTimeout - preemptiveRefresh - skew);
+        
+        // sleep and check that keys were actually updated
+        Thread.sleep(left + Math.min(25, 4 * skew));
+        
+        provider.getExecutorService().awaitTermination(Math.min(25, 4 * skew), TimeUnit.MILLISECONDS);
+        verify(delegate, times(2)).getJwks(false);
+        
+        // no new update necessary
+        assertThat(wrapper.getJwk("b"), equalTo(b));
+        verify(delegate, times(2)).getJwks(false);
+    }
 }

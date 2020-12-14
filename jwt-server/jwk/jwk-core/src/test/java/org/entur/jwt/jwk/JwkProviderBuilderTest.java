@@ -208,7 +208,7 @@ public class JwkProviderBuilderTest extends AbstractDelegateProviderTest {
 
     @Test
     public void shouldCreatePreemptiveCachedProvider() {
-        JwkProvider<?> provider = builder().rateLimited(false).preemptiveCacheRefresh(Duration.ofSeconds(10)).health(false).build();
+        JwkProvider<?> provider = builder().rateLimited(false).preemptiveCacheRefresh(Duration.ofSeconds(10), true).health(false).build();
         assertThat(provider, notNullValue());
 
         List<JwksProvider<?>> jwksProviders = jwksProviders(provider);

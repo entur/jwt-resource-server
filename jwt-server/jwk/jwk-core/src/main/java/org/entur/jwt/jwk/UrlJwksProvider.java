@@ -88,4 +88,9 @@ public class UrlJwksProvider<T> implements JwksProvider<T> {
         }
     }
 
+    @Override
+    public void close() throws IOException {
+        // do nothing
+    }
+
 }

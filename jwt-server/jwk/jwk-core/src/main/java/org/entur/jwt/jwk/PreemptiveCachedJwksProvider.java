@@ -1,9 +1,14 @@
 package org.entur.jwt.jwk;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.slf4j.Logger;
@@ -27,7 +32,7 @@ import org.slf4j.LoggerFactory;
 
 public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T> {
 
-    protected static final Logger logger = LoggerFactory.getLogger(PreemptiveCachedJwksProvider.class);
+    private static final Logger logger = LoggerFactory.getLogger(PreemptiveCachedJwksProvider.class);
 
     // preemptive update should execute when
     // expire - preemptiveRefresh < current time < expire.
@@ -37,23 +42,27 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
 
     private final ExecutorService executorService;
 
+    private final ScheduledExecutorService scheduledExecutorService;
+    
     // cache expire time is used as its fingerprint
     private volatile long cacheExpires;
-
+    
+    private ScheduledFuture<?> eagerScheduledFuture;
+    
     /**
      * Construct new instance.
      * 
      * @param provider          Jwk provider
      * @param timeToLive        cache hold time (in milliseconds)
-     * @param refreshTimeout    cache refresh timeout unit (in milliseconds)
+     * @param refreshTimeout    cache refresh timeout unit (in milliseconds), i.e. before giving up
      * @param preemptiveRefresh preemptive timeout (in milliseconds). This parameter
      *                          is relative to time to live, i.e. "15000
      *                          milliseconds before timeout, refresh time cached
      *                          value".
      */
 
-    public PreemptiveCachedJwksProvider(JwksProvider<T> provider, Duration timeToLive, Duration refreshTimeout, Duration preemptiveRefresh) {
-        this(provider, timeToLive.toMillis(), refreshTimeout.toMillis(), preemptiveRefresh.toMillis(), Executors.newSingleThreadExecutor());
+    public PreemptiveCachedJwksProvider(JwksProvider<T> provider, Duration timeToLive, Duration refreshTimeout, Duration preemptiveRefresh, boolean eager) {
+        this(provider, timeToLive.toMillis(), refreshTimeout.toMillis(), preemptiveRefresh.toMillis(), eager, Executors.newSingleThreadExecutor());
     }
 
     /**
@@ -61,15 +70,15 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
      * 
      * @param provider          Jwk provider
      * @param timeToLive        cache hold time (in milliseconds)
-     * @param refreshTimeout    cache refresh timeout unit (in milliseconds)
+     * @param refreshTimeout    cache refresh timeout unit (in milliseconds), i.e. before giving up
      * @param preemptiveRefresh preemptive timeout (in milliseconds). This parameter
      *                          is relative to time to live, i.e. "15000
      *                          milliseconds before timeout, refresh time cached
      *                          value".
      */
 
-    public PreemptiveCachedJwksProvider(JwksProvider<T> provider, long timeToLive, long refreshTimeout, long preemptiveRefresh) {
-        this(provider, timeToLive, refreshTimeout, preemptiveRefresh, Executors.newSingleThreadExecutor());
+    public PreemptiveCachedJwksProvider(JwksProvider<T> provider, long timeToLive, long refreshTimeout, long preemptiveRefresh, boolean eager) {
+        this(provider, timeToLive, refreshTimeout, preemptiveRefresh, eager, Executors.newSingleThreadExecutor());
     }
 
     /**
@@ -77,7 +86,7 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
      * 
      * @param provider          Jwk provider
      * @param timeToLive        cache hold time (in milliseconds)
-     * @param refreshTimeout    cache refresh timeout unit (in milliseconds)
+     * @param refreshTimeout    cache refresh timeout unit (in milliseconds), i.e. before giving up
      * @param preemptiveRefresh preemptive refresh limit (in milliseconds). This
      *                          parameter is relative to time to live, i.e. "15000
      *                          milliseconds before timeout, refresh time cached
@@ -85,38 +94,83 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
      * @param executorService   executor service
      */
 
-    public PreemptiveCachedJwksProvider(JwksProvider<T> provider, long timeToLive, long refreshTimeout, long preemptiveRefresh, ExecutorService executorService) {
+    public PreemptiveCachedJwksProvider(JwksProvider<T> provider, long timeToLive, long refreshTimeout, long preemptiveRefresh, boolean eager, ExecutorService executorService) {
         super(provider, timeToLive, refreshTimeout);
 
-        if (preemptiveRefresh > timeToLive) {
-            throw new IllegalArgumentException("Time to live must exceed preemptive refresh timeout");
+        if (preemptiveRefresh + refreshTimeout > timeToLive) {
+            throw new IllegalArgumentException("Time to live (" + timeToLive/1000 + "s) must exceed preemptive refresh limit (" + preemptiveRefresh/1000 + "s) + the refresh timeout (" + refreshTimeout/1000 + "s) (as in the max duration of the refresh operation itself)");
         }
 
         this.preemptiveRefresh = preemptiveRefresh;
         this.executorService = executorService;
+        
+        if(eager) {
+            scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        } else {
+            scheduledExecutorService = null;
+        }
     }
 
     @Override
     public List<T> getJwks(long time, boolean forceUpdate) throws JwksException {
         JwkListCacheItem<T> cache = this.cache;
         if (forceUpdate || cache == null || !cache.isValid(time)) {
-            return super.getJwksBlocking(time, cache);
+            return super.getJwksBlocking(time, cache).getValue();
         }
-
-        preemptiveUpdate(time, cache);
+        preemptiveRefresh(time, cache, false);
 
         return cache.getValue();
     }
 
+    @Override
+    protected JwkListCacheItem<T> loadJwksFromProvider(long time) throws JwksException {
+        // note: never run by two threads at the same time
+        JwkListCacheItem<T> cache = super.loadJwksFromProvider(time);
+        
+        if(scheduledExecutorService != null) {
+            schedulePreemptiveRefresh(time, cache);
+        }
+        
+        return cache;
+    }
+    
+    protected void schedulePreemptiveRefresh(long time, JwkListCacheItem<T> cache) {
+        if(eagerScheduledFuture != null) {
+            eagerScheduledFuture.cancel(false);
+        }
+        
+        // so we want to keep other threads from triggering preemptive refreshing
+        // subtracting the refresh timeout should be enough
+        long delay = cache.getExpires() - time - preemptiveRefresh - refreshTimeout;
+        if(delay > 0) {
+            this.eagerScheduledFuture = scheduledExecutorService.schedule(() -> {
+                try {
+                    // so will only refresh if this specific cache entry still is the current one
+                    preemptiveRefresh(System.currentTimeMillis(), cache, true);
+                } catch (Exception e) {
+                    logger.warn("Scheduled eager cache refresh failed", e);
+                }
+            }, delay, TimeUnit.MILLISECONDS);
+            
+            if(logger.isDebugEnabled()) logger.debug("Scheduled next eager cache refresh in " + getTime(delay));
+        } else {
+            logger.warn("Not scheduling eager cache refresh");
+        }
+    }
+
+    protected String getTime(long update) {
+        return Duration.ofMillis(update).toString();
+    }
+
     /**
-     * Preemptive update.
+     * Preemptive update, on a background thread.
      * 
      * @param time  current time
      * @param cache current cache (non-null)
      */
 
-    protected void preemptiveUpdate(final long time, final JwkListCacheItem<T> cache) {
-        if (!cache.isValid(time + preemptiveRefresh)) {
+    protected void preemptiveRefresh(final long time, final JwkListCacheItem<T> cache, boolean forceRefresh) {
+        if (!cache.isValid(time + preemptiveRefresh) || forceRefresh) {
             // cache will expires soon,
             // preemptively update it
 
@@ -135,7 +189,9 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
                             executorService.execute(() -> {
                                 try {
                                     logger.info("Perform preemptive cache refresh");
-                                    PreemptiveCachedJwksProvider.super.getJwksBlocking(time, cache);
+                                    PreemptiveCachedJwksProvider.this.getJwksBlocking(time, cache);
+                                    
+                                    // so next time this method is invoked, it'll be with the updated cache item expiry time
                                 } catch (Throwable e) {
                                     // update failed, but another thread can retry
                                     cacheExpires = -1L;
@@ -153,6 +209,7 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
         }
     }
 
+
     /**
      * Return the executor service which services the background refresh.
      * 
@@ -165,5 +222,19 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
 
     ReentrantLock getLazyLock() {
         return lazyLock;
+    }
+    
+    ScheduledFuture<?> getEagerScheduledFuture() {
+        return eagerScheduledFuture;
+    }
+
+    @Override
+    public void close() throws IOException {
+        ScheduledFuture<?> eagerJwkListCacheItem = this.eagerScheduledFuture; // defensive copy
+        if(eagerJwkListCacheItem != null) {
+            eagerJwkListCacheItem.cancel(true);
+            logger.debug("Cancelled scheduled update");
+        }
+        provider.close();
     }
 }

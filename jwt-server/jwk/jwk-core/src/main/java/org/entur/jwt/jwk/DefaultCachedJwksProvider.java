@@ -49,13 +49,13 @@ public class DefaultCachedJwksProvider<T> extends AbstractCachedJwksProvider<T> 
     protected List<T> getJwks(long time, boolean forceUpdate) throws JwksException {
         JwkListCacheItem<T> cache = this.cache;
         if (forceUpdate || cache == null || !cache.isValid(time)) {
-            return getJwksBlocking(time, cache);
+            cache = getJwksBlocking(time, cache);
         }
 
         return cache.getValue();
     }
 
-    protected List<T> getJwksBlocking(long time, JwkListCacheItem<T> cache) throws JwksException {
+    protected JwkListCacheItem<T> getJwksBlocking(long time, JwkListCacheItem<T> cache) throws JwksException {
         // Synchronize so that the first thread to acquire the lock
         // exclusively gets to call the underlying provider.
         // Other (later) threads must wait until the result is ready.
@@ -77,10 +77,7 @@ public class DefaultCachedJwksProvider<T> extends AbstractCachedJwksProvider<T> 
                         // We hold the lock, so safe to update it now
                         logger.info("Perform JWK cache refresh..");
                         
-                        List<T> all = provider.getJwks(false);
-
-                        // save to cache
-                        this.cache = cache = new JwkListCacheItem<>(all, getExpires(time));
+                        cache = loadJwksFromProvider(time);
                         
                         logger.info("JWK cache refreshed (with {} waiting) ", lock.getQueueLength());
                     } else {
@@ -104,10 +101,7 @@ public class DefaultCachedJwksProvider<T> extends AbstractCachedJwksProvider<T> 
                             // We hold the lock, so safe to update it now
                             logger.warn("JWK cache was NOT successfully refreshed while waiting, retry now (with {} waiting)..", lock.getQueueLength());
                                 
-                            List<T> all = provider.getJwks(false);
-    
-                            // save to cache
-                            this.cache = cache = new JwkListCacheItem<>(all, getExpires(time));
+                            cache = loadJwksFromProvider(time);
                             
                             logger.info("JWK cache refreshed (with {} waiting) ", lock.getQueueLength());
                         } else {
@@ -125,7 +119,7 @@ public class DefaultCachedJwksProvider<T> extends AbstractCachedJwksProvider<T> 
             }
 
             if (cache != null && cache.isValid(time)) {
-                return cache.getValue();
+                return cache;
             }
 
             throw new JwksUnavailableException("Unable to refresh cache");
@@ -134,6 +128,22 @@ public class DefaultCachedJwksProvider<T> extends AbstractCachedJwksProvider<T> 
 
             throw new JwksUnavailableException("Interrupted while waiting for refreshed cache", e);
         }
+    }
+    
+    /**
+     * 
+     * Load Jwks from wrapped provider. Guaranteed to only run for one thread at a time.
+     * 
+     * @param time current time
+     * @return
+     * @throws JwksException if loading could not be performed
+     */
+
+    protected JwkListCacheItem<T> loadJwksFromProvider(long time) throws JwksException {
+        List<T> all = provider.getJwks(false);
+
+        // save to cache
+        return this.cache = new JwkListCacheItem<>(all, getExpires(time));
     }
 
     ReentrantLock getLock() {

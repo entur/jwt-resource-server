@@ -1,5 +1,7 @@
 package org.entur.jwt.client;
 
+import java.io.IOException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +22,11 @@ public abstract class BaseAccessTokenProvider implements AccessTokenProvider {
     @Override
     public AccessTokenHealth getHealth(boolean refresh) {
         return provider.getHealth(refresh);
+    }
+    
+    @Override
+    public void close() throws IOException {
+        provider.close();
     }
 
 }

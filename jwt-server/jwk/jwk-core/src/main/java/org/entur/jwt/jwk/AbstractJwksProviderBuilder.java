@@ -25,6 +25,7 @@ public abstract class AbstractJwksProviderBuilder<T, B extends AbstractJwksProvi
 
     protected boolean preemptiveRefresh = true;
     protected Duration preemptiveRefreshDuration = Duration.ofSeconds(30);
+    protected boolean preemptiveRefreshAlwaysOn = false;
 
     // rate limiting
     protected boolean rateLimited = true;
@@ -88,13 +89,16 @@ public abstract class AbstractJwksProviderBuilder<T, B extends AbstractJwksProvi
      *
      * @param duration Preemptive limit, relative to cache time to live, i.e. "15
      *              seconds before timeout, refresh time cached value".
+     * @param alwaysOn Refresh the token even if there is no traffic (otherwise will be on demand).
+     *              
      * @return the builder
      */
     @SuppressWarnings("unchecked")
-    public B preemptiveCacheRefresh(Duration duration) {
+    public B preemptiveCacheRefresh(Duration duration, boolean alwaysOn) {
         this.cached = true;
         this.preemptiveRefresh = true;
         this.preemptiveRefreshDuration = duration;
+        this.preemptiveRefreshAlwaysOn = alwaysOn;
         return (B) this;
     }
 
@@ -169,7 +173,7 @@ public abstract class AbstractJwksProviderBuilder<T, B extends AbstractJwksProvi
             provider = getRateLimitedProvider(provider);
         }
         if (preemptiveRefresh) {
-            provider = new PreemptiveCachedJwksProvider<>(provider, cacheDuration, cacheRefreshTimeoutDuration, preemptiveRefreshDuration);
+            provider = new PreemptiveCachedJwksProvider<>(provider, cacheDuration, cacheRefreshTimeoutDuration, preemptiveRefreshDuration, preemptiveRefreshAlwaysOn);
         } else if (cached) {
             provider = new DefaultCachedJwksProvider<>(provider, cacheDuration, cacheRefreshTimeoutDuration);
         }

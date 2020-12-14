@@ -85,7 +85,7 @@ public class JwkProviderBench extends Thread {
         
         CounterJwksProvider<Jwk> counterJwksProvider = new CounterJwksProvider<>(jwksProvider);
         
-        JwkProvider<Jwk> provider = Auth0JwkProviderBuilder.newBuilder(counterJwksProvider).cached(Duration.ofSeconds(3), Duration.ofSeconds(1)).preemptiveCacheRefresh(Duration.ofSeconds(1))
+        JwkProvider<Jwk> provider = Auth0JwkProviderBuilder.newBuilder(counterJwksProvider).cached(Duration.ofSeconds(3), Duration.ofSeconds(1)).preemptiveCacheRefresh(Duration.ofSeconds(1), false)
                 .rateLimited(10, 1, Duration.ofSeconds(1))
                 .preemptiveCacheRefresh(false)
                 .build();

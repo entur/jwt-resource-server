@@ -26,6 +26,7 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
     protected boolean preemptiveRefresh = true;
     protected TimeUnit preemptiveRefreshTimeUnit = TimeUnit.SECONDS;
     protected long preemptiveRefreshTimeUnits = 30;
+    protected boolean preemptiveRefreshEager = false;
 
     // health indicator support
     protected boolean health = true;
@@ -104,11 +105,12 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
      * @return the builder
      */
     @SuppressWarnings("unchecked")
-    public B preemptiveCacheRefresh(long timeout, TimeUnit unit) {
+    public B preemptiveCacheRefresh(long timeout, TimeUnit unit, boolean eager) {
         this.cached = true;
         this.preemptiveRefresh = true;
         this.preemptiveRefreshTimeUnits = timeout;
         this.preemptiveRefreshTimeUnit = unit;
+        this.preemptiveRefreshEager = eager;
         return (B) this;
     }
 
@@ -144,7 +146,7 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
             provider = defaultAccessTokenHealthProvider = new DefaultAccessTokenHealthProvider(provider);
         }
         if (preemptiveRefresh) {
-            provider = new PreemptiveCachedAccessTokenProvider(provider, minimumTimeToLiveUnits, minimumTimeToLiveUnit, refreshExpiresIn, refreshExpiresUnit, preemptiveRefreshTimeUnits, preemptiveRefreshTimeUnit);
+            provider = new PreemptiveCachedAccessTokenProvider(provider, minimumTimeToLiveUnits, minimumTimeToLiveUnit, refreshExpiresIn, refreshExpiresUnit, preemptiveRefreshTimeUnits, preemptiveRefreshTimeUnit, preemptiveRefreshEager);
         } else if (cached) {
             provider = new DefaultCachedAccessTokenProvider(provider, minimumTimeToLiveUnits, minimumTimeToLiveUnit, refreshExpiresIn, refreshExpiresUnit);
         }

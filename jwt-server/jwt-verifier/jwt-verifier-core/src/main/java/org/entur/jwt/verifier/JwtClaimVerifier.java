@@ -1,5 +1,6 @@
 package org.entur.jwt.verifier;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -84,5 +85,10 @@ public class JwtClaimVerifier<T> implements JwtVerifier<T> {
     @Override
     public JwksHealth getHealth(boolean refresh) {
         return delegate.getHealth(refresh);
+    }
+
+    @Override
+    public void close() throws IOException {
+        delegate.close();
     }
 }

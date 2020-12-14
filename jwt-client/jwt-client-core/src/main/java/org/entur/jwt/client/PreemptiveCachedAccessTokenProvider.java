@@ -1,7 +1,11 @@
 package org.entur.jwt.client;
 
+import java.io.IOException;
+import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -35,9 +39,12 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
 
     private final ExecutorService executorService;
 
+    private final ScheduledExecutorService scheduledExecutorService;
+    private ScheduledFuture<?> eagerScheduledFuture;
+
     // cache expire time is used as its fingerprint
     private volatile long cacheExpires;
-
+    
     /**
      * Construct new instance.
      * 
@@ -54,8 +61,8 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
      */
 
     public PreemptiveCachedAccessTokenProvider(AccessTokenProvider provider, long minimumTimeToLiveUnits, TimeUnit minimumTimeToLiveUnit, long refreshTimeoutUnits, TimeUnit refreshTimeoutUnit, long preemptiveTimeoutUnits,
-            TimeUnit preemptiveTimeoutUnit) {
-        this(provider, minimumTimeToLiveUnit.toMillis(minimumTimeToLiveUnits), refreshTimeoutUnit.toMillis(refreshTimeoutUnits), preemptiveTimeoutUnit.toMillis(preemptiveTimeoutUnits), Executors.newSingleThreadExecutor());
+            TimeUnit preemptiveTimeoutUnit, boolean eager) {
+        this(provider, minimumTimeToLiveUnit.toMillis(minimumTimeToLiveUnits), refreshTimeoutUnit.toMillis(refreshTimeoutUnits), preemptiveTimeoutUnit.toMillis(preemptiveTimeoutUnits), eager, Executors.newSingleThreadExecutor());
     }
 
     /**
@@ -71,8 +78,8 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
      *                          value".
      */
 
-    public PreemptiveCachedAccessTokenProvider(AccessTokenProvider provider, long minimumTimeToLive, long refreshTimeout, long preemptiveRefresh) {
-        this(provider, minimumTimeToLive, refreshTimeout, preemptiveRefresh, Executors.newSingleThreadExecutor());
+    public PreemptiveCachedAccessTokenProvider(AccessTokenProvider provider, long minimumTimeToLive, long refreshTimeout, long preemptiveRefresh, boolean eager) {
+        this(provider, minimumTimeToLive, refreshTimeout, preemptiveRefresh, eager, Executors.newSingleThreadExecutor());
     }
 
     /**
@@ -89,7 +96,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
      * @param executorService   executor service
      */
 
-    public PreemptiveCachedAccessTokenProvider(AccessTokenProvider provider, long minimumTimeToLive, long refreshTimeout, long preemptiveRefresh, ExecutorService executorService) {
+    public PreemptiveCachedAccessTokenProvider(AccessTokenProvider provider, long minimumTimeToLive, long refreshTimeout, long preemptiveRefresh, boolean eager, ExecutorService executorService) {
         super(provider, minimumTimeToLive, refreshTimeout);
 
         if (preemptiveRefresh < minimumTimeToLive) {
@@ -98,20 +105,62 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
 
         this.preemptiveRefresh = preemptiveRefresh;
         this.executorService = executorService;
+        
+        if(eager) {
+            scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        } else {
+            scheduledExecutorService = null;
+        }        
     }
 
     @Override
     public AccessToken getAccessToken(long time, boolean forceUpdate) throws AccessTokenException {
         AccessTokenCacheItem cache = this.cache;
         if (forceUpdate || cache == null || !cache.isValid(time)) {
-            return super.getAccessTokenBlocking(time, cache);
+            return super.getAccessTokenBlocking(time, cache).getValue();
         }
 
-        preemptiveUpdate(time, cache);
+        preemptiveRefresh(time, cache, false);
 
         return cache.getValue();
     }
 
+    protected void schedulePreemptiveRefresh(long time, AccessTokenCacheItem cache) {
+        if(eagerScheduledFuture != null) {
+            eagerScheduledFuture.cancel(false);
+        }
+        
+        // so we want to keep other threads from triggering preemptive refreshing
+        // subtracting the refresh timeout should be enough
+        
+        // note: minimum time to live is already burnt into the expires
+        long delay = cache.getExpires() - time - preemptiveRefresh - refreshTimeout + minimumTimeToLive;
+        if(delay > 0) {
+            this.eagerScheduledFuture = scheduledExecutorService.schedule(() -> {
+                try {
+                    // so will only refresh if this specific cache entry still is the current one
+                    preemptiveRefresh(System.currentTimeMillis(), cache, true);
+                } catch (Exception e) {
+                    logger.warn("Scheduled eager token refresh failed", e);
+                }
+            }, delay, TimeUnit.MILLISECONDS);
+            
+            if(logger.isDebugEnabled()) logger.debug("Scheduled next eager token refresh in " + getTime(delay));
+        } else {
+            logger.warn("Not Scheduling eager token refresh");
+        }
+    }    
+    
+    @Override
+    protected AccessTokenCacheItem loadAccessTokenFromProvider(long time) throws AccessTokenException {
+        AccessTokenCacheItem item = super.loadAccessTokenFromProvider(time);
+        if(scheduledExecutorService != null) {
+            schedulePreemptiveRefresh(time, item);
+        }
+        
+        return item;
+    }
+    
     /**
      * Preemptive update.
      * 
@@ -119,8 +168,8 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
      * @param cache current cache (non-null)
      */
 
-    protected void preemptiveUpdate(final long time, final AccessTokenCacheItem cache) {
-        if (!cache.isValid(time + preemptiveRefresh)) {
+    protected void preemptiveRefresh(final long time, final AccessTokenCacheItem cache, boolean forceRefresh) {
+        if (!cache.isValid(time + preemptiveRefresh) || forceRefresh) {
             // cache will expires soon,
             // preemptively update it
 
@@ -139,6 +188,8 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
                             executorService.execute(() -> {
                                 try {
                                     PreemptiveCachedAccessTokenProvider.super.getAccessTokenBlocking(time, cache);
+                                    
+                                    // so next time this method is invoked, it'll be with the updated cache item expiry time
                                 } catch (AccessTokenException e) {
                                     // update failed, but another thread can retry
                                     cacheExpires = -1L;
@@ -169,5 +220,22 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
     ReentrantLock getLazyLock() {
         return lazyLock;
     }
+    
+    protected String getTime(long update) {
+        return Duration.ofMillis(update).toString();
+    }    
 
+    protected ScheduledFuture<?> getEagerScheduledFuture() {
+        return eagerScheduledFuture;
+    }
+    
+    @Override
+    public void close() throws IOException {
+        ScheduledFuture<?> eagerJwkListCacheItem = this.eagerScheduledFuture; // defensive copy
+        if(eagerJwkListCacheItem != null) {
+            eagerJwkListCacheItem.cancel(true);
+            logger.info("Cancelled scheduled update");
+        }
+        provider.close();
+    }    
 }
