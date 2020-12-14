@@ -233,7 +233,7 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
         ScheduledFuture<?> eagerJwkListCacheItem = this.eagerScheduledFuture; // defensive copy
         if(eagerJwkListCacheItem != null) {
             eagerJwkListCacheItem.cancel(true);
-            logger.debug("Cancelled scheduled update");
+            logger.info("Cancelled scheduled refresh");
         }
         provider.close();
     }

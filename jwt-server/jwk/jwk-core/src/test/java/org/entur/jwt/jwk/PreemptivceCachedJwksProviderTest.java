@@ -295,10 +295,10 @@ public class PreemptivceCachedJwksProviderTest extends AbstractDelegateProviderT
         assertThat(wrapper.getJwk("a"), equalTo(a));
         verify(delegate, only()).getJwks(false);
 
-        ScheduledFuture<?> alwaysOnJwkListCacheItem = provider.getEagerScheduledFuture();
-        assertNotNull(alwaysOnJwkListCacheItem);
+        ScheduledFuture<?> eagerJwkListCacheItem = provider.getEagerScheduledFuture();
+        assertNotNull(eagerJwkListCacheItem);
         
-        long left = alwaysOnJwkListCacheItem.getDelay(TimeUnit.MILLISECONDS);
+        long left = eagerJwkListCacheItem.getDelay(TimeUnit.MILLISECONDS);
         
         long skew = System.currentTimeMillis() - time;
         

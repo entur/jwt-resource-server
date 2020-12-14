@@ -200,10 +200,10 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         assertThat(provider.getAccessToken(false)).isSameInstanceAs(accessToken);
         verify(fallback, only()).getAccessToken(false);
         
-        ScheduledFuture<?> alwaysOnJwkListCacheItem = provider.getEagerScheduledFuture();
-        assertNotNull(alwaysOnJwkListCacheItem);
+        ScheduledFuture<?> eagerOnJwkListCacheItem = provider.getEagerScheduledFuture();
+        assertNotNull(eagerOnJwkListCacheItem);
         
-        long left = alwaysOnJwkListCacheItem.getDelay(TimeUnit.MILLISECONDS);
+        long left = eagerOnJwkListCacheItem.getDelay(TimeUnit.MILLISECONDS);
         
         long skew = System.currentTimeMillis() - now;
         

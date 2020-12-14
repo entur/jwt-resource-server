@@ -234,7 +234,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
         ScheduledFuture<?> eagerJwkListCacheItem = this.eagerScheduledFuture; // defensive copy
         if(eagerJwkListCacheItem != null) {
             eagerJwkListCacheItem.cancel(true);
-            logger.info("Cancelled scheduled update");
+            logger.info("Cancelled scheduled refresh");
         }
         provider.close();
     }    
