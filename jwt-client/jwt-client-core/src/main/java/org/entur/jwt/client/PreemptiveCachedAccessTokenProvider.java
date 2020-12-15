@@ -222,6 +222,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
         
         long refreshable = accessToken.getExpires() - preemptiveRefresh;
         if(refreshable < earliestRefresh) { // i.e. too early
+            logger.warn("Token time-to-live of " + (timeToLive/1000) + "s (at " + refreshConstraintInPercent + "%) does not support desired preemptive refresh of " + (preemptiveRefresh/1000) + "s");
             refreshable = earliestRefresh;
         }
         
