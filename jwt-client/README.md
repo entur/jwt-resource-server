@@ -23,7 +23,7 @@ See submodules for Maven / Gradle coordinates.
 
 ## Details 
     
-The cache behaves in a __lazy, proactive__  way:
+The cache by default behaves in a __lazy, proactive__  way:
 
  * if missing or expired token, the first thread to access the cache requests a new token, while all other threads must wait (are blocked, with a deadline). 
  * if an token is about to expire, request a new in a background thread, while returning the (still valid) current token.
@@ -32,7 +32,7 @@ So while empty or expired tokens means that the implementation is essentially bl
 
 Since we're refreshing the cache before the token expires, there will normally not be both a lot of traffic and an expired cache; so thread spaghetti (by blocking) should be avoided.
 
-Actively refreshing the cache is possible, if desired.
+Eager refresh can also be enabled.
 
 ## Usage
 Create an instance of `AccessTokenProvider` per application-context (per Authorization Server). Instances of `AccessTokenProvider` cache og refresh access-tokens and are thread-safe. Example:
@@ -129,6 +129,34 @@ private AccessTokenProvider firstAccessTokenProvider;
 @Qualifier("mySecondClient")
 private AccessTokenProvider secondAccessTokenProvider;
 ```
+
+### Cache configuration
+To adjust the caching / validity of the token, add the following properties (in addition to the above ones):
+
+```yaml
+entur:
+    jwt:
+        clients:
+            auth0:
+                myClient:
+                    retrying: true # retry (once) if getting token fails                    
+                    cache:
+                        minimum-time-to-live: 15 # minimum time left on token (seconds)
+                        refresh-timeout: 15 # timeout when refreshing the token (seconds)
+                        preemptive-refresh:
+                            time-to-expires: 30 # time left on token when refreshing in the background (seconds)
+                            eager:
+                                enabled: false
+```
+
+Note that proper configuration of `minimum-time-to-live` depends on the so-called expiry `leeway` configure in the remote service you'll be calling using the access-token.
+
+#### Aggressive prefetching
+Those wanting to preemptivly refresh tokens long before they expire, i.e. to always have some minutes (or hours) left on tokens in case of authorization server downtime, 
+please note the preemptive-refresh parameter `expires-constraint`, which limits how often preemptive refresh happens (as a percentage of the access-token lifetime). 
+
+This prevents adjustments of the access-token time-to-live (which can be dynamically configured on the authorization server) from resulting in constant refreshes, 
+which could negatively affect the authorization server.
 
 ### Health indicator configuration
 The library supports a Spring [HealthIndicator](https://docs.spring.io/spring-boot/docs/current/api/org/springframework/boot/actuate/health/HealthIndicator.html) via the configuration

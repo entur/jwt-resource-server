@@ -1,11 +1,12 @@
 package org.entur.jwt.jwk;
 
+import java.io.Closeable;
 import java.util.List;
 
 /**
  * Provider of a list of Jwk.
  */
-public interface JwksProvider<T> extends JwksHealthProvider {
+public interface JwksProvider<T> extends JwksHealthProvider, Closeable {
 
     /**
      * Returns a list of Jwk.

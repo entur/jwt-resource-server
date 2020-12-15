@@ -1,5 +1,6 @@
 package org.entur.jwt.jwk.bench;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -25,6 +26,11 @@ public class CounterJwksProvider<T> implements JwksProvider<T> {
     
     public int getCount() {
         return counter.get();
+    }
+
+    @Override
+    public void close() throws IOException {
+        delegate.close();
     }
 
 }

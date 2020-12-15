@@ -50,7 +50,7 @@ public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT> {
 
     @Override
     public JwtVerifier<DecodedJWT> getVerifier(Map<String, JwtTenantProperties> tenants, JwkProperties jwkConfiguration, JwtClaimsProperties claims) {
-        Map<String, JWTVerifier> verifiers = new HashMap<>(); // thread safe for read access
+        Map<String, CloseableJWTVerifier> verifiers = new HashMap<>(); // thread safe for read access
 
         boolean healthIndicator = jwkConfiguration.getHealthIndicator().isEnabled();
 
@@ -107,7 +107,7 @@ public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT> {
 
                 JwkPreemptiveCacheProperties preemptive = cache.getPreemptive();
                 if (preemptive != null && preemptive.isEnabled()) {
-                    builder.preemptiveCacheRefresh(Duration.ofSeconds(preemptive.getTimeToExpires()));
+                    builder.preemptiveCacheRefresh(Duration.ofSeconds(preemptive.getTimeToExpires()), preemptive.getEager().isEnabled());
                 } else {
                     builder.preemptiveCacheRefresh(false);
                 }
@@ -143,7 +143,7 @@ public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT> {
             // value verification directly supported by auth0
             addValueConstraints(jwtBuilder, valueConstraints);
 
-            JWTVerifier verifier = new AudienceJWTVerifier(jwtBuilder.build(), claims.getAudiences());
+            CloseableJWTVerifier verifier = new AudienceJWTVerifier(jwtBuilder.build(), jwkProvider, claims.getAudiences());
             verifiers.put(tenantConfiguration.getIssuer(), verifier);
         }
 

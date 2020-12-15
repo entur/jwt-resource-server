@@ -59,13 +59,13 @@ public class DefaultCachedAccessTokenProvider extends AbstractCachedAccessTokenP
     protected AccessToken getAccessToken(long time, boolean forceUpdate) throws AccessTokenException {
         AccessTokenCacheItem cache = this.cache;
         if (forceUpdate || cache == null || !cache.isValid(time)) {
-            return getAccessTokenBlocking(time, cache);
+            return getAccessTokenBlocking(time, cache).getValue();
         }
 
         return cache.getValue();
     }
 
-    protected AccessToken getAccessTokenBlocking(long time, AccessTokenCacheItem cache) throws AccessTokenException {
+    protected AccessTokenCacheItem getAccessTokenBlocking(long time, AccessTokenCacheItem cache) throws AccessTokenException {
         // Synchronize so that the first thread to acquire the lock
         // exclusively gets to call the underlying provider.
         // Other (later) threads must wait until the result is ready.
@@ -86,10 +86,7 @@ public class DefaultCachedAccessTokenProvider extends AbstractCachedAccessTokenP
                         // Seems cache was not updated.
                         // We hold the lock, so safe to update it now
                         // get and save to cache
-                        AccessToken accessToken = provider.getAccessToken(false);
-
-                        // reduce cache expiry according to the minimum time to live
-                        this.cache = cache = new AccessTokenCacheItem(accessToken, accessToken.getExpires() - minimumTimeToLive);
+                        cache = loadAccessTokenFromProvider(time);
                     } else {
                         // load updated value
                         cache = this.cache;
@@ -102,7 +99,7 @@ public class DefaultCachedAccessTokenProvider extends AbstractCachedAccessTokenP
             }
 
             if (cache != null && cache.isValid(time)) {
-                return cache.getValue();
+                return cache;
             }
 
             throw new AccessTokenUnavailableException("Unable to refresh cache");
@@ -111,6 +108,18 @@ public class DefaultCachedAccessTokenProvider extends AbstractCachedAccessTokenP
 
             throw new AccessTokenUnavailableException("Interrupted while waiting for refreshed cache", e);
         }
+    }
+
+    protected AccessTokenCacheItem loadAccessTokenFromProvider(long time) throws AccessTokenException {
+        // note: never run by two threads at the same time
+        AccessToken accessToken = provider.getAccessToken(false);
+        
+        // reduce cache expiry according to the minimum time to live
+        return this.cache = createCacheItem(time, accessToken);
+    }
+
+    protected AccessTokenCacheItem createCacheItem(long time, AccessToken accessToken) {
+        return new AccessTokenCacheItem(accessToken, accessToken.getExpires() - minimumTimeToLive, Long.MAX_VALUE);
     }
 
     ReentrantLock getLock() {

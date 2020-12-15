@@ -59,7 +59,7 @@ A tenant id-filter can be used to conveniently enable/disable specific tenants. 
 entur:
   jwt:
     filter:
-      ids: # i.e. ids from entur.jwt.tenants
+      ids: # tenants
         - partner-auth0
 ```
 
