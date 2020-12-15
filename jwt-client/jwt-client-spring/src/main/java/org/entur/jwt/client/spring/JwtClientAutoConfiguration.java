@@ -17,7 +17,7 @@ import org.entur.jwt.client.properties.AbstractJwtClientProperties;
 import org.entur.jwt.client.properties.Auth0JwtClientProperties;
 import org.entur.jwt.client.properties.JwtClientCache;
 import org.entur.jwt.client.properties.KeycloakJwtClientProperties;
-import org.entur.jwt.client.properties.PreemptiveRefresh;
+import org.entur.jwt.client.properties.JwtPreemptiveRefresh;
 import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
@@ -136,7 +136,6 @@ public class JwtClientAutoConfiguration {
                 constructorArgumentValues.addGenericArgumentValue(key);
                 beanDefinition.setAutowireCandidate(true);
                 beanDefinition.setConstructorArgumentValues(constructorArgumentValues);
-                
                 registry.registerBeanDefinition(key, beanDefinition);
             }
         }
@@ -198,9 +197,9 @@ public class JwtClientAutoConfiguration {
             if (cache != null && cache.isEnabled()) {
                 builder.cached(cache.getMinimumTimeToLive(), TimeUnit.SECONDS, cache.getRefreshTimeout(), TimeUnit.SECONDS);
 
-                PreemptiveRefresh preemptiveRefresh = cache.getPreemptiveRefresh();
+                JwtPreemptiveRefresh preemptiveRefresh = cache.getPreemptiveRefresh();
                 if (preemptiveRefresh != null && preemptiveRefresh.isEnabled()) {
-                    builder.preemptiveCacheRefresh(preemptiveRefresh.getTime(), TimeUnit.SECONDS);
+                    builder.preemptiveCacheRefresh(preemptiveRefresh.getTimeToExpires(), TimeUnit.SECONDS, preemptiveRefresh.getExpiresConstraint(), preemptiveRefresh.getEager().isEnabled());
                 } else {
                     builder.preemptiveCacheRefresh(false);
                 }
@@ -210,7 +209,7 @@ public class JwtClientAutoConfiguration {
 
             builder.health(health);
 
-            return builder.build();
+            return new SpringAccessTokenProvider(builder.build());
         }
         
     }

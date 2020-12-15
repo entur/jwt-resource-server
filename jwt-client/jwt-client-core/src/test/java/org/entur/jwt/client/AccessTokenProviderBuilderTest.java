@@ -96,7 +96,7 @@ public class AccessTokenProviderBuilderTest {
 
     @Test
     public void shouldCreatePreemptiveCachedProvider() {
-        AccessTokenProvider provider = builder().preemptiveCacheRefresh(20, TimeUnit.SECONDS).health(false).build();
+        AccessTokenProvider provider = builder().preemptiveCacheRefresh(20, TimeUnit.SECONDS, 25, false).health(false).build();
 
         List<AccessTokenProvider> accessTokenProviders = accessTokenProviders(provider);
         assertThat(accessTokenProviders).hasSize(3);

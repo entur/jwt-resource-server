@@ -10,7 +10,7 @@ public class JwtClientCache {
     /** Number of seconds to wait for a token, if it must be refreshed */
     private long refreshTimeout = 15; // cache refresh timeout in seconds
 
-    private PreemptiveRefresh preemptiveRefresh = new PreemptiveRefresh();
+    private JwtPreemptiveRefresh preemptiveRefresh = new JwtPreemptiveRefresh();
 
     public boolean isEnabled() {
         return enabled;
@@ -28,11 +28,11 @@ public class JwtClientCache {
         this.minimumTimeToLive = minimumTimeToLive;
     }
 
-    public PreemptiveRefresh getPreemptiveRefresh() {
+    public JwtPreemptiveRefresh getPreemptiveRefresh() {
         return preemptiveRefresh;
     }
 
-    public void setPreemptiveRefresh(PreemptiveRefresh preemptiveRefresh) {
+    public void setPreemptiveRefresh(JwtPreemptiveRefresh preemptiveRefresh) {
         this.preemptiveRefresh = preemptiveRefresh;
     }
 

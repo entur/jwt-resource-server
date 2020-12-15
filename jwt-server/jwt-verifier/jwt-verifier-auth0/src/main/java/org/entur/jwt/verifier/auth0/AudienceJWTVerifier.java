@@ -1,5 +1,7 @@
 package org.entur.jwt.verifier.auth0;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -21,15 +23,16 @@ import com.auth0.jwt.interfaces.JWTVerifier;
  * Retire this class when Auth0 supports this function.
  */
 
-public class AudienceJWTVerifier implements JWTVerifier {
+public class AudienceJWTVerifier implements CloseableJWTVerifier {
 
     private final JWTVerifier delegate;
-
+    private final Closeable closeable;
     private final List<String> audiences;
 
-    public AudienceJWTVerifier(JWTVerifier delegate, List<String> audiences) {
+    public AudienceJWTVerifier(JWTVerifier delegate, Closeable closeable, List<String> audiences) {
         super();
         this.delegate = delegate;
+        this.closeable = closeable;
         if (audiences != null && !audiences.isEmpty()) {
             this.audiences = new ArrayList<>(audiences); // defensive copy for read-only multi-threading support
         } else {
@@ -57,6 +60,11 @@ public class AudienceJWTVerifier implements JWTVerifier {
             throw new InvalidClaimException("None of the claim 'aud' value '" + jwtAudiences + "' is not amoung the required audiences.");
         }
         return decodedJWT;
+    }
+
+    @Override
+    public void close() throws IOException {
+        closeable.close();
     }
 
 }

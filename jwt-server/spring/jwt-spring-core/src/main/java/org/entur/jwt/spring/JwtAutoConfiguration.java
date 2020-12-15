@@ -2,6 +2,7 @@ package org.entur.jwt.spring;
 
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -10,6 +11,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import javax.annotation.PreDestroy;
+
 import java.util.Set;
 
 import org.entur.jwt.spring.actuate.JwksHealthIndicator;
@@ -254,8 +258,9 @@ public class JwtAutoConfiguration {
                 throw new IllegalStateException("No configured tenants (" + disabled + " were disabled)");
             }
         }
-
-        return factory.getVerifier(enabledTenants, jwtProperties.getJwk(), jwtProperties.getClaims());
+        
+        // add a wrapper so that the verifier is closed on shutdown
+        return new SpringJwtVerifier<>(factory.getVerifier(enabledTenants, jwtProperties.getJwk(), jwtProperties.getClaims()));
     }
 
     
@@ -394,5 +399,6 @@ public class JwtAutoConfiguration {
     public JwtAuthenticationExceptionAdvice advice() {
         return new JwtAuthenticationExceptionAdvice();
     }
+
 
 }

@@ -1,7 +1,5 @@
 package org.entur.jwt.client;
 
-import java.io.IOException;
-
 /**
  * This provider implements a workaround for transient network problems. <br>
  * <br>
@@ -23,11 +21,6 @@ public class RetryingAccessTokenProvider extends BaseAccessTokenProvider {
             // assume transient network issue, retry once
             return provider.getAccessToken(forceRefresh);
         }
-    }
-
-    @Override
-    public void close() throws IOException {
-        provider.close();
     }
 
 }

@@ -1,5 +1,6 @@
 package org.entur.jwt.verifier;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -20,5 +21,10 @@ public class MapJwtVerifier implements JwtVerifier<Map<String, Object>> {
 
     public void clear() {
         tokens.clear();
+    }
+
+    @Override
+    public void close() throws IOException {
+        // do nothing
     }
 }

@@ -1,9 +1,11 @@
 package org.entur.jwt.verifier;
 
+import java.io.Closeable;
+
 import org.entur.jwt.jwk.JwksException;
 import org.entur.jwt.jwk.JwksHealthProvider;
 
-public interface JwtVerifier<T> extends JwksHealthProvider {
+public interface JwtVerifier<T> extends JwksHealthProvider, Closeable {
 
     /**
      * Verify token. Non-valid tokens are assumed to be logged and returned as null.

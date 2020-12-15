@@ -1,7 +1,5 @@
 package org.entur.jwt.client;
 
-import java.io.IOException;
-
 public class DefaultAccessTokenHealthProvider extends BaseAccessTokenProvider {
 
     private volatile AccessTokenHealth status;
@@ -29,11 +27,6 @@ public class DefaultAccessTokenHealthProvider extends BaseAccessTokenProvider {
         }
 
         return accessToken;
-    }
-
-    @Override
-    public void close() throws IOException {
-        provider.close();
     }
 
     @Override

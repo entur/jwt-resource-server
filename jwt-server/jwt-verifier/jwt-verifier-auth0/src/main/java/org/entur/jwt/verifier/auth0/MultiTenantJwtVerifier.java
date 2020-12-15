@@ -1,7 +1,10 @@
 package org.entur.jwt.verifier.auth0;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.entur.jwt.jwk.JwksException;
 import org.entur.jwt.jwk.JwksHealth;
@@ -18,11 +21,11 @@ import com.auth0.jwt.exceptions.AlgorithmMismatchException;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 
-public class MultiTenantJwtVerifier implements JwtVerifier<DecodedJWT> {
+public class MultiTenantJwtVerifier implements JwtVerifier<DecodedJWT>, Closeable {
 
     protected static final Logger logger = LoggerFactory.getLogger(MultiTenantJwtVerifier.class);
 
-    private final Map<String, JWTVerifier> verifiers;
+    private final Map<String, CloseableJWTVerifier> verifiers;
     private final List<JwksProvider<?>> healthProviders;
 
     /**
@@ -31,11 +34,11 @@ public class MultiTenantJwtVerifier implements JwtVerifier<DecodedJWT> {
      * @param verifiers map of verifiers which must be thread safe for read access.
      */
 
-    public MultiTenantJwtVerifier(Map<String, JWTVerifier> verifiers) {
+    public MultiTenantJwtVerifier(Map<String, CloseableJWTVerifier> verifiers) {
         this(verifiers, null);
     }
 
-    public MultiTenantJwtVerifier(Map<String, JWTVerifier> verifiers, List<JwksProvider<?>> healthProviders) {
+    public MultiTenantJwtVerifier(Map<String, CloseableJWTVerifier> verifiers, List<JwksProvider<?>> healthProviders) {
         this.verifiers = verifiers;
         this.healthProviders = healthProviders;
     }
@@ -52,7 +55,7 @@ public class MultiTenantJwtVerifier implements JwtVerifier<DecodedJWT> {
 
         String issuer = decode.getIssuer();
         if (issuer != null) {
-            JWTVerifier jwtVerifier = verifiers.get(issuer);
+            CloseableJWTVerifier jwtVerifier = verifiers.get(issuer);
 
             if (jwtVerifier != null) {
                 try {
@@ -93,5 +96,17 @@ public class MultiTenantJwtVerifier implements JwtVerifier<DecodedJWT> {
         }
 
         return new JwksHealth(latestTimestamp, atLeastOneSuccess);
+    }
+
+    @Override
+    public void close() throws IOException {
+        for (Entry<String, CloseableJWTVerifier> entry : verifiers.entrySet()) {
+            CloseableJWTVerifier value = entry.getValue();
+            try {
+                value.close();
+            } catch(IOException e) {
+                // ignore
+            }
+        }
     }
 }

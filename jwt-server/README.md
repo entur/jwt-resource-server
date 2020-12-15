@@ -59,8 +59,11 @@ A tenant id-filter can be used to conveniently enable/disable specific tenants. 
 entur:
   jwt:
     filter:
-      - partner-auth0
+      ids: # tenants
+        - partner-auth0
 ```
+
+The filter also supports wildcard (at the end). 
 
 ## Security configuration
 By default, all requests must be so-called _fully authenticated_. In other words all requests must have a valid JWT token (of any of the configured tenants). 

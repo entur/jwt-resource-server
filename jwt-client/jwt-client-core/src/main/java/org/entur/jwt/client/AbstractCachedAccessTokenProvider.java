@@ -11,22 +11,32 @@ public abstract class AbstractCachedAccessTokenProvider extends BaseAccessTokenP
 
         // must be final so that initialization is safe
         // https://shipilev.net/blog/2014/safe-public-construction/
-        private final AccessToken value;
-        private final long expires;
+        protected final AccessToken value;
+        protected final long expires;
+        protected final long refreshable;
 
-        public AccessTokenCacheItem(AccessToken value, long expires) {
+        public AccessTokenCacheItem(AccessToken value, long expires, long refreshable) {
             this.value = value;
             this.expires = expires;
+            this.refreshable = refreshable;
         }
 
         public boolean isValid(long time) {
             return time <= expires;
         }
 
+        public boolean isRefreshable(long time) {
+            return time >= refreshable;
+        }
+
         public AccessToken getValue() {
             return value;
         }
 
+        public long getRefreshable() {
+            return refreshable;
+        }
+        
         public long getExpires() {
             return expires;
         }
