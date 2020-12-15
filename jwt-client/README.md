@@ -32,7 +32,7 @@ So while empty or expired tokens means that the implementation is essentially bl
 
 Since we're refreshing the cache before the token expires, there will normally not be both a lot of traffic and an expired cache; so thread spaghetti (by blocking) should be avoided.
 
-Eager refresh the cache is possible, if desired.
+Eager refresh can also be enabled.
 
 ## Usage
 Create an instance of `AccessTokenProvider` per application-context (per Authorization Server). Instances of `AccessTokenProvider` cache og refresh access-tokens and are thread-safe. Example:
@@ -144,10 +144,19 @@ entur:
                         minimum-time-to-live: 15 # minimum time left on token (seconds)
                         refresh-timeout: 15 # timeout when refreshing the token (seconds)
                         preemptive-refresh:
-                            time-to-expires: 15 # seconds
+                            time-to-expires: 30 # time left on token when refreshing in the background (seconds)
+                            eager:
+                                enabled: false
 ```
 
-Proper configuration of `minimum-time-to-live` depends on the so-called expiry `leeway` configure in the remote service you'll be calling using the access-token.  
+Note that proper configuration of `minimum-time-to-live` depends on the so-called expiry `leeway` configure in the remote service you'll be calling using the access-token.
+
+#### Aggressive prefetching
+Those wanting to preemptivly refresh tokens long before they expire, i.e. to always have some minutes (or hours) left on tokens in case of authorization server downtime, 
+please note the preemptive-refresh parameter `expires-constraint`, which limits how often preemptive refresh happens (as a percentage of the access-token lifetime). 
+
+This prevents adjustments of the access-token time-to-live (which can be dynamically configured on the authorization server) from resulting in constant refreshes, 
+which could negatively affect the authorization server.
 
 ### Health indicator configuration
 The library supports a Spring [HealthIndicator](https://docs.spring.io/spring-boot/docs/current/api/org/springframework/boot/actuate/health/HealthIndicator.html) via the configuration

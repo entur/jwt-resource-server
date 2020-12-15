@@ -3,6 +3,7 @@ package org.entur.jwt.client;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.only;
@@ -42,7 +43,7 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
     @BeforeEach
     public void setUp() throws Exception {
         super.setUp();
-        provider = new PreemptiveCachedAccessTokenProvider(fallback, 10, TimeUnit.SECONDS, 15, TimeUnit.SECONDS, 15, TimeUnit.SECONDS, false);
+        provider = new PreemptiveCachedAccessTokenProvider(fallback, 10, TimeUnit.SECONDS, 15, TimeUnit.SECONDS, 15, TimeUnit.SECONDS, 0, false);
     }
 
     @Test
@@ -94,7 +95,7 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         assertThat(provider.getAccessToken(false)).isSameInstanceAs(accessToken);
         verify(fallback, only()).getAccessToken(false);
 
-        long justBeforeExpiry = provider.getExpires(-TimeUnit.SECONDS.toMillis(5));
+        long justBeforeExpiry = provider.getExpires(-TimeUnit.SECONDS.toMillis(4));
 
         assertThat(provider.getAccessToken(justBeforeExpiry, false)).isSameInstanceAs(accessToken); // triggers a preemptive refresh attempt
 
@@ -192,7 +193,7 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         accessToken = new AccessToken("a.b.c", "bearer", now + validFor);
         refreshedAccessToken = new AccessToken("a.b.c", "bearer", now + 20 * 60 * 1000);
 
-        provider = new PreemptiveCachedAccessTokenProvider(fallback, minimumTimeToLive, refreshTimeout, preemptiveRefresh, true);
+        provider = new PreemptiveCachedAccessTokenProvider(fallback, minimumTimeToLive, refreshTimeout, preemptiveRefresh, 0, true);
 
         when(fallback.getAccessToken(false)).thenReturn(accessToken).thenReturn(refreshedAccessToken);
 
@@ -204,9 +205,7 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         assertNotNull(eagerOnJwkListCacheItem);
         
         long left = eagerOnJwkListCacheItem.getDelay(TimeUnit.MILLISECONDS);
-        
         long skew = System.currentTimeMillis() - now;
-        
         long limit = validFor - preemptiveRefresh - refreshTimeout;
 
         Truth.assertThat(left).isAtMost(limit);
@@ -222,8 +221,35 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         // and that no new call was necessary
         assertThat(provider.getAccessToken(false)).isSameInstanceAs(refreshedAccessToken);
         verify(fallback, times(2)).getAccessToken(false);
+    }
+    
+    @Test
+    public void shouldConstrainPreemptivelyRefreshCache() throws Exception {
+        long minimumTimeToLive = 1000; 
+        long refreshTimeout = 150;
+        long preemptiveRefresh = 8000; // refresh after just 2000 ms
         
+        long validFor = 10000;
         
+        long now = System.currentTimeMillis();
+
+        int percent = 50; // should limit refresh to 5000ms
+        
+        fallback = mock(AccessTokenProvider.class);
+        accessToken = new AccessToken("a.b.c", "bearer", now + validFor);
+        provider = new PreemptiveCachedAccessTokenProvider(fallback, minimumTimeToLive, refreshTimeout, preemptiveRefresh, percent, true);
+        when(fallback.getAccessToken(false)).thenReturn(accessToken);
+
+        // first access-token
+        assertThat(provider.getAccessToken(false)).isSameInstanceAs(accessToken);
+        verify(fallback, only()).getAccessToken(false);
+
+        long skew = System.currentTimeMillis() - now;
+        long constraintsInMillis = (validFor * percent) / 100;
+        long refreshable = provider.getRefreshable(-now);
+
+        Truth.assertThat(refreshable).isAtMost(constraintsInMillis + skew);
+        Truth.assertThat(refreshable).isAtLeast(constraintsInMillis - skew);
     }    
     
 }

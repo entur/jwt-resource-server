@@ -115,7 +115,11 @@ public class DefaultCachedAccessTokenProvider extends AbstractCachedAccessTokenP
         AccessToken accessToken = provider.getAccessToken(false);
         
         // reduce cache expiry according to the minimum time to live
-        return this.cache = new AccessTokenCacheItem(accessToken, accessToken.getExpires() - minimumTimeToLive);
+        return this.cache = createCacheItem(time, accessToken);
+    }
+
+    protected AccessTokenCacheItem createCacheItem(long time, AccessToken accessToken) {
+        return new AccessTokenCacheItem(accessToken, accessToken.getExpires() - minimumTimeToLive, Long.MAX_VALUE);
     }
 
     ReentrantLock getLock() {

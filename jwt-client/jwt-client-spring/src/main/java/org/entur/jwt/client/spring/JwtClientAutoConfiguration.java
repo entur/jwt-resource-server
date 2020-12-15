@@ -199,7 +199,7 @@ public class JwtClientAutoConfiguration {
 
                 JwtPreemptiveRefresh preemptiveRefresh = cache.getPreemptiveRefresh();
                 if (preemptiveRefresh != null && preemptiveRefresh.isEnabled()) {
-                    builder.preemptiveCacheRefresh(preemptiveRefresh.getTimeToExpires(), TimeUnit.SECONDS, preemptiveRefresh.getEager().isEnabled());
+                    builder.preemptiveCacheRefresh(preemptiveRefresh.getTimeToExpires(), TimeUnit.SECONDS, preemptiveRefresh.getExpiresConstraint(), preemptiveRefresh.getEager().isEnabled());
                 } else {
                     builder.preemptiveCacheRefresh(false);
                 }

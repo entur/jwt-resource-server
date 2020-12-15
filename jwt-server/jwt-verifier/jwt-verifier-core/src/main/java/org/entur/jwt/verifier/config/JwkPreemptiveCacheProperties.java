@@ -3,8 +3,8 @@ package org.entur.jwt.verifier.config;
 public class JwkPreemptiveCacheProperties {
 
     protected boolean enabled = true;
-    /** time to live, in seconds */
-    protected long timeToExpires = 15;
+    /** time to expires, in seconds */
+    protected long timeToExpires = 30;
 
     /** should the cache be refresh even if there is no traffic? */
     protected JwtEagerRefresh eager = new JwtEagerRefresh();
