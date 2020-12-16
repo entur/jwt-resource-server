@@ -28,11 +28,11 @@ public class GrpcPermitAll {
     }
 
     public GrpcServicesConfiguration getGrpc() {
-		return grpc;
-	}
+        return grpc;
+    }
     
     public void setGrpc(GrpcServicesConfiguration grpc) {
-		this.grpc = grpc;
-	}
+        this.grpc = grpc;
+    }
 
 }

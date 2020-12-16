@@ -1,6 +1,5 @@
 package org.entur.jwt.spring.grpc;
 
-import static com.google.common.truth.Truth.assertThat;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -11,7 +10,6 @@ import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.junit5.headers.KeyIdHeader;
 import org.entur.jwt.junit5.sabotage.Signature;
-import org.entur.jwt.spring.grpc.test.GreetingResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,20 +19,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.web.server.LocalServerPort;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 /**
  * 
- * Test readiness probe repair. 
- * 
- * Rename the jwk file so that it first cannot be found, check that state is down.
- * Then later restore the file and verify that state is up. 
+ * Rename the jwk file so that it first cannot be found, check that service responses are as expected.
  * 
  */
 
@@ -85,7 +75,6 @@ public class AuthorizationServerDownTest extends AbstractGrpcTest {
 
     @Test 
     public void testProtectedResourceWithInvalidSignature(@AccessToken @Signature String header) {
-        System.out.println(header);
         StatusRuntimeException exception = assertThrows(StatusRuntimeException.class, () -> {
             stub(header).protectedWithPartnerTenant(greetingRequest);
         });

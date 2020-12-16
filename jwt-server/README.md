@@ -98,7 +98,7 @@ entur:
   authorization:
     permit-all:
       mvc-matcher:
-        method:
+        method:	
           get:
             patterns:
              - /some/path/{myVariable}

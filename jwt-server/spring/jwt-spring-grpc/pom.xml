@@ -14,7 +14,7 @@
 	<properties>
 		<grpc.version>1.33.1</grpc.version>
 		<proto.version>3.13.0</proto.version>
-
+		<lognet.version>4.2.3</lognet.version>
 		<os-maven-plugin.version>1.6.2</os-maven-plugin.version>
 		<protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
 	</properties>
@@ -58,7 +58,7 @@
 		<dependency>
 			<groupId>io.github.lognet</groupId>
 			<artifactId>grpc-spring-boot-starter</artifactId>
-			<version>4.2.3</version>
+			<version>${lognet.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.protobuf</groupId>

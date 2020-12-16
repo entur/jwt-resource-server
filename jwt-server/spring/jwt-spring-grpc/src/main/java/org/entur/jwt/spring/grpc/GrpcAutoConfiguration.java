@@ -31,7 +31,7 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
 public class GrpcAutoConfiguration {
 
     private static Logger log = LoggerFactory.getLogger(GrpcAutoConfiguration.class);
-	
+    
     @Bean
     public <T> GrpcAuthenticationInterceptorFactory<T> grpcAuthenticationInterceptorFactory(SecurityProperties properties, JwtVerifier<T> verifier, @Autowired(required = false) JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtAuthorityMapper<T> authorityMapper,
             JwtClaimExtractor<T> extractor, @Lazy HandlerExceptionResolver handlerExceptionResolver, GrpcPermitAll permitAll, JwtPrincipalMapper jwtPrincipalMapper, JwtDetailsMapper jwtDetailsMapper) {
@@ -39,39 +39,39 @@ public class GrpcAutoConfiguration {
         // add an extra layer of checks if auth is always required
         GrpcServiceMethodFilter anonymous;
         if(permitAll.isActive()) {
-        	anonymous = getGrpcServiceMethodFilter(permitAll.getGrpc());
+            anonymous = getGrpcServiceMethodFilter(permitAll.getGrpc());
         } else {
-        	log.info("No anonymous GRPC calls allowed");
-        	anonymous = null;
+            log.info("No anonymous GRPC calls allowed");
+            anonymous = null;
         }
         
         return new GrpcAuthenticationInterceptorFactory<>(new JwtAuthenticationInterceptor<>(verifier, anonymous, authorityMapper, mdcMapper != null ? new GrpcJwtMappedDiagnosticContextMapper<>(mdcMapper) : null, extractor, jwtPrincipalMapper, jwtDetailsMapper));
     }
 
-	private GrpcServiceMethodFilter getGrpcServiceMethodFilter(GrpcServicesConfiguration grpc) {
-		DefaultGrpcServiceMethodFilter filter = new DefaultGrpcServiceMethodFilter();
-				
-		for (ServiceMatcherConfiguration configuration : grpc.getServices()) {
-			if(isStar(configuration.getMethods())) {
-				log.info("Allow anonymous access to all methods of GRPC service " + configuration.getName());
-				filter.addService(configuration.getName());
-			} else {
-				log.info("Allow anonymous access to methods " + configuration.getMethods() + " of GRPC service " + configuration.getName());
-				for (String string : configuration.getMethods()) {
-					filter.addServiceMethod(configuration.getName(), string);
-				}
-			}
-		}
-				
-		return filter;
-	}
+    private GrpcServiceMethodFilter getGrpcServiceMethodFilter(GrpcServicesConfiguration grpc) {
+        DefaultGrpcServiceMethodFilter filter = new DefaultGrpcServiceMethodFilter();
+                
+        for (ServiceMatcherConfiguration configuration : grpc.getServices()) {
+            if(isStar(configuration.getMethods())) {
+                log.info("Allow anonymous access to all methods of GRPC service " + configuration.getName());
+                filter.addService(configuration.getName());
+            } else {
+                log.info("Allow anonymous access to methods " + configuration.getMethods() + " of GRPC service " + configuration.getName());
+                for (String string : configuration.getMethods()) {
+                    filter.addServiceMethod(configuration.getName(), string);
+                }
+            }
+        }
+                
+        return filter;
+    }
 
-	private boolean isStar(List<String> methods) {
-		for (String string : methods) {
-			if(string.equals("*")) {
-				return true;
-			}
-		}
-		return false;
-	}
+    private boolean isStar(List<String> methods) {
+        for (String string : methods) {
+            if(string.equals("*")) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

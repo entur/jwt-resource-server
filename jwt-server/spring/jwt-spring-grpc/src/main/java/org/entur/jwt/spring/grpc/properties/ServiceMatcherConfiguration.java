@@ -28,17 +28,17 @@ public class ServiceMatcherConfiguration {
     }
     
     public void setName(String name) {
-		this.name = name;
-	}
+        this.name = name;
+    }
     
     public String getName() {
-		return name;
-	}
+        return name;
+    }
     
     public List<String> getMethods() {
-		return methods;
-	}
+        return methods;
+    }
     public void setMethods(List<String> methods) {
-		this.methods = methods;
-	}
+        this.methods = methods;
+    }
 }

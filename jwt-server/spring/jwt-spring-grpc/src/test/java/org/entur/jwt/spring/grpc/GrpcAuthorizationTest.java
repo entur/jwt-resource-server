@@ -20,66 +20,66 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import io.grpc.Context;
 
 public class GrpcAuthorizationTest implements GrpcAuthorization {
-	
-	private JwtAuthenticationToken jwtAuthenticationToken;
+    
+    private JwtAuthenticationToken jwtAuthenticationToken;
 
-	private static class ContextWrapper implements Closeable {
+    private static class ContextWrapper implements Closeable {
 
-		private Context rootContext = Context.current();
-		private Context context;
+        private Context rootContext = Context.current();
+        private Context context;
 
-		public ContextWrapper(JwtAuthenticationToken jwtAuthenticationToken) {
-			Context current = Context.current();
-			context = current.withValue(GrpcAuthorization.SECURITY_CONTEXT_AUTHENTICATION, jwtAuthenticationToken);
-			context.attach();
-		}
+        public ContextWrapper(JwtAuthenticationToken jwtAuthenticationToken) {
+            Context current = Context.current();
+            context = current.withValue(GrpcAuthorization.SECURITY_CONTEXT_AUTHENTICATION, jwtAuthenticationToken);
+            context.attach();
+        }
 
-		@Override
-		public void close() {
-	        context.detach(rootContext);
-		}
-	}
+        @Override
+        public void close() {
+            context.detach(rootContext);
+        }
+    }
 
-	@BeforeEach
-	public void before() {
-		String credentials = "Bearer x.y.z";
-		Map<String, Object> claims = new HashMap<>();
-		claims.put("aud", Arrays.asList("http://entur.org"));
-		
-		List<GrantedAuthority> authorities = new ArrayList<>();
-		authorities.add(new SimpleGrantedAuthority("read"));
-		authorities.add(new SimpleGrantedAuthority("modify"));
-		
-		jwtAuthenticationToken = new JwtAuthenticationToken(claims, credentials, authorities, "principal", "deails");
+    @BeforeEach
+    public void before() {
+        String credentials = "Bearer x.y.z";
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("aud", Arrays.asList("http://entur.org"));
+        
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority("read"));
+        authorities.add(new SimpleGrantedAuthority("modify"));
+        
+        jwtAuthenticationToken = new JwtAuthenticationToken(claims, credentials, authorities, "principal", "deails");
 
-	}
+    }
 
-	@Test
-	public void testNoAuthorization() {
+    @Test
+    public void testNoAuthorization() {
         assertThrows(AuthenticationCredentialsNotFoundException.class, () -> {
-    		requireAllAuthorities("read");
+            requireAllAuthorities("read");
         });        
-	}
+    }
 
-	
-	@Test
-	public void testInsufficientAuthorization() {
-		try (ContextWrapper a = new ContextWrapper(jwtAuthenticationToken)) {
-	        assertThrows(AccessDeniedException.class, () -> {
-	    		requireAllAuthorities("delete");
-	        });
-	        assertThrows(AccessDeniedException.class, () -> {
-	    		requireAllAuthorities("delete");
-	        });        
-		}
-	}
+    
+    @Test
+    public void testInsufficientAuthorization() {
+        try (ContextWrapper a = new ContextWrapper(jwtAuthenticationToken)) {
+            assertThrows(AccessDeniedException.class, () -> {
+                requireAllAuthorities("delete");
+            });
+            assertThrows(AccessDeniedException.class, () -> {
+                requireAllAuthorities("delete");
+            });        
+        }
+    }
 
-	@Test
-	public void testSufficientAuthorization() {
-		try (ContextWrapper a = new ContextWrapper(jwtAuthenticationToken)) {
-			requireAllAuthorities("read");
-			requireAllAuthorities("read", "modify");
-		}
-	}
+    @Test
+    public void testSufficientAuthorization() {
+        try (ContextWrapper a = new ContextWrapper(jwtAuthenticationToken)) {
+            requireAllAuthorities("read");
+            requireAllAuthorities("read", "modify");
+        }
+    }
 
 }

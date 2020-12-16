@@ -7,12 +7,12 @@ import "greeting_message.proto";
 // gRPC service definitions for sync messages
 service GreetingService {
 
-	// CustomerAccount management
-	rpc unprotected (org.entur.jwt.spring.grpc.test.GreetingRequest) returns (org.entur.jwt.spring.grpc.test.GreetingResponse);
-	
-	rpc unprotectedWithOptionalTenant (org.entur.jwt.spring.grpc.test.GreetingRequest) returns (org.entur.jwt.spring.grpc.test.GreetingResponse);
-	
-	rpc protectedWithPartnerTenant (org.entur.jwt.spring.grpc.test.GreetingRequest) returns (org.entur.jwt.spring.grpc.test.GreetingResponse);
-	
-	
+    // CustomerAccount management
+    rpc unprotected (org.entur.jwt.spring.grpc.test.GreetingRequest) returns (org.entur.jwt.spring.grpc.test.GreetingResponse);
+    
+    rpc unprotectedWithOptionalTenant (org.entur.jwt.spring.grpc.test.GreetingRequest) returns (org.entur.jwt.spring.grpc.test.GreetingResponse);
+    
+    rpc protectedWithPartnerTenant (org.entur.jwt.spring.grpc.test.GreetingRequest) returns (org.entur.jwt.spring.grpc.test.GreetingResponse);
+    
+    
 }

@@ -33,9 +33,9 @@ import io.grpc.Status;
 
 public class JwtAuthenticationInterceptor<T> implements ServerInterceptor {
 
-	private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationInterceptor.class);
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationInterceptor.class);
 
-	private String key = UUID.randomUUID().toString();
+    private String key = UUID.randomUUID().toString();
 
     public static final String AUTHORIZATION = "Authorization";
     public static final String BEARER = "Bearer ";
@@ -57,19 +57,19 @@ public class JwtAuthenticationInterceptor<T> implements ServerInterceptor {
         this.principalMapper = principalMapper;
         this.detailsMapper = detailsMapper;
     }
-	
-	@Override
-	public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
+    
+    @Override
+    public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
 
         String header = headers.get(Metadata.Key.of(AUTHORIZATION, Metadata.ASCII_STRING_MARSHALLER));
 
         if (header != null) {
-        	if(!header.startsWith(BEARER)) {
+            if(!header.startsWith(BEARER)) {
                 log.warn("Invalid authorization header type");
-				call.close(Status.UNAUTHENTICATED.withDescription("Invalid authorization header type"), new Metadata());
-				return new Listener<ReqT>() {};
-        	}
-        	String bearerToken = header.substring(BEARER.length());
+                call.close(Status.UNAUTHENTICATED.withDescription("Invalid authorization header type"), new Metadata());
+                return new Listener<ReqT>() {};
+            }
+            String bearerToken = header.substring(BEARER.length());
             // if a token is present, it must be valid regardless of whether the endpoint
             // requires authorization or not
             T token;
@@ -86,41 +86,41 @@ public class JwtAuthenticationInterceptor<T> implements ServerInterceptor {
 
                     JwtAuthenticationToken jwtAuthenticationToken = new JwtAuthenticationToken(claims, bearerToken, authorities, principal, details);
 
-    				Context context = Context.current().withValue(GrpcAuthorization.SECURITY_CONTEXT_AUTHENTICATION, jwtAuthenticationToken);
+                    Context context = Context.current().withValue(GrpcAuthorization.SECURITY_CONTEXT_AUTHENTICATION, jwtAuthenticationToken);
 
                     if (mdcMapper != null) {
-                    	context = context.withValue(GrpcAuthorization.SECURITY_CONTEXT_MDC, mdcMapper.createContext(token));
+                        context = context.withValue(GrpcAuthorization.SECURITY_CONTEXT_MDC, mdcMapper.createContext(token));
                     }
 
-    				return Contexts.interceptCall(context, call, headers, next); // sets the new context, then clears it again before returning
+                    return Contexts.interceptCall(context, call, headers, next); // sets the new context, then clears it again before returning
                 } else {
-    				// do not log exception here, assume garbage request from the internet
-    				log.warn("Unable to verify token");
+                    // do not log exception here, assume garbage request from the internet
+                    log.warn("Unable to verify token");
 
-    				call.close(Status.UNAUTHENTICATED.withDescription("Invalid authorization header"), new Metadata());
-    				return new Listener<ReqT>() {};
+                    call.close(Status.UNAUTHENTICATED.withDescription("Invalid authorization header"), new Metadata());
+                    return new Listener<ReqT>() {};
                 }
             } catch (JwksServiceException | JwtServiceException e) {
-				log.warn("Unable to process token", e);
+                log.warn("Unable to process token", e);
 
-				call.close(Status.UNAVAILABLE.withDescription(e.getMessage()).withCause(e), new Metadata());
-				return new Listener<ReqT>() {};            	
+                call.close(Status.UNAVAILABLE.withDescription(e.getMessage()).withCause(e), new Metadata());
+                return new Listener<ReqT>() {};                
             } catch (JwtException | JwksException e) { // assume client
-				log.warn("JWT verification failed due to {}", e.getMessage());
+                log.warn("JWT verification failed due to {}", e.getMessage());
 
-				call.close(Status.UNAUTHENTICATED.withDescription(e.getMessage()).withCause(e), new Metadata());
-				return new Listener<ReqT>() {};
+                call.close(Status.UNAUTHENTICATED.withDescription(e.getMessage()).withCause(e), new Metadata());
+                return new Listener<ReqT>() {};
             }
         } else if (anonymousMethodFilter != null && anonymousMethodFilter.matches(call)) {
-        	AnonymousAuthenticationToken anonymousAuthenticationToken = new AnonymousAuthenticationToken(key, "anonymousUser",
-					Collections.singletonList(new SimpleGrantedAuthority("ROLE_ANONYMOUS")));
-			Context context = Context.current().withValue(GrpcAuthorization.SECURITY_CONTEXT_AUTHENTICATION, anonymousAuthenticationToken);
-			return Contexts.interceptCall(context, call, headers, next); // sets the new context, then clears it again before returning
+            AnonymousAuthenticationToken anonymousAuthenticationToken = new AnonymousAuthenticationToken(key, "anonymousUser",
+                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_ANONYMOUS")));
+            Context context = Context.current().withValue(GrpcAuthorization.SECURITY_CONTEXT_AUTHENTICATION, anonymousAuthenticationToken);
+            return Contexts.interceptCall(context, call, headers, next); // sets the new context, then clears it again before returning
         } else {
             log.warn("Authentication is required, however there was no bearer token");
-			call.close(Status.UNAUTHENTICATED.withDescription("Authorization header is missing"), new Metadata());
-			return new Listener<ReqT>() {};            
-        }		
-	}
+            call.close(Status.UNAUTHENTICATED.withDescription("Authorization header is missing"), new Metadata());
+            return new Listener<ReqT>() {};            
+        }        
+    }
 
 }

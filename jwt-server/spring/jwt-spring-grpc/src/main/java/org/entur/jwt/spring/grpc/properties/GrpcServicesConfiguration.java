@@ -18,22 +18,22 @@ public class GrpcServicesConfiguration {
     }
     
     public void setServices(List<ServiceMatcherConfiguration> services) {
-		this.services = services;
-	}
+        this.services = services;
+    }
     
     public List<ServiceMatcherConfiguration> getServices() {
-		return services;
-	}
+        return services;
+    }
     
     
     public boolean isActive() {
-    	if(enabled) {
-    		for (ServiceMatcherConfiguration service : services) {
-				if(service.isActive()) {
-					return true;
-				}
-			}
-    	}
+        if(enabled) {
+            for (ServiceMatcherConfiguration service : services) {
+                if(service.isActive()) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
     

@@ -4,6 +4,6 @@ import io.grpc.ServerCall;
 
 public interface GrpcServiceMethodFilter {
 
-	<ReqT, RespT> boolean matches(ServerCall<ReqT, RespT> call);
-	
+    <ReqT, RespT> boolean matches(ServerCall<ReqT, RespT> call);
+    
 }
