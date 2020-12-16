@@ -1,0 +1,30 @@
+entur:
+  jwt:
+    enabled: true
+    claims:
+      expires-at-leeway: 15
+      issued-at-leeway: 5
+      audiences:
+        - https://my.audience
+    mdc:
+      enabled: true
+      mappings:
+      - from: iss
+        to: issuer
+      - from: azp
+        to: azp
+    jwk:
+      health-indicator:
+        enabled: true
+  authorization:
+    permit-all:
+      grpc:
+        services:
+          - name: org.entur.jwt.spring.grpc.test.GreetingService
+            methods:
+              - unprotected
+              - unprotectedWithOptionalTenant
+      mvc-matcher:
+        patterns:
+         - /actuator/health
+

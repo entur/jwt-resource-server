@@ -561,6 +561,7 @@
 		<module>jwt-server/spring/jwt-spring-auth0</module>
 		<module>jwt-server/spring/jwt-spring-camel</module>
 		<module>jwt-server/spring/jwt-spring-entur-organisation</module>
+		<module>jwt-server/spring/jwt-spring-grpc</module>
 	</modules>
 
 	<distributionManagement>
