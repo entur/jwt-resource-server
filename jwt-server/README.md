@@ -63,7 +63,7 @@ entur:
         - partner-auth0
 ```
 
-The filter also supports wildcard (at the end). 
+The filter matches ids ending with `*` (for a prefix check), i.e. `partner-*`.
 
 ## Security configuration
 By default, all requests must be so-called _fully authenticated_. In other words all requests must have a valid JWT token (of any of the configured tenants). 
@@ -98,7 +98,7 @@ entur:
   authorization:
     permit-all:
       mvc-matcher:
-        method:
+        method:	
           get:
             patterns:
              - /some/path/{myVariable}
