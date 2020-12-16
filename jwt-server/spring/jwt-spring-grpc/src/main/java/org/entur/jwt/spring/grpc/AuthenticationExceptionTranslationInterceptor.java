@@ -4,11 +4,7 @@ package org.entur.jwt.spring.grpc;
 import java.util.Objects;
 
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.authentication.AuthenticationTrustResolver;
-import org.springframework.security.authentication.AuthenticationTrustResolverImpl;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.util.ThrowableAnalyzer;
 
 import io.grpc.ForwardingServerCallListener.SimpleForwardingServerCallListener;
@@ -22,8 +18,6 @@ import io.grpc.Status;
 public class AuthenticationExceptionTranslationInterceptor implements ServerInterceptor {
 
     private ThrowableAnalyzer throwableAnalyzer = new ThrowableAnalyzer();
-    private AuthenticationTrustResolver authenticationTrustResolver =
-        new AuthenticationTrustResolverImpl();
 
     @Override
     public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(
@@ -60,17 +54,8 @@ public class AuthenticationExceptionTranslationInterceptor implements ServerInte
             }
 
             private void handleAccessDeniedException(AccessDeniedException exception) {
-                Authentication authentication = SecurityContextHolder
-                    .getContext().getAuthentication();
-
-                if (authenticationTrustResolver.isAnonymous(authentication)) {
-                    call.close(Status.UNAUTHENTICATED
-                        .withDescription("Authentication is required to access this resource")
+                call.close(Status.PERMISSION_DENIED.withDescription(exception.getMessage())
                         .withCause(exception), new Metadata());
-                } else {
-                    call.close(Status.PERMISSION_DENIED.withDescription(exception.getMessage())
-                            .withCause(exception), new Metadata());
-                }
             }
         };
     }
