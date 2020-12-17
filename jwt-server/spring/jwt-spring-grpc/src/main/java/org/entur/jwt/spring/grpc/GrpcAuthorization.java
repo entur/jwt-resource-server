@@ -1,5 +1,7 @@
 package org.entur.jwt.spring.grpc;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -70,7 +72,20 @@ public interface GrpcAuthorization {
 
     @SuppressWarnings("unchecked")
     public default boolean hasAnyAudience(JwtAuthenticationToken authentication, Set<String> audiences) {
-        List<String> jwtAudiences = authentication.getClaim("aud", List.class);
+        Object claim = authentication.getClaim("aud", Object.class);
+        
+        if(claim == null) {
+            throw new IllegalArgumentException("Expected audience");            
+        }
+        
+        List<String> jwtAudiences;
+        if(claim instanceof List) {
+            jwtAudiences = (List<String>) claim;
+        } else if(claim instanceof String) {
+            jwtAudiences = Arrays.asList((String)claim);
+        } else if(claim instanceof String[]) {
+            jwtAudiences = Arrays.asList((String[])claim);
+        } else throw new IllegalArgumentException("Unexpected claim type " + claim.getClass().getName());
         
         return jwtAudiences != null && !Collections.disjoint(audiences, jwtAudiences);
     }
