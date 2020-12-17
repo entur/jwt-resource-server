@@ -15,6 +15,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.entur.jwt.client.AbstractCachedAccessTokenProvider.AccessTokenCacheItem;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -45,6 +46,14 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         super.setUp();
         provider = new PreemptiveCachedAccessTokenProvider(fallback, 10, TimeUnit.SECONDS, 15, TimeUnit.SECONDS, 15, TimeUnit.SECONDS, 0, false);
     }
+    
+    @AfterEach
+    public void shutdown() throws Exception {
+        if(provider != null) {
+            provider.close();
+        }
+    }
+    
 
     @Test
     public void shouldUseFallbackWhenNotCached() throws Exception {

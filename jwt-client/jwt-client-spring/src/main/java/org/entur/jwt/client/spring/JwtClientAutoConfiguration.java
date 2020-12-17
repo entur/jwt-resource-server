@@ -132,6 +132,7 @@ public class JwtClientAutoConfiguration {
                 beanDefinition.setBeanClass(AccessTokenProvider.class);
                 beanDefinition.setFactoryBeanName("jwtClientBeanDefinitionRegistryPostProcessorSupport");
                 beanDefinition.setFactoryMethodName(method);
+                beanDefinition.setDestroyMethodName("close");
                 ConstructorArgumentValues constructorArgumentValues = new ConstructorArgumentValues();
                 constructorArgumentValues.addGenericArgumentValue(key);
                 beanDefinition.setAutowireCandidate(true);
@@ -209,14 +210,14 @@ public class JwtClientAutoConfiguration {
 
             builder.health(health);
 
-            return new SpringAccessTokenProvider(builder.build());
+            return builder.build();
         }
         
     }
 
     @Bean
     @ConditionalOnProperty(value = "entur.jwt.clients.health-indicator.enabled", matchIfMissing = true)
-    public AccessTokenProviderHealthIndicator provider(AccessTokenProvider[] providers) {
+    public AccessTokenProviderHealthIndicator accessTokenProviderHealthIndicator(AccessTokenProvider[] providers) {
         // could verify that health is supported here, but that would interfere with
         // mocking / testing.
         return new AccessTokenProviderHealthIndicator(providers);

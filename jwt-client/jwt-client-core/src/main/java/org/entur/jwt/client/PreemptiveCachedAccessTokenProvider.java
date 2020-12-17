@@ -151,7 +151,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
                 }
             }, delay, TimeUnit.MILLISECONDS);
             
-            if(logger.isDebugEnabled()) logger.debug("Scheduled next eager token refresh in " + getTime(delay));
+            logger.info("Scheduled next eager token refresh in " + getTime(delay));
         } else {
             logger.warn("Not Scheduling eager token refresh");
         }
