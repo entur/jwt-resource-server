@@ -62,15 +62,15 @@ public class AccessTokenProviderHealthIndicator extends AbstractHealthIndicator 
             Boolean previousSuccess = this.previousHealthSuccess; // defensive copy
             if(previousSuccess != null) {
                 if(!previousSuccess && success) {
-                    logger.info("JWT provider health transitioned to UP");
+                    logger.info("Access-token-provider health transitioned to UP");
                 } else if(previousSuccess && !success) {
-                    logger.warn("JWT provider health transitioned to DOWN");
+                    logger.warn("Access-token-provider health transitioned to DOWN");
                 }
             } else {
                 if(!success) {
-                    logger.warn("JWT provider health initialized to DOWN");
+                    logger.warn("Access-token-provider health initialized to DOWN");
                 } else {
-                    logger.info("JWT provider health initialized to UP");
+                    logger.info("Access-token-provider health initialized to UP");
                 }
             }
             this.previousHealthSuccess = success;
