@@ -27,3 +27,12 @@ entur:
     mode: api
     origins:
     - https://my.published.api
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: "readinessState,jwks,accessTokenProvider"

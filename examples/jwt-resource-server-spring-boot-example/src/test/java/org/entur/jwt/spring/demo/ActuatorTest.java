@@ -21,7 +21,7 @@ public class ActuatorTest {
 
     @Test
     public void actuatorHealth() {
-        given().port(port).log().all().when().get("/actuator/health").then().log().all().assertThat().statusCode(HttpStatus.OK.value());
+        given().port(port).log().all().when().get("/actuator/health/readiness").then().log().all().assertThat().statusCode(HttpStatus.OK.value());
     }
 
 }
