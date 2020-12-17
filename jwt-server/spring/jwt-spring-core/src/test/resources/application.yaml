@@ -14,6 +14,10 @@ entur:
     jwk:
       health-indicator:
         enabled: true
+      cache:
+        preemptive:
+          eager:
+            enabled: true
   cors:
     enabled: true
     mode: api
@@ -24,11 +28,10 @@ entur:
          - /actuator/health
          - /actuator/health/*
 management:
-  health:
-    probes:
-      enabled: true
   endpoint:
     health:
+      probes:
+        enabled: true
       group:
         readiness:
           include: readinessState,jwks

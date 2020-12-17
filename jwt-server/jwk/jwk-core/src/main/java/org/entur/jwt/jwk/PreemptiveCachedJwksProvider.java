@@ -1,6 +1,5 @@
 package org.entur.jwt.jwk;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
@@ -152,7 +151,7 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
                 }
             }, delay, TimeUnit.MILLISECONDS);
             
-            if(logger.isDebugEnabled()) logger.debug("Scheduled next eager cache refresh in " + getTime(delay));
+            logger.info("Scheduled next eager cache refresh in " + getTime(delay));
         } else {
             logger.warn("Not scheduling eager cache refresh");
         }

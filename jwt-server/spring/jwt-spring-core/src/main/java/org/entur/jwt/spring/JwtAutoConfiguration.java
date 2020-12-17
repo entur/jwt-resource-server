@@ -2,7 +2,6 @@ package org.entur.jwt.spring;
 
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -11,8 +10,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
-import javax.annotation.PreDestroy;
 
 import java.util.Set;
 
@@ -209,9 +206,9 @@ public class JwtAutoConfiguration {
         return new DefaultJwtMappedDiagnosticContextMapper<>(from, to, extractor);
     }
 
-    @Bean
+    @Bean(destroyMethod = "close")
     @ConditionalOnMissingBean(JwtVerifier.class)
-    public <T> JwtVerifier<T> verifier(SecurityProperties properties, JwtVerifierFactory<T> factory) {
+    public <T> JwtVerifier<T> jwtVerifier(SecurityProperties properties, JwtVerifierFactory<T> factory) {
         JwtProperties jwtProperties = properties.getJwt();
 
         Map<String, JwtTenantProperties> enabledTenants = new HashMap<>();
@@ -260,7 +257,7 @@ public class JwtAutoConfiguration {
         }
         
         // add a wrapper so that the verifier is closed on shutdown
-        return new SpringJwtVerifier<>(factory.getVerifier(enabledTenants, jwtProperties.getJwk(), jwtProperties.getClaims()));
+        return factory.getVerifier(enabledTenants, jwtProperties.getJwk(), jwtProperties.getClaims());
     }
 
     
@@ -399,6 +396,5 @@ public class JwtAutoConfiguration {
     public JwtAuthenticationExceptionAdvice advice() {
         return new JwtAuthenticationExceptionAdvice();
     }
-
 
 }

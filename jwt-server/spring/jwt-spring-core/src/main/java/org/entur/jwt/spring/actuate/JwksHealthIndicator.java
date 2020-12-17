@@ -36,10 +36,14 @@ public class JwksHealthIndicator extends AbstractHealthIndicator {
         	} else if(previousHealth.isSuccess() && !health.isSuccess()) {
         		logger.warn("Jwks health transitioned to DOWN");
         	}
-        } else if(!health.isSuccess()) {
-    		logger.warn("Jwks health initialized to DOWN");
+        } else {
+            if(!health.isSuccess()) {
+                logger.warn("Jwks health initialized to DOWN");
+            } else {
+                logger.info("Jwks health initialized to UP");
+            }
         }
-        previousHealth = health;
+        this.previousHealth = health;
         if (health.isSuccess()) {
             builder.up();
         } else {
