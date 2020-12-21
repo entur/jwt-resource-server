@@ -29,27 +29,31 @@ public class JwksHealthIndicator extends AbstractHealthIndicator {
     protected void doHealthCheck(Health.Builder builder) throws Exception {
         JwksHealth health = jwtVerifier.getHealth(true);
         
-        JwksHealth previousHealth = this.previousHealth; // defensive copy
-        if(previousHealth != null) {
-        	if(!previousHealth.isSuccess() && health.isSuccess()) {
-                logger.info("Jwks health transitioned to UP");
-        	} else if(previousHealth.isSuccess() && !health.isSuccess()) {
-        		logger.warn("Jwks health transitioned to DOWN");
-        	}
-        } else {
-            if(!health.isSuccess()) {
-                logger.warn("Jwks health initialized to DOWN");
-            } else {
-                logger.info("Jwks health initialized to UP");
-            }
-        }
-        this.previousHealth = health;
+        logInitialOrChangedState(health);
         if (health.isSuccess()) {
             builder.up();
         } else {
             builder.down();
         }
         builder.withDetail("timestamp", health.getTimestamp());
+    }
+
+    protected void logInitialOrChangedState(JwksHealth health) {
+        JwksHealth previousHealth = this.previousHealth; // defensive copy
+        if(previousHealth != null) {
+        	if(!previousHealth.isSuccess() && health.isSuccess()) {
+                logger.info("JWKs health transitioned to UP");
+        	} else if(previousHealth.isSuccess() && !health.isSuccess()) {
+        		logger.warn("JWKs health transitioned to DOWN");
+        	}
+        } else {
+            if(!health.isSuccess()) {
+                logger.warn("JWKs health initialized to DOWN");
+            } else {
+                logger.info("JWKs health initialized to UP");
+            }
+        }
+        this.previousHealth = health;
     }
 
 }

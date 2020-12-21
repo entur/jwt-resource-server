@@ -147,13 +147,13 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
                     // so will only refresh if this specific cache entry still is the current one
                     preemptiveRefresh(System.currentTimeMillis(), cache, true);
                 } catch (Exception e) {
-                    logger.warn("Scheduled eager token refresh failed", e);
+                    logger.warn("Scheduled eager access-token refresh failed", e);
                 }
             }, delay, TimeUnit.MILLISECONDS);
             
-            logger.info("Scheduled next eager token refresh in " + getTime(delay));
+            logger.info("Scheduled next eager access-token refresh in " + getTime(delay));
         } else {
-            logger.warn("Not Scheduling eager token refresh");
+            logger.warn("Not scheduling eager access-token refresh");
         }
     }    
     
@@ -201,7 +201,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
                                     cacheExpires = -1L;
                                     // ignore, unable to update
                                     // another thread will attempt the same
-                                    logger.warn("Preemptive cache refresh failed", e);
+                                    logger.warn("Preemptive access-token refresh failed", e);
                                 }
                             });
                         }
@@ -261,7 +261,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
         ScheduledFuture<?> eagerJwkListCacheItem = this.eagerScheduledFuture; // defensive copy
         if(eagerJwkListCacheItem != null) {
             eagerJwkListCacheItem.cancel(true);
-            logger.info("Cancelled scheduled refresh");
+            logger.info("Cancelled scheduled access-token refresh");
         }
         provider.close();
     }

@@ -147,13 +147,13 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
                     // so will only refresh if this specific cache entry still is the current one
                     preemptiveRefresh(System.currentTimeMillis(), cache, true);
                 } catch (Exception e) {
-                    logger.warn("Scheduled eager cache refresh failed", e);
+                    logger.warn("Scheduled eager JWKs refresh failed", e);
                 }
             }, delay, TimeUnit.MILLISECONDS);
             
-            logger.info("Scheduled next eager cache refresh in " + getTime(delay));
+            logger.info("Scheduled next eager JWKs refresh in " + getTime(delay));
         } else {
-            logger.warn("Not scheduling eager cache refresh");
+            logger.warn("Not scheduling eager JWKs refresh");
         }
     }
 
@@ -187,7 +187,7 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
                             // run update in the background
                             executorService.execute(() -> {
                                 try {
-                                    logger.info("Perform preemptive cache refresh");
+                                    logger.info("Perform preemptive JWKs refresh");
                                     PreemptiveCachedJwksProvider.this.getJwksBlocking(time, cache);
                                     
                                     // so next time this method is invoked, it'll be with the updated cache item expiry time
@@ -196,7 +196,7 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
                                     cacheExpires = -1L;
                                     // ignore, unable to update
                                     // another thread will attempt the same
-                                    logger.warn("Preemptive cache refresh failed", e);
+                                    logger.warn("Preemptive JWKs refresh failed", e);
                                 }
                             });
                         }
@@ -232,7 +232,7 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
         ScheduledFuture<?> eagerJwkListCacheItem = this.eagerScheduledFuture; // defensive copy
         if(eagerJwkListCacheItem != null) {
             eagerJwkListCacheItem.cancel(true);
-            logger.info("Cancelled scheduled refresh");
+            logger.info("Cancelled scheduled JWKs refresh");
         }
         provider.close();
     }

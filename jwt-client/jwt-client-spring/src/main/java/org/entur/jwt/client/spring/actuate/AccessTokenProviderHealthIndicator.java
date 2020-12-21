@@ -59,22 +59,8 @@ public class AccessTokenProviderHealthIndicator extends AbstractHealthIndicator 
                 builder.withDetail("oldestTimestamp", (time - leastRecentTimestamp) / 1000);
             }
             
-            Boolean previousSuccess = this.previousHealthSuccess; // defensive copy
-            if(previousSuccess != null) {
-                if(!previousSuccess && success) {
-                    logger.info("Access-token-provider health transitioned to UP");
-                } else if(previousSuccess && !success) {
-                    logger.warn("Access-token-provider health transitioned to DOWN");
-                }
-            } else {
-                if(!success) {
-                    logger.warn("Access-token-provider health initialized to DOWN");
-                } else {
-                    logger.info("Access-token-provider health initialized to UP");
-                }
-            }
-            this.previousHealthSuccess = success;
-
+            logInitialOrChangedState(success);
+            
             if (success) {
                 builder.up();
             } else {
@@ -85,6 +71,24 @@ public class AccessTokenProviderHealthIndicator extends AbstractHealthIndicator 
 
             builder.unknown();
         }
+    }
+
+    protected void logInitialOrChangedState(boolean success) {
+        Boolean previousSuccess = this.previousHealthSuccess; // defensive copy
+        if(previousSuccess != null) {
+            if(!previousSuccess && success) {
+                logger.info("Access-token-provider health transitioned to UP");
+            } else if(previousSuccess && !success) {
+                logger.warn("Access-token-provider health transitioned to DOWN");
+            }
+        } else {
+            if(!success) {
+                logger.warn("Access-token-provider health initialized to DOWN");
+            } else {
+                logger.info("Access-token-provider health initialized to UP");
+            }
+        }
+        this.previousHealthSuccess = success;
     }
 
 }
