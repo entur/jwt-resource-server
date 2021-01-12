@@ -83,7 +83,7 @@ entur:
 ```yaml
 entur:
     jwt:
-        client:
+        clients:
             keycloak:
                 myClient:
                     audience: myAudience
@@ -100,7 +100,7 @@ Configure additional clients by adding keys under `entur.jwt.clients.keycloak` a
 ```yaml
 entur:
     jwt:
-        client:
+        clients:
             keycloak:
                 myFirstClient:
                     audience: myFirstAudience
@@ -164,7 +164,7 @@ The library supports a Spring [HealthIndicator](https://docs.spring.io/spring-bo
 ```yaml
 entur:
     jwt:
-        client:
+        clients:
             health-indicator:
                 enabled: true
 ```
