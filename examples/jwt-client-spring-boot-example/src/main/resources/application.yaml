@@ -1,0 +1,24 @@
+entur:
+  jwt:
+    clients:
+      auth0:
+        myClient:
+          host: "my.entur.org"
+          clientId: "myClient"
+          secret: "mySecret"
+          audience: "myAudience"
+      health-indicator:
+        enabled: true
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: "readinessState,accessTokenProvider"
+  endpoints:
+    web:
+      exposure:
+        include:
+        - "health"

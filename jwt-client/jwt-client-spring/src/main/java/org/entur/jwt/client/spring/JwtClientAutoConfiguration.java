@@ -22,6 +22,8 @@ import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.config.ConstructorArgumentValues;
+import org.springframework.beans.factory.support.AbstractBeanDefinition;
+import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
@@ -100,7 +102,7 @@ public class JwtClientAutoConfiguration {
     // https://stackoverflow.com/questions/53462889/create-n-number-of-beans-with-beandefinitionregistrypostprocessor
     public static class JwtClientBeanDefinitionRegistryPostProcessor implements BeanDefinitionRegistryPostProcessor, EnvironmentAware {
 
-     // note: autowiring does not work, must bind via environment
+        // note: autowiring does not work, must bind via environment
         private SpringJwtClientProperties properties;
         
         @Override
@@ -128,15 +130,21 @@ public class JwtClientAutoConfiguration {
 
         private void add(BeanDefinitionRegistry registry, String method, Set<String> keySet) {
             for (String key : keySet) {
+
+                if(registry.containsBeanDefinition(key)) {
+                    continue;
+                }
                 GenericBeanDefinition beanDefinition = new GenericBeanDefinition();
                 beanDefinition.setBeanClass(AccessTokenProvider.class);
                 beanDefinition.setFactoryBeanName("jwtClientBeanDefinitionRegistryPostProcessorSupport");
                 beanDefinition.setFactoryMethodName(method);
                 beanDefinition.setDestroyMethodName("close");
+                
                 ConstructorArgumentValues constructorArgumentValues = new ConstructorArgumentValues();
                 constructorArgumentValues.addGenericArgumentValue(key);
                 beanDefinition.setAutowireCandidate(true);
                 beanDefinition.setConstructorArgumentValues(constructorArgumentValues);
+                
                 registry.registerBeanDefinition(key, beanDefinition);
             }
         }

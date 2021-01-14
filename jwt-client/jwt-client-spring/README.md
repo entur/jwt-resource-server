@@ -5,6 +5,7 @@ See [Auth0SingleClientTest] for a mocking example.
 
 ## Maven / Gradle coordinates
 Maven coordinates:
+
 ```xml
 <dependency>
     <groupId>org.entur.jwt-rs</groupId>
@@ -14,6 +15,7 @@ Maven coordinates:
 ```
 
 Gradle coordinates:
+
 ```groovy
 api("org.entur.jwt-rs:jwt-client-spring:${jwtResourceServerVersion}")
 ```
