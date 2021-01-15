@@ -130,6 +130,9 @@ private AccessTokenProvider firstAccessTokenProvider;
 private AccessTokenProvider secondAccessTokenProvider;
 ```
 
+### Testing
+To mock `AccessTokenProvider` use either `@MockBean` or override the bean by id (i.e. `myFirstClient` and/or `mySecondClient` in the above examples).
+
 ### Cache configuration
 To adjust the caching / validity of the token, add the following properties (in addition to the above ones):
 
