@@ -152,7 +152,14 @@ entur:
                                 enabled: false
 ```
 
-Note that proper configuration of `minimum-time-to-live` depends on the so-called expiry `leeway` configure in the remote service you'll be calling using the access-token.
+Note that
+
+ * proper configuration of `minimum-time-to-live` depends on the so-called expiry `leeway` configure in the remote service you'll be calling using the access-token.
+ * eager preemptive-refresh is triggered by the `ContextStartedEvent` event, which Spring applications must implicitly invoke `.start()` to publish. For example using
+
+```
+SpringApplication.run(MyApplication.class, args).start();
+```
 
 #### Aggressive prefetching
 Those wanting to preemptivly refresh tokens long before they expire, i.e. to always have some minutes (or hours) left on tokens in case of authorization server downtime, 

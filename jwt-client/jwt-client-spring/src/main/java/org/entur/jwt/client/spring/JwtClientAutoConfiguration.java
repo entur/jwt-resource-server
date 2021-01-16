@@ -3,6 +3,8 @@ package org.entur.jwt.client.spring;
 import java.net.URL;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -22,8 +24,6 @@ import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.config.ConstructorArgumentValues;
-import org.springframework.beans.factory.support.AbstractBeanDefinition;
-import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
@@ -230,5 +230,22 @@ public class JwtClientAutoConfiguration {
         // mocking / testing.
         return new AccessTokenProviderHealthIndicator(providers);
     }
+    
+    @Bean
+    public EagerContextStartedListener eagerContextRefreshedListener(Map<String, AccessTokenProvider> providersById, SpringJwtClientProperties springJwtClientProperties) {
+    	Map<String, AccessTokenProvider> eagerAccessTokenProvidersById = new HashMap<>();
 
+    	for(Map<String, ? extends AbstractJwtClientProperties> map : Arrays.asList(springJwtClientProperties.getKeycloak(), springJwtClientProperties.getAuth0())) {
+    		for (Entry<String, ? extends AbstractJwtClientProperties> entry : map.entrySet()) {
+    			JwtClientCache cache = entry.getValue().getCache();
+    			if (cache != null && cache.isEnabled()) {
+    				JwtPreemptiveRefresh preemptiveRefresh = cache.getPreemptiveRefresh();
+    				if (preemptiveRefresh != null && preemptiveRefresh.isEnabled()) {
+    					eagerAccessTokenProvidersById.put(entry.getKey(), providersById.get(entry.getKey()));
+    				}
+    			}
+    		}
+    	}    	
+    	return new EagerContextStartedListener(eagerAccessTokenProvidersById);
+    }
 }
