@@ -3,10 +3,8 @@ package org.entur.jwt.client.spring;
 import java.net.URL;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -236,17 +234,17 @@ public class JwtClientAutoConfiguration {
     @Bean
     public EagerContextStartedListener eagerContextRefreshedListener(Map<String, AccessTokenProvider> providersById, SpringJwtClientProperties springJwtClientProperties) {
     	Map<String, AccessTokenProvider> eagerAccessTokenProvidersById = new HashMap<>();
-    	
+
     	for(Map<String, ? extends AbstractJwtClientProperties> map : Arrays.asList(springJwtClientProperties.getKeycloak(), springJwtClientProperties.getAuth0())) {
-	    	for (Entry<String, ? extends AbstractJwtClientProperties> entry : map.entrySet()) {
-				JwtClientCache cache = entry.getValue().getCache();
-	            if (cache != null && cache.isEnabled()) {
-	                JwtPreemptiveRefresh preemptiveRefresh = cache.getPreemptiveRefresh();
-	                if (preemptiveRefresh != null && preemptiveRefresh.isEnabled()) {
-	                	eagerAccessTokenProvidersById.put(entry.getKey(), providersById.get(entry.getKey()));
-	                }
-	            }
-			}
+    		for (Entry<String, ? extends AbstractJwtClientProperties> entry : map.entrySet()) {
+    			JwtClientCache cache = entry.getValue().getCache();
+    			if (cache != null && cache.isEnabled()) {
+    				JwtPreemptiveRefresh preemptiveRefresh = cache.getPreemptiveRefresh();
+    				if (preemptiveRefresh != null && preemptiveRefresh.isEnabled()) {
+    					eagerAccessTokenProvidersById.put(entry.getKey(), providersById.get(entry.getKey()));
+    				}
+    			}
+    		}
     	}    	
     	return new EagerContextStartedListener(eagerAccessTokenProvidersById);
     }
