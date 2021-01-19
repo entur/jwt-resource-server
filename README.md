@@ -56,6 +56,7 @@ See documentation contained in each folder to get started. Or skip right to the 
 
 # History
 
+ - 1.1.x: gRPC, eager caching, new health check tweaks
  - 1.0.x: Initial release and adjustments for first use. 
 
 [jwk]:                    jwt-server/jwk

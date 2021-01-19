@@ -45,7 +45,9 @@ ClientCredentials credentials = Auth0ClientCredentialsBuilder.newInstance()
                                                              .withClientId("myClientID")
                                                              .build();
 
-AccessTokenProvider accessTokenProvider = AccessTokenProviderBuilder.newBuilder(credentials).build();
+long connectTimeout = 10000;
+long readTimeout = 10000;
+AccessTokenProvider accessTokenProvider = AccessTokenProviderBuilder.newBuilder(credentials, connectTimeout, readTimeout).build();
 ```
 
 Store the `accessTokenProvider` in your application context, then get an access token:
