@@ -12,6 +12,7 @@ import org.entur.jwt.spring.filter.JwtAuthenticationToken;
 import org.entur.jwt.spring.filter.JwtAuthorityMapper;
 import org.entur.jwt.spring.filter.JwtDetailsMapper;
 import org.entur.jwt.spring.filter.JwtPrincipalMapper;
+import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
 import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.entur.jwt.verifier.JwtException;
 import org.entur.jwt.verifier.JwtServiceException;
@@ -42,13 +43,13 @@ public class JwtAuthenticationInterceptor<T> implements ServerInterceptor {
 
     private final JwtVerifier<T> verifier;
     private final JwtAuthorityMapper<T> authorityMapper;
-    private final GrpcJwtMappedDiagnosticContextMapper<T> mdcMapper;
+    private final JwtMappedDiagnosticContextMapper<T> mdcMapper;
     private final JwtClaimExtractor<T> extractor;
     private final GrpcServiceMethodFilter anonymousMethodFilter;
     private final JwtDetailsMapper detailsMapper;
     private final JwtPrincipalMapper principalMapper;
 
-    public JwtAuthenticationInterceptor(JwtVerifier<T> verifier, GrpcServiceMethodFilter anonymousMethodFilter, JwtAuthorityMapper<T> authorityMapper, GrpcJwtMappedDiagnosticContextMapper<T> mdcMapper, JwtClaimExtractor<T> extractor, JwtPrincipalMapper principalMapper, JwtDetailsMapper detailsMapper) {
+    public JwtAuthenticationInterceptor(JwtVerifier<T> verifier, GrpcServiceMethodFilter anonymousMethodFilter, JwtAuthorityMapper<T> authorityMapper, JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtClaimExtractor<T> extractor, JwtPrincipalMapper principalMapper, JwtDetailsMapper detailsMapper) {
         this.verifier = verifier;
         this.anonymousMethodFilter = anonymousMethodFilter;
         this.authorityMapper = authorityMapper;
@@ -89,7 +90,7 @@ public class JwtAuthenticationInterceptor<T> implements ServerInterceptor {
                     Context context = Context.current().withValue(GrpcAuthorization.SECURITY_CONTEXT_AUTHENTICATION, jwtAuthenticationToken);
 
                     if (mdcMapper != null) {
-                        context = context.withValue(GrpcAuthorization.SECURITY_CONTEXT_MDC, mdcMapper.createContext(token));
+                        context = context.withValue(GrpcAuthorization.SECURITY_CONTEXT_MDC, mdcMapper.getContext(token));
                     }
 
                     return Contexts.interceptCall(context, call, headers, next); // sets the new context, then clears it again before returning

@@ -45,7 +45,7 @@ public class GrpcAutoConfiguration {
             anonymous = null;
         }
         
-        return new GrpcAuthenticationInterceptorFactory<>(new JwtAuthenticationInterceptor<>(verifier, anonymous, authorityMapper, mdcMapper != null ? new GrpcJwtMappedDiagnosticContextMapper<>(mdcMapper) : null, extractor, jwtPrincipalMapper, jwtDetailsMapper));
+        return new GrpcAuthenticationInterceptorFactory<>(new JwtAuthenticationInterceptor<>(verifier, anonymous, authorityMapper, mdcMapper, extractor, jwtPrincipalMapper, jwtDetailsMapper));
     }
 
     private GrpcServiceMethodFilter getGrpcServiceMethodFilter(GrpcServicesConfiguration grpc) {
