@@ -45,7 +45,8 @@ ClientCredentials credentials = Auth0ClientCredentialsBuilder.newInstance()
                                                              .withClientId("myClientID")
                                                              .build();
 
-long connectTimeout = 10000;
+// relate network timeouts to cache configuration, see further down
+long connectTimeout = 10000; 
 long readTimeout = 10000;
 AccessTokenProvider accessTokenProvider = AccessTokenProviderBuilder.newBuilder(credentials, connectTimeout, readTimeout).build();
 ```
