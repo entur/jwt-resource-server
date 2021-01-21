@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -27,6 +28,14 @@ public interface GrpcAuthorization {
     /** Key for MDC-mappings. Applying the mappings to the actual MDC is out of scope for this library. */
     public static final Context.Key<Object> SECURITY_CONTEXT_MDC = Context.key("SECURITY_CONTEXT_MDC"); 
 
+    public default Map<String, String> getAuthorizationMDC() {
+        Object object = GrpcAuthorization.SECURITY_CONTEXT_MDC.get();
+        if(object instanceof Map) {
+            return (Map<String, String>) object;
+        }
+        return null;
+    }  
+    
     public default Object getPrincial() {
         Object object = GrpcAuthorization.SECURITY_CONTEXT_AUTHENTICATION.get();
         if(object instanceof JwtAuthenticationToken) {

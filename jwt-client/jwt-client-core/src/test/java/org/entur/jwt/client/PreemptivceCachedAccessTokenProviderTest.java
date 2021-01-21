@@ -2,8 +2,6 @@ package org.entur.jwt.client;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.only;
@@ -218,7 +216,7 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         long limit = validFor - preemptiveRefresh - refreshTimeout;
 
         Truth.assertThat(left).isAtMost(limit);
-        Truth.assertThat(left).isAtLeast(limit - skew);
+        Truth.assertThat(left).isAtLeast(limit - skew - 1);
         
         // sleep and check that keys were actually updated
         Thread.sleep(left + Math.min(25, 4 * skew));

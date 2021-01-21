@@ -62,7 +62,7 @@
 		<hamcrest.version>2.2</hamcrest.version>
 		<slf4j.version>1.7.30</slf4j.version>
 		<jjwt.version>0.11.2</jjwt.version>
-		<nimbus-jose-jwt.version>9.1.5</nimbus-jose-jwt.version>
+		<nimbus-jose-jwt.version>9.4.1</nimbus-jose-jwt.version>
 		<bucket4j-core.version>4.10.0</bucket4j-core.version>
 		<jackson-databind.version>2.12.0</jackson-databind.version>
 		<camel.version>2.25.2</camel.version>
