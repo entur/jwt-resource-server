@@ -1,6 +1,5 @@
 package org.entur.jwt.spring.grpc;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -23,7 +22,9 @@ import io.grpc.Context;
 
 public interface GrpcAuthorization {
 
-    public static final Context.Key<Object> SECURITY_CONTEXT_AUTHENTICATION = Context.key("SECURITY_CONTEXT_AUTHENTICATION"); 
+    public static final Context.Key<Object> SECURITY_CONTEXT_AUTHENTICATION = Context.key("SECURITY_CONTEXT_AUTHENTICATION");
+    
+    /** Key for MDC-mappings. Applying the mappings to the actual MDC is out of scope for this library. */
     public static final Context.Key<Object> SECURITY_CONTEXT_MDC = Context.key("SECURITY_CONTEXT_MDC"); 
 
     public default Object getPrincial() {
