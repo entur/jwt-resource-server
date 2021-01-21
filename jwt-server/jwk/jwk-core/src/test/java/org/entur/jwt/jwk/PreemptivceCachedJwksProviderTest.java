@@ -303,7 +303,7 @@ public class PreemptivceCachedJwksProviderTest extends AbstractDelegateProviderT
         long skew = System.currentTimeMillis() - time;
         
         Truth.assertThat(left).isAtMost(timeToLive - refreshTimeout - preemptiveRefresh);
-        Truth.assertThat(left).isAtLeast(timeToLive - refreshTimeout - preemptiveRefresh - skew);
+        Truth.assertThat(left).isAtLeast(timeToLive - refreshTimeout - preemptiveRefresh - skew - 1);
         
         // sleep and check that keys were actually updated
         Thread.sleep(left + Math.min(25, 4 * skew));
