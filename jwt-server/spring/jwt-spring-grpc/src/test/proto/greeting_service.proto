@@ -13,6 +13,11 @@ service GreetingService {
     rpc unprotectedWithOptionalTenant (org.entur.jwt.spring.grpc.test.GreetingRequest) returns (org.entur.jwt.spring.grpc.test.GreetingResponse);
     
     rpc protectedWithPartnerTenant (org.entur.jwt.spring.grpc.test.GreetingRequest) returns (org.entur.jwt.spring.grpc.test.GreetingResponse);
-    
+
+	// for exception translator testing    
+    rpc protectedOneToOne (org.entur.jwt.spring.grpc.test.GreetingRequest) returns (org.entur.jwt.spring.grpc.test.GreetingResponse);
+    rpc protectedOneToMany (org.entur.jwt.spring.grpc.test.GreetingRequest) returns (stream org.entur.jwt.spring.grpc.test.GreetingResponse);
+    rpc protectedManyToMany (stream org.entur.jwt.spring.grpc.test.GreetingRequest) returns (stream org.entur.jwt.spring.grpc.test.GreetingResponse);
+    rpc protectedManyToOne (stream org.entur.jwt.spring.grpc.test.GreetingRequest) returns (org.entur.jwt.spring.grpc.test.GreetingResponse);
     
 }

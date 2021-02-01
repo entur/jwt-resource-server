@@ -15,7 +15,13 @@ import io.grpc.ServerInterceptor;
 
 @Configuration
 public class GrpcConfiguration {
-
+/*
+    @Bean
+    @GRpcGlobalInterceptor
+    public ServerInterceptor exceptionTransmitterInterceptor() {
+        return TransmitStatusRuntimeExceptionInterceptor.instance();
+    }
+*/    
     @Bean
     @GRpcGlobalInterceptor
     public ServerInterceptor authenticationExceptionTranslatorInterceptor(GrpcAuthenticationInterceptorFactory<?> wrapper) {
