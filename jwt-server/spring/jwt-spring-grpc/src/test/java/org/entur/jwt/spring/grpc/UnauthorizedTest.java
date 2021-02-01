@@ -22,7 +22,7 @@ import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 
 /**
- * Test accessing methods with a token which is valid but for some reason still is denied
+ * Test accessing methods with a token which is valid but for some reason still is denied. Check that exceptions are mapped to 
  * 
  */
 
@@ -37,18 +37,35 @@ public class UnauthorizedTest extends AbstractGrpcTest {
     @Test 
     public void testOneToOneAccessDeniedException(@AccessToken(audience = "https://my.audience") String header) {
         StatusRuntimeException exception = assertThrows(StatusRuntimeException.class, () -> {
-            stub(header).protectedOneToOne(greetingRequest);
+            stub(header).protectedOneToOneAuthenticationException(greetingRequest);
         });
         assertThat(exception.getStatus().getCode()).isEqualTo(Status.Code.PERMISSION_DENIED);
     }
     
     @Test 
+    public void testOneToOneStatusRuntimeException(@AccessToken(audience = "https://my.audience") String header) {
+        StatusRuntimeException exception = assertThrows(StatusRuntimeException.class, () -> {
+            stub(header).protectedOneToOneStatusRuntimeException(greetingRequest);
+        });
+        assertThat(exception.getStatus().getCode()).isEqualTo(Status.Code.UNAUTHENTICATED);
+    }
+    
+    @Test 
     public void testOneToManyAccessDeniedException(@AccessToken(audience = "https://my.audience") String header) {
         StatusRuntimeException exception = assertThrows(StatusRuntimeException.class, () -> {
-            Iterator<GreetingResponse> protectedOneToMany = stub(header).protectedOneToMany(greetingRequest);
+            Iterator<GreetingResponse> protectedOneToMany = stub(header).protectedOneToManyAuthenticationException(greetingRequest);
             protectedOneToMany.next();
         });
         assertThat(exception.getStatus().getCode()).isEqualTo(Status.Code.PERMISSION_DENIED);
+    }
+    
+    @Test 
+    public void testOneToManyStatusRuntimeException(@AccessToken(audience = "https://my.audience") String header) {
+        StatusRuntimeException exception = assertThrows(StatusRuntimeException.class, () -> {
+            Iterator<GreetingResponse> protectedOneToMany = stub(header).protectedOneToManyStatusRuntimeException(greetingRequest);
+            protectedOneToMany.next();
+        });
+        assertThat(exception.getStatus().getCode()).isEqualTo(Status.Code.UNAUTHENTICATED);
     }
     
     @Test 
@@ -78,7 +95,7 @@ public class UnauthorizedTest extends AbstractGrpcTest {
 			}
 		};
     
-		StreamObserver<GreetingRequest> protectedManyToOne = async(header).protectedManyToOne(observer);
+		StreamObserver<GreetingRequest> protectedManyToOne = async(header).protectedManyToOneAuthenticationException(observer);
 		protectedManyToOne.onNext(greetingRequest);
 		
 		semaphore.acquireUninterruptibly();
@@ -87,6 +104,44 @@ public class UnauthorizedTest extends AbstractGrpcTest {
 		
         assertThat(statusRuntimeException.getStatus().getCode()).isEqualTo(Status.Code.PERMISSION_DENIED);
     }
+    
+    @Test 
+    public void testManyToOneStatusRuntimeException(@AccessToken(audience = "https://my.audience") String header) throws InterruptedException {
+		Semaphore semaphore = new Semaphore(1);
+		semaphore.acquire();
+
+		final List<GreetingResponse> responses = new ArrayList<>();
+		final Throwable[] throwable = new Throwable[1];
+        StreamObserver<GreetingResponse> observer = new StreamObserver<GreetingResponse>() {
+			@Override
+			public void onNext(GreetingResponse response) {
+				synchronized(responses) {
+					responses.add(response);
+				}
+			}
+
+			@Override
+			public void onError(Throwable t) {
+				throwable[0] = t;
+				semaphore.release();
+			}
+
+			@Override
+			public void onCompleted() {
+				semaphore.release();
+			}
+		};
+    
+		StreamObserver<GreetingRequest> protectedManyToOne = async(header).protectedManyToOneStatusRuntimeException(observer);
+		protectedManyToOne.onNext(greetingRequest);
+		
+		semaphore.acquireUninterruptibly();
+		
+		StatusRuntimeException statusRuntimeException = (StatusRuntimeException)throwable[0];
+		
+        assertThat(statusRuntimeException.getStatus().getCode()).isEqualTo(Status.Code.UNAUTHENTICATED);
+    }    
+    
     
     @Test
     public void testManyToManyAccessDeniedException(@AccessToken(audience = "https://my.audience") String header) throws InterruptedException {
@@ -115,7 +170,7 @@ public class UnauthorizedTest extends AbstractGrpcTest {
 			}
 		};
     
-		StreamObserver<GreetingRequest> protectedManyToMany = async(header).protectedManyToMany(observer);
+		StreamObserver<GreetingRequest> protectedManyToMany = async(header).protectedManyToManyAuthenticationException(observer);
 		protectedManyToMany.onNext(greetingRequest);
 		
 		semaphore.acquireUninterruptibly();
@@ -123,6 +178,43 @@ public class UnauthorizedTest extends AbstractGrpcTest {
 		StatusRuntimeException statusRuntimeException = (StatusRuntimeException)throwable[0];
 		
         assertThat(statusRuntimeException.getStatus().getCode()).isEqualTo(Status.Code.PERMISSION_DENIED);
+    }
+    
+    @Test
+    public void testManyToManyStatusRuntimeException(@AccessToken(audience = "https://my.audience") String header) throws InterruptedException {
+		Semaphore semaphore = new Semaphore(1);
+		semaphore.acquire();
+
+		final List<GreetingResponse> responses = new ArrayList<>();
+		final Throwable[] throwable = new Throwable[1];
+        StreamObserver<GreetingResponse> observer = new StreamObserver<GreetingResponse>() {
+			@Override
+			public void onNext(GreetingResponse response) {
+				synchronized(responses) {
+					responses.add(response);
+				}
+			}
+
+			@Override
+			public void onError(Throwable t) {
+				throwable[0] = t;
+				semaphore.release();
+			}
+
+			@Override
+			public void onCompleted() {
+				semaphore.release();
+			}
+		};
+    
+		StreamObserver<GreetingRequest> protectedManyToMany = async(header).protectedManyToManyStatusRuntimeException(observer);
+		protectedManyToMany.onNext(greetingRequest);
+		
+		semaphore.acquireUninterruptibly();
+		
+		StatusRuntimeException statusRuntimeException = (StatusRuntimeException)throwable[0];
+		
+        assertThat(statusRuntimeException.getStatus().getCode()).isEqualTo(Status.Code.UNAUTHENTICATED);
     }
 
 }

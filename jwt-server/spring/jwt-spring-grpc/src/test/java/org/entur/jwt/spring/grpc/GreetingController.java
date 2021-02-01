@@ -60,31 +60,58 @@ public class GreetingController extends GreetingServiceImplBase implements GrpcA
     }
 
     @Override
-    public void protectedOneToOne(GreetingRequest request, StreamObserver<GreetingResponse> responseObserver) {
+    public void protectedOneToOneAuthenticationException(GreetingRequest request, StreamObserver<GreetingResponse> responseObserver) {
         log.info("Get protected one-to-one method which throws AccessDeniedException");
 
         throw new AccessDeniedException("TEST");
     }
     
     @Override
-    public void protectedOneToMany(GreetingRequest request, StreamObserver<GreetingResponse> responseObserver) {
+    public void protectedOneToManyAuthenticationException(GreetingRequest request, StreamObserver<GreetingResponse> responseObserver) {
         log.info("Get protected one-to-many method which throws AccessDeniedException");
 
         throw new AccessDeniedException("TEST");
     }
     
     @Override
-    public StreamObserver<GreetingRequest> protectedManyToOne(StreamObserver<GreetingResponse> responseObserver) {
+    public StreamObserver<GreetingRequest> protectedManyToOneAuthenticationException(StreamObserver<GreetingResponse> responseObserver) {
         log.info("Get protected many-to-one method which throws AccessDeniedException");
 
         throw new AccessDeniedException("TEST");
     }
     
     @Override
-    public StreamObserver<GreetingRequest> protectedManyToMany(StreamObserver<GreetingResponse> responseObserver) {
+    public StreamObserver<GreetingRequest> protectedManyToManyAuthenticationException(StreamObserver<GreetingResponse> responseObserver) {
         log.info("Get protected many-to-many method which throws AccessDeniedException");
 
         throw new AccessDeniedException("TEST");
     }
    
+    @Override
+    public void protectedOneToOneStatusRuntimeException(GreetingRequest request, StreamObserver<GreetingResponse> responseObserver) {
+        log.info("Get protected one-to-one method which throws StatusRuntimeException");
+
+        throw new StatusRuntimeException(Status.UNAUTHENTICATED);
+    }
+    
+    @Override
+    public void protectedOneToManyStatusRuntimeException(GreetingRequest request, StreamObserver<GreetingResponse> responseObserver) {
+        log.info("Get protected one-to-many method which throws StatusRuntimeException");
+
+        throw new StatusRuntimeException(Status.UNAUTHENTICATED);
+    }
+    
+    @Override
+    public StreamObserver<GreetingRequest> protectedManyToOneStatusRuntimeException(StreamObserver<GreetingResponse> responseObserver) {
+        log.info("Get protected many-to-one method which throws StatusRuntimeException");
+
+        throw new StatusRuntimeException(Status.UNAUTHENTICATED);
+    }
+    
+    @Override
+    public StreamObserver<GreetingRequest> protectedManyToManyStatusRuntimeException(StreamObserver<GreetingResponse> responseObserver) {
+        log.info("Get protected many-to-many method which throws StatusRuntimeException");
+
+        throw new StatusRuntimeException(Status.UNAUTHENTICATED);
+    }    
 }
