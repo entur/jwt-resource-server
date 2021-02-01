@@ -18,9 +18,9 @@ public class ServerCallSecurityExceptionTranslator implements ServerCallRuntimeE
 
     private static Logger log = LoggerFactory.getLogger(ServerCallSecurityExceptionTranslator.class);
 
-	@Override
-	public <ReqT, RespT> boolean close(ServerCall<ReqT, RespT> serverCall, RuntimeException e) {
-		Throwable[] causeChain = throwableAnalyzer.determineCauseChain(e);
+    @Override
+    public <ReqT, RespT> boolean close(ServerCall<ReqT, RespT> serverCall, RuntimeException e) {
+        Throwable[] causeChain = throwableAnalyzer.determineCauseChain(e);
         AuthenticationException authenticationException = (AuthenticationException) throwableAnalyzer.getFirstThrowableOfType(AuthenticationException.class, causeChain);
 
         if (Objects.nonNull(authenticationException)) {
@@ -36,9 +36,9 @@ public class ServerCallSecurityExceptionTranslator implements ServerCallRuntimeE
                 
                 return true;
             } else {
-            	return false;
+                return false;
             }
         }
-	}
+    }
 
 }

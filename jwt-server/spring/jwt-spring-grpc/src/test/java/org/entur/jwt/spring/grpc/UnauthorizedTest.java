@@ -70,150 +70,150 @@ public class UnauthorizedTest extends AbstractGrpcTest {
     
     @Test 
     public void testManyToOneAccessDeniedException(@AccessToken(audience = "https://my.audience") String header) throws InterruptedException {
-		Semaphore semaphore = new Semaphore(1);
-		semaphore.acquire();
+        Semaphore semaphore = new Semaphore(1);
+        semaphore.acquire();
 
-		final List<GreetingResponse> responses = new ArrayList<>();
-		final Throwable[] throwable = new Throwable[1];
+        final List<GreetingResponse> responses = new ArrayList<>();
+        final Throwable[] throwable = new Throwable[1];
         StreamObserver<GreetingResponse> observer = new StreamObserver<GreetingResponse>() {
-			@Override
-			public void onNext(GreetingResponse response) {
-				synchronized(responses) {
-					responses.add(response);
-				}
-			}
+            @Override
+            public void onNext(GreetingResponse response) {
+                synchronized(responses) {
+                    responses.add(response);
+                }
+            }
 
-			@Override
-			public void onError(Throwable t) {
-				throwable[0] = t;
-				semaphore.release();
-			}
+            @Override
+            public void onError(Throwable t) {
+                throwable[0] = t;
+                semaphore.release();
+            }
 
-			@Override
-			public void onCompleted() {
-				semaphore.release();
-			}
-		};
+            @Override
+            public void onCompleted() {
+                semaphore.release();
+            }
+        };
     
-		StreamObserver<GreetingRequest> protectedManyToOne = async(header).protectedManyToOneAuthenticationException(observer);
-		protectedManyToOne.onNext(greetingRequest);
-		
-		semaphore.acquireUninterruptibly();
-		
-		StatusRuntimeException statusRuntimeException = (StatusRuntimeException)throwable[0];
-		
+        StreamObserver<GreetingRequest> protectedManyToOne = async(header).protectedManyToOneAuthenticationException(observer);
+        protectedManyToOne.onNext(greetingRequest);
+        
+        semaphore.acquireUninterruptibly();
+        
+        StatusRuntimeException statusRuntimeException = (StatusRuntimeException)throwable[0];
+        
         assertThat(statusRuntimeException.getStatus().getCode()).isEqualTo(Status.Code.PERMISSION_DENIED);
     }
     
     @Test 
     public void testManyToOneStatusRuntimeException(@AccessToken(audience = "https://my.audience") String header) throws InterruptedException {
-		Semaphore semaphore = new Semaphore(1);
-		semaphore.acquire();
+        Semaphore semaphore = new Semaphore(1);
+        semaphore.acquire();
 
-		final List<GreetingResponse> responses = new ArrayList<>();
-		final Throwable[] throwable = new Throwable[1];
+        final List<GreetingResponse> responses = new ArrayList<>();
+        final Throwable[] throwable = new Throwable[1];
         StreamObserver<GreetingResponse> observer = new StreamObserver<GreetingResponse>() {
-			@Override
-			public void onNext(GreetingResponse response) {
-				synchronized(responses) {
-					responses.add(response);
-				}
-			}
+            @Override
+            public void onNext(GreetingResponse response) {
+                synchronized(responses) {
+                    responses.add(response);
+                }
+            }
 
-			@Override
-			public void onError(Throwable t) {
-				throwable[0] = t;
-				semaphore.release();
-			}
+            @Override
+            public void onError(Throwable t) {
+                throwable[0] = t;
+                semaphore.release();
+            }
 
-			@Override
-			public void onCompleted() {
-				semaphore.release();
-			}
-		};
+            @Override
+            public void onCompleted() {
+                semaphore.release();
+            }
+        };
     
-		StreamObserver<GreetingRequest> protectedManyToOne = async(header).protectedManyToOneStatusRuntimeException(observer);
-		protectedManyToOne.onNext(greetingRequest);
-		
-		semaphore.acquireUninterruptibly();
-		
-		StatusRuntimeException statusRuntimeException = (StatusRuntimeException)throwable[0];
-		
+        StreamObserver<GreetingRequest> protectedManyToOne = async(header).protectedManyToOneStatusRuntimeException(observer);
+        protectedManyToOne.onNext(greetingRequest);
+        
+        semaphore.acquireUninterruptibly();
+        
+        StatusRuntimeException statusRuntimeException = (StatusRuntimeException)throwable[0];
+        
         assertThat(statusRuntimeException.getStatus().getCode()).isEqualTo(Status.Code.UNAUTHENTICATED);
     }    
     
     
     @Test
     public void testManyToManyAccessDeniedException(@AccessToken(audience = "https://my.audience") String header) throws InterruptedException {
-		Semaphore semaphore = new Semaphore(1);
-		semaphore.acquire();
+        Semaphore semaphore = new Semaphore(1);
+        semaphore.acquire();
 
-		final List<GreetingResponse> responses = new ArrayList<>();
-		final Throwable[] throwable = new Throwable[1];
+        final List<GreetingResponse> responses = new ArrayList<>();
+        final Throwable[] throwable = new Throwable[1];
         StreamObserver<GreetingResponse> observer = new StreamObserver<GreetingResponse>() {
-			@Override
-			public void onNext(GreetingResponse response) {
-				synchronized(responses) {
-					responses.add(response);
-				}
-			}
+            @Override
+            public void onNext(GreetingResponse response) {
+                synchronized(responses) {
+                    responses.add(response);
+                }
+            }
 
-			@Override
-			public void onError(Throwable t) {
-				throwable[0] = t;
-				semaphore.release();
-			}
+            @Override
+            public void onError(Throwable t) {
+                throwable[0] = t;
+                semaphore.release();
+            }
 
-			@Override
-			public void onCompleted() {
-				semaphore.release();
-			}
-		};
+            @Override
+            public void onCompleted() {
+                semaphore.release();
+            }
+        };
     
-		StreamObserver<GreetingRequest> protectedManyToMany = async(header).protectedManyToManyAuthenticationException(observer);
-		protectedManyToMany.onNext(greetingRequest);
-		
-		semaphore.acquireUninterruptibly();
-		
-		StatusRuntimeException statusRuntimeException = (StatusRuntimeException)throwable[0];
-		
+        StreamObserver<GreetingRequest> protectedManyToMany = async(header).protectedManyToManyAuthenticationException(observer);
+        protectedManyToMany.onNext(greetingRequest);
+        
+        semaphore.acquireUninterruptibly();
+        
+        StatusRuntimeException statusRuntimeException = (StatusRuntimeException)throwable[0];
+        
         assertThat(statusRuntimeException.getStatus().getCode()).isEqualTo(Status.Code.PERMISSION_DENIED);
     }
     
     @Test
     public void testManyToManyStatusRuntimeException(@AccessToken(audience = "https://my.audience") String header) throws InterruptedException {
-		Semaphore semaphore = new Semaphore(1);
-		semaphore.acquire();
+        Semaphore semaphore = new Semaphore(1);
+        semaphore.acquire();
 
-		final List<GreetingResponse> responses = new ArrayList<>();
-		final Throwable[] throwable = new Throwable[1];
+        final List<GreetingResponse> responses = new ArrayList<>();
+        final Throwable[] throwable = new Throwable[1];
         StreamObserver<GreetingResponse> observer = new StreamObserver<GreetingResponse>() {
-			@Override
-			public void onNext(GreetingResponse response) {
-				synchronized(responses) {
-					responses.add(response);
-				}
-			}
+            @Override
+            public void onNext(GreetingResponse response) {
+                synchronized(responses) {
+                    responses.add(response);
+                }
+            }
 
-			@Override
-			public void onError(Throwable t) {
-				throwable[0] = t;
-				semaphore.release();
-			}
+            @Override
+            public void onError(Throwable t) {
+                throwable[0] = t;
+                semaphore.release();
+            }
 
-			@Override
-			public void onCompleted() {
-				semaphore.release();
-			}
-		};
+            @Override
+            public void onCompleted() {
+                semaphore.release();
+            }
+        };
     
-		StreamObserver<GreetingRequest> protectedManyToMany = async(header).protectedManyToManyStatusRuntimeException(observer);
-		protectedManyToMany.onNext(greetingRequest);
-		
-		semaphore.acquireUninterruptibly();
-		
-		StatusRuntimeException statusRuntimeException = (StatusRuntimeException)throwable[0];
-		
+        StreamObserver<GreetingRequest> protectedManyToMany = async(header).protectedManyToManyStatusRuntimeException(observer);
+        protectedManyToMany.onNext(greetingRequest);
+        
+        semaphore.acquireUninterruptibly();
+        
+        StatusRuntimeException statusRuntimeException = (StatusRuntimeException)throwable[0];
+        
         assertThat(statusRuntimeException.getStatus().getCode()).isEqualTo(Status.Code.UNAUTHENTICATED);
     }
 

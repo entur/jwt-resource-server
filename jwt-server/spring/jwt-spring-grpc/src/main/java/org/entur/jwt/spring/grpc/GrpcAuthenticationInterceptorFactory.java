@@ -27,12 +27,12 @@ public class GrpcAuthenticationInterceptorFactory<T> {
 
     @Deprecated
     public ServerInterceptor getAuthenticationExceptionTranslatorInterceptor() {
-    	return exceptionTranslationInterceptor;
+        return exceptionTranslationInterceptor;
     }
     
     public GrpcRuntimeExceptionTranslationInterceptor getExceptionTranslationInterceptor() {
-		return exceptionTranslationInterceptor;
-	}
+        return exceptionTranslationInterceptor;
+    }
     
    
     public JwtAuthenticationInterceptor<T> getJwtAuthenticationInterceptor() {

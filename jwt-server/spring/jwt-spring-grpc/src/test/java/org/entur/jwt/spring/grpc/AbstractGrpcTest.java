@@ -17,27 +17,27 @@ import io.grpc.ManagedChannelBuilder;
 
 public class AbstractGrpcTest {
 
-	public static final int MAX_INBOUND_MESSAGE_SIZE = 1 << 20;
-	public static final int MAX_OUTBOUND_MESSAGE_SIZE = 1 << 20;
-	
-	protected final int maxOutboundMessageSize;
-	protected final int maxInboundMessageSize;
+    public static final int MAX_INBOUND_MESSAGE_SIZE = 1 << 20;
+    public static final int MAX_OUTBOUND_MESSAGE_SIZE = 1 << 20;
 
-	public AbstractGrpcTest() {
-		this(MAX_INBOUND_MESSAGE_SIZE, MAX_OUTBOUND_MESSAGE_SIZE);
-	}
+    protected final int maxOutboundMessageSize;
+    protected final int maxInboundMessageSize;
 
-	public AbstractGrpcTest(int maxInboundMessageSize, int maxOutboundMessageSize) {
-		this.maxInboundMessageSize = maxInboundMessageSize;
-		this.maxOutboundMessageSize = maxOutboundMessageSize;
-	}
-	
+    public AbstractGrpcTest() {
+        this(MAX_INBOUND_MESSAGE_SIZE, MAX_OUTBOUND_MESSAGE_SIZE);
+    }
+
+    public AbstractGrpcTest(int maxInboundMessageSize, int maxOutboundMessageSize) {
+        this.maxInboundMessageSize = maxInboundMessageSize;
+        this.maxOutboundMessageSize = maxOutboundMessageSize;
+    }
+
     @LocalServerPort
     protected int randomServerPort;
 
     @LocalRunningGrpcPort
     protected int randomGrpcServerPort;
-    
+
     protected GreetingRequest greetingRequest = GreetingRequest.newBuilder().build();
 
     protected ManagedChannel managedChannel;
@@ -59,20 +59,20 @@ public class AbstractGrpcTest {
     protected GreetingServiceBlockingStub stub() {
         return stub(null);
     }
-    
-	protected void shutdown(GreetingServiceBlockingStub stub) throws InterruptedException {
-		ManagedChannel m = (ManagedChannel)stub.getChannel();
-		m.shutdown();
-		m.awaitTermination(15, TimeUnit.SECONDS);
-	}
-	
-	protected GreetingServiceFutureStub futureStub(String token) {
-		GreetingServiceFutureStub newFutureStub = GreetingServiceGrpc.newFutureStub(managedChannel);
+
+    protected void shutdown(GreetingServiceBlockingStub stub) throws InterruptedException {
+        ManagedChannel m = (ManagedChannel)stub.getChannel();
+        m.shutdown();
+        m.awaitTermination(15, TimeUnit.SECONDS);
+    }
+
+    protected GreetingServiceFutureStub futureStub(String token) {
+        GreetingServiceFutureStub newFutureStub = GreetingServiceGrpc.newFutureStub(managedChannel);
         if (token != null) {
-        	newFutureStub = newFutureStub.withCallCredentials(new JwtCallCredentials(token));
+            newFutureStub = newFutureStub.withCallCredentials(new JwtCallCredentials(token));
         }
-		return newFutureStub;
-	}    
+        return newFutureStub;
+    }    
 
     protected GreetingServiceBlockingStub stub(String token) {
         GreetingServiceBlockingStub greetingService = GreetingServiceGrpc.newBlockingStub(managedChannel);
@@ -82,16 +82,16 @@ public class AbstractGrpcTest {
         return greetingService;
     }
 
-	protected GreetingServiceStub async(String token) {
-		GreetingServiceStub greetingService = GreetingServiceGrpc.newStub(managedChannel)
-				.withMaxInboundMessageSize(maxInboundMessageSize)
-				.withMaxOutboundMessageSize(maxOutboundMessageSize)
-				;
+    protected GreetingServiceStub async(String token) {
+        GreetingServiceStub greetingService = GreetingServiceGrpc.newStub(managedChannel)
+                .withMaxInboundMessageSize(maxInboundMessageSize)
+                .withMaxOutboundMessageSize(maxOutboundMessageSize)
+                ;
         if (token != null) {
-        	greetingService = greetingService.withCallCredentials(new JwtCallCredentials(token));
+            greetingService = greetingService.withCallCredentials(new JwtCallCredentials(token));
         }
-		
-		return greetingService;
-	}
+
+        return greetingService;
+    }
 
 }

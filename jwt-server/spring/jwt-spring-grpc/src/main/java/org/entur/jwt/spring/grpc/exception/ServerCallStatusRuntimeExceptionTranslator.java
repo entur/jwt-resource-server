@@ -14,15 +14,15 @@ import io.grpc.util.TransmitStatusRuntimeExceptionInterceptor;
 
 public class ServerCallStatusRuntimeExceptionTranslator implements ServerCallRuntimeExceptionTranslator {
 
-	@Override
-	public <ReqT, RespT> boolean close(ServerCall<ReqT, RespT> serverCall, RuntimeException e) {
-		if(e instanceof StatusRuntimeException) {
-			StatusRuntimeException statusRuntimeException = (StatusRuntimeException)e;
-	        serverCall.close(statusRuntimeException.getStatus(), new Metadata());
-	        
-	        return true;
-		}
-		return false;
-	}
+    @Override
+    public <ReqT, RespT> boolean close(ServerCall<ReqT, RespT> serverCall, RuntimeException e) {
+        if(e instanceof StatusRuntimeException) {
+            StatusRuntimeException statusRuntimeException = (StatusRuntimeException)e;
+            serverCall.close(statusRuntimeException.getStatus(), new Metadata());
+            
+            return true;
+        }
+        return false;
+    }
 
 }
