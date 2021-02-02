@@ -18,8 +18,8 @@ public class GrpcConfiguration {
 
     @Bean
     @GRpcGlobalInterceptor
-    public ServerInterceptor authenticationExceptionTranslatorInterceptor(GrpcAuthenticationInterceptorFactory<?> wrapper) {
-        return wrapper.getAuthenticationExceptionTranslatorInterceptor();
+    public ServerInterceptor exceptionTranslationInterceptor(GrpcAuthenticationInterceptorFactory<?> wrapper) {
+        return wrapper.getExceptionTranslationInterceptor();
     }
     
     @Bean
