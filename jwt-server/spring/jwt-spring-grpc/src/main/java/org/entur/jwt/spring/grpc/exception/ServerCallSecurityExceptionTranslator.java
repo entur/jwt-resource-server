@@ -24,14 +24,14 @@ public class ServerCallSecurityExceptionTranslator implements ServerCallRuntimeE
         AuthenticationException authenticationException = (AuthenticationException) throwableAnalyzer.getFirstThrowableOfType(AuthenticationException.class, causeChain);
 
         if (Objects.nonNull(authenticationException)) {
-            log.warn("Got authentication exception", e);
+            log.info("Got authentication exception", e);
 
             serverCall.close(Status.UNAUTHENTICATED, new Metadata());
             return true;
         } else {
             AccessDeniedException accessDeniedException = (AccessDeniedException) throwableAnalyzer.getFirstThrowableOfType(AccessDeniedException.class, causeChain);
             if (Objects.nonNull(accessDeniedException)) {
-                log.warn("Got permission denied exception", e);
+                log.info("Got permission denied exception", e);
                 serverCall.close(Status.PERMISSION_DENIED, new Metadata());
                 
                 return true;
