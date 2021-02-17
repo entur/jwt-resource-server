@@ -64,6 +64,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
      *                               timeout, refresh time cached value".
      * @param preemptiveTimeoutUnit  preemptive timeout unit
      * @param refreshConstraintInPercent constraint in percent, of a token's lifetime, before any preemptive refresh happens
+     * @param eager             preemptive refresh even if no traffic (schedule update)                         
      */
 
     public PreemptiveCachedAccessTokenProvider(AccessTokenProvider provider, long minimumTimeToLiveUnits, TimeUnit minimumTimeToLiveUnit, long refreshTimeoutUnits, TimeUnit refreshTimeoutUnit, long preemptiveTimeoutUnits,
@@ -83,6 +84,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
      *                          milliseconds before token is invalid, refresh cached
      *                          value".
      * @param refreshConstraintInPercent constraint in percent, of a token's lifetime, before any preemptive refresh happens
+     * @param eager             preemptive refresh even if no traffic (schedule update)                         
      */
 
     public PreemptiveCachedAccessTokenProvider(AccessTokenProvider provider, long minimumTimeToLive, long refreshTimeout, long preemptiveRefresh, int refreshConstraintInPercent, boolean eager) {
@@ -101,6 +103,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
      *                          milliseconds before timeout, refresh time cached
      *                          value".
      * @param refreshConstraintInPercent constraint in percent, of a token's lifetime, before any preemptive refresh happens
+     * @param eager             preemptive refresh even if no traffic (schedule update)                         
      * @param executorService   executor service
      * @param shutdownExecutorOnClose Whether to shutdown the executor service on calls to close(..).
      */
@@ -175,6 +178,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
      * 
      * @param time  current time
      * @param cache current cache (non-null)
+     * @param forceRefresh force refresh
      */
 
     protected void preemptiveRefresh(final long time, final AccessTokenCacheItem cache, boolean forceRefresh) {

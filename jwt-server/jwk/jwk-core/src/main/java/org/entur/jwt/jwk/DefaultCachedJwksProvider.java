@@ -135,7 +135,7 @@ public class DefaultCachedJwksProvider<T> extends AbstractCachedJwksProvider<T> 
      * Load Jwks from wrapped provider. Guaranteed to only run for one thread at a time.
      * 
      * @param time current time
-     * @return
+     * @return cache item
      * @throws JwksException if loading could not be performed
      */
 

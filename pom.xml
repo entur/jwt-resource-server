@@ -414,6 +414,7 @@
 				<version>${maven-javadoc-plugin.version}</version>
 			    <configuration>
 			        <source>8</source>
+			        <detectJavaApiLink>false</detectJavaApiLink>
 			    </configuration>
 				<executions>
 					<execution>

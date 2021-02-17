@@ -19,7 +19,7 @@ public interface JwtClaimExtractor<T> extends Serializable { // Serializable as 
      * 
      * Extract claims
      * 
-     * @param token
+     * @param token the (JWT) token to extract claims from
      * @return resulting claims as map (must be serializable)
      * @throws JwtClaimException if unexpected problem or invalid data
      */

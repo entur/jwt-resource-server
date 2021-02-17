@@ -40,6 +40,7 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
     private final ReentrantLock lazyLock = new ReentrantLock();
 
     private final ExecutorService executorService;
+    private final boolean shutdownExecutorOnClose;
 
     private final ScheduledExecutorService scheduledExecutorService;
     
@@ -58,10 +59,11 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
      *                          is relative to time to live, i.e. "15000
      *                          milliseconds before timeout, refresh time cached
      *                          value".
+     * @param eager             preemptive refresh even if no traffic (schedule update)                         
      */
 
     public PreemptiveCachedJwksProvider(JwksProvider<T> provider, Duration timeToLive, Duration refreshTimeout, Duration preemptiveRefresh, boolean eager) {
-        this(provider, timeToLive.toMillis(), refreshTimeout.toMillis(), preemptiveRefresh.toMillis(), eager, Executors.newSingleThreadExecutor());
+        this(provider, timeToLive.toMillis(), refreshTimeout.toMillis(), preemptiveRefresh.toMillis(), eager, Executors.newSingleThreadExecutor(), true);
     }
 
     /**
@@ -74,10 +76,11 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
      *                          is relative to time to live, i.e. "15000
      *                          milliseconds before timeout, refresh time cached
      *                          value".
+     * @param eager             preemptive refresh even if no traffic (schedule update)                         
      */
 
     public PreemptiveCachedJwksProvider(JwksProvider<T> provider, long timeToLive, long refreshTimeout, long preemptiveRefresh, boolean eager) {
-        this(provider, timeToLive, refreshTimeout, preemptiveRefresh, eager, Executors.newSingleThreadExecutor());
+        this(provider, timeToLive, refreshTimeout, preemptiveRefresh, eager, Executors.newSingleThreadExecutor(), true);
     }
 
     /**
@@ -90,10 +93,12 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
      *                          parameter is relative to time to live, i.e. "15000
      *                          milliseconds before timeout, refresh time cached
      *                          value".
+     * @param eager             preemptive refresh even if no traffic (schedule update)                         
      * @param executorService   executor service
+     * @param shutdownExecutorOnClose Whether to shutdown the executor service on calls to close(..).
      */
 
-    public PreemptiveCachedJwksProvider(JwksProvider<T> provider, long timeToLive, long refreshTimeout, long preemptiveRefresh, boolean eager, ExecutorService executorService) {
+    public PreemptiveCachedJwksProvider(JwksProvider<T> provider, long timeToLive, long refreshTimeout, long preemptiveRefresh, boolean eager, ExecutorService executorService, boolean shutdownExecutorOnClose) {
         super(provider, timeToLive, refreshTimeout);
 
         if (preemptiveRefresh + refreshTimeout > timeToLive) {
@@ -102,7 +107,8 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
 
         this.preemptiveRefresh = preemptiveRefresh;
         this.executorService = executorService;
-        
+        this.shutdownExecutorOnClose = shutdownExecutorOnClose;
+
         if(eager) {
             scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
         } else {
@@ -234,6 +240,26 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
             eagerJwkListCacheItem.cancel(true);
             logger.info("Cancelled scheduled JWKs refresh");
         }
-        provider.close();
+        
+        super.close();
+        
+        if(shutdownExecutorOnClose) {
+        	executorService.shutdownNow();
+			try {
+				executorService.awaitTermination(refreshTimeout, TimeUnit.MILLISECONDS);
+			} catch (InterruptedException e) {
+				// ignore
+				logger.info("Interrupted while waiting for executor shutdown", e);
+			}
+        }
+        if(scheduledExecutorService != null) {
+        	scheduledExecutorService.shutdownNow();
+			try {
+				scheduledExecutorService.awaitTermination(refreshTimeout, TimeUnit.MILLISECONDS);
+			} catch (InterruptedException e) {
+				// ignore
+				logger.info("Interrupted while waiting for scheduled executor shutdown", e);
+			}
+        }        
     }
 }

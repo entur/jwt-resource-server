@@ -103,6 +103,9 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
      * @param timeout Preemptive timeout, relative to cache time to live, i.e. "15
      *                seconds before timeout, refresh time cached value".
      * @param unit    unit of preemptive timeout
+     * @param constraint constraint in percent, of a token's lifetime, before any preemptive refresh happens
+     * @param eager   preemptive refresh even if no traffic (schedule update)                         
+     * 
      * @return the builder
      */
     @SuppressWarnings("unchecked")
