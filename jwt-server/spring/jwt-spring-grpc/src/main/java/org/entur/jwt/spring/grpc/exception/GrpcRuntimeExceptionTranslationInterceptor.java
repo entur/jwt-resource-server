@@ -48,8 +48,8 @@ public class GrpcRuntimeExceptionTranslationInterceptor implements ServerInterce
             ServerCall<ReqT, RespT> call,
             Metadata headers,
             ServerCallHandler<ReqT, RespT> next) {
+        final ServerCall<ReqT, RespT> serverCall = new SerializingServerCall<>(call);
         try {
-            final ServerCall<ReqT, RespT> serverCall = new SerializingServerCall<>(call);
             ServerCall.Listener<ReqT> listener = next.startCall(serverCall, headers);
             return new SimpleForwardingServerCallListener<ReqT>(listener) {
 
@@ -58,7 +58,7 @@ public class GrpcRuntimeExceptionTranslationInterceptor implements ServerInterce
                     try {
                         super.onMessage(message);
                     } catch (RuntimeException e) {
-                        translateToStatus(e, call);
+                        translateToStatus(e, serverCall);
                     }
                 }
 
@@ -67,7 +67,7 @@ public class GrpcRuntimeExceptionTranslationInterceptor implements ServerInterce
                     try {
                         super.onHalfClose();
                     } catch (RuntimeException e) {
-                        translateToStatus(e, call);
+                        translateToStatus(e, serverCall);
                     }
                 }
 
@@ -76,7 +76,7 @@ public class GrpcRuntimeExceptionTranslationInterceptor implements ServerInterce
                     try {
                         super.onCancel();
                     } catch (RuntimeException e) {
-                        translateToStatus(e, call);
+                        translateToStatus(e, serverCall);
                     }                    
                 }
 
@@ -85,7 +85,7 @@ public class GrpcRuntimeExceptionTranslationInterceptor implements ServerInterce
                     try {
                         super.onComplete();
                     } catch (RuntimeException e) {
-                        translateToStatus(e, call);
+                        translateToStatus(e, serverCall);
                     }
                 }
 
@@ -94,13 +94,13 @@ public class GrpcRuntimeExceptionTranslationInterceptor implements ServerInterce
                     try {
                         super.onReady();
                     } catch (RuntimeException e) {
-                        translateToStatus(e, call);
+                        translateToStatus(e, serverCall);
                     }
                 }
 
             };
         } catch(RuntimeException e) { // i.e. by startCall
-            translateToStatus(e, call);
+            translateToStatus(e, serverCall);
             return new Listener<ReqT>() {};
         }
     }
