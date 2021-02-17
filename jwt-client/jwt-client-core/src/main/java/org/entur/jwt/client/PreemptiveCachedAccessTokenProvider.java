@@ -38,7 +38,8 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
     private final ReentrantLock lazyLock = new ReentrantLock();
 
     private final ExecutorService executorService;
-
+    private final boolean shutdownExecutorOnClose;
+    
     private final ScheduledExecutorService scheduledExecutorService;
     
     /** do not preemptively refresh before this percentage of a token's lifetime has passed */
@@ -67,7 +68,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
 
     public PreemptiveCachedAccessTokenProvider(AccessTokenProvider provider, long minimumTimeToLiveUnits, TimeUnit minimumTimeToLiveUnit, long refreshTimeoutUnits, TimeUnit refreshTimeoutUnit, long preemptiveTimeoutUnits,
             TimeUnit preemptiveTimeoutUnit, int refreshConstraintInPercent, boolean eager) {
-        this(provider, minimumTimeToLiveUnit.toMillis(minimumTimeToLiveUnits), refreshTimeoutUnit.toMillis(refreshTimeoutUnits), preemptiveTimeoutUnit.toMillis(preemptiveTimeoutUnits), refreshConstraintInPercent, eager, Executors.newSingleThreadExecutor());
+        this(provider, minimumTimeToLiveUnit.toMillis(minimumTimeToLiveUnits), refreshTimeoutUnit.toMillis(refreshTimeoutUnits), preemptiveTimeoutUnit.toMillis(preemptiveTimeoutUnits), refreshConstraintInPercent, eager, Executors.newSingleThreadExecutor(), true);
     }
 
     /**
@@ -85,7 +86,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
      */
 
     public PreemptiveCachedAccessTokenProvider(AccessTokenProvider provider, long minimumTimeToLive, long refreshTimeout, long preemptiveRefresh, int refreshConstraintInPercent, boolean eager) {
-        this(provider, minimumTimeToLive, refreshTimeout, preemptiveRefresh, refreshConstraintInPercent, eager, Executors.newSingleThreadExecutor());
+        this(provider, minimumTimeToLive, refreshTimeout, preemptiveRefresh, refreshConstraintInPercent, eager, Executors.newSingleThreadExecutor(), true);
     }
 
     /**
@@ -101,9 +102,10 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
      *                          value".
      * @param refreshConstraintInPercent constraint in percent, of a token's lifetime, before any preemptive refresh happens
      * @param executorService   executor service
+     * @param shutdownExecutorOnClose Whether to shutdown the executor service on calls to close(..).
      */
 
-    public PreemptiveCachedAccessTokenProvider(AccessTokenProvider provider, long minimumTimeToLive, long refreshTimeout, long preemptiveRefresh, int refreshConstraintInPercent, boolean eager, ExecutorService executorService) {
+    public PreemptiveCachedAccessTokenProvider(AccessTokenProvider provider, long minimumTimeToLive, long refreshTimeout, long preemptiveRefresh, int refreshConstraintInPercent, boolean eager, ExecutorService executorService, boolean shutdownExecutorOnClose) {
         super(provider, minimumTimeToLive, refreshTimeout);
 
         if (preemptiveRefresh < minimumTimeToLive) {
@@ -112,6 +114,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
 
         this.preemptiveRefresh = preemptiveRefresh;
         this.executorService = executorService;
+        this.shutdownExecutorOnClose = shutdownExecutorOnClose;
         this.refreshConstraintInPercent = refreshConstraintInPercent;
         if(eager) {
             scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
@@ -263,7 +266,27 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
             eagerJwkListCacheItem.cancel(true);
             logger.info("Cancelled scheduled access-token refresh");
         }
-        provider.close();
+        super.close();
+        
+        if(shutdownExecutorOnClose) {
+        	executorService.shutdownNow();
+			try {
+				executorService.awaitTermination(refreshTimeout, TimeUnit.MILLISECONDS);
+			} catch (InterruptedException e) {
+				// ignore
+				logger.info("Interrupted while waiting for executor shutdown", e);
+			}
+        }
+        if(scheduledExecutorService != null) {
+        	scheduledExecutorService.shutdownNow();
+			try {
+				scheduledExecutorService.awaitTermination(refreshTimeout, TimeUnit.MILLISECONDS);
+			} catch (InterruptedException e) {
+				// ignore
+				logger.info("Interrupted while waiting for scheduled executor shutdown", e);
+			}
+        }
+        
     }
     
     long getRefreshable(long time) {
