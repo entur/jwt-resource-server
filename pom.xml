@@ -75,7 +75,7 @@
 		
 		<!-- transient dependencies added due to security patching -->
 		<snakeyaml.version>1.27</snakeyaml.version>
-		<tomcat.version>9.0.40</tomcat.version>
+		<tomcat.version>10.0.4</tomcat.version>
 		
 		<!-- plugins -->
 		<build-helper-maven-plugin.version>1.9.1</build-helper-maven-plugin.version>
