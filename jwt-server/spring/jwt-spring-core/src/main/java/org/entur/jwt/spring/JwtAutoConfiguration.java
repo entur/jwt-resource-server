@@ -257,7 +257,7 @@ public class JwtAutoConfiguration {
         }
         
         // add a wrapper so that the verifier is closed on shutdown
-        return factory.getVerifier(enabledTenants, jwtProperties.getJwk(), jwtProperties.getClaims());
+        return factory.getVerifier(tenants, jwtProperties.getJwk(), jwtProperties.getClaims());
     }
 
     
