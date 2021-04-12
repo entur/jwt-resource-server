@@ -14,6 +14,11 @@
 	   <!-- old camel -->
 	   <cve>CVE-2020-5398</cve>
 	</suppress>
+
+	<suppress>
+	   <!-- old camel -->
+	   <cve>CVE-2020-11971</cve>
+	</suppress>
 	
 	<suppress>
 	   <!-- SAML component -->
