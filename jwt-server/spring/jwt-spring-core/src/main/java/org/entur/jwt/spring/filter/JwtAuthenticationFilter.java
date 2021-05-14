@@ -1,11 +1,11 @@
 package org.entur.jwt.spring.filter;
 
+import org.entur.jwt.jwk.JwksClientException;
 import org.entur.jwt.jwk.JwksException;
-import org.entur.jwt.jwk.JwksServiceException;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
 import org.entur.jwt.verifier.JwtClaimExtractor;
+import org.entur.jwt.verifier.JwtClientException;
 import org.entur.jwt.verifier.JwtException;
-import org.entur.jwt.verifier.JwtServiceException;
 import org.entur.jwt.verifier.JwtVerifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,15 +99,19 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
                     response.setStatus(HttpStatus.UNAUTHORIZED.value());
                     handlerExceptionResolver.resolveException(request, response, null, new BadCredentialsException("Unable to verify token"));
                 }
-            } catch (JwksServiceException | JwtServiceException e) { // assume server issue
+            } catch (JwtClientException | JwksClientException e) { // assume client misconfiguration
+                log.debug("JWT verification failed due to {}", e.getMessage());
+
+                response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                handlerExceptionResolver.resolveException(request, response, null, new BadCredentialsException("Unable to verify token", e));
+            } catch (JwksException | JwtException e) { // assume server issue
+                // technically we should only see JwksServiceException or JwtServiceException here
+                // but use superclass to catch all
+
                 log.warn("Unable to process token", e);
 
                 response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
                 handlerExceptionResolver.resolveException(request, response, null, new JwtAuthenticationServiceUnavailableException("Unable to process token", e));
-            } catch (JwtException | JwksException e) { // assume client misconfiguration
-                log.debug("JWT verification failed due to {}", e.getMessage());
-                response.setStatus(HttpStatus.UNAUTHORIZED.value());
-                handlerExceptionResolver.resolveException(request, response, null, new BadCredentialsException("Unable to verify token", e));
             }
         } else if (!required) {
             chain.doFilter(request, response);

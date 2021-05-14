@@ -2,16 +2,16 @@ package org.entur.jwt.spring.grpc;
 
 import io.grpc.*;
 import io.grpc.ServerCall.Listener;
+import org.entur.jwt.jwk.JwksClientException;
 import org.entur.jwt.jwk.JwksException;
-import org.entur.jwt.jwk.JwksServiceException;
 import org.entur.jwt.spring.filter.JwtAuthenticationToken;
 import org.entur.jwt.spring.filter.JwtAuthorityMapper;
 import org.entur.jwt.spring.filter.JwtDetailsMapper;
 import org.entur.jwt.spring.filter.JwtPrincipalMapper;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
 import org.entur.jwt.verifier.JwtClaimExtractor;
+import org.entur.jwt.verifier.JwtClientException;
 import org.entur.jwt.verifier.JwtException;
-import org.entur.jwt.verifier.JwtServiceException;
 import org.entur.jwt.verifier.JwtVerifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,16 +97,19 @@ public class JwtAuthenticationInterceptor<T> implements ServerInterceptor {
                     return new Listener<ReqT>() {
                     };
                 }
-            } catch (JwksServiceException | JwtServiceException e) {  // assume server issue
-                log.warn("Unable to process token", e);
-
-                call.close(Status.UNAVAILABLE.withDescription(e.getMessage()).withCause(e), new Metadata());
-                return new Listener<ReqT>() {
-                };
-            } catch (JwtException | JwksException e) { // assume client misconfiguration
+            } catch (JwtClientException | JwksClientException e) { // assume client misconfiguration
                 log.debug("JWT verification failed due to {}", e.getMessage());
 
                 call.close(Status.UNAUTHENTICATED.withDescription(e.getMessage()).withCause(e), new Metadata());
+                return new Listener<ReqT>() {
+                };
+            } catch (JwksException | JwtException e) {  // assume server issue
+                // technically we should only see JwksServiceException or JwtServiceException here
+                // but use superclass to catch all
+
+                log.warn("Unable to process token", e);
+
+                call.close(Status.UNAVAILABLE.withDescription(e.getMessage()).withCause(e), new Metadata());
                 return new Listener<ReqT>() {
                 };
             }
