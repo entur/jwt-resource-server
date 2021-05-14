@@ -1,24 +1,21 @@
 package org.entur.jwt.verifier.auth0;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import org.entur.jwt.jwk.JwksException;
 import org.entur.jwt.jwk.JwksHealth;
 import org.entur.jwt.jwk.JwksProvider;
-import org.entur.jwt.verifier.JwtClientException;
 import org.entur.jwt.verifier.JwtException;
 import org.entur.jwt.verifier.JwtVerifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.exceptions.AlgorithmMismatchException;
-import com.auth0.jwt.exceptions.JWTVerificationException;
-import com.auth0.jwt.interfaces.DecodedJWT;
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 public class MultiTenantJwtVerifier implements JwtVerifier<DecodedJWT>, Closeable {
 
@@ -48,7 +45,7 @@ public class MultiTenantJwtVerifier implements JwtVerifier<DecodedJWT>, Closeabl
         try {
             decode = JWT.decode(token); // i.e. no signature verification, just parsing
         } catch (Exception e) {
-            logger.info("Unable to decode token", e);
+            // assume garbage from the internet
             return null;
         }
 
@@ -57,21 +54,20 @@ public class MultiTenantJwtVerifier implements JwtVerifier<DecodedJWT>, Closeabl
             CloseableJWTVerifier jwtVerifier = verifiers.get(issuer);
 
             if (jwtVerifier != null) {
+                // so most likely not garbage from the internet
                 try {
                     return jwtVerifier.verify(decode);
                 } catch (SigningKeyUnavailableException e) {
+                    // something is wrong on our side
                     throw new org.entur.jwt.jwk.JwksUnavailableException(e);
-                } catch (AlgorithmMismatchException e) {
-                    throw new JwtClientException(e); // auth0 supports most known algorithms
                 } catch (JWTVerificationException e) {
-                    logger.info("Unable to verify token for issuer {}", issuer, e);
+                    // something was wrong with the token
+                    logger.debug("Unable to verify token for known issuer {}", issuer, e);
                     return null;
                 }
-            } else {
-                logger.info("Unknown issuer {}", issuer);
             }
         }
-
+        // assume garbage from the internet
         return null;
     }
 

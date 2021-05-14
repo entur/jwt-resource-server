@@ -1,31 +1,26 @@
 package org.entur.jwt.spring.camel;
 
-import java.io.Serializable;
-import java.util.List;
-import java.util.Map;
-
-import javax.security.auth.Subject;
-import javax.servlet.http.HttpServletRequest;
-
 import org.apache.camel.Exchange;
 import org.apache.camel.Message;
 import org.apache.camel.Processor;
+import org.entur.jwt.jwk.JwksClientException;
 import org.entur.jwt.jwk.JwksException;
-import org.entur.jwt.jwk.JwksServiceException;
-import org.entur.jwt.spring.filter.JwtAuthenticationServiceUnavailableException;
-import org.entur.jwt.spring.filter.JwtAuthenticationToken;
-import org.entur.jwt.spring.filter.JwtAuthorityMapper;
-import org.entur.jwt.spring.filter.JwtDetailsMapper;
-import org.entur.jwt.spring.filter.JwtPrincipalMapper;
+import org.entur.jwt.spring.filter.*;
 import org.entur.jwt.verifier.JwtClaimExtractor;
+import org.entur.jwt.verifier.JwtClientException;
 import org.entur.jwt.verifier.JwtException;
-import org.entur.jwt.verifier.JwtServiceException;
 import org.entur.jwt.verifier.JwtVerifier;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
+
+import javax.security.auth.Subject;
+import javax.servlet.http.HttpServletRequest;
+import java.io.Serializable;
+import java.util.List;
+import java.util.Map;
 
 /**
  * A {@linkplain Processor} which, if present, extracts the Json Web Token from
@@ -93,11 +88,13 @@ public class DefaultJwtAuthenticationProcessor implements JwtAuthenticationProce
                         } else {
                             throw new BadCredentialsException("Unknown issuer");
                         }
-                    } catch (JwksServiceException | JwtServiceException e) {
-                        throw new JwtAuthenticationServiceUnavailableException("Unable to process token", e);
-                    } catch (JwtException | JwksException e) {
+                    } catch (JwtClientException | JwksClientException e) {
                         // assume client issue
                         throw new BadCredentialsException("Problem verifying token", e);
+                    } catch (JwksException | JwtException e) {
+                        // technically we should only see JwksServiceException or JwtServiceException here
+                        // but use superclass to catch all
+                        throw new JwtAuthenticationServiceUnavailableException("Unable to process token", e);
                     }
                 } else {
                     authentication = anonymous;
