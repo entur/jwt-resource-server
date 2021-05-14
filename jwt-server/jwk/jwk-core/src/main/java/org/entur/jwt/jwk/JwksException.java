@@ -1,8 +1,9 @@
 package org.entur.jwt.jwk;
 
 /**
- * Top-level Json Web Keys exception.
- * 
+ * Top-level Json Web Keys exception.<br><br>
+ * <p>
+ * Note: Do not subclass this directly, use the existing client- or server-type subclass.
  */
 
 public class JwksException extends Exception {

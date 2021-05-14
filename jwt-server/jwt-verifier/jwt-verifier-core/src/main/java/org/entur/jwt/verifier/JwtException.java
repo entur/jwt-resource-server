@@ -1,5 +1,11 @@
 package org.entur.jwt.verifier;
 
+/**
+ * Top-level Jwt exception.<br><br>
+ * <p>
+ * Note: Do not subclass this directly, use the existing client- or server-type subclass.
+ */
+
 public class JwtException extends Exception {
 
     private static final long serialVersionUID = 1L;
