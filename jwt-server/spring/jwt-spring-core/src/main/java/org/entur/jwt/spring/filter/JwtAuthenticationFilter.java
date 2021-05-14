@@ -1,15 +1,5 @@
 package org.entur.jwt.spring.filter;
 
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.List;
-import java.util.Map;
-
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.entur.jwt.jwk.JwksException;
 import org.entur.jwt.jwk.JwksServiceException;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
@@ -25,6 +15,15 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
+
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.List;
+import java.util.Map;
 
 public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
 
@@ -59,9 +58,10 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
 
         if (header != null) {
             if(!header.startsWith(BEARER)) {
-                log.warn("Invalid authorization header type");
+                // assume garbage from the internet
+                log.debug("Invalid authorization header type");
                 response.setStatus(HttpStatus.UNAUTHORIZED.value());
-                handlerExceptionResolver.resolveException(request, response, null, new BadCredentialsException("Expected token"));
+                handlerExceptionResolver.resolveException(request, response, null, new BadCredentialsException("Invalid authorization header type"));
                 return;
             }
             
@@ -93,22 +93,26 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
                         chain.doFilter(request, response);
                     }
                 } else {
-                    log.warn("Unable to verify token");
+                    // do not use a high log level, assume garbage request from the internet
+                    log.debug("Unable to verify token");
+
                     response.setStatus(HttpStatus.UNAUTHORIZED.value());
                     handlerExceptionResolver.resolveException(request, response, null, new BadCredentialsException("Unable to verify token"));
                 }
-            } catch (JwksServiceException | JwtServiceException e) {
+            } catch (JwksServiceException | JwtServiceException e) { // assume server issue
+                log.warn("Unable to process token", e);
+
                 response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
                 handlerExceptionResolver.resolveException(request, response, null, new JwtAuthenticationServiceUnavailableException("Unable to process token", e));
-            } catch (JwtException | JwksException e) { // assume client
-                log.info("Problem verifying token", e);
+            } catch (JwtException | JwksException e) { // assume client misconfiguration
+                log.debug("JWT verification failed due to {}", e.getMessage());
                 response.setStatus(HttpStatus.UNAUTHORIZED.value());
                 handlerExceptionResolver.resolveException(request, response, null, new BadCredentialsException("Unable to verify token", e));
             }
         } else if (!required) {
             chain.doFilter(request, response);
         } else {
-            log.warn("Authentication is required, however there was no bearer token");
+            log.debug("Authentication is required, however there was no bearer token");
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             handlerExceptionResolver.resolveException(request, response, null, new BadCredentialsException("Expected token"));
         }

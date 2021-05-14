@@ -1,11 +1,7 @@
 package org.entur.jwt.spring.grpc;
 
-import java.io.Serializable;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
+import io.grpc.*;
+import io.grpc.ServerCall.Listener;
 import org.entur.jwt.jwk.JwksException;
 import org.entur.jwt.jwk.JwksServiceException;
 import org.entur.jwt.spring.filter.JwtAuthenticationToken;
@@ -23,14 +19,11 @@ import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
-import io.grpc.Context;
-import io.grpc.Contexts;
-import io.grpc.Metadata;
-import io.grpc.ServerCall;
-import io.grpc.ServerCall.Listener;
-import io.grpc.ServerCallHandler;
-import io.grpc.ServerInterceptor;
-import io.grpc.Status;
+import java.io.Serializable;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public class JwtAuthenticationInterceptor<T> implements ServerInterceptor {
 
@@ -66,9 +59,11 @@ public class JwtAuthenticationInterceptor<T> implements ServerInterceptor {
 
         if (header != null) {
             if(!header.startsWith(BEARER)) {
-                log.warn("Invalid authorization header type");
+                // assume garbage from the internet
+                log.debug("Invalid authorization header type");
                 call.close(Status.UNAUTHENTICATED.withDescription("Invalid authorization header type"), new Metadata());
-                return new Listener<ReqT>() {};
+                return new Listener<ReqT>() {
+                };
             }
             String bearerToken = header.substring(BEARER.length());
             // if a token is present, it must be valid regardless of whether the endpoint
@@ -95,22 +90,25 @@ public class JwtAuthenticationInterceptor<T> implements ServerInterceptor {
 
                     return Contexts.interceptCall(context, call, headers, next); // sets the new context, then clears it again before returning
                 } else {
-                    // do not log exception here, assume garbage request from the internet
-                    log.warn("Unable to verify token");
+                    // do not use a high log level, assume garbage request from the internet
+                    log.debug("Unable to verify token");
 
                     call.close(Status.UNAUTHENTICATED.withDescription("Invalid authorization header"), new Metadata());
-                    return new Listener<ReqT>() {};
+                    return new Listener<ReqT>() {
+                    };
                 }
-            } catch (JwksServiceException | JwtServiceException e) {
+            } catch (JwksServiceException | JwtServiceException e) {  // assume server issue
                 log.warn("Unable to process token", e);
 
                 call.close(Status.UNAVAILABLE.withDescription(e.getMessage()).withCause(e), new Metadata());
-                return new Listener<ReqT>() {};                
-            } catch (JwtException | JwksException e) { // assume client
-                log.warn("JWT verification failed due to {}", e.getMessage());
+                return new Listener<ReqT>() {
+                };
+            } catch (JwtException | JwksException e) { // assume client misconfiguration
+                log.debug("JWT verification failed due to {}", e.getMessage());
 
                 call.close(Status.UNAUTHENTICATED.withDescription(e.getMessage()).withCause(e), new Metadata());
-                return new Listener<ReqT>() {};
+                return new Listener<ReqT>() {
+                };
             }
         } else if (anonymousMethodFilter != null && anonymousMethodFilter.matches(call)) {
             AnonymousAuthenticationToken anonymousAuthenticationToken = new AnonymousAuthenticationToken(key, "anonymousUser",
@@ -118,7 +116,7 @@ public class JwtAuthenticationInterceptor<T> implements ServerInterceptor {
             Context context = Context.current().withValue(GrpcAuthorization.SECURITY_CONTEXT_AUTHENTICATION, anonymousAuthenticationToken);
             return Contexts.interceptCall(context, call, headers, next); // sets the new context, then clears it again before returning
         } else {
-            log.warn("Authentication is required, however there was no bearer token");
+            log.debug("Authentication is required, however there was no bearer token");
             call.close(Status.UNAUTHENTICATED.withDescription("Authorization header is missing"), new Metadata());
             return new Listener<ReqT>() {};            
         }        

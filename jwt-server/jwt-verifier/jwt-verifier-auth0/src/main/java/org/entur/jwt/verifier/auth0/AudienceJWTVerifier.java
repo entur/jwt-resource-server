@@ -1,14 +1,15 @@
 package org.entur.jwt.verifier.auth0;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.exceptions.InvalidClaimException;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import com.auth0.jwt.interfaces.JWTVerifier;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import com.auth0.jwt.exceptions.InvalidClaimException;
-import com.auth0.jwt.interfaces.DecodedJWT;
-import com.auth0.jwt.interfaces.JWTVerifier;
 
 /**
  * 
@@ -41,9 +42,15 @@ public class AudienceJWTVerifier implements CloseableJWTVerifier {
     }
 
     public DecodedJWT verify(String token) {
-        DecodedJWT decodedJWT = delegate.verify(token);
+        DecodedJWT decode;
+        try {
+            decode = JWT.decode(token); // i.e. no signature verification, just parsing
+        } catch (Exception e) {
+            // assume garbage from the internet
+            return null;
+        }
 
-        return verify(decodedJWT);
+        return verify(decode);
     }
 
     public DecodedJWT verify(DecodedJWT jwt) {
@@ -57,7 +64,7 @@ public class AudienceJWTVerifier implements CloseableJWTVerifier {
         // if there is a list of approved audiences, check that at least one of the JWT
         // audiences is among them
         if (audiences != null && Collections.disjoint(audiences, jwtAudiences)) {
-            throw new InvalidClaimException("None of the claim 'aud' value '" + jwtAudiences + "' is not amoung the required audiences.");
+            throw new InvalidClaimException("None of the claim 'aud' value '" + jwtAudiences + "' is not among the required audiences.");
         }
         return decodedJWT;
     }
