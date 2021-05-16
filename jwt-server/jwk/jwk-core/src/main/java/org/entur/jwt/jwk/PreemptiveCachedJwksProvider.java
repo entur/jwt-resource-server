@@ -250,6 +250,7 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
 			} catch (InterruptedException e) {
 				// ignore
 				logger.info("Interrupted while waiting for executor shutdown", e);
+				Thread.currentThread().interrupt();
 			}
         }
         if(scheduledExecutorService != null) {
@@ -259,6 +260,7 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
 			} catch (InterruptedException e) {
 				// ignore
 				logger.info("Interrupted while waiting for scheduled executor shutdown", e);
+				Thread.currentThread().interrupt();
 			}
         }        
     }

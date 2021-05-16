@@ -1,27 +1,18 @@
 package org.entur.jwt.spring.grpc.exception;
 
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-
-import javax.annotation.Nullable;
-
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.SettableFuture;
-
+import io.grpc.*;
 import io.grpc.ForwardingServerCallListener.SimpleForwardingServerCallListener;
-import io.grpc.Attributes;
-import io.grpc.ForwardingServerCall;
-import io.grpc.Metadata;
-import io.grpc.ServerCall;
 import io.grpc.ServerCall.Listener;
 import io.grpc.internal.SerializingExecutor;
 import io.grpc.util.TransmitStatusRuntimeExceptionInterceptor;
-import io.grpc.ServerCallHandler;
-import io.grpc.ServerInterceptor;
-import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
+
+import javax.annotation.Nullable;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 /**
  * 
@@ -186,6 +177,8 @@ public class GrpcRuntimeExceptionTranslationInterceptor implements ServerInterce
             try {
                 return retVal.get();
             } catch (InterruptedException e) {
+                // note: do not reinterrupt / follow TransmitStatusRuntimeExceptionInterceptor's behaviour
+
                 throw new RuntimeException(ERROR_MSG, e);
             } catch (ExecutionException e) {
                 throw new RuntimeException(ERROR_MSG, e);
@@ -204,6 +197,8 @@ public class GrpcRuntimeExceptionTranslationInterceptor implements ServerInterce
             try {
                 return retVal.get();
             } catch (InterruptedException e) {
+                // note: do not reinterrupt / follow TransmitStatusRuntimeExceptionInterceptor's behaviour
+
                 throw new RuntimeException(ERROR_MSG, e);
             } catch (ExecutionException e) {
                 throw new RuntimeException(ERROR_MSG, e);
@@ -242,6 +237,8 @@ public class GrpcRuntimeExceptionTranslationInterceptor implements ServerInterce
             try {
                 return retVal.get();
             } catch (InterruptedException e) {
+                // note: do not reinterrupt / follow TransmitStatusRuntimeExceptionInterceptor's behaviour
+
                 throw new RuntimeException(ERROR_MSG, e);
             } catch (ExecutionException e) {
                 throw new RuntimeException(ERROR_MSG, e);
@@ -261,6 +258,8 @@ public class GrpcRuntimeExceptionTranslationInterceptor implements ServerInterce
             try {
                 return retVal.get();
             } catch (InterruptedException e) {
+                // note: do not reinterrupt / follow TransmitStatusRuntimeExceptionInterceptor's behaviour
+
                 throw new RuntimeException(ERROR_MSG, e);
             } catch (ExecutionException e) {
                 throw new RuntimeException(ERROR_MSG, e);

@@ -279,6 +279,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
 			} catch (InterruptedException e) {
 				// ignore
 				logger.info("Interrupted while waiting for executor shutdown", e);
+				Thread.currentThread().interrupt();
 			}
         }
         if(scheduledExecutorService != null) {
@@ -288,6 +289,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
 			} catch (InterruptedException e) {
 				// ignore
 				logger.info("Interrupted while waiting for scheduled executor shutdown", e);
+				Thread.currentThread().interrupt();
 			}
         }
         

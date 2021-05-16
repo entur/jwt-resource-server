@@ -48,6 +48,9 @@ public class TimeoutJwksProvider<T> extends BaseJwksProvider<T> {
                throw new JwksUnavailableException(cause);
            }
         } catch (Exception e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             throw new JwksUnavailableException(e);
         }
     }
