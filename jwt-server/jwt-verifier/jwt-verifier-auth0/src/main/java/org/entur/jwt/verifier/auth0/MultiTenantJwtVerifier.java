@@ -46,6 +46,8 @@ public class MultiTenantJwtVerifier implements JwtVerifier<DecodedJWT>, Closeabl
             decode = JWT.decode(token); // i.e. no signature verification, just parsing
         } catch (Exception e) {
             // assume garbage from the internet
+            // TODO make logging details like this configurable, as it might be spamming and/or containing sensitive values
+            logger.debug("Unable to decode token header {}", token);
             return null;
         }
 
