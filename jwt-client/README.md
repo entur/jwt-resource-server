@@ -26,7 +26,7 @@ See submodules for Maven / Gradle coordinates.
 The cache by default behaves in a __lazy, proactive__  way:
 
  * if missing or expired token, the first thread to access the cache requests a new token, while all other threads must wait (are blocked, with a deadline). 
- * if an token is about to expire, request a new in a background thread, while returning the (still valid) current token.
+ * if a token is about to expire, request a new in a background thread, while returning the (still valid) current token.
 
 So while empty or expired tokens means that the implementation is essentially blocking, this is preferable to letting all thread request the same token from the authorization server.
 
