@@ -81,6 +81,11 @@ entur:
                     secret: mySecret
 ```
 
+#### Scopes
+For audiences/APIs using permissions, scopes can be used to limit the permissions included in the token (see [example](https://auth0.com/docs/tokens/management-api-access-tokens/create-and-authorize-a-machine-to-machine-application)).
+
+Most machine-to-machine clients should not need to specify scope, and rather run with the default assigned permissions (if any).
+
 ### Keycloak configuration
 
 ```yaml
