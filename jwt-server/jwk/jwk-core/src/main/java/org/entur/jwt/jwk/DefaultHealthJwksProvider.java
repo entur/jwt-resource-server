@@ -2,6 +2,9 @@ package org.entur.jwt.jwk;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * 
  * Default 'lazy' implementation of health provider. <br>
@@ -18,6 +21,8 @@ import java.util.List;
  */
 
 public class DefaultHealthJwksProvider<T> extends BaseJwksProvider<T> {
+
+    private static final Logger logger = LoggerFactory.getLogger(DefaultHealthJwksProvider.class);
 
 	/** The state of the below provider */
     private volatile JwksHealth providerStatus;
@@ -43,13 +48,13 @@ public class DefaultHealthJwksProvider<T> extends BaseJwksProvider<T> {
         try {
             list = provider.getJwks(forceUpdate);
         } finally {
-            setStatus(new JwksHealth(time, list != null));
+            setProviderStatus(new JwksHealth(time, list != null));
         }
 
         return list;
     }
 
-    protected void setStatus(JwksHealth status) {
+    protected void setProviderStatus(JwksHealth status) {
         this.providerStatus = status;
     }
 
