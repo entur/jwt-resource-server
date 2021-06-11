@@ -1,5 +1,8 @@
 package org.entur.jwt.client.spring.actuate;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.entur.jwt.client.AccessTokenHealth;
 import org.entur.jwt.client.AccessTokenHealthNotSupportedException;
 import org.entur.jwt.client.AccessTokenHealthProvider;
@@ -36,35 +39,47 @@ public class AccessTokenProviderHealthIndicator extends AbstractHealthIndicator 
             boolean success = true;
             long mostRecentTimestamp = Long.MIN_VALUE;
             long leastRecentTimestamp = Long.MAX_VALUE;
-            
+
+            List<AccessTokenHealth> accessTokenHealths = new ArrayList<>(providers.length);
             for(AccessTokenHealthProvider provider : providers) {
                 AccessTokenHealth status = provider.getHealth(true);
-                if (!status.isSuccess()) {
-                    success = false;
-                }
-                
-                if(mostRecentTimestamp < status.getTimestamp()) {
-                    mostRecentTimestamp = status.getTimestamp();
-                }
-                if(leastRecentTimestamp > status.getTimestamp()) {
-                    leastRecentTimestamp = status.getTimestamp();
+                if(status != null) {
+                    accessTokenHealths.add(status);
                 }
             }
 
-            long time = System.currentTimeMillis();
-            if(mostRecentTimestamp != Long.MIN_VALUE) {
-                builder.withDetail("youngestTimestamp", (time - mostRecentTimestamp) / 1000);
-            } 
-            if(leastRecentTimestamp != Long.MAX_VALUE) {
-                builder.withDetail("oldestTimestamp", (time - leastRecentTimestamp) / 1000);
-            }
+            if(!accessTokenHealths.isEmpty()) {
+                for (AccessTokenHealth status : accessTokenHealths) {
+                    if (!status.isSuccess()) {
+                        success = false;
+                    }
+                    
+                    if(mostRecentTimestamp < status.getTimestamp()) {
+                        mostRecentTimestamp = status.getTimestamp();
+                    }
+                    if(leastRecentTimestamp > status.getTimestamp()) {
+                        leastRecentTimestamp = status.getTimestamp();
+                    }
+                }
             
-            logInitialOrChangedState(success);
-            
-            if (success) {
-                builder.up();
+                long time = System.currentTimeMillis();
+                if(mostRecentTimestamp != Long.MIN_VALUE) {
+                    builder.withDetail("youngestTimestamp", (time - mostRecentTimestamp) / 1000);
+                } 
+                if(leastRecentTimestamp != Long.MAX_VALUE) {
+                    builder.withDetail("oldestTimestamp", (time - leastRecentTimestamp) / 1000);
+                }
+                
+                logInitialOrChangedState(success);
+                
+                if (success) {
+                    builder.up();
+                } else {
+                    builder.down();
+                }
             } else {
-                builder.down();
+                // should never happen
+                builder.unknown();
             }
         } catch (AccessTokenHealthNotSupportedException e) {
             logger.error("Health checks are unexpectedly not supported", e);

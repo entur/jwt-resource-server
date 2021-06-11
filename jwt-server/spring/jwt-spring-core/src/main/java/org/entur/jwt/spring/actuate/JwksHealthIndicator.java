@@ -28,14 +28,18 @@ public class JwksHealthIndicator extends AbstractHealthIndicator {
     @Override
     protected void doHealthCheck(Health.Builder builder) throws Exception {
         JwksHealth health = jwtVerifier.getHealth(true);
-        
-        logInitialOrChangedState(health);
-        if (health.isSuccess()) {
-            builder.up();
+        if(health != null) {
+	        logInitialOrChangedState(health);
+	        if (health.isSuccess()) {
+	            builder.up();
+	        } else {
+	            builder.down();
+	        }
+	        builder.withDetail("timestamp", health.getTimestamp());
         } else {
-            builder.down();
+        	// should never happen
+        	builder.unknown();
         }
-        builder.withDetail("timestamp", health.getTimestamp());
     }
 
     protected void logInitialOrChangedState(JwksHealth health) {

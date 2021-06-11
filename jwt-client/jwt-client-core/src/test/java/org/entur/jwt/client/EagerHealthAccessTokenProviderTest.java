@@ -13,15 +13,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class DefaultHealthAccessTokenProviderTest extends AbstractDelegateProviderTest {
+public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProviderTest {
 
-    private DefaultAccessTokenHealthProvider provider;
+    private EagerAccessTokenHealthProvider provider;
     private AccessTokenProvider refreshProvider;
     
     @BeforeEach
     public void setUp() throws Exception {
         super.setUp();
-        provider = new DefaultAccessTokenHealthProvider(fallback);
+        provider = new EagerAccessTokenHealthProvider(fallback);
         refreshProvider = mock(AccessTokenProvider.class);
         provider.setRefreshProvider(refreshProvider);
         when(refreshProvider.getAccessToken(false)).thenReturn(refreshedAccessToken);
@@ -42,7 +42,7 @@ public class DefaultHealthAccessTokenProviderTest extends AbstractDelegateProvid
     public void shouldReturnGoodHealth() throws Exception {
         when(fallback.getAccessToken(false)).thenReturn(accessToken);
 
-        // attempt to get access-token
+        // attempt to get jwks
         provider.getAccessToken(false);
 
         AccessTokenHealth health1 = provider.getHealth(true);
@@ -51,17 +51,17 @@ public class DefaultHealthAccessTokenProviderTest extends AbstractDelegateProvid
         AccessTokenHealth health2 = provider.getHealth(false);
         assertSame(health1, health2);
 
-        // expected behavior: the health provider did not attempt to refresh
+        // expected behavior: the health provider attempted to refresh
         // a good health status.
         Mockito.verify(fallback, times(1)).getAccessToken(false);
-        Mockito.verify(refreshProvider, times(0)).getAccessToken(false);
+        Mockito.verify(refreshProvider, times(1)).getAccessToken(false);
     }
 
     @Test
     public void shouldReturnGoodHealthIfAccessTokenCouldBeRefreshedAfterBadStatus() throws Exception {
         when(fallback.getAccessToken(false)).thenThrow(new AccessTokenException());
 
-        // attempt to get access-token
+        // attempt to get jwks
         assertThrows(AccessTokenException.class, () -> {
             provider.getAccessToken(false);
         });
@@ -100,20 +100,20 @@ public class DefaultHealthAccessTokenProviderTest extends AbstractDelegateProvid
         when(fallback.getAccessToken(false)).thenThrow(new AccessTokenException()) // fail
                 .thenReturn(accessToken); // recover
 
-        // attempt to get access-token
+        // trigger fail
         assertThrows(AccessTokenException.class, () -> {
             provider.getAccessToken(false);
         });
         provider.getAccessToken(false);
 
+        AccessTokenHealth health2 = provider.getHealth(true);
+        assertTrue(health2.isSuccess());
+
         AccessTokenHealth health1 = provider.getHealth(false);
         assertTrue(health1.isSuccess());
         
-        AccessTokenHealth health2 = provider.getHealth(true);
-        assertSame(health1, health2);
-        
         Mockito.verify(fallback, times(2)).getAccessToken(false);
-        Mockito.verify(refreshProvider, times(0)).getAccessToken(false);
+        Mockito.verify(refreshProvider, times(1)).getAccessToken(false);
     }
 
 }
