@@ -2,6 +2,9 @@ package org.entur.jwt.jwk;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * 
  * Default implementation of health provider. <br>
@@ -17,6 +20,8 @@ import java.util.List;
  */
 
 public class DefaultHealthJwksProvider<T> extends BaseJwksProvider<T> {
+
+    private static final Logger logger = LoggerFactory.getLogger(DefaultHealthJwksProvider.class);
 
     private volatile JwksHealth status;
 
