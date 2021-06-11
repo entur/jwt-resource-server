@@ -30,3 +30,4 @@ entur:
 
 grpc:
   port: 0
+  security.auth.enabled: false

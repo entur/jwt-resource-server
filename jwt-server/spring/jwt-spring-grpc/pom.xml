@@ -10,12 +10,12 @@
     <artifactId>jwt-spring-grpc</artifactId>
 
     <properties>
-        <grpc.version>1.37.0</grpc.version>
-        <proto.version>3.13.0</proto.version>
-        <lognet.version>4.4.5</lognet.version>
+        <grpc.version>1.38.0</grpc.version>
+        <proto.version>3.17.3</proto.version>
+        <lognet.version>4.5.3</lognet.version>
         <os-maven-plugin.version>1.7.0</os-maven-plugin.version>
         <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
-    </properties>
+    </properties>	
 
     <dependencies>
         <dependency>
