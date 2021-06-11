@@ -8,8 +8,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.List;
 import java.util.Map;
-
-import org.apache.commons.codec.binary.Base64;
+import java.util.Base64;
 
 import com.google.common.collect.Maps;
 
@@ -138,8 +137,8 @@ public class JwkImpl {
         }
         try {
             KeyFactory kf = KeyFactory.getInstance(PUBLIC_KEY_ALGORITHM);
-            BigInteger modulus = new BigInteger(1, Base64.decodeBase64(stringValue("n")));
-            BigInteger exponent = new BigInteger(1, Base64.decodeBase64(stringValue("e")));
+            BigInteger modulus = new BigInteger(1, Base64.getUrlDecoder().decode(stringValue("n")));
+            BigInteger exponent = new BigInteger(1, Base64.getUrlDecoder().decode(stringValue("e")));
             return kf.generatePublic(new RSAPublicKeySpec(modulus, exponent));
         } catch (InvalidKeySpecException e) {
             throw new InvalidPublicKeyException("Invalid public key", e);

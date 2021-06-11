@@ -5,11 +5,16 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Caching {@linkplain JwksProvider}. Blocks when the cache is updated.
  */
 
 public class DefaultCachedJwksProvider<T> extends AbstractCachedJwksProvider<T> {
+
+    private static final Logger logger = LoggerFactory.getLogger(DefaultCachedJwksProvider.class);
 
     protected final ReentrantLock lock = new ReentrantLock();
 
@@ -77,9 +82,11 @@ public class DefaultCachedJwksProvider<T> extends AbstractCachedJwksProvider<T> 
                         // We hold the lock, so safe to update it now
                         logger.info("Perform JWK cache refresh..");
                         
-                        cache = loadJwksFromProvider(time);
+                        JwkListCacheItem<T> result = loadJwksFromProvider(time);
                         
-                        logger.info("JWK cache refreshed (with {} waiting) ", lock.getQueueLength());
+                        logger.info("JWK cache refreshed (with {} waiting), now have {} JWKs", lock.getQueueLength(), result.getValue().size());
+                        
+                        cache = result;
                     } else {
                         // load updated value
                         cache = this.cache;

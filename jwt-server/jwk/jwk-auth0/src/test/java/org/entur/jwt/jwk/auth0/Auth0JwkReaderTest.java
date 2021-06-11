@@ -1,22 +1,22 @@
 package org.entur.jwt.jwk.auth0;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
-import static org.junit.Assert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.codec.binary.Base64;
 import org.entur.jwt.jwk.InvalidSigningKeysException;
 import org.junit.jupiter.api.Test;
 
@@ -57,7 +57,7 @@ public class Auth0JwkReaderTest {
         assertThat(jwk.getCertificateChain(), contains(CERT_CHAIN));
         assertThat(jwk.getCertificateUrl(), is(CERT_URL));
     }
-
+    
     @Test
     public void shouldReturnPublicKey() throws Exception {
         final String kid = randomKeyId();
@@ -158,7 +158,7 @@ public class Auth0JwkReaderTest {
     private static String randomKeyId() {
         byte[] bytes = new byte[50];
         new SecureRandom().nextBytes(bytes);
-        return Base64.encodeBase64String(bytes);
+        return Base64.getUrlEncoder().encodeToString(bytes);
     }
 
     private static Map<String, Object> nonRSAValues(String kid) {
@@ -198,4 +198,5 @@ public class Auth0JwkReaderTest {
         List<Jwk> deserialized = reader.readJwks(json.getBytes(StandardCharsets.UTF_8));
         return deserialized.get(0);
     }
+    
 }
