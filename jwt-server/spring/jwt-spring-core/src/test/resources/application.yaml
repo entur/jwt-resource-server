@@ -35,3 +35,5 @@ management:
       group:
         readiness:
           include: readinessState,jwks
+          
+logging.level.org.entur: DEBUG

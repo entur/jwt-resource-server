@@ -79,8 +79,8 @@ public class DefaultAuthorizationServerEncoder implements AuthorizationServerEnc
     @Override
     public String getJsonWebKeys(Annotation annotation) {
         RSAPublicKey pk = (RSAPublicKey) keyPair.getPublic();
-        String n = Base64.getEncoder().encodeToString(pk.getModulus().toByteArray());
-        String e = Base64.getEncoder().encodeToString(pk.getPublicExponent().toByteArray());
+        String n = Base64.getUrlEncoder().encodeToString(pk.getModulus().toByteArray());
+        String e = Base64.getUrlEncoder().encodeToString(pk.getPublicExponent().toByteArray());
 
         return String.format("{\"keys\":[{\"kid\":\"%s\",\"kty\":\"RSA\",\"alg\":\"RS256\",\"use\":\"sig\",\"n\":\"%s\",\"e\":\"%s\"}]}", Integer.toString(pk.hashCode()), n, e);
     }
