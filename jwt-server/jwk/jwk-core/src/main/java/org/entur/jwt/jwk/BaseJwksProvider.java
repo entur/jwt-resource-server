@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 
 public abstract class BaseJwksProvider<T> implements JwksProvider<T> {
 
-    protected static final Logger logger = LoggerFactory.getLogger(BaseJwksProvider.class);
+    private static final Logger logger = LoggerFactory.getLogger(BaseJwksProvider.class);
 
     protected final JwksProvider<T> provider;
 
