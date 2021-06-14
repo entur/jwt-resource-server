@@ -13,7 +13,7 @@
 		<spring-boot.version>2.1.18.RELEASE</spring-boot.version>
 		<spring.version>5.1.20.RELEASE</spring.version>
 		
-		<tomcat.version>9.0.44</tomcat.version>
+		<tomcat.version>9.0.46</tomcat.version>
 	</properties>
 
 	<dependencyManagement>

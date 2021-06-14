@@ -146,17 +146,22 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
         if (retrying) {
             provider = new RetryingAccessTokenProvider(provider);
         }
-        DefaultAccessTokenHealthProvider defaultAccessTokenHealthProvider = null;
+        AbstractAccessTokenHealthProvider healthProvider = null;
         if (health) {
-            provider = defaultAccessTokenHealthProvider = new DefaultAccessTokenHealthProvider(provider);
+            if(preemptiveRefresh && preemptiveRefreshEager) {
+                // used simplified health indicator
+                provider = healthProvider = new EagerAccessTokenHealthProvider(provider);
+            } else {
+                provider = healthProvider = new DefaultAccessTokenHealthProvider(provider);
+            }
         }
         if (preemptiveRefresh) {
             provider = new PreemptiveCachedAccessTokenProvider(provider, minimumTimeToLiveUnits, minimumTimeToLiveUnit, refreshExpiresIn, refreshExpiresUnit, preemptiveRefreshTimeUnits, preemptiveRefreshTimeUnit, preemptiveRefreshConstraint, preemptiveRefreshEager);
         } else if (cached) {
             provider = new DefaultCachedAccessTokenProvider(provider, minimumTimeToLiveUnits, minimumTimeToLiveUnit, refreshExpiresIn, refreshExpiresUnit);
         }
-        if (defaultAccessTokenHealthProvider != null) {
-            defaultAccessTokenHealthProvider.setRefreshProvider(provider);
+        if (healthProvider != null) {
+            healthProvider.setRefreshProvider(provider);
         }
         return provider;
     }
