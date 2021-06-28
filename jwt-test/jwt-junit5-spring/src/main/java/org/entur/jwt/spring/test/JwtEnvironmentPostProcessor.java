@@ -138,20 +138,30 @@ public class JwtEnvironmentPostProcessor implements EnvironmentPostProcessor {
                 EnumerablePropertySource<?> epSource = (EnumerablePropertySource<?>)propertySource;
                 
                 for(String name : epSource.getPropertyNames()) {
-                    if (name.startsWith(PROPERTY_PREFIX) && name.length() > PROPERTY_PREFIX.length()) {
-                        int index = name.indexOf('.', PROPERTY_PREFIX.length());
-                        if(index == -1) {
-                            tenant.add(name);
-                        } else {
-                            tenant.add(name.substring(0, index));
-                        }
+                    if (hasPropertyPrefix(name)) {
+                        tenant.add(parseFirstPropertyName(name));
                     }
                 }
             }
         }
         
         return tenant;
-    }    
+    }
+
+	private String parseFirstPropertyName(String name) {
+		int index = name.indexOf('.', PROPERTY_PREFIX.length());
+		String result;
+		if(index == -1) {
+			result = name;
+		} else {
+			result = name.substring(0, index);
+		}
+		return result;
+	}
+
+	private boolean hasPropertyPrefix(String name) {
+		return name.startsWith(PROPERTY_PREFIX) && name.length() > PROPERTY_PREFIX.length();
+	}    
 
     private void addOrReplace(MutablePropertySources propertySources, Map<String, Object> map) {
         PropertySource<?> source = propertySources.get(PROPERTY_SOURCE_NAME);

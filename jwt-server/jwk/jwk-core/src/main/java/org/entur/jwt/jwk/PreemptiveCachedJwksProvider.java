@@ -184,28 +184,7 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
                 // seems no update is in progress, see if we can get the lock
                 if (lazyLock.tryLock()) {
                     try {
-                        // check again now that this thread holds the lock
-                        if (cacheExpires < cache.getExpires()) {
-
-                            // still no update is in progress
-                            cacheExpires = cache.getExpires();
-
-                            // run update in the background
-                            executorService.execute(() -> {
-                                try {
-                                    logger.info("Perform preemptive JWKs refresh");
-                                    PreemptiveCachedJwksProvider.this.getJwksBlocking(time, cache);
-                                    
-                                    // so next time this method is invoked, it'll be with the updated cache item expiry time
-                                } catch (Throwable e) {
-                                    // update failed, but another thread can retry
-                                    cacheExpires = -1L;
-                                    // ignore, unable to update
-                                    // another thread will attempt the same
-                                    logger.warn("Preemptive JWKs refresh failed", e);
-                                }
-                            });
-                        }
+                        lockedPreemptiveRefresh(time, cache);
                     } finally {
                         lazyLock.unlock();
                     }
@@ -213,6 +192,40 @@ public class PreemptiveCachedJwksProvider<T> extends DefaultCachedJwksProvider<T
             }
         }
     }
+
+    /**
+     * 
+     * Check if preemptive refresh is in progress, and if not trigger a preemptive refresh.
+     * This method is called by a single thread at a time.
+     * 
+     * @param time current time
+     * @param cache current cache
+     */
+    
+	protected void lockedPreemptiveRefresh(final long time, final JwkListCacheItem<T> cache) {
+        // check if an update is already in progress (again now that this thread holds the lock)
+		if (cacheExpires < cache.getExpires()) {
+
+		    // still no update is in progress
+		    cacheExpires = cache.getExpires();
+
+		    // run update in the background
+		    executorService.execute(() -> {
+		        try {
+		            logger.info("Perform preemptive JWKs refresh");
+		            PreemptiveCachedJwksProvider.this.getJwksBlocking(time, cache);
+		            
+		            // so next time this method is invoked, it'll be with the updated cache item expiry time
+		        } catch (Throwable e) {
+		            // update failed, but another thread can retry
+		            cacheExpires = -1L;
+		            // ignore, unable to update
+		            // another thread will attempt the same
+		            logger.warn("Preemptive JWKs refresh failed", e);
+		        }
+		    });
+		}
+	}
 
 
     /**

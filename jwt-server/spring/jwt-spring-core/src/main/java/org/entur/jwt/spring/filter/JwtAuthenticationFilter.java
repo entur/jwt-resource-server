@@ -65,54 +65,7 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
                 return;
             }
             
-            String bearerToken = header.substring(BEARER.length());
-            // if a token is present, it must be valid regardless of whether the endpoint
-            // requires authorization or not
-            T token;
-            try {
-
-                token = verifier.verify(bearerToken); // note: can return null
-                if (token != null) {
-                    List<GrantedAuthority> authorities = authorityMapper.getGrantedAuthorities(token);
-
-                    Map<String, Object> claims = extractor.getClaims(token);
-
-                    Serializable details = detailsMapper.getDetails(request, claims);
-                    Serializable principal = principalMapper.getPrincipal(claims);
-
-                    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(claims, bearerToken, authorities, principal, details));
-
-                    if (mdcMapper != null) {
-                        mdcMapper.addContext(token);
-                        try {
-                            chain.doFilter(request, response);
-                        } finally {
-                            mdcMapper.removeContext(token);
-                        }
-                    } else {
-                        chain.doFilter(request, response);
-                    }
-                } else {
-                    // do not use a high log level, assume garbage request from the internet
-                    log.debug("Unable to verify token");
-
-                    response.setStatus(HttpStatus.UNAUTHORIZED.value());
-                    handlerExceptionResolver.resolveException(request, response, null, new BadCredentialsException("Unable to verify token"));
-                }
-            } catch (JwtClientException | JwksClientException e) { // assume client misconfiguration
-                log.debug("JWT verification failed due to {}", e.getMessage());
-
-                response.setStatus(HttpStatus.UNAUTHORIZED.value());
-                handlerExceptionResolver.resolveException(request, response, null, new BadCredentialsException("Unable to verify token", e));
-            } catch (JwksException | JwtException e) { // assume server issue
-                // technically we should only see JwksServiceException or JwtServiceException here
-                // but use superclass to catch all
-
-                log.warn("Unable to process token", e);
-
-                response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
-                handlerExceptionResolver.resolveException(request, response, null, new JwtAuthenticationServiceUnavailableException("Unable to process token", e));
-            }
+            doFilterInternalForBearerToken(request, response, chain, header);
         } else if (!required) {
             chain.doFilter(request, response);
         } else {
@@ -121,5 +74,57 @@ public class JwtAuthenticationFilter<T> extends OncePerRequestFilter {
             handlerExceptionResolver.resolveException(request, response, null, new BadCredentialsException("Expected token"));
         }
     }
+
+	protected void doFilterInternalForBearerToken(HttpServletRequest request, HttpServletResponse response,
+			FilterChain chain, String header) throws IOException, ServletException {
+		String bearerToken = header.substring(BEARER.length());
+		// if a token is present, it must be valid regardless of whether the endpoint
+		// requires authorization or not
+		T token;
+		try {
+
+		    token = verifier.verify(bearerToken); // note: can return null
+		    if (token != null) {
+		        List<GrantedAuthority> authorities = authorityMapper.getGrantedAuthorities(token);
+
+		        Map<String, Object> claims = extractor.getClaims(token);
+
+		        Serializable details = detailsMapper.getDetails(request, claims);
+		        Serializable principal = principalMapper.getPrincipal(claims);
+
+		        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(claims, bearerToken, authorities, principal, details));
+
+		        if (mdcMapper != null) {
+		            mdcMapper.addContext(token);
+		            try {
+		                chain.doFilter(request, response);
+		            } finally {
+		                mdcMapper.removeContext(token);
+		            }
+		        } else {
+		            chain.doFilter(request, response);
+		        }
+		    } else {
+		        // do not use a high log level, assume garbage request from the internet
+		        log.debug("Unable to verify token");
+
+		        response.setStatus(HttpStatus.UNAUTHORIZED.value());
+		        handlerExceptionResolver.resolveException(request, response, null, new BadCredentialsException("Unable to verify token"));
+		    }
+		} catch (JwtClientException | JwksClientException e) { // assume client misconfiguration
+		    log.debug("JWT verification failed due to {}", e.getMessage());
+
+		    response.setStatus(HttpStatus.UNAUTHORIZED.value());
+		    handlerExceptionResolver.resolveException(request, response, null, new BadCredentialsException("Unable to verify token", e));
+		} catch (JwksException | JwtException e) { // assume server issue
+		    // technically we should only see JwksServiceException or JwtServiceException here
+		    // but use superclass to catch all
+
+		    log.warn("Unable to process token", e);
+
+		    response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
+		    handlerExceptionResolver.resolveException(request, response, null, new JwtAuthenticationServiceUnavailableException("Unable to process token", e));
+		}
+	}
 
 }
