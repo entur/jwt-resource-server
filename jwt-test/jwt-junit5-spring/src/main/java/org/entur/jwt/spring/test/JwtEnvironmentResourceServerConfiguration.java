@@ -52,11 +52,8 @@ public class JwtEnvironmentResourceServerConfiguration implements ResourceServer
                 
                 for(String name : epSource.getPropertyNames()) {
                     if (name.startsWith(prefix) && name.endsWith(propertyName)) {
-                        int index = name.indexOf('.', prefix.length() + 1);
-                        
-                        String enabler = name.substring(0, index) + enabled;
-                        String nullOrEnabled = environment.getProperty(enabler, String.class);
-                        if(nullOrEnabled == null || !nullOrEnabled.equals("false")) {
+                        boolean enabled = isNotDisabled(name);
+                        if(enabled) {
                             props.put(name, environment.getProperty(name, String.class));
                         }
                     }
@@ -65,5 +62,14 @@ public class JwtEnvironmentResourceServerConfiguration implements ResourceServer
         }
         
         return props;
-    }      
+    }
+
+	private boolean isNotDisabled(String name) {
+		int index = name.indexOf('.', prefix.length() + 1);
+		
+		String enabler = name.substring(0, index) + enabled;
+		String nullOrEnabled = environment.getProperty(enabler, String.class);
+		boolean isEnabled = nullOrEnabled == null || !nullOrEnabled.equals("false");
+		return isEnabled;
+	}      
 }

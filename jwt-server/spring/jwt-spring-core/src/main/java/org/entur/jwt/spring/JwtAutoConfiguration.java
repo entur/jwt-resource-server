@@ -131,37 +131,46 @@ public class JwtAutoConfiguration {
             
             MatcherConfiguration mvcMatchers = permitAll.getMvcMatcher();
             if(mvcMatchers.isActive()) {
-                
-                if(mvcMatchers.hasPatterns()) {
-                    // for all methods
-                    http.authorizeRequests().mvcMatchers(mvcMatchers.getPatternsAsArray()).permitAll();
-                }
-                
-                // for specific methods
-                for (HttpMethodMatcher httpMethodMatcher : mvcMatchers.getMethod().getActiveMethods()) {
-                    // check that active, empty patterns will be interpreted as permit all of the method type (empty patterns vs varargs)
-                    if(httpMethodMatcher.isActive()) {
-                        http.authorizeRequests().mvcMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();
-                    }
-                }
+                configurePermitAllMvcMatchers(http, mvcMatchers);
             }
 
             MatcherConfiguration antMatchers = permitAll.getAntMatcher();
             if(antMatchers.isActive()) {
-                if(antMatchers.hasPatterns()) {
-                    // for all methods
-                    http.authorizeRequests().antMatchers(antMatchers.getPatternsAsArray()).permitAll();
-                }
-                
-                // for specific methods
-                for (HttpMethodMatcher httpMethodMatcher : antMatchers.getMethod().getActiveMethods()) {
-                    // check that active, empty patterns will be interpreted as permit all of the method type (empty patterns vs varargs)
-                    if(httpMethodMatcher.isActive()) {
-                        http.authorizeRequests().antMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();
-                    }
-                }
+                configurePermitAllAntMatchers(http, antMatchers);
             }
         }
+
+        protected void configurePermitAllAntMatchers(HttpSecurity http, MatcherConfiguration antMatchers)
+				throws Exception {
+			if(antMatchers.hasPatterns()) {
+			    // for all methods
+			    http.authorizeRequests().antMatchers(antMatchers.getPatternsAsArray()).permitAll();
+			}
+			
+			// for specific methods
+			for (HttpMethodMatcher httpMethodMatcher : antMatchers.getMethod().getActiveMethods()) {
+			    // check that active, empty patterns will be interpreted as permit all of the method type (empty patterns vs varargs)
+			    if(httpMethodMatcher.isActive()) {
+			        http.authorizeRequests().antMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();
+			    }
+			}
+		}
+
+        protected void configurePermitAllMvcMatchers(HttpSecurity http, MatcherConfiguration mvcMatchers)
+				throws Exception {
+			if(mvcMatchers.hasPatterns()) {
+			    // for all methods
+			    http.authorizeRequests().mvcMatchers(mvcMatchers.getPatternsAsArray()).permitAll();
+			}
+			
+			// for specific methods
+			for (HttpMethodMatcher httpMethodMatcher : mvcMatchers.getMethod().getActiveMethods()) {
+			    // check that active, empty patterns will be interpreted as permit all of the method type (empty patterns vs varargs)
+			    if(httpMethodMatcher.isActive()) {
+			        http.authorizeRequests().mvcMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();
+			    }
+			}
+		}
 
         @Override
         public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
