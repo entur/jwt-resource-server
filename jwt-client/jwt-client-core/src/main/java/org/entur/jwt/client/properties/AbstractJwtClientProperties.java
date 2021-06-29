@@ -2,7 +2,7 @@ package org.entur.jwt.client.properties;
 
 public abstract class AbstractJwtClientProperties {
 
-    protected boolean enabled;
+    protected boolean enabled = true;
 
     protected String clientId;
     protected String secret;
@@ -14,6 +14,8 @@ public abstract class AbstractJwtClientProperties {
     protected String host;
 
     protected boolean retrying = true;
+
+    protected boolean health = true;
 
     protected JwtClientCache cache = new JwtClientCache();
 
@@ -95,5 +97,13 @@ public abstract class AbstractJwtClientProperties {
 
     public boolean isEnabled() {
         return enabled;
+    }
+    
+    public boolean isHealth() {
+        return health;
+    }
+    
+    public void setHealth(boolean health) {
+        this.health = health;
     }
 }

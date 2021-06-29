@@ -142,4 +142,9 @@ public abstract class AbstractStatefulUrlAccessTokenProvider<T> extends Abstract
     public RefreshToken getRefreshToken() {
         return refreshToken;
     }
+    
+    @Override
+    public boolean supportsHealth() {
+        return false;
+    }
 }

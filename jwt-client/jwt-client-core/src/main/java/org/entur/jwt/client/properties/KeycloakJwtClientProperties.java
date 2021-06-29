@@ -1,3 +1,4 @@
+
 package org.entur.jwt.client.properties;
 
 public class KeycloakJwtClientProperties extends AbstractJwtClientProperties {

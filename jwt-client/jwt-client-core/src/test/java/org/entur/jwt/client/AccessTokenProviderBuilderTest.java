@@ -1,6 +1,8 @@
 package org.entur.jwt.client;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
@@ -28,6 +30,8 @@ public class AccessTokenProviderBuilderTest {
 
         assertThat(accessTokenProviders.get(0)).isInstanceOf(DefaultCachedAccessTokenProvider.class);
         assertThat(accessTokenProviders.get(1)).isInstanceOf(AccessTokenProvider.class);
+        
+        assertFalse(provider.supportsHealth());
     }
 
     @Test
@@ -45,6 +49,8 @@ public class AccessTokenProviderBuilderTest {
     @Test
     public void shouldCreateCachedProviderByDefault() {
         AccessTokenProvider provider = builder().build();
+
+        assertTrue(provider.supportsHealth());
 
         List<AccessTokenProvider> accessTokenProviders = accessTokenProviders(provider);
         assertThat(accessTokenProviders).hasSize(4);

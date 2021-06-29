@@ -3,13 +3,20 @@ package org.entur.jwt.client.spring;
 import java.net.URL;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
+import org.entur.jwt.client.AccessTokenHealthProvider;
 import org.entur.jwt.client.AccessTokenProvider;
 import org.entur.jwt.client.AccessTokenProviderBuilder;
 import org.entur.jwt.client.ClientCredentials;
@@ -21,6 +28,8 @@ import org.entur.jwt.client.properties.JwtClientCache;
 import org.entur.jwt.client.properties.KeycloakJwtClientProperties;
 import org.entur.jwt.client.properties.JwtPreemptiveRefresh;
 import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.config.ConstructorArgumentValues;
@@ -41,6 +50,8 @@ import org.springframework.web.client.RestTemplate;
 @Configuration
 @EnableConfigurationProperties(SpringJwtClientProperties.class)
 public class JwtClientAutoConfiguration {
+
+    private static Logger log = LoggerFactory.getLogger(JwtClientAutoConfiguration.class);
 
     @Bean
     @Qualifier("jwtRestTemplate")
@@ -124,8 +135,20 @@ public class JwtClientAutoConfiguration {
         @Override
         public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) {
             // populate default values
-            add(registry, "newAuth0Instance", properties.getAuth0().keySet());
-            add(registry, "newKeycloakInstance", properties.getKeycloak().keySet());
+            add(registry, "newAuth0Instance", enabled(properties.getAuth0()));
+            add(registry, "newKeycloakInstance", enabled(properties.getKeycloak()));
+        }
+        
+        private Set<String> enabled(Map<String, ? extends AbstractJwtClientProperties> auth0) {
+            // order by name
+            List<String> enabled = new ArrayList<>();
+            for (Entry<String, ? extends AbstractJwtClientProperties> entry : auth0.entrySet()) {
+                if(entry.getValue().isEnabled()) {
+                    enabled.add(entry.getKey());
+                }
+            }
+            Collections.sort(enabled);
+            return new LinkedHashSet<>(enabled);
         }
 
         private void add(BeanDefinitionRegistry registry, String method, Set<String> keySet) {
@@ -170,7 +193,7 @@ public class JwtClientAutoConfiguration {
          
             ClientCredentials credentials = Auth0ClientCredentialsBuilder.newInstance().withHost(properties.getHost()).withClientId(properties.getClientId()).withSecret(properties.getSecret()).withScope(properties.getScope())
                     .withAudience(properties.getAudience()).build();
-            return toAccessTokenProvider(restTemplate, properties, credentials, rootProperties.getHealthIndicator().isEnabled());
+            return toAccessTokenProvider(restTemplate, properties, credentials, rootProperties.getHealthIndicator().isEnabled() && properties.isHealth());
         }
 
         public AccessTokenProvider newKeycloakInstance(String key) {
@@ -179,7 +202,7 @@ public class JwtClientAutoConfiguration {
             ClientCredentials credentials = KeycloakClientCredentialsBuilder.newInstance().withHost(properties.getHost()).withClientId(properties.getClientId()).withSecret(properties.getSecret()).withScope(properties.getScope())
                     .withAudience(properties.getAudience()).withRealm(properties.getRealm()).build();
 
-            return toAccessTokenProvider(restTemplate, properties, credentials, this.rootProperties.getHealthIndicator().isEnabled());
+            return toAccessTokenProvider(restTemplate, properties, credentials, rootProperties.getHealthIndicator().isEnabled() && properties.isHealth());
         }
 
         private AccessTokenProvider toAccessTokenProvider(RestTemplate restTemplate, AbstractJwtClientProperties properties, ClientCredentials credentials, boolean health) {
@@ -225,27 +248,44 @@ public class JwtClientAutoConfiguration {
 
     @Bean
     @ConditionalOnProperty(value = "entur.jwt.clients.health-indicator.enabled", matchIfMissing = true)
-    public AccessTokenProviderHealthIndicator accessTokenProviderHealthIndicator(AccessTokenProvider[] providers) {
+    public AccessTokenProviderHealthIndicator accessTokenProviderHealthIndicator(Map<String, AccessTokenProvider> providers) {
         // could verify that health is supported here, but that would interfere with
         // mocking / testing.
-        return new AccessTokenProviderHealthIndicator(providers);
+        List<String> statusProviders = new ArrayList<>();
+        for (Entry<String, AccessTokenProvider> entry : providers.entrySet()) {
+            AccessTokenProvider accessTokenProvider = entry.getValue();
+            if(accessTokenProvider.supportsHealth()) {
+                statusProviders.add(entry.getKey());
+            }
+        }
+
+        Collections.sort(statusProviders);
+        
+        if(statusProviders.isEmpty()) {
+            log.warn("Health-indicator is active, but none of the {} access-token provider(s) supports health", providers.size());
+        } else {
+            log.info("Add health-indicator for {}/{} access-token provider(s) {}", statusProviders.size(), providers.size(), statusProviders.stream().collect(Collectors.joining("', '", "'", "'")));
+        }
+
+        return new AccessTokenProviderHealthIndicator(statusProviders.stream().map( key -> providers.get(key) ).collect(Collectors.toList()));
     }
     
     @Bean
     public EagerContextStartedListener eagerContextRefreshedListener(Map<String, AccessTokenProvider> providersById, SpringJwtClientProperties springJwtClientProperties) {
-    	Map<String, AccessTokenProvider> eagerAccessTokenProvidersById = new HashMap<>();
+        Map<String, AccessTokenProvider> eagerAccessTokenProvidersById = new HashMap<>();
 
-    	for(Map<String, ? extends AbstractJwtClientProperties> map : Arrays.asList(springJwtClientProperties.getKeycloak(), springJwtClientProperties.getAuth0())) {
-    		for (Entry<String, ? extends AbstractJwtClientProperties> entry : map.entrySet()) {
-    			JwtClientCache cache = entry.getValue().getCache();
-    			if (cache != null && cache.isEnabled()) {
-    				JwtPreemptiveRefresh preemptiveRefresh = cache.getPreemptiveRefresh();
-    				if (preemptiveRefresh != null && preemptiveRefresh.isEnabled()) {
-    					eagerAccessTokenProvidersById.put(entry.getKey(), providersById.get(entry.getKey()));
-    				}
-    			}
-    		}
-    	}    	
-    	return new EagerContextStartedListener(eagerAccessTokenProvidersById);
+        for(Map<String, ? extends AbstractJwtClientProperties> map : Arrays.asList(springJwtClientProperties.getKeycloak(), springJwtClientProperties.getAuth0())) {
+            for (Entry<String, ? extends AbstractJwtClientProperties> entry : map.entrySet()) {
+                JwtClientCache cache = entry.getValue().getCache();
+                if (cache != null && cache.isEnabled()) {
+                    JwtPreemptiveRefresh preemptiveRefresh = cache.getPreemptiveRefresh();
+                    if (preemptiveRefresh != null && preemptiveRefresh.isEnabled()) {
+                        eagerAccessTokenProvidersById.put(entry.getKey(), providersById.get(entry.getKey()));
+                    }
+                }
+            }
+        }        
+        return new EagerContextStartedListener(eagerAccessTokenProvidersById);
     }
+    
 }

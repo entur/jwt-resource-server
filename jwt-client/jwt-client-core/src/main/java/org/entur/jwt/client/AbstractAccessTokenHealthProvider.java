@@ -53,4 +53,9 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
     public void setRefreshProvider(AccessTokenProvider top) {
         this.refreshProvider = top;
     }
+    
+    @Override
+    public boolean supportsHealth() {
+        return true;
+    }
 }

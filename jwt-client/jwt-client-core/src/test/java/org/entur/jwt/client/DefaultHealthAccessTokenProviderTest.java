@@ -29,6 +29,11 @@ public class DefaultHealthAccessTokenProviderTest extends AbstractDelegateProvid
     }
     
     @Test
+    public void shouldSupportHealth() throws Exception {
+        assertTrue(provider.supportsHealth());
+    }
+    
+    @Test
     public void shouldReturnUnknownHealthIfNoPreviousStatusAndRefreshingIsNotAllowed() throws Exception {
         AccessTokenHealth health = provider.getHealth(false);
         assertNull(health);
