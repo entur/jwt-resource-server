@@ -66,4 +66,10 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
 
         return c;
     }
+    
+    @Override
+    public boolean supportsHealth() {
+        return false;
+    }
+
 }

@@ -32,59 +32,65 @@ public class AccessTokenProviderHealthIndicator extends AbstractHealthIndicator 
         this.providers = statusProviders;
     }
 
+    public AccessTokenProviderHealthIndicator(List<AccessTokenHealthProvider> statusProviders) {
+        this(statusProviders.toArray(new AccessTokenHealthProvider[statusProviders.size()]));
+    }
+
     @Override
     protected void doHealthCheck(Health.Builder builder) throws Exception {
-        try {
-            // iterate over clients, and record the min / max timestamps.
-            boolean success = true;
-            long mostRecentTimestamp = Long.MIN_VALUE;
-            long leastRecentTimestamp = Long.MAX_VALUE;
-
-            List<AccessTokenHealth> accessTokenHealths = new ArrayList<>(providers.length);
-            for(AccessTokenHealthProvider provider : providers) {
-                AccessTokenHealth status = provider.getHealth(true);
-                if(status != null) {
-                    accessTokenHealths.add(status);
+        if(providers.length > 0) {
+            try {
+                // iterate over clients, and record the min / max timestamps.
+                boolean success = true;
+                long mostRecentTimestamp = Long.MIN_VALUE;
+                long leastRecentTimestamp = Long.MAX_VALUE;
+    
+                List<AccessTokenHealth> accessTokenHealths = new ArrayList<>(providers.length);
+                for(AccessTokenHealthProvider provider : providers) {
+                    AccessTokenHealth status = provider.getHealth(true);
+                    if(status != null) {
+                        accessTokenHealths.add(status);
+                    }
                 }
-            }
-
-            if(!accessTokenHealths.isEmpty()) {
-                for (AccessTokenHealth status : accessTokenHealths) {
-                    if (!status.isSuccess()) {
-                        success = false;
+    
+                if(!accessTokenHealths.isEmpty()) {
+                    for (AccessTokenHealth status : accessTokenHealths) {
+                        if (!status.isSuccess()) {
+                            success = false;
+                        }
+                        
+                        if(mostRecentTimestamp < status.getTimestamp()) {
+                            mostRecentTimestamp = status.getTimestamp();
+                        }
+                        if(leastRecentTimestamp > status.getTimestamp()) {
+                            leastRecentTimestamp = status.getTimestamp();
+                        }
+                    }
+                
+                    long time = System.currentTimeMillis();
+                    if(mostRecentTimestamp != Long.MIN_VALUE) {
+                        builder.withDetail("youngestTimestamp", (time - mostRecentTimestamp) / 1000);
+                    } 
+                    if(leastRecentTimestamp != Long.MAX_VALUE) {
+                        builder.withDetail("oldestTimestamp", (time - leastRecentTimestamp) / 1000);
                     }
                     
-                    if(mostRecentTimestamp < status.getTimestamp()) {
-                        mostRecentTimestamp = status.getTimestamp();
+                    logInitialOrChangedState(success);
+                    
+                    if (success) {
+                        builder.up();
+                    } else {
+                        builder.down();
                     }
-                    if(leastRecentTimestamp > status.getTimestamp()) {
-                        leastRecentTimestamp = status.getTimestamp();
-                    }
-                }
-            
-                long time = System.currentTimeMillis();
-                if(mostRecentTimestamp != Long.MIN_VALUE) {
-                    builder.withDetail("youngestTimestamp", (time - mostRecentTimestamp) / 1000);
-                } 
-                if(leastRecentTimestamp != Long.MAX_VALUE) {
-                    builder.withDetail("oldestTimestamp", (time - leastRecentTimestamp) / 1000);
-                }
-                
-                logInitialOrChangedState(success);
-                
-                if (success) {
-                    builder.up();
                 } else {
-                    builder.down();
+                    // should never happen
+                    builder.unknown();
                 }
-            } else {
-                // should never happen
+            } catch (AccessTokenHealthNotSupportedException e) {
+                logger.error("Health checks are unexpectedly not supported", e);
+    
                 builder.unknown();
             }
-        } catch (AccessTokenHealthNotSupportedException e) {
-            logger.error("Health checks are unexpectedly not supported", e);
-
-            builder.unknown();
         }
     }
 

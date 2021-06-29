@@ -16,4 +16,6 @@ public interface AccessTokenHealthProvider {
     default AccessTokenHealth getHealth(boolean refresh) {
         throw new AccessTokenHealthNotSupportedException("Provider " + getClass().getName() + " does not support health requests");
     }
+    
+    boolean supportsHealth();
 }

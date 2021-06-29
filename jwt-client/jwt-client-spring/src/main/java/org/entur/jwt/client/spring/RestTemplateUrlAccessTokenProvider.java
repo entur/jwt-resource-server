@@ -96,4 +96,9 @@ public class RestTemplateUrlAccessTokenProvider extends AbstractUrlAccessTokenPr
         return printResponseEntityHeadersIfPresent(c, headerNames);
     }
 
+    @Override
+    public boolean supportsHealth() {
+        return false;
+    }
+
 }

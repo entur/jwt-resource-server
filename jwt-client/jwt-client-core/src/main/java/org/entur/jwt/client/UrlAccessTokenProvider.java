@@ -80,5 +80,10 @@ public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider<HttpU
     protected StringBuilder printHeadersIfPresent(HttpURLConnection c, String... headerNames) {
         return printHttpURLConnectionHeadersIfPresent(c, headerNames);
     }
+    
+    @Override
+    public boolean supportsHealth() {
+        return false;
+    }
 
 }
