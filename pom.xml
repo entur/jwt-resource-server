@@ -71,12 +71,12 @@
 		<spring-boot.version>2.4.7</spring-boot.version>
 		<spring.version>5.3.8</spring.version>
 		<rest-assured.version>4.3.3</rest-assured.version>
-		
+
 		<!-- https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-dependencies  -->
 		<!-- transient dependencies added due to security patching -->
 		<snakeyaml.version>1.27</snakeyaml.version>
 		<tomcat.version>9.0.46</tomcat.version>
-		
+
 		<!-- plugins -->
 		<build-helper-maven-plugin.version>1.9.1</build-helper-maven-plugin.version>
 		<jacoco-maven-plugin.version>0.8.5</jacoco-maven-plugin.version>
@@ -91,7 +91,7 @@
 		<maven-shade-plugin.version>3.1.1</maven-shade-plugin.version>
 		<maven-war-plugin.version>3.2.2</maven-war-plugin.version>
 		<owasp-dependency-check.version>6.1.5</owasp-dependency-check.version>
-		
+
 		<distribution-respository-id>ossrh</distribution-respository-id>
 	</properties>
 
@@ -176,7 +176,7 @@
 				<groupId>${project.groupId}</groupId>
 				<artifactId>jwt-spring-auth0</artifactId>
 				<version>${project.version}</version>
-			</dependency>			
+			</dependency>
 			<!-- third party dependencies -->
 			<dependency>
 				<groupId>io.jsonwebtoken</groupId>
@@ -235,7 +235,7 @@
 				<artifactId>jwks-rsa</artifactId>
 				<version>${jwks-rsa.version}</version>
 			</dependency>
-			
+
 			<!-- need spring-web, but then we need to define the rest too, due to spring boot starter security -->
 			<dependency>
 			    <groupId>org.springframework</groupId>
@@ -267,8 +267,8 @@
 			    <artifactId>spring-expression</artifactId>
 				<version>${spring.version}</version>
 			</dependency>
-			
-			
+
+
 			<dependency>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-autoconfigure</artifactId>
@@ -294,6 +294,11 @@
 				<artifactId>spring-boot-starter-web</artifactId>
 				<version>${spring-boot.version}</version>
 			</dependency>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-webflux</artifactId>
+                <version>${spring-boot.version}</version>
+            </dependency>
 			<dependency>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-starter-test</artifactId>
@@ -314,7 +319,7 @@
 				<artifactId>spring-boot-starter-security</artifactId>
 				<version>${spring-boot.version}</version>
 			</dependency>
-			
+
 			<!-- artifact-specific dependency management due to security issues -->
 			<dependency>
 				<groupId>org.yaml</groupId>
@@ -336,7 +341,7 @@
 			    <artifactId>tomcat-embed-websocket</artifactId>
 			    <version>${tomcat.version}</version>
 			</dependency>
-			
+
 			<!-- test dependencies -->
 			<dependency>
 				<groupId>commons-io</groupId>
@@ -384,7 +389,23 @@
 				<artifactId>rest-assured</artifactId>
 				<version>${rest-assured.version}</version>
 			</dependency>
-		</dependencies>
+            <dependency>
+                <groupId>com.github.tomakehurst</groupId>
+                <artifactId>wiremock-jre8</artifactId>
+                <version>2.29.1</version>
+            </dependency>
+            <dependency>
+                <groupId>com.squareup.okhttp3</groupId>
+                <artifactId>mockwebserver</artifactId>
+                <version>4.9.1</version>
+            </dependency>
+            <dependency>
+                <groupId>com.squareup.okhttp3</groupId>
+                <artifactId>okhttp</artifactId>
+                <version>4.9.1</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
 	</dependencyManagement>
 	<build>
 		<defaultGoal>clean test</defaultGoal>
@@ -478,7 +499,7 @@
 						</goals>
 						<phase>verify</phase>
 					</execution>
-				</executions>				
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.owasp</groupId>
@@ -512,7 +533,7 @@
 				<version>2.11.0</version>
 				<configuration>
 					<configFile>${maven.multiModuleProjectDirectory}/.eclipse-formatter-config.xml</configFile>
-				</configuration>				
+				</configuration>
 			</plugin>
 		</plugins>
 		<pluginManagement>
@@ -543,12 +564,12 @@
 			<activation>
 				<activeByDefault>false</activeByDefault>
 			</activation>
-		</profile>		
+		</profile>
 		<profile>
 			<!-- mvn -P release release:perform -->
 			<id>release</id>
 			<properties>
-				<!-- this is useful when the desired key is not the default (first) export 
+				<!-- this is useful when the desired key is not the default (first) export
 					GPG_KEY_NAME=ABCDEF01 -->
 				<gpg.executable>gpg</gpg.executable>
 				<gpg.keyname>${env.GPG_KEY_NAME}</gpg.keyname>
@@ -586,7 +607,8 @@
 		<module>jwt-server/jwt-verifier/jwt-verifier-auth0</module>
 		<module>jwt-client/jwt-client-core</module>
 		<module>jwt-client/jwt-client-spring</module>
-		<module>jwt-server/spring/jwt-spring-core</module>
+        <module>jwt-client/jwt-client-spring-reactive</module>
+        <module>jwt-server/spring/jwt-spring-core</module>
 		<module>jwt-server/spring/jwt-spring-auth0</module>
 		<module>jwt-server/spring/jwt-spring-camel</module>
 		<module>jwt-server/spring/jwt-spring-entur-organisation</module>
