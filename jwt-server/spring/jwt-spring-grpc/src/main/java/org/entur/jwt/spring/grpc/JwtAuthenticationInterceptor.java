@@ -65,54 +65,7 @@ public class JwtAuthenticationInterceptor<T> implements ServerInterceptor {
                 return new Listener<ReqT>() {
                 };
             }
-            String bearerToken = header.substring(BEARER.length());
-            // if a token is present, it must be valid regardless of whether the endpoint
-            // requires authorization or not
-            T token;
-            try {
-            
-                token = verifier.verify(bearerToken); // note: can return null
-                if (token != null) {
-                    List<GrantedAuthority> authorities = authorityMapper.getGrantedAuthorities(token);
-
-                    Map<String, Object> claims = extractor.getClaims(token);
-                    
-                    Serializable details = detailsMapper.getDetails(call, claims);
-                    Serializable principal = principalMapper.getPrincipal(claims);
-
-                    JwtAuthenticationToken jwtAuthenticationToken = new JwtAuthenticationToken(claims, bearerToken, authorities, principal, details);
-
-                    Context context = Context.current().withValue(GrpcAuthorization.SECURITY_CONTEXT_AUTHENTICATION, jwtAuthenticationToken);
-
-                    if (mdcMapper != null) {
-                        context = context.withValue(GrpcAuthorization.SECURITY_CONTEXT_MDC, mdcMapper.getContext(token));
-                    }
-
-                    return Contexts.interceptCall(context, call, headers, next); // sets the new context, then clears it again before returning
-                } else {
-                    // do not use a high log level, assume garbage request from the internet
-                    log.debug("Unable to verify token");
-
-                    call.close(Status.UNAUTHENTICATED.withDescription("Invalid authorization header"), new Metadata());
-                    return new Listener<ReqT>() {
-                    };
-                }
-            } catch (JwtClientException | JwksClientException e) { // assume client misconfiguration
-                log.debug("JWT verification failed due to {}", e.getMessage());
-
-                call.close(Status.UNAUTHENTICATED.withDescription(e.getMessage()).withCause(e), new Metadata());
-                return new Listener<ReqT>() {
-                };
-            } catch (JwksException | JwtException e) {  // assume server issue
-                // technically we should only see JwksServiceException or JwtServiceException here
-                // but use superclass to catch all
-
-                log.warn("Unable to process token", e);
-
-                call.close(Status.UNAVAILABLE.withDescription(e.getMessage()).withCause(e), new Metadata());
-                return new Listener<ReqT>() {
-                };
-            }
+            return interceptBearerTokenCall(call, headers, next, header);
         } else if (anonymousMethodFilter != null && anonymousMethodFilter.matches(call)) {
             AnonymousAuthenticationToken anonymousAuthenticationToken = new AnonymousAuthenticationToken(key, "anonymousUser",
                     Collections.singletonList(new SimpleGrantedAuthority("ROLE_ANONYMOUS")));
@@ -124,5 +77,57 @@ public class JwtAuthenticationInterceptor<T> implements ServerInterceptor {
             return new Listener<ReqT>() {};            
         }        
     }
+
+	protected <ReqT, RespT> ServerCall.Listener<ReqT> interceptBearerTokenCall(ServerCall<ReqT, RespT> call,
+			Metadata headers, ServerCallHandler<ReqT, RespT> next, String header) {
+		String bearerToken = header.substring(BEARER.length());
+		// if a token is present, it must be valid regardless of whether the endpoint
+		// requires authorization or not
+		T token;
+		try {
+		
+		    token = verifier.verify(bearerToken); // note: can return null
+		    if (token != null) {
+		        List<GrantedAuthority> authorities = authorityMapper.getGrantedAuthorities(token);
+
+		        Map<String, Object> claims = extractor.getClaims(token);
+		        
+		        Serializable details = detailsMapper.getDetails(call, claims);
+		        Serializable principal = principalMapper.getPrincipal(claims);
+
+		        JwtAuthenticationToken jwtAuthenticationToken = new JwtAuthenticationToken(claims, bearerToken, authorities, principal, details);
+
+		        Context context = Context.current().withValue(GrpcAuthorization.SECURITY_CONTEXT_AUTHENTICATION, jwtAuthenticationToken);
+
+		        if (mdcMapper != null) {
+		            context = context.withValue(GrpcAuthorization.SECURITY_CONTEXT_MDC, mdcMapper.getContext(token));
+		        }
+
+		        return Contexts.interceptCall(context, call, headers, next); // sets the new context, then clears it again before returning
+		    } else {
+		        // do not use a high log level, assume garbage request from the internet
+		        log.debug("Unable to verify token");
+
+		        call.close(Status.UNAUTHENTICATED.withDescription("Invalid authorization header"), new Metadata());
+		        return new Listener<ReqT>() {
+		        };
+		    }
+		} catch (JwtClientException | JwksClientException e) { // assume client misconfiguration
+		    log.debug("JWT verification failed due to {}", e.getMessage());
+
+		    call.close(Status.UNAUTHENTICATED.withDescription(e.getMessage()).withCause(e), new Metadata());
+		    return new Listener<ReqT>() {
+		    };
+		} catch (JwksException | JwtException e) {  // assume server issue
+		    // technically we should only see JwksServiceException or JwtServiceException here
+		    // but use superclass to catch all
+
+		    log.warn("Unable to process token", e);
+
+		    call.close(Status.UNAVAILABLE.withDescription(e.getMessage()).withCause(e), new Metadata());
+		    return new Listener<ReqT>() {
+		    };
+		}
+	}
 
 }

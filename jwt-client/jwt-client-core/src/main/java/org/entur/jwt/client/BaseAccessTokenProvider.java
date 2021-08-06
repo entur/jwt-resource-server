@@ -29,4 +29,8 @@ public abstract class BaseAccessTokenProvider implements AccessTokenProvider {
         provider.close();
     }
 
+    @Override
+    public boolean supportsHealth() {
+        return provider.supportsHealth();
+    }
 }
