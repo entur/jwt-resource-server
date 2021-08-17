@@ -20,8 +20,8 @@ import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
 
 /**
- * RestTemplate access-token provider. Using {@linkplain UrlAccessTokenProvider}
- * would strictly be sufficient, but using RestTemplate is more convenient for
+ * WebClient access-token provider. Using {@linkplain UrlAccessTokenProvider}
+ * would strictly be sufficient, but using WebClient is more convenient for
  * mocking.
  */
 

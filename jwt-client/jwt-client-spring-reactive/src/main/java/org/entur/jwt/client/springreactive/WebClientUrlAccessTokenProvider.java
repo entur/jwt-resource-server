@@ -23,8 +23,8 @@ import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
 
 /**
- * RestTemplate access-token provider. Using {@linkplain UrlAccessTokenProvider}
- * would strictly be sufficient, but using RestTemplate is more convenient for
+ * WebClient access-token provider. Using {@linkplain UrlAccessTokenProvider}
+ * would strictly be sufficient, but using WebClient is more convenient for
  * mocking.
  */
 
@@ -36,7 +36,7 @@ public class WebClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProvi
 
 
     public WebClientUrlAccessTokenProvider(WebClient webClient, URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers) {
-        super(issueUrl, parameters, headers); // timeouts are baked into the resttemplate
+        super(issueUrl, parameters, headers);
 
         this.webClient = webClient;
     }
