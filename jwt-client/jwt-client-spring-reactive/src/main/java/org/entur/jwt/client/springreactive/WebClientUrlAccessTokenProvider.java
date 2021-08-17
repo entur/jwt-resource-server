@@ -1,20 +1,26 @@
 package org.entur.jwt.client.springreactive;
 
 import org.entur.jwt.client.AbstractUrlAccessTokenProvider;
+import org.entur.jwt.client.AccessTokenException;
+import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.entur.jwt.client.UrlAccessTokenProvider;
+import org.entur.jwt.client.springreactive.actuate.AccessTokenProviderHealthIndicator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ExecutionException;
 
 /**
  * RestTemplate access-token provider. Using {@linkplain UrlAccessTokenProvider}
@@ -22,31 +28,12 @@ import java.util.Map.Entry;
  * mocking.
  */
 
-public class WebClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProvider<ResponseEntity<Resource>> {
-
-    protected static StringBuilder printResponseEntityHeadersIfPresent(ResponseEntity<?> c, String... headerNames) {
-        StringBuilder builder = new StringBuilder();
-        HttpHeaders headers = c.getHeaders();
-        for (String headerName : headerNames) {
-            List<String> value = headers.get(headerName);
-            if (value != null) {
-                builder.append(headerName);
-                builder.append(':');
-                if (value.size() == 1) {
-                    builder.append(value.get(0));
-                } else {
-                    builder.append(value);
-                }
-                builder.append(", ");
-            }
-        }
-        if (builder.length() > 0) {
-            builder.setLength(builder.length() - 2);
-        }
-        return builder;
-    }
+public class WebClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProvider<Mono<Resource>> {
 
     protected final WebClient webClient;
+
+    protected static final Logger logger = LoggerFactory.getLogger(AccessTokenProviderHealthIndicator.class);
+
 
     public WebClientUrlAccessTokenProvider(WebClient webClient, URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers) {
         super(issueUrl, parameters, headers); // timeouts are baked into the resttemplate
@@ -54,7 +41,7 @@ public class WebClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProvi
         this.webClient = webClient;
     }
 
-    protected ResponseEntity<Resource> request(URL url, byte[] body, Map<String, Object> map) {
+    protected Mono<Resource> request(URL url, byte[] body, Map<String, Object> map) {
         HttpHeaders headers = new HttpHeaders();
 
         for (Entry<String, Object> entry : map.entrySet()) {
@@ -70,30 +57,44 @@ public class WebClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProvi
                 .headers(httpHeaders -> httpHeaders.addAll(headers))
                 .bodyValue(body)
                 .retrieve()
-                .toEntity(Resource.class)
-                .block();
+                .onStatus(httpStatus -> httpStatus == HttpStatus.TOO_MANY_REQUESTS,
+                          response -> Mono.error(new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests."))
+                )
+                .onStatus(httpStatus -> httpStatus == HttpStatus.SERVICE_UNAVAILABLE,
+                          response -> Mono.error(new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable."))
+                )
+                .onStatus(httpStatus -> !httpStatus.is2xxSuccessful(),
+                          response -> Mono.error(new AccessTokenException("Authorization server responded with HTTP unexpected response code" + response.rawStatusCode()))
+                )
+                .bodyToMono(Resource.class);
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException(e);
         }
     }
 
     @Override
-    protected int getResponseStatusCode(ResponseEntity<Resource> response) throws IOException {
-        return response.getStatusCodeValue();
+    protected int getResponseStatusCode(Mono<Resource> response) {
+        // A non-blocking WebClient does not support access to the status code outside the http call scope. Therefore the error handling based on HttpStatus is part of the WebClient call chain.
+        return 200;
     }
 
     @Override
-    protected InputStream getResponseContent(ResponseEntity<Resource> response) throws IOException {
-        Resource body = response.getBody();
-        if (body != null) {
-            return body.getInputStream();
+    protected InputStream getResponseContent(Mono<Resource> response) throws IOException {
+        try {
+            return response.toFuture().get().getInputStream();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
         }
-        throw new IOException("Empty body");
+        return null;
     }
 
     @Override
-    protected StringBuilder printHeadersIfPresent(ResponseEntity<Resource> c, String... headerNames) {
-        return printResponseEntityHeadersIfPresent(c, headerNames);
+    protected StringBuilder printHeadersIfPresent(Mono<Resource> c, String... headerNames) {
+        return null;
     }
 
+    @Override
+    public boolean supportsHealth() {
+        return false;
+    }
 }

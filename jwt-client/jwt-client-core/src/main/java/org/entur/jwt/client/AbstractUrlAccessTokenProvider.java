@@ -18,7 +18,7 @@ import com.fasterxml.jackson.databind.ObjectReader;
 /**
  * Abstract provider using URL. This simple abstraction exists so that the
  * underlying HTTP client can be swapped.
- * 
+ *
  * @param <T> HTTP Response type
  */
 
