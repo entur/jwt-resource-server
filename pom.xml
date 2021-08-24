@@ -143,6 +143,11 @@
 				<artifactId>jwt-client-spring</artifactId>
 				<version>${project.version}</version>
 			</dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>jwt-client-spring-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 			<dependency>
 				<groupId>${project.groupId}</groupId>
 				<artifactId>jwt-spring-core</artifactId>
@@ -602,7 +607,8 @@
 		<module>jwt-server/jwt-verifier/jwt-verifier-auth0</module>
 		<module>jwt-client/jwt-client-core</module>
 		<module>jwt-client/jwt-client-spring</module>
-        <module>jwt-client/jwt-client-spring-reactive</module>
+        <module>jwt-client/jwt-client-spring-cloud</module>
+        <module>jwt-client/jwt-client-spring-core</module>
         <module>jwt-server/spring/jwt-spring-core</module>
 		<module>jwt-server/spring/jwt-spring-auth0</module>
 		<module>jwt-server/spring/jwt-spring-camel</module>
