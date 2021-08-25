@@ -19,12 +19,12 @@
 	   <!-- old camel -->
 	   <cve>CVE-2020-11971</cve>
 	</suppress>
-	
+
 	<suppress>
 	   <!-- SAML component -->
 	   <cve>CVE-2020-5407</cve>
 	</suppress>
-	
+
 	<!-- micrometer false positive -->
 	<suppress>
 	   <cve>CVE-2008-1392</cve>
@@ -32,4 +32,15 @@
 	<suppress>
 	   <cve>CVE-2009-1147</cve>
 	</suppress>
+
+    <!-- json-smart (from transitive from spring-boot-starter-test)-->
+    <suppress>
+        <cve>CVE-2021-27568</cve>
+    </suppress>
+
+    <!-- old spring security (from camel) -->
+    <suppress>
+        <cve>CVE-2021-22112</cve>
+    </suppress>
+
 </suppressions>
