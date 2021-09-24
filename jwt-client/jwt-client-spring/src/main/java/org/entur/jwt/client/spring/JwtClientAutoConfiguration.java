@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -22,11 +21,7 @@ import org.entur.jwt.client.AccessTokenProviderBuilder;
 import org.entur.jwt.client.ClientCredentials;
 import org.entur.jwt.client.auth0.Auth0ClientCredentialsBuilder;
 import org.entur.jwt.client.keycloak.KeycloakClientCredentialsBuilder;
-import org.entur.jwt.client.properties.AbstractJwtClientProperties;
-import org.entur.jwt.client.properties.Auth0JwtClientProperties;
-import org.entur.jwt.client.properties.JwtClientCache;
-import org.entur.jwt.client.properties.KeycloakJwtClientProperties;
-import org.entur.jwt.client.properties.JwtPreemptiveRefresh;
+import org.entur.jwt.client.properties.*;
 import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +56,7 @@ public class JwtClientAutoConfiguration {
         long readTimeout = properties.getReadTimeout();
 
         Long timeout = getTimeout(properties);
-        
+
         if(timeout != null) {
             if(connectTimeout > timeout) {
                 throw new IllegalArgumentException("Connect timeout of " + connectTimeout + "s exceeds cache refresh time of " + timeout + "s");
@@ -70,13 +65,13 @@ public class JwtClientAutoConfiguration {
                 throw new IllegalArgumentException("Read timeout of " + readTimeout + "s exceeds cache refresh time of " + timeout + "s");
             }
         }
-        
+
         restTemplateBuilder = restTemplateBuilder.setConnectTimeout(Duration.of(connectTimeout, ChronoUnit.SECONDS));
         restTemplateBuilder = restTemplateBuilder.setReadTimeout(Duration.of(readTimeout, ChronoUnit.SECONDS));
 
         return restTemplateBuilder.build();
     }
-    
+
     private Long getTimeout(SpringJwtClientProperties properties) {
         return getTimeout(properties.getAuth0(), getTimeout(properties.getKeycloak(), null));
     }
@@ -100,22 +95,22 @@ public class JwtClientAutoConfiguration {
 
     @Bean
     public static BeanDefinitionRegistryPostProcessor jwtClientBeanDefinitionRegistryPostProcessor() {
-        // note : adding @Configuration to JwtClientBeanDefinitionRegistryPostProcessor works (as an alternative to @Bean), 
+        // note : adding @Configuration to JwtClientBeanDefinitionRegistryPostProcessor works (as an alternative to @Bean),
         // but gives an ugly warning message.
         return new JwtClientBeanDefinitionRegistryPostProcessor();
     }
-    
+
     /**
-     * Dynamically inject beans with ids so that they can be easily referenced with {@linkplain Qualifier} annotation. 
-     * 
+     * Dynamically inject beans with ids so that they can be easily referenced with {@linkplain Qualifier} annotation.
+     *
      */
-    
+
     // https://stackoverflow.com/questions/53462889/create-n-number-of-beans-with-beandefinitionregistrypostprocessor
     public static class JwtClientBeanDefinitionRegistryPostProcessor implements BeanDefinitionRegistryPostProcessor, EnvironmentAware {
 
         // note: autowiring does not work, must bind via environment
         private SpringJwtClientProperties properties;
-        
+
         @Override
         public void postProcessBeanFactory(ConfigurableListableBeanFactory factory) {
             // noop
@@ -131,14 +126,14 @@ public class JwtClientAutoConfiguration {
                     .bind("entur.jwt.clients", SpringJwtClientProperties.class)
                     .orElse(new SpringJwtClientProperties());
         }
-        
+
         @Override
         public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) {
             // populate default values
             add(registry, "newAuth0Instance", enabled(properties.getAuth0()));
             add(registry, "newKeycloakInstance", enabled(properties.getKeycloak()));
         }
-        
+
         private Set<String> enabled(Map<String, ? extends AbstractJwtClientProperties> auth0) {
             // order by name
             List<String> enabled = new ArrayList<>();
@@ -162,35 +157,35 @@ public class JwtClientAutoConfiguration {
                 beanDefinition.setFactoryBeanName("jwtClientBeanDefinitionRegistryPostProcessorSupport");
                 beanDefinition.setFactoryMethodName(method);
                 beanDefinition.setDestroyMethodName("close");
-                
+
                 ConstructorArgumentValues constructorArgumentValues = new ConstructorArgumentValues();
                 constructorArgumentValues.addGenericArgumentValue(key);
                 beanDefinition.setAutowireCandidate(true);
                 beanDefinition.setConstructorArgumentValues(constructorArgumentValues);
-                
+
                 registry.registerBeanDefinition(key, beanDefinition);
             }
         }
     }
-    
+
     @Bean
     public JwtClientBeanDefinitionRegistryPostProcessorSupport jwtClientBeanDefinitionRegistryPostProcessorSupport(@Qualifier("jwtRestTemplate") RestTemplate restTemplate, SpringJwtClientProperties properties) {
         return new JwtClientBeanDefinitionRegistryPostProcessorSupport(restTemplate, properties);
     }
-    
+
     public static class JwtClientBeanDefinitionRegistryPostProcessorSupport {
-        
+
         private RestTemplate restTemplate;
         private SpringJwtClientProperties rootProperties;
-        
+
         public JwtClientBeanDefinitionRegistryPostProcessorSupport(RestTemplate restTemplate, SpringJwtClientProperties properties) {
             this.restTemplate = restTemplate;
             this.rootProperties = properties;
         }
-        
+
         public AccessTokenProvider newAuth0Instance(String key) {
             Auth0JwtClientProperties properties = rootProperties.getAuth0().get(key);
-         
+
             ClientCredentials credentials = Auth0ClientCredentialsBuilder.newInstance().withHost(properties.getHost()).withClientId(properties.getClientId()).withSecret(properties.getSecret()).withScope(properties.getScope())
                     .withAudience(properties.getAudience()).build();
             return toAccessTokenProvider(restTemplate, properties, credentials, rootProperties.getHealthIndicator().isEnabled() && properties.isHealth());
@@ -198,7 +193,7 @@ public class JwtClientAutoConfiguration {
 
         public AccessTokenProvider newKeycloakInstance(String key) {
             KeycloakJwtClientProperties properties = this.rootProperties.getKeycloak().get(key);
-         
+
             ClientCredentials credentials = KeycloakClientCredentialsBuilder.newInstance().withHost(properties.getHost()).withClientId(properties.getClientId()).withSecret(properties.getSecret()).withScope(properties.getScope())
                     .withAudience(properties.getAudience()).withRealm(properties.getRealm()).build();
 
@@ -243,7 +238,7 @@ public class JwtClientAutoConfiguration {
 
             return builder.build();
         }
-        
+
     }
 
     @Bean
@@ -260,7 +255,7 @@ public class JwtClientAutoConfiguration {
         }
 
         Collections.sort(statusProviders);
-        
+
         if(statusProviders.isEmpty()) {
             log.warn("Health-indicator is active, but none of the {} access-token provider(s) supports health", providers.size());
         } else {
@@ -269,7 +264,7 @@ public class JwtClientAutoConfiguration {
 
         return new AccessTokenProviderHealthIndicator(statusProviders.stream().map( key -> providers.get(key) ).collect(Collectors.toList()));
     }
-    
+
     @Bean
     public EagerContextStartedListener eagerContextRefreshedListener(Map<String, AccessTokenProvider> providersById, SpringJwtClientProperties springJwtClientProperties) {
         Map<String, AccessTokenProvider> eagerAccessTokenProvidersById = new HashMap<>();
@@ -284,8 +279,8 @@ public class JwtClientAutoConfiguration {
                     }
                 }
             }
-        }        
+        }
         return new EagerContextStartedListener(eagerAccessTokenProvidersById);
     }
-    
+
 }

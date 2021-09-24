@@ -32,6 +32,10 @@ public abstract class AbstractSpringAccessTokenProviderHealthIndicator extends A
         this.providers = statusProviders;
     }
 
+    public AbstractSpringAccessTokenProviderHealthIndicator(List<AccessTokenHealthProvider> statusProviders) {
+        this(statusProviders.toArray(new AccessTokenHealthProvider[statusProviders.size()]));
+    }
+
     @Override
     protected void doHealthCheck(Health.Builder builder) throws Exception {
         try {

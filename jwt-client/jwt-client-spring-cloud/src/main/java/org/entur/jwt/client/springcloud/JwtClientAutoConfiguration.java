@@ -9,6 +9,8 @@ import org.entur.jwt.client.auth0.Auth0ClientCredentialsBuilder;
 import org.entur.jwt.client.keycloak.KeycloakClientCredentialsBuilder;
 import org.entur.jwt.client.properties.*;
 import org.entur.jwt.client.springcloud.actuate.AccessTokenProviderHealthIndicator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.config.ConstructorArgumentValues;
@@ -28,16 +30,22 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
 
 import java.net.URL;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableConfigurationProperties(SpringJwtClientProperties.class)
 public class JwtClientAutoConfiguration {
+
+    private static Logger log = LoggerFactory.getLogger(JwtClientAutoConfiguration.class);
 
     @Bean
     @Qualifier("jwtWebClient")
@@ -224,10 +232,25 @@ public class JwtClientAutoConfiguration {
 
     @Bean
     @ConditionalOnProperty(value = "entur.jwt.clients.health-indicator.enabled", matchIfMissing = true)
-    public AccessTokenProviderHealthIndicator accessTokenProviderHealthIndicator(AccessTokenProvider[] providers) {
+    public AccessTokenProviderHealthIndicator accessTokenProviderHealthIndicator(Map<String, AccessTokenProvider> providers) {
         // could verify that health is supported here, but that would interfere with
         // mocking / testing.
-        return new AccessTokenProviderHealthIndicator(providers);
+        List<String> statusProviders = new ArrayList<>();
+        for (Entry<String, AccessTokenProvider> entry : providers.entrySet()) {
+            AccessTokenProvider accessTokenProvider = entry.getValue();
+            if(accessTokenProvider.supportsHealth()) {
+                statusProviders.add(entry.getKey());
+            }
+        }
+
+        Collections.sort(statusProviders);
+
+        if(statusProviders.isEmpty()) {
+            log.warn("Health-indicator is active, but none of the {} access-token provider(s) supports health", providers.size());
+        } else {
+            log.info("Add health-indicator for {}/{} access-token provider(s) {}", statusProviders.size(), providers.size(), statusProviders.stream().collect(Collectors.joining("', '", "'", "'")));
+        }
+        return new AccessTokenProviderHealthIndicator(statusProviders.stream().map( key -> providers.get(key) ).collect(Collectors.toList()));
     }
 
     @Bean
