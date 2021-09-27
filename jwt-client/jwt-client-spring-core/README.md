@@ -1,7 +1,5 @@
-# jwt-client-spring
+# jwt-client-spring-core
 JWT spring client core implementation.
-
-See [Auth0SingleClientTest] for a mocking example.
 
 ## Maven / Gradle coordinates
 Maven coordinates:
@@ -19,5 +17,3 @@ Gradle coordinates:
 ```groovy
 api("org.entur.jwt-rs:jwt-client-spring:${jwtResourceServerVersion}")
 ```
-
-[Auth0SingleClientTest]: src/test/java/org/entur/jwt/client/springreactive/Auth0SingleClientTest.java

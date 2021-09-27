@@ -4,7 +4,7 @@ import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.entur.jwt.client.AccessToken;
 import org.entur.jwt.client.AccessTokenProvider;
-import org.entur.jwt.client.springcloud.actuate.AccessTokenProviderHealthIndicator;
+import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,7 +20,6 @@ import java.io.IOException;
 import static com.google.common.truth.Truth.assertThat;
 import static org.entur.jwt.client.springcloud.TestUtils.asString;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @TestPropertySource(locations = "/application-keycloak.properties")

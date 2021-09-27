@@ -1,4 +1,4 @@
-package org.entur.jwt.client.springcore;
+package org.entur.jwt.client.spring;
 
 import org.entur.jwt.client.AccessTokenProvider;
 import org.slf4j.Logger;
@@ -10,26 +10,26 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 /**
- *
- * This kicks off the eager JWT caching, if enabled. If fetching JWTs fail, a warning is logged.
+ * 
+ * This kicks off the eager JWT caching, if enabled. If fetching JWTs fail, a warning is logged. 
  *
  */
 
-public abstract class AbstractEagerContextStartedListener implements ApplicationListener<ContextStartedEvent> {
+public class EagerContextStartedListener implements ApplicationListener<ContextStartedEvent> {
 
-	// implementation note: perhaps it would be better to use ContextRefreshedEvent,
-	// triggering this behavior requires an implicit call to applicationContext.start(),
+	// implementation note: perhaps it would be better to use ContextRefreshedEvent,  
+	// triggering this behavior requires an implicit call to applicationContext.start(), 
 	// however this would always fail on unit tests, when mocking is inserted after application
 	// context is loaded (refreshed).
-
-    private static Logger log = LoggerFactory.getLogger(AbstractEagerContextStartedListener.class);
+	
+    private static Logger log = LoggerFactory.getLogger(EagerContextStartedListener.class);
 
 	private final Map<String, AccessTokenProvider> providersById;
-
-	public AbstractEagerContextStartedListener(Map<String, AccessTokenProvider> providersById) {
+	
+	public EagerContextStartedListener(Map<String, AccessTokenProvider> providersById) {
 		this.providersById = providersById;
 	}
-
+	
 	@Override
 	public void onApplicationEvent(ContextStartedEvent cse) {
 		if(!providersById.isEmpty()) {

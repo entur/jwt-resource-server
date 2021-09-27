@@ -4,7 +4,7 @@ import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.entur.jwt.client.AccessToken;
 import org.entur.jwt.client.AccessTokenProvider;
-import org.entur.jwt.client.springcloud.actuate.AccessTokenProviderHealthIndicator;
+import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

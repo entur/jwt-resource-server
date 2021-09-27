@@ -1,9 +1,5 @@
 package org.entur.jwt.spring.demo;
 
-import static com.google.common.truth.Truth.assertThat;
-import static io.restassured.RestAssured.given;
-import static org.mockito.Mockito.when;
-
 import org.entur.jwt.client.AccessToken;
 import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenHealth;
@@ -17,10 +13,12 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 
+import static com.google.common.truth.Truth.assertThat;
+import static io.restassured.RestAssured.given;
+import static org.mockito.Mockito.when;
+
 /**
- * 
  * Testing using {@linkplain @MockBean}.
- * 
  */
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)

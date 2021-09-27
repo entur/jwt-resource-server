@@ -1,2 +1,2 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-org.entur.jwt.client.spring.JwtClientAutoConfiguration
+org.entur.jwt.client.spring.classic.RestTemplateJwtClientAutoConfiguration

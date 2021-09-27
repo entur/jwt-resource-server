@@ -3,7 +3,7 @@ package org.entur.jwt.client.properties;
 import java.util.HashMap;
 import java.util.Map;
 
-public class AbstractSpringJwtClientProperties {
+public class JwtClientProperties {
 
     protected JwtHealthIndicator healthIndicator = new JwtHealthIndicator();
 
@@ -25,15 +25,15 @@ public class AbstractSpringJwtClientProperties {
     public Map<String, Auth0JwtClientProperties> getAuth0() {
         return auth0;
     }
-
+    
     public Map<String, KeycloakJwtClientProperties> getKeycloak() {
         return keycloak;
     }
-
+    
     public void setAuth0(Map<String, Auth0JwtClientProperties> auth0) {
         this.auth0 = auth0;
     }
-
+    
     public void setKeycloak(Map<String, KeycloakJwtClientProperties> keycloak) {
         this.keycloak = keycloak;
     }

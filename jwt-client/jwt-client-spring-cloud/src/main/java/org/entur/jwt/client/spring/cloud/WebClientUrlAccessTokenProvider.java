@@ -1,10 +1,10 @@
-package org.entur.jwt.client.springcloud;
+package org.entur.jwt.client.spring.cloud;
 
 import org.entur.jwt.client.AbstractUrlAccessTokenProvider;
 import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.entur.jwt.client.UrlAccessTokenProvider;
-import org.entur.jwt.client.springcloud.actuate.AccessTokenProviderHealthIndicator;
+import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;

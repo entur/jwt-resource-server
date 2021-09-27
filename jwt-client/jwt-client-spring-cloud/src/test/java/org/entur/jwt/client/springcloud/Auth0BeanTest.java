@@ -4,7 +4,7 @@ import org.entur.jwt.client.AccessToken;
 import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenHealth;
 import org.entur.jwt.client.AccessTokenProvider;
-import org.entur.jwt.client.springcloud.actuate.AccessTokenProviderHealthIndicator;
+import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

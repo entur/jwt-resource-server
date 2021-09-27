@@ -1,4 +1,4 @@
-package org.entur.jwt.client.springcloud;
+package org.entur.jwt.client.spring.cloud;
 
 import org.entur.jwt.client.AbstractStatefulUrlAccessTokenProvider;
 import org.entur.jwt.client.AccessTokenException;
