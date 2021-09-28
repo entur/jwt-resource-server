@@ -7,7 +7,7 @@ Maven coordinates:
 ```xml
 <dependency>
     <groupId>org.entur.jwt-rs</groupId>
-    <artifactId>jwt-client-spring-cloud</artifactId>
+    <artifactId>jwt-client-spring-core</artifactId>
     <version>${jwt-rs.version}</version>
 </dependency>
 ```
@@ -15,5 +15,5 @@ Maven coordinates:
 Gradle coordinates:
 
 ```groovy
-api("org.entur.jwt-rs:jwt-client-spring:${jwtResourceServerVersion}")
+api("org.entur.jwt-rs:jwt-client-spring-core:${jwtResourceServerVersion}")
 ```
