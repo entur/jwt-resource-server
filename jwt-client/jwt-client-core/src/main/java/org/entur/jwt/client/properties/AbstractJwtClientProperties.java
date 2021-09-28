@@ -9,7 +9,7 @@ public abstract class AbstractJwtClientProperties {
     protected String audience;
     protected String scope;
 
-    protected String protocol = null;
+    protected String protocol = "https";
     protected int port = -1;
     protected String host;
 

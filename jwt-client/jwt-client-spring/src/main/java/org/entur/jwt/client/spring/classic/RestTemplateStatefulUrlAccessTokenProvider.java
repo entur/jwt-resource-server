@@ -1,4 +1,10 @@
-package org.entur.jwt.client.spring;
+package org.entur.jwt.client.spring.classic;
+
+import org.entur.jwt.client.AbstractStatefulUrlAccessTokenProvider;
+import org.entur.jwt.client.UrlAccessTokenProvider;
+import org.springframework.core.io.Resource;
+import org.springframework.http.*;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -7,16 +13,6 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
-
-import org.entur.jwt.client.AbstractStatefulUrlAccessTokenProvider;
-import org.entur.jwt.client.UrlAccessTokenProvider;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
 
 /**
  * 

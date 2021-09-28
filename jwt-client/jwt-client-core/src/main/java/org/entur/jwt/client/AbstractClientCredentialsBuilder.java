@@ -4,7 +4,7 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Client Credentials builder scaffold
- * 
+ *
  * @see <a href=
  *      "https://www.sitepoint.com/self-types-with-javas-generics/">https://www.sitepoint.com/self-types-with-javas-generics/</a>
  */
@@ -46,6 +46,12 @@ public abstract class AbstractClientCredentialsBuilder<B extends AbstractClientC
     @SuppressWarnings("unchecked")
     public B withHost(String host) {
         this.host = host;
+        return (B) this;
+    }
+
+    @SuppressWarnings("unchecked")
+    public B withPort(int port) {
+        this.port = port;
         return (B) this;
     }
 

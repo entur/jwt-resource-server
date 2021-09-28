@@ -1,9 +1,5 @@
 package org.entur.jwt.spring.demo;
 
-import static com.google.common.truth.Truth.assertThat;
-import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-
 import org.entur.jwt.client.AccessToken;
 import org.entur.jwt.client.AccessTokenProvider;
 import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
@@ -12,14 +8,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.web.server.LocalServerPort;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.context.ActiveProfiles;
 
+import static com.google.common.truth.Truth.assertThat;
+import static io.restassured.RestAssured.given;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 /**
- * 
  * Testing using {@linkplain @Bean} overriding the bean id.
- * 
  */
 
 @ActiveProfiles("mockJwt")

@@ -1,8 +1,5 @@
 package org.entur.jwt.client.spring.actuate;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.entur.jwt.client.AccessTokenHealth;
 import org.entur.jwt.client.AccessTokenHealthNotSupportedException;
 import org.entur.jwt.client.AccessTokenHealthProvider;
@@ -10,6 +7,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 

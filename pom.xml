@@ -56,27 +56,28 @@
 
 		<commons-io.version>2.8.0</commons-io.version>
 		<google-truth.version>1.1.2</google-truth.version>
-		<junit.version>5.7.1</junit.version>
-		<mocktio.version>3.6.28</mocktio.version>
+		<junit.version>5.7.2</junit.version>
+		<mockito.version>3.12.2</mockito.version>
 		<hamcrest.version>2.2</hamcrest.version>
-		<slf4j.version>1.7.30</slf4j.version>
+		<slf4j.version>1.7.32</slf4j.version>
 		<jjwt.version>0.11.2</jjwt.version>
-		<nimbus-jose-jwt.version>9.4.1</nimbus-jose-jwt.version>
+		<nimbus-jose-jwt.version>9.13</nimbus-jose-jwt.version>
 		<bucket4j-core.version>4.10.0</bucket4j-core.version>
 		<jackson-databind.version>2.11.4</jackson-databind.version>
 		<camel.version>2.25.4</camel.version>
 		<jwks-rsa.version>0.18.0</jwks-rsa.version>
 		<java-jwt.version>3.16.0</java-jwt.version>
 		<jadler.version>1.3.0</jadler.version>
-		<spring-boot.version>2.4.7</spring-boot.version>
-		<spring.version>5.3.8</spring.version>
+		<spring-boot.version>2.5.4</spring-boot.version>
+		<spring.version>5.3.9</spring.version>
 		<rest-assured.version>4.3.3</rest-assured.version>
-		
+		  <okhttp.version>4.9.1</okhttp.version>
+
 		<!-- https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-dependencies  -->
 		<!-- transient dependencies added due to security patching -->
 		<snakeyaml.version>1.27</snakeyaml.version>
 		<tomcat.version>9.0.46</tomcat.version>
-		
+
 		<!-- plugins -->
 		<build-helper-maven-plugin.version>1.9.1</build-helper-maven-plugin.version>
 		<jacoco-maven-plugin.version>0.8.5</jacoco-maven-plugin.version>
@@ -91,7 +92,7 @@
 		<maven-shade-plugin.version>3.1.1</maven-shade-plugin.version>
 		<maven-war-plugin.version>3.2.2</maven-war-plugin.version>
 		<owasp-dependency-check.version>6.1.5</owasp-dependency-check.version>
-		
+
 		<distribution-respository-id>ossrh</distribution-respository-id>
 	</properties>
 
@@ -144,6 +145,11 @@
 			</dependency>
 			<dependency>
 				<groupId>${project.groupId}</groupId>
+				<artifactId>jwt-client-spring-core</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>${project.groupId}</groupId>
 				<artifactId>jwt-spring-core</artifactId>
 				<version>${project.version}</version>
 			</dependency>
@@ -166,7 +172,7 @@
 				<groupId>${project.groupId}</groupId>
 				<artifactId>jwt-spring-auth0</artifactId>
 				<version>${project.version}</version>
-			</dependency>			
+			</dependency>
 			<!-- third party dependencies -->
 			<dependency>
 				<groupId>io.jsonwebtoken</groupId>
@@ -225,40 +231,40 @@
 				<artifactId>jwks-rsa</artifactId>
 				<version>${jwks-rsa.version}</version>
 			</dependency>
-			
+
 			<!-- need spring-web, but then we need to define the rest too, due to spring boot starter security -->
 			<dependency>
-			    <groupId>org.springframework</groupId>
-			    <artifactId>spring-web</artifactId>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-web</artifactId>
 				<version>${spring.version}</version>
 			</dependency>
 			<dependency>
-			    <groupId>org.springframework</groupId>
-			    <artifactId>spring-aop</artifactId>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-aop</artifactId>
 				<version>${spring.version}</version>
 			</dependency>
 			<dependency>
-			    <groupId>org.springframework</groupId>
-			    <artifactId>spring-beans</artifactId>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-beans</artifactId>
 				<version>${spring.version}</version>
 			</dependency>
 			<dependency>
-			    <groupId>org.springframework</groupId>
-			    <artifactId>spring-core</artifactId>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-core</artifactId>
 				<version>${spring.version}</version>
 			</dependency>
 			<dependency>
-			    <groupId>org.springframework</groupId>
-			    <artifactId>spring-context</artifactId>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-context</artifactId>
 				<version>${spring.version}</version>
 			</dependency>
 			<dependency>
-			    <groupId>org.springframework</groupId>
-			    <artifactId>spring-expression</artifactId>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-expression</artifactId>
 				<version>${spring.version}</version>
 			</dependency>
-			
-			
+
+
 			<dependency>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-autoconfigure</artifactId>
@@ -286,6 +292,11 @@
 			</dependency>
 			<dependency>
 				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-starter-webflux</artifactId>
+				<version>${spring-boot.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-starter-test</artifactId>
 				<version>${spring-boot.version}</version>
 			</dependency>
@@ -304,7 +315,7 @@
 				<artifactId>spring-boot-starter-security</artifactId>
 				<version>${spring-boot.version}</version>
 			</dependency>
-			
+
 			<!-- artifact-specific dependency management due to security issues -->
 			<dependency>
 				<groupId>org.yaml</groupId>
@@ -312,21 +323,21 @@
 				<version>${snakeyaml.version}</version>
 			</dependency>
 			<dependency>
-			    <groupId>org.apache.tomcat.embed</groupId>
-			    <artifactId>tomcat-embed-core</artifactId>
-			    <version>${tomcat.version}</version>
+				<groupId>org.apache.tomcat.embed</groupId>
+				<artifactId>tomcat-embed-core</artifactId>
+				<version>${tomcat.version}</version>
 			</dependency>
 			<dependency>
-			    <groupId>org.apache.tomcat.embed</groupId>
-			    <artifactId>tomcat-embed-el</artifactId>
-			    <version>${tomcat.version}</version>
+				<groupId>org.apache.tomcat.embed</groupId>
+				<artifactId>tomcat-embed-el</artifactId>
+				<version>${tomcat.version}</version>
 			</dependency>
 			<dependency>
-			    <groupId>org.apache.tomcat.embed</groupId>
-			    <artifactId>tomcat-embed-websocket</artifactId>
-			    <version>${tomcat.version}</version>
+				<groupId>org.apache.tomcat.embed</groupId>
+				<artifactId>tomcat-embed-websocket</artifactId>
+				<version>${tomcat.version}</version>
 			</dependency>
-			
+
 			<!-- test dependencies -->
 			<dependency>
 				<groupId>commons-io</groupId>
@@ -357,7 +368,7 @@
 			<dependency>
 				<groupId>org.mockito</groupId>
 				<artifactId>mockito-core</artifactId>
-				<version>${mocktio.version}</version>
+				<version>${mockito.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>org.hamcrest</groupId>
@@ -373,6 +384,16 @@
 				<groupId>io.rest-assured</groupId>
 				<artifactId>rest-assured</artifactId>
 				<version>${rest-assured.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.squareup.okhttp3</groupId>
+				<artifactId>mockwebserver</artifactId>
+				<version>${okhttp.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.squareup.okhttp3</groupId>
+				<artifactId>okhttp</artifactId>
+				<version>${okhttp.version}</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
@@ -426,10 +447,10 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-javadoc-plugin</artifactId>
 				<version>${maven-javadoc-plugin.version}</version>
-			    <configuration>
-			        <source>8</source>
-			        <detectJavaApiLink>false</detectJavaApiLink>
-			    </configuration>
+				<configuration>
+					<source>8</source>
+					<detectJavaApiLink>false</detectJavaApiLink>
+				</configuration>
 				<executions>
 					<execution>
 						<id>attach-javadocs</id>
@@ -468,7 +489,7 @@
 						</goals>
 						<phase>verify</phase>
 					</execution>
-				</executions>				
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.owasp</groupId>
@@ -502,7 +523,7 @@
 				<version>2.11.0</version>
 				<configuration>
 					<configFile>${maven.multiModuleProjectDirectory}/.eclipse-formatter-config.xml</configFile>
-				</configuration>				
+				</configuration>
 			</plugin>
 		</plugins>
 		<pluginManagement>
@@ -533,12 +554,12 @@
 			<activation>
 				<activeByDefault>false</activeByDefault>
 			</activation>
-		</profile>		
+		</profile>
 		<profile>
 			<!-- mvn -P release release:perform -->
 			<id>release</id>
 			<properties>
-				<!-- this is useful when the desired key is not the default (first) export 
+				<!-- this is useful when the desired key is not the default (first) export
 					GPG_KEY_NAME=ABCDEF01 -->
 				<gpg.executable>gpg</gpg.executable>
 				<gpg.keyname>${env.GPG_KEY_NAME}</gpg.keyname>
@@ -574,6 +595,8 @@
 		<module>jwt-server/jwt-verifier/jwt-verifier-core</module>
 		<module>jwt-server/jwt-verifier/jwt-verifier-auth0</module>
 		<module>jwt-client/jwt-client-core</module>
+		<module>jwt-client/jwt-client-spring-core</module>
+		<module>jwt-client/jwt-client-spring-cloud</module>
 		<module>jwt-client/jwt-client-spring</module>
 		<module>jwt-server/spring/jwt-spring-core</module>
 		<module>jwt-server/spring/jwt-spring-auth0</module>
@@ -582,7 +605,7 @@
 	</modules>
 
 	<distributionManagement>
-	    <!-- Pass in -Ddistribution-respository-id=myServeId for custom credentials -->
+		<!-- Pass in -Ddistribution-respository-id=myServeId for custom credentials -->
 		<snapshotRepository>
 			<id>${distribution-respository-id}</id>
 			<url>https://oss.sonatype.org/content/repositories/snapshots</url>

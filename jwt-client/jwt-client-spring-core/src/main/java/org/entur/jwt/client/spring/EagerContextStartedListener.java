@@ -1,13 +1,13 @@
 package org.entur.jwt.client.spring;
 
-import java.util.Map;
-import java.util.Map.Entry;
-
 import org.entur.jwt.client.AccessTokenProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextStartedEvent;
+
+import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * 

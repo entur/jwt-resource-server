@@ -1,10 +1,5 @@
 package org.entur.jwt.client.spring;
 
-import static com.google.common.truth.Truth.assertThat;
-import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.Mockito.when;
-
 import org.entur.jwt.client.AccessToken;
 import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenHealth;
@@ -21,6 +16,11 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.annotation.DirtiesContext.ClassMode;
 import org.springframework.test.context.ContextConfiguration;
 
+import static com.google.common.truth.Truth.assertThat;
+import static io.restassured.RestAssured.given;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.when;
+
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @DirtiesContext(classMode = ClassMode.BEFORE_EACH_TEST_METHOD)
 @ContextConfiguration(classes = {TestApplication.class})
@@ -28,7 +28,7 @@ public class Auth0MockBeanTest {
 
     @LocalServerPort
     private int randomServerPort;
-    
+
     @MockBean
     private AccessTokenProvider accessTokenProvider;
 

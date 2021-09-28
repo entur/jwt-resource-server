@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.4.4</version>
+		<version>2.5.4</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>org.entur.example</groupId>
@@ -13,7 +13,7 @@
 	<version>1.1.13-SNAPSHOT</version>
 	<name>jwt-client-spring-boot-example</name>
 	<description>Demo project for Spring Boot</description>
-	
+
 	<properties>
 		<java.version>1.8</java.version>
 		<owasp-dependency-check.version>6.1.5</owasp-dependency-check.version>
@@ -25,7 +25,7 @@
             <groupId>org.entur.jwt-rs</groupId>
             <artifactId>jwt-client-spring</artifactId>
 			<version>${project.version}</version>
-        </dependency>		
+        </dependency>
 		<dependency>
 		    <groupId>org.springframework.boot</groupId>
 		    <artifactId>spring-boot-starter-security</artifactId>
@@ -46,7 +46,7 @@
 		    <groupId>org.springframework.boot</groupId>
 		    <artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
-		
+
 		<!-- test -->
 		<dependency>
 		    <groupId>org.springframework.boot</groupId>
@@ -99,7 +99,7 @@
 			<groupId>io.rest-assured</groupId>
 			<artifactId>rest-assured</artifactId>
 		    <scope>test</scope>
-		</dependency>		
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -114,7 +114,7 @@
 				<version>2.11.0</version>
 				<configuration>
 					<configFile>${maven.multiModuleProjectDirectory}/.eclipse-formatter-config.xml</configFile>
-				</configuration>				
+				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.owasp</groupId>

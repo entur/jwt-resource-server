@@ -1,4 +1,4 @@
-# jwt-client-spring
+# jwt-client-spring ('classic')
 Spring Boot starter for jwt-client. The client creates its own `RestTemplate` for performing external calls.
 
 See [Auth0SingleClientTest] for a mocking example.

@@ -1,11 +1,5 @@
 package org.entur.jwt.client.spring;
 
-import static com.google.common.truth.Truth.assertThat;
-import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
 import org.entur.jwt.client.AccessToken;
 import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenHealth;
@@ -24,6 +18,12 @@ import org.springframework.test.annotation.DirtiesContext.ClassMode;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 
+import static com.google.common.truth.Truth.assertThat;
+import static io.restassured.RestAssured.given;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @TestPropertySource(locations = "/application-auth0-single.properties")
 @DirtiesContext(classMode = ClassMode.BEFORE_EACH_TEST_METHOD)
@@ -32,7 +32,7 @@ public class Auth0BeanTest {
 
     @Configuration
     public static class MyOverrideConfiguration {
-        
+
         @Bean
         public AccessTokenProvider myClient() throws AccessTokenException {
             AccessTokenProvider mock = mock(AccessTokenProvider.class);

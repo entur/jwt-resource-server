@@ -15,7 +15,7 @@
         <lognet.version>4.5.3</lognet.version>
         <os-maven-plugin.version>1.7.0</os-maven-plugin.version>
         <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
-    </properties>	
+    </properties>
 
     <dependencies>
         <dependency>
@@ -109,6 +109,7 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
