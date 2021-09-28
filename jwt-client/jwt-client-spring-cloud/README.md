@@ -17,7 +17,7 @@ Maven coordinates:
 Gradle coordinates:
 
 ```groovy
-api("org.entur.jwt-rs:jwt-client-spring:${jwtResourceServerVersion}")
+api("org.entur.jwt-rs:jwt-client-spring-cloud:${jwtResourceServerVersion}")
 ```
 
 [Auth0SingleClientTest]: src/test/java/org/entur/jwt/client/springreactive/Auth0SingleClientTest.java
