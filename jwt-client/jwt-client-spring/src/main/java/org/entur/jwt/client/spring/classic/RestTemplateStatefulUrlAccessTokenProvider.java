@@ -4,10 +4,12 @@ import org.entur.jwt.client.AbstractStatefulUrlAccessTokenProvider;
 import org.entur.jwt.client.UrlAccessTokenProvider;
 import org.springframework.core.io.Resource;
 import org.springframework.http.*;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Arrays;
@@ -43,9 +45,12 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
         HttpEntity<byte[]> request = new HttpEntity<>(body, headers);
 
         try {
-            return restTemplate.exchange(url.toURI(), HttpMethod.POST, request, Resource.class);
+            URI uri = url.toURI();
+            return restTemplate.exchange(uri, HttpMethod.POST, request, Resource.class);
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException(e);
+        } catch(RestClientException e) {
+            throw new IOException(e);
         }
     }
 
