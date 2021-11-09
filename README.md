@@ -1,8 +1,3 @@
-
-
-
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=entur_jwt-resource-server&metric=coverage)](https://sonarcloud.io/dashboard?id=entur_jwt-resource-server) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=entur_jwt-resource-server&metric=alert_status)](https://sonarcloud.io/dashboard?id=entur_jwt-resource-server)
-
 # jwt-resource-server
 
 Tools for synchronous (servlet-based) __OpenID resource servers__ relying on use of [Access Tokens]([https://auth0.com/docs/tokens/access-tokens](https://auth0.com/docs/tokens/access-tokens)) for authorization. These come in the form of JSON Web Tokens (JWT) issued by Authorization Servers like Auth0 and Keycloak. Authorization Servers __sign JWTs__ with private keys, resource servers then download the corresponding public keys from the Authorization Servers and __validate the JWTs__ by verifying the signature.
