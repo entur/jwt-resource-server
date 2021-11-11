@@ -34,6 +34,7 @@ In order to keep complexity (and risk) down, the library wraps existing third pa
  * proactive background refresh of keys and tokens
  * keys and token health status (on last remote invocation)
  * annotation-based token mocking with test method signature argument support
+ * open/closed endpoint filter, so that requests to closed endpoints can be proactively rejected before payload is unmarshalled
 
 Async is not yet supported.
 
