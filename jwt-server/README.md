@@ -114,12 +114,11 @@ To expose [actuator endpoints](https://docs.spring.io/spring-boot/docs/current/r
 
 ```yaml
 entur:
-  jwt:
-    authorization:
-      permit-all:
-        ant-matcher:
-          patterns:
-           - /actuator/**
+  authorization:
+    permit-all:
+      ant-matcher:
+        patterns:
+          - /actuator/**
 ```
 
 ### Adding fine-grained security to your Controller
