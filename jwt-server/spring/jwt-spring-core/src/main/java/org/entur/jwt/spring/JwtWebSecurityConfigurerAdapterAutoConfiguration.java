@@ -38,7 +38,7 @@ public class JwtWebSecurityConfigurerAdapterAutoConfiguration {
     public static class AuthorizationConfigurationGuard {
 
         public AuthorizationConfigurationGuard() {
-            throw new IllegalStateException("Authorization does not work for custom " + WebSecurityConfigurerAdapter.class.getSimpleName() + ". Add 'entur.authorization.enabled=false' or disable this starter using @SpringBootApplication(exclude = {JwtWebSecurityConfigurerAdapterAutoConfiguration.class}).");
+            throw new IllegalStateException("Authorization does not work for custom spring filter chain. Add 'entur.authorization.enabled=false' or disable this starter using @SpringBootApplication(exclude = {JwtWebSecurityConfigurerAdapterAutoConfiguration.class}).");
         }
     }
 
@@ -48,7 +48,7 @@ public class JwtWebSecurityConfigurerAdapterAutoConfiguration {
     public static class JwtConfigurationGuard {
 
         public JwtConfigurationGuard() {
-            throw new IllegalStateException("JWT filter does not work for custom " + WebSecurityConfigurerAdapter.class.getSimpleName() + ". Add 'entur.jwt.enabled=false' or disable this starter @SpringBootApplication(exclude = {JwtWebSecurityConfigurerAdapterAutoConfiguration.class}).");
+            throw new IllegalStateException("JWT filter does not work for custom spring filter chain. Add 'entur.jwt.enabled=false' or disable this starter using @SpringBootApplication(exclude = {JwtWebSecurityConfigurerAdapterAutoConfiguration.class}).");
         }
     }
 
