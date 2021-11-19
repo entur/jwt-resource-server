@@ -1,7 +1,5 @@
 package org.entur.jwt.spring.rest;
 
-import static com.google.common.truth.Truth.assertThat;
-
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,12 +8,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.web.server.LocalServerPort;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+import static com.google.common.truth.Truth.assertThat;
 
 /**
  * 
@@ -28,6 +25,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 @AuthorizationServer
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
+@TestPropertySource(properties = {"entur.authorization.permit-all.enabled=false"})
 public class GreetingControllerUnauthenticated {
 
     @LocalServerPort

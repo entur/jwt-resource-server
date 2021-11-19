@@ -109,6 +109,8 @@ MVC matchers are in general __broader than Ant matchers__:
  * antMatchers("/unprotected") matches only the exact `/unprotected` URL
  * mvcMatchers("/unprotected") matches `/unprotected` as well as `/unprotected/`, `/unprotected.html`, `/unprotected.xyz`
 
+Also note that if the JWT filter knows there is no permit-all (while `entur.authorization.enabled=true`), it will reject
+requests without JWT earlier in the chain.
 #### Actuator
 To expose [actuator endpoints](https://docs.spring.io/spring-boot/docs/current/reference/html/production-ready-features.html), add
 
@@ -293,23 +295,33 @@ If no mode is set, no configuration is added by this starter. This allows for ad
 
 ```java
 @Bean("corsConfigurationSource")
-public CorsConfigurationSource myCorsConfigurationSource() {
-    // ...
-} 
+public CorsConfigurationSource myCorsConfigurationSource(){
+        // ...
+        } 
 ```
 
-Note that the bean name must be as above in order for Spring to pick up the bean. 
+Note that the bean name must be as above in order for Spring to pick up the bean.
 
 #### CORS and API gateway
-In general, the API gateway should respond with HTTP 403 to requests with unknown origins. All other requests, including OPTIONS calls, can be sent backwards to the Spring application.
+
+In general, the API gateway should respond with HTTP 403 to requests with unknown origins. All other requests, including
+OPTIONS calls, can be sent backwards to the Spring application.
+
+### Custom WebSecurityConfigurerAdapter
+
+This starter only configures a single `WebSecurityConfigurerAdapter`, and we recommend you do so as well.
+Exclude `JwtWebSecurityConfigurerAdapterAutoConfiguration` starter and roll your own, possibly borrowing
+from `AuthorizationWebSecurityConfigurerAdapter` and/or `JwtFilterWebSecurityConfigurerAdapter`.
 
 ### Implementing framework support
+
 The core implementation expects a few beans to be present:
 
- * JwtVerifierFactory - JwtVerifier factory
- * JwtClaimExtractor - JWT claim extractor for log context (MDC) support and authorization detailing.
- * JwtAuthorityMapper - mapping from JWT (scope, permissions, etc) to authority
- * JwtArgumentResolver - argument resolver support. Transforms the JwtAuthenticationToken to an object of your desire for injection in downstream method arguments.
+* JwtVerifierFactory - JwtVerifier factory
+* JwtClaimExtractor - JWT claim extractor for log context (MDC) support and authorization detailing.
+* JwtAuthorityMapper - mapping from JWT (scope, permissions, etc) to authority
+* JwtArgumentResolver - argument resolver support. Transforms the JwtAuthenticationToken to an object of your desire for
+  injection in downstream method arguments.
 
 See [jwt-spring-auth0] for a concrete implementation example.
 

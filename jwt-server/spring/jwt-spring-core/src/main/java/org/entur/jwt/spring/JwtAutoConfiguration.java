@@ -21,15 +21,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.core.annotation.Order;
-import org.springframework.security.config.BeanIds;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -40,8 +32,6 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import java.util.*;
 import java.util.Map.Entry;
 
-import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
-
 @Configuration
 @ConditionalOnClass(WebSecurityConfigurerAdapter.class)
 @EnableConfigurationProperties({ SecurityProperties.class })
@@ -49,146 +39,6 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
 public class JwtAutoConfiguration {
 
     private static Logger log = LoggerFactory.getLogger(JwtAutoConfiguration.class);
-
-    private static class NoUserDetailsService implements UserDetailsService {
-        @Override
-        public UserDetails loadUserByUsername(String username) {
-            throw new UsernameNotFoundException("");
-        }
-    }
-
-    @Configuration
-    @ConditionalOnBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
-    @ConditionalOnProperty(name = {"entur.authorization.enabled"}, havingValue = "true", matchIfMissing = true)
-    public static class AuthorizationConfigurationGuard {
-
-        public AuthorizationConfigurationGuard() {
-            throw new IllegalStateException("Authorization does not work for custom " + WebSecurityConfigurerAdapter.class.getSimpleName() + ". Add 'entur.authorization.enabled=false' or disable this starter.");
-        }
-    }
-
-    @Configuration
-    @ConditionalOnBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
-    @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
-    public static class JwtConfigurationGuard {
-
-        public JwtConfigurationGuard() {
-            throw new IllegalStateException("Authorization does not work for custom " + WebSecurityConfigurerAdapter.class.getSimpleName() + ". Add 'entur.jwt.enabled=false' or disable this starter.");
-        }
-
-    }
-
-    @Configuration
-    @ConditionalOnMissingBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
-    @EnableGlobalMethodSecurity(prePostEnabled = true)
-    @Order(2)
-    public static class DefaultEnturWebSecurityConfig extends WebSecurityConfigurerAdapter {
-
-        private final JwtAuthenticationFilter<?> filter;
-
-        @Autowired
-        public DefaultEnturWebSecurityConfig(JwtAuthenticationFilter<?> filter) {
-            this.filter = filter;
-        }
-
-        @Bean
-        @Override
-        public UserDetailsService userDetailsService() {
-            // avoid the default user.
-            return new NoUserDetailsService();
-        }
-
-        @Override
-        protected void configure(HttpSecurity http) throws Exception {
-            // implementation note: this filter runs before the dispatcher servlet, and so
-            // is out of reach of any ControllerAdvice
-            log.info("Configure JWT filter");
-            http.sessionManagement()
-                    .sessionCreationPolicy(STATELESS)
-                    .and()
-                    .csrf().disable()
-                    .formLogin().disable()
-                    .httpBasic().disable()
-                    .logout().disable()
-                    .cors()
-                    .and()
-                    .addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class);
-        }
-    }
-
-
-    @Configuration
-    @Order(3)
-    @ConditionalOnProperty(name = {"entur.authorization.enabled"}, havingValue = "true", matchIfMissing = true)
-    public static class AuthorizationEnturWebSecurityConfig extends WebSecurityConfigurerAdapter {
-
-        private final SecurityProperties properties;
-
-        @Autowired
-        public AuthorizationEnturWebSecurityConfig(SecurityProperties properties) {
-            this.properties = properties;
-        }
-
-        @Override
-        protected void configure(HttpSecurity http) throws Exception {
-            // implementation note: this filter runs before the dispatcher servlet, and so
-            // is out of reach of any ControllerAdvice
-            log.info("Configure authorization filter");
-            AuthorizationProperties authorizationProperties = properties.getAuthorization();
-            if (authorizationProperties.isEnabled()) {
-                PermitAll permitAll = authorizationProperties.getPermitAll();
-                if (permitAll.isActive()) {
-                    configurePermitAll(http, permitAll);
-                }
-                http.authorizeRequests().anyRequest().fullyAuthenticated();
-            }
-        }
-
-        protected void configurePermitAll(HttpSecurity http, PermitAll permitAll) throws Exception {
-
-            MatcherConfiguration mvcMatchers = permitAll.getMvcMatcher();
-            if (mvcMatchers.isActive()) {
-                configurePermitAllMvcMatchers(http, mvcMatchers);
-            }
-
-            MatcherConfiguration antMatchers = permitAll.getAntMatcher();
-            if (antMatchers.isActive()) {
-                configurePermitAllAntMatchers(http, antMatchers);
-            }
-        }
-
-        protected void configurePermitAllAntMatchers(HttpSecurity http, MatcherConfiguration antMatchers)
-                throws Exception {
-            if (antMatchers.hasPatterns()) {
-                // for all methods
-                http.authorizeRequests().antMatchers(antMatchers.getPatternsAsArray()).permitAll();
-            }
-
-            // for specific methods
-            for (HttpMethodMatcher httpMethodMatcher : antMatchers.getMethod().getActiveMethods()) {
-                // check that active, empty patterns will be interpreted as permit all of the method type (empty patterns vs varargs)
-                if (httpMethodMatcher.isActive()) {
-                    http.authorizeRequests().antMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();
-                }
-            }
-        }
-
-        protected void configurePermitAllMvcMatchers(HttpSecurity http, MatcherConfiguration mvcMatchers)
-                throws Exception {
-            if (mvcMatchers.hasPatterns()) {
-                // for all methods
-                http.authorizeRequests().mvcMatchers(mvcMatchers.getPatternsAsArray()).permitAll();
-            }
-
-            // for specific methods
-            for (HttpMethodMatcher httpMethodMatcher : mvcMatchers.getMethod().getActiveMethods()) {
-                // check that active, empty patterns will be interpreted as permit all of the method type (empty patterns vs varargs)
-                if (httpMethodMatcher.isActive()) {
-                    http.authorizeRequests().mvcMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();
-                }
-            }
-        }
-    }
 
     @Configuration
     public static class DefaultEnturWebMvcConfigurer implements WebMvcConfigurer {
@@ -394,14 +244,6 @@ public class JwtAutoConfiguration {
         source.registerCorsConfiguration("/**", config);
 
         return source;
-    }
-
-    protected List<String> getDefaultMethods() {
-        return Arrays.asList("GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS");
-    }
-
-    protected List<String> getDefaultAllowedHeaders() {
-        return Arrays.asList("*");
     }
 
     @Bean
