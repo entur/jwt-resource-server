@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>org.entur.example</groupId>
 	<artifactId>jwt-resource-server-spring-boot-example</artifactId>
-	<version>1.1.15-SNAPSHOT</version>
+	<version>1.1.16-SNAPSHOT</version>
 	<name>jwt-resource-server-spring-boot-example</name>
 	<description>Demo project for Spring Boot</description>
 
