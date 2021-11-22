@@ -310,9 +310,9 @@ If no mode is set, no configuration is added by this starter. This allows for ad
 
 ```java
 @Bean("corsConfigurationSource")
-public CorsConfigurationSource myCorsConfigurationSource(){
-        // ...
-        } 
+public CorsConfigurationSource myCorsConfigurationSource() {
+    // ...
+} 
 ```
 
 Note that the bean name must be as above in order for Spring to pick up the bean.
