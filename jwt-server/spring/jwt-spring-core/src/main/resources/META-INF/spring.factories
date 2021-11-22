@@ -1,2 +1,2 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-org.entur.jwt.spring.JwtAutoConfiguration
+org.entur.jwt.spring.JwtAutoConfiguration,org.entur.jwt.spring.JwtWebSecurityConfigurerAdapterAutoConfiguration

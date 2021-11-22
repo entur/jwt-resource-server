@@ -1,7 +1,5 @@
 package org.entur.jwt.spring.rest;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.junit5.headers.KeyIdHeader;
@@ -12,11 +10,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.web.server.LocalServerPort;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
+
+import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 
  * Test accessing methods without an unknown token token.
@@ -79,6 +75,7 @@ public class InvalidAuthenticationTokenTest {
         String url = "http://localhost:" + randomServerPort + "/protected";
         
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        System.out.println(response.getHeaders().get("Location"));
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
     

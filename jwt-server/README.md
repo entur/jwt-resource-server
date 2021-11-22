@@ -40,7 +40,7 @@ For YAML, this amounts to something like
 ```yaml
 entur:
   jwt:
-    enabled: true
+    enabled: true # note: this is the default value
     tenants:
       myKeycloak: # i.e. tenant id
         issuer: https://myRealm.keycloak.com
@@ -65,18 +65,24 @@ entur:
 
 The filter matches ids ending with `*` (for a prefix check), i.e. `partner-*`.
 
-## Security configuration
-By default, all requests must be so-called _fully authenticated_. In other words all requests must have a valid JWT token (of any of the configured tenants). 
+## Authorization configuration
 
-Open endpoints (i.e. permitted for all, open to the world) must be explicitly configured using MVC or Ant matchers:
+By default, all requests must be so-called _fully authenticated_. In other words all requests must have a valid JWT
+token (from any of the configured tenants).
+
+Open endpoints (i.e. permitted for all, open to the world) must be explicitly configured (white-listed) using MVC or Ant
+matchers.
+
+Example for open endpoints:
 
 ```yaml
 entur:
   authorization:
+    enabled: true # note: this is the default value
     permit-all:
       ant-matcher:
         patterns:
-         - /unprotected/**
+          - /unprotected/**
       mvc-matcher:
         patterns:
          - /some/path/{myVariable}
@@ -101,16 +107,27 @@ entur:
         method:	
           get:
             patterns:
-             - /some/path/{myVariable}
+              - /some/path/{myVariable}
 ```
 
 MVC matchers are in general __broader than Ant matchers__:
 
- * antMatchers("/unprotected") matches only the exact `/unprotected` URL
- * mvcMatchers("/unprotected") matches `/unprotected` as well as `/unprotected/`, `/unprotected.html`, `/unprotected.xyz`
+* antMatchers("/unprotected") matches only the exact `/unprotected` URL
+* mvcMatchers("/unprotected") matches `/unprotected` as well as `/unprotected/`, `/unprotected.html`, `/unprotected.xyz`
+
+Also note that if the JWT filter knows there is no permit-all (while `entur.authorization.enabled=true`), it will reject
+requests without JWT earlier in the chain.
+
+Implementation note: The _fully authenticated_ check will take effect before request unmarshalling and thus before
+interaction with closed REST controller endpoints. So unwanted requests (i.e. requests without a token which obviously
+will fail `@PreAuthorize` authorization checks in the controller) are rejected as early as possible, in a secure and
+lightweight way.
 
 #### Actuator
-To expose [actuator endpoints](https://docs.spring.io/spring-boot/docs/current/reference/html/production-ready-features.html), add
+
+To
+expose [actuator endpoints](https://docs.spring.io/spring-boot/docs/current/reference/html/production-ready-features.html)
+, add
 
 ```yaml
 entur:
@@ -298,18 +315,28 @@ public CorsConfigurationSource myCorsConfigurationSource() {
 } 
 ```
 
-Note that the bean name must be as above in order for Spring to pick up the bean. 
+Note that the bean name must be as above in order for Spring to pick up the bean.
 
 #### CORS and API gateway
-In general, the API gateway should respond with HTTP 403 to requests with unknown origins. All other requests, including OPTIONS calls, can be sent backwards to the Spring application.
+
+In general, the API gateway should respond with HTTP 403 to requests with unknown origins. All other requests, including
+OPTIONS calls, can be sent backwards to the Spring application.
+
+### Custom WebSecurityConfigurerAdapter
+
+This starter only configures a single `WebSecurityConfigurerAdapter`, and we recommend you do so as well.
+Exclude `JwtWebSecurityConfigurerAdapterAutoConfiguration` starter and roll your own, possibly borrowing
+from `AuthorizationWebSecurityConfigurerAdapter` and/or `JwtFilterWebSecurityConfigurerAdapter`.
 
 ### Implementing framework support
+
 The core implementation expects a few beans to be present:
 
- * JwtVerifierFactory - JwtVerifier factory
- * JwtClaimExtractor - JWT claim extractor for log context (MDC) support and authorization detailing.
- * JwtAuthorityMapper - mapping from JWT (scope, permissions, etc) to authority
- * JwtArgumentResolver - argument resolver support. Transforms the JwtAuthenticationToken to an object of your desire for injection in downstream method arguments.
+* JwtVerifierFactory - JwtVerifier factory
+* JwtClaimExtractor - JWT claim extractor for log context (MDC) support and authorization detailing.
+* JwtAuthorityMapper - mapping from JWT (scope, permissions, etc) to authority
+* JwtArgumentResolver - argument resolver support. Transforms the JwtAuthenticationToken to an object of your desire for
+  injection in downstream method arguments.
 
 See [jwt-spring-auth0] for a concrete implementation example.
 
