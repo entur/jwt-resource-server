@@ -1,0 +1,39 @@
+entur:
+  jwt:
+    enabled: true
+    claims:
+      expires-at-leeway: 15
+      issued-at-leeway: 5
+      audiences:
+        - mock.my.audience
+    mdc:
+      enabled: true
+      mappings:
+      - from: issuer
+        to: issuer
+    jwk:
+      health-indicator:
+        enabled: true
+      cache:
+        preemptive:
+          eager:
+            enabled: true
+  cors:
+    enabled: true
+    mode: api
+  authorization:
+    permit-all:
+      mvc-matcher:
+        patterns:
+         - /actuator/health
+         - /actuator/health/*
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,jwks
+          
+logging.level.org.entur: DEBUG
