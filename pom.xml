@@ -68,7 +68,7 @@
 		<jwks-rsa.version>0.20.0</jwks-rsa.version>
 		<java-jwt.version>3.18.2</java-jwt.version>
 		<jadler.version>1.3.0</jadler.version>
-		<spring-boot.version>2.6.0</spring-boot.version>
+		<spring-boot.version>2.6.1</spring-boot.version>
 		<spring.version>5.3.13</spring.version>
 		<rest-assured.version>4.3.3</rest-assured.version>
 		<okhttp.version>4.9.1</okhttp.version>
@@ -318,11 +318,6 @@
 
 			<!-- artifact-specific dependency management due to security issues -->
 			<dependency>
-				<groupId>org.yaml</groupId>
-				<artifactId>snakeyaml</artifactId>
-				<version>${snakeyaml.version}</version>
-			</dependency>
-			<dependency>
 				<groupId>org.apache.tomcat.embed</groupId>
 				<artifactId>tomcat-embed-core</artifactId>
 				<version>${tomcat.version}</version>
@@ -335,6 +330,11 @@
 			<dependency>
 				<groupId>org.apache.tomcat.embed</groupId>
 				<artifactId>tomcat-embed-websocket</artifactId>
+				<version>${tomcat.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.tomcat.embed</groupId>
+				<artifactId>tomcat-embed-core</artifactId>
 				<version>${tomcat.version}</version>
 			</dependency>
 
