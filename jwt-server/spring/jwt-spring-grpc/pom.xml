@@ -9,14 +9,6 @@
     </parent>
     <artifactId>jwt-spring-grpc</artifactId>
 
-    <properties>
-        <grpc.version>1.38.0</grpc.version>
-        <proto.version>3.17.3</proto.version>
-        <lognet.version>4.5.3</lognet.version>
-        <os-maven-plugin.version>1.7.0</os-maven-plugin.version>
-        <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>org.entur.jwt-rs</groupId>

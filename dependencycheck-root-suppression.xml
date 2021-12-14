@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <suppressions
-	xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.2.xsd">
+		xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
 	<suppress>
 		<!-- spring security -->
 		<cve>CVE-2018-1258</cve>
@@ -27,20 +27,29 @@
 
 	<!-- micrometer false positive -->
 	<suppress>
-	   <cve>CVE-2008-1392</cve>
+		<cve>CVE-2008-1392</cve>
 	</suppress>
 	<suppress>
-	   <cve>CVE-2009-1147</cve>
+		<cve>CVE-2009-1147</cve>
 	</suppress>
 
-    <!-- json-smart (from transitive from spring-boot-starter-test)-->
-    <suppress>
-        <cve>CVE-2021-27568</cve>
-    </suppress>
+	<!-- json-smart (from transitive from spring-boot-starter-test)-->
+	<suppress>
+		<cve>CVE-2021-27568</cve>
+	</suppress>
 
-    <!-- old spring security (from camel) -->
-    <suppress>
-        <cve>CVE-2021-22112</cve>
-    </suppress>
+	<!-- old spring security (from camel) -->
+	<suppress>
+		<cve>CVE-2021-22112</cve>
+	</suppress>
+
+	<!-- old log 4j -->
+	<suppress>
+		<cve>CVE-2021-44228</cve>
+	</suppress>
+	<suppress>
+		<packageUrl regex="true">^pkg:maven/io\.netty/netty\-tcnative\-classes@.*$</packageUrl>
+		<cpe>cpe:/a:netty:netty</cpe>
+	</suppress>
 
 </suppressions>
