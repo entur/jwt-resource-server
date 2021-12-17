@@ -18,7 +18,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 @AuthorizationServer
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@TestPropertySource(properties = { "entur.cors.mode=api", "entur.authorization.permit-all.mvc-matcher.patterns=/unprotected"})
+@TestPropertySource(properties = { "entur.cors.mode=api", "entur.authorization.permit-all.path-matcher.patterns=/unprotected"})
 public class CorsNoHostTest {
 
     @LocalServerPort

@@ -4,8 +4,7 @@ entur:
     claims:
       expires-at-leeway: 15
       issued-at-leeway: 5
-      audiences:
-        - mock.my.audience
+
     mdc:
       enabled: true
       mappings:
@@ -23,7 +22,7 @@ entur:
     mode: api
   authorization:
     permit-all:
-      mvc-matcher:
+      path-matcher:
         patterns:
          - /actuator/health
          - /actuator/health/*
@@ -35,5 +34,10 @@ management:
       group:
         readiness:
           include: readinessState,jwks
-          
+
+spring:
+  main:
+    web-application-type: reactive
+    allow-bean-definition-overriding: true
+
 logging.level.org.entur: DEBUG

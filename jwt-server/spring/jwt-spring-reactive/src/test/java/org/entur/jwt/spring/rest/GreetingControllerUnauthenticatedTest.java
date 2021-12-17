@@ -10,12 +10,13 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.http.*;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.test.web.reactive.server.WebTestClient;
 
 import static com.google.common.truth.Truth.assertThat;
 
 /**
  *
- * Test accessing methods without a token, and without any whitelist. 
+ * Test accessing methods without a token, and without any whitelist.
  *
  * So all request must be authenticated.
  *
@@ -26,56 +27,44 @@ import static com.google.common.truth.Truth.assertThat;
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 public class GreetingControllerUnauthenticatedTest {
 
-    @LocalServerPort
-    private int randomServerPort;
-
     @Autowired
-    private TestRestTemplate restTemplate;
+    private WebTestClient webTestClient;
 
     @Test
     public void testUnprotectedResourceNotOnWhitelist() {
-        HttpHeaders headers = new HttpHeaders();
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-
-        String url = "http://localhost:" + randomServerPort + "/unprotected";
-
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        webTestClient
+            .get()
+            .uri("/unprotected")
+            .exchange()
+            .expectStatus().isUnauthorized();
     }
 
     @Test
     public void testUnprotectedResourceWithOptionalTenantNotPresent() {
-        HttpHeaders headers = new HttpHeaders();
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-
-        String url = "http://localhost:" + randomServerPort + "/unprotected/optionalTenant";
-
-        ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        webTestClient
+            .get()
+            .uri("/unprotected/optionalTenant")
+            .exchange()
+            .expectStatus().isUnauthorized();
     }
 
     @Test
     public void testUnprotectedResourceWithRequiredTenantNotPresent() {
-        HttpHeaders headers = new HttpHeaders();
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-
-        String url = "http://localhost:" + randomServerPort + "/unprotected/requiredTenant";
-
-        ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        webTestClient
+            .get()
+            .uri("/unprotected/requiredTenant")
+            .exchange()
+            .expectStatus().isUnauthorized();
     }
-    
+
 
     @Test
     public void testProtectedResource() {
-        HttpHeaders headers = new HttpHeaders();
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-
-        String url = "http://localhost:" + randomServerPort + "/protected";
-
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        webTestClient
+            .get()
+            .uri("/protected")
+            .exchange()
+            .expectStatus().isUnauthorized();
     }
 
 
@@ -83,25 +72,20 @@ public class GreetingControllerUnauthenticatedTest {
     public void testProtectedResourceWithRequiredTenantNotPresent() {
         // note to self: this illustrates that the argument resolver runs BEFORE the
         // method permissions
-        HttpHeaders headers = new HttpHeaders();
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-
-        String url = "http://localhost:" + randomServerPort + "/protected/requiredTenant";
-
-        ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        webTestClient
+            .get()
+            .uri("/protected/requiredTenant")
+            .exchange()
+            .expectStatus().isUnauthorized();
     }
 
-    
+
     @Test
     public void testActuatorNotOnWhitelist() {
-        HttpHeaders headers = new HttpHeaders();
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-
-        String url = "http://localhost:" + randomServerPort + "/actuator/someother";
-
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        webTestClient
+            .get()
+            .uri("/actuator/someother")
+            .exchange()
+            .expectStatus().isUnauthorized();
     }
 }

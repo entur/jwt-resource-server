@@ -16,17 +16,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.restassured.http.ContentType;
 /**
- * 
+ *
  * Test accessing methods without a token, with a whitelist for unprotected endpoints.
- * 
+ *
  * Test that opening a specific method does not open other methods.
- * 
+ *
  */
 
 @AuthorizationServer
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@TestPropertySource(properties = { "entur.authorization.permit-all.mvc-matcher.method.get.patterns=/unprotected" })
+@TestPropertySource(properties = { "entur.authorization.permit-all.path-matcher.method.get.patterns=/unprotected" })
 public class GreetingControllerUnauthenticatedWhitelist2Test {
 
     @LocalServerPort
@@ -43,7 +43,7 @@ public class GreetingControllerUnauthenticatedWhitelist2Test {
             .assertThat()
             .statusCode(HttpStatus.OK.value());
     }
-    
+
     @Test
     public void postIsNotAllowed() throws Exception {
         given()
@@ -55,6 +55,6 @@ public class GreetingControllerUnauthenticatedWhitelist2Test {
         .then()
             .log().all()
             .assertThat()
-            .statusCode(HttpStatus.FORBIDDEN.value());
+            .statusCode(HttpStatus.UNAUTHORIZED.value());
     }
 }

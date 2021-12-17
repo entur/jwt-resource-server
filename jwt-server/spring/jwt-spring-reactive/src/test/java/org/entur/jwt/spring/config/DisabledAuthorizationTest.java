@@ -14,7 +14,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @TestPropertySource(properties = {"entur.authorization.enabled=false"})
 public class DisabledAuthorizationTest {
 
-
     @Test
     public void testContextLoads() {
     }

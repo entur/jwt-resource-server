@@ -7,8 +7,8 @@ import java.util.function.BiFunction;
 import org.entur.jwt.spring.filter.JwtAuthenticationToken;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.web.reactive.BindingContext;
 import org.springframework.web.reactive.result.method.HandlerMethodArgumentResolver;
 import org.springframework.web.server.ServerWebExchange;
@@ -36,34 +36,44 @@ public class JwtArgumentResolver implements HandlerMethodArgumentResolver {
 
     @Override
     public Mono<Object> resolveArgument(MethodParameter parameter, BindingContext bindingContext, ServerWebExchange exchange) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && !(authentication instanceof AnonymousAuthenticationToken)) {
-            if (authentication instanceof JwtAuthenticationToken) {
-                JwtAuthenticationToken token = (JwtAuthenticationToken) authentication;
-
-                Class<?> target = parameter.getParameterType();
-
-                Object tenant = transformer.apply(token.getClaims(), target);
-
-                Class<?> resolved = tenant.getClass();
-                if (target.isAssignableFrom(resolved)) {
-                    return Mono.just(tenant);
+        return ReactiveSecurityContextHolder.getContext()
+            .map(SecurityContext::getAuthentication)
+            .switchIfEmpty(Mono.defer(() -> {
+                if (parameter.isOptional()) {
+                    return Mono.empty();
                 }
 
+                throw new TenantExpectedAuthenticationException("Expected " + JwtAuthenticationToken.class.getName() + " authorization, was none");
+                }))
+            .map(authentication1 -> {
+                if (authentication1 != null && !(authentication1 instanceof AnonymousAuthenticationToken)) {
+                    if (authentication1 instanceof JwtAuthenticationToken) {
+                        JwtAuthenticationToken token = (JwtAuthenticationToken) authentication1;
+
+                        Class<?> target = parameter.getParameterType();
+
+                        Object tenant = transformer.apply(token.getClaims(), target);
+
+                        Class<?> resolved = tenant.getClass();
+                        if (target.isAssignableFrom(resolved)) {
+                            return tenant;
+                        }
+
+                        // return http 403 forbidden
+                        throw new UnexpectedJwtArgumentResolverResultException("Unexpected type " + resolved.getName() + " for parameter type " + target.getName());
+                    }
+                    if (parameter.isOptional()) {
+                        return Mono.empty();
+                    }
+                    // return http 403 forbidden
+                    throw new JwtArgumentResolverException("Expected " + JwtAuthenticationToken.class.getName() + " authorization, was " + authentication1.getClass().getName());
+                }
+                if (parameter.isOptional()) {
+                    return Mono.empty();
+                }
                 // return http 403 forbidden
-                throw new UnexpectedJwtArgumentResolverResultException("Unexpected type " + resolved.getName() + " for parameter type " + target.getName());
-            }
-            if (parameter.isOptional()) {
-                return null;
-            }
-            // return http 403 forbidden
-            throw new JwtArgumentResolverException("Expected " + JwtAuthenticationToken.class.getName() + " authorization, was " + authentication.getClass().getName());
-        }
-        if (parameter.isOptional()) {
-            return null;
-        }
-        // return http 403 forbidden
-        throw new TenantExpectedAuthenticationException("Expected " + JwtAuthenticationToken.class.getName() + " authorization, was none");
+                throw new TenantExpectedAuthenticationException("Expected " + JwtAuthenticationToken.class.getName() + " authorization, was none");
+            });
     }
 
 }

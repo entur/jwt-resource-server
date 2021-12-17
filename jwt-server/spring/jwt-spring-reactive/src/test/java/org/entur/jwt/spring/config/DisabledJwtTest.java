@@ -12,8 +12,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @TestPropertySource(properties = {"entur.jwt.enabled=false"})
 public class DisabledJwtTest {
 
-
-
     @Test
     public void testContextLoads() {
     }

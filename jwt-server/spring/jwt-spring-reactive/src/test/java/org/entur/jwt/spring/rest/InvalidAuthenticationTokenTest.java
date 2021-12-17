@@ -8,76 +8,66 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.http.*;
+import org.springframework.test.web.reactive.server.WebTestClient;
 
-import static org.assertj.core.api.Assertions.assertThat;
 /**
- * 
+ *
  * Test accessing methods without an unknown token token.
- * 
+ *
  */
 
 @AuthorizationServer
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 public class InvalidAuthenticationTokenTest {
 
-    @LocalServerPort
-    private int randomServerPort;
-    
     @Autowired
-    private TestRestTemplate restTemplate;
+    private WebTestClient webTestClient;
 
-    @Test 
+    @Test
     public void testUnprotectedResource() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer hvaomshelst");
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-
-        String url = "http://localhost:" + randomServerPort + "/unprotected";
-        
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-        
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        webTestClient
+            .get()
+            .uri("/unprotected")
+            .header("Authorization", "Bearer hvaomshelst")
+            .exchange()
+            .expectStatus().isUnauthorized();
     }
-    
-    @Test 
+
+    @Test
     public void testProtectedResource() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer hvaomshelst");
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-        
-        String url = "http://localhost:" + randomServerPort + "/protected";
-        
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        webTestClient
+            .get()
+            .uri("/protected")
+            .header("Authorization", "Bearer hvaomshelst")
+            .exchange()
+            .expectStatus().isUnauthorized();
     }
 
-    @Test 
+    @Test
     public void testProtectedResourceWithInvalidSignature(@AccessToken(audience = "https://my.audience") @Signature("cheat") String header) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer hvaomshelst");
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-        
-        String url = "http://localhost:" + randomServerPort + "/protected";
-        
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        webTestClient
+            .get()
+            .uri("/protected")
+            .header("Authorization", "Bearer hvaomshelst")
+            .exchange()
+            .expectStatus().isUnauthorized();
+
     }
-    
-    @Test 
+
+    @Test
     public void testProtectedResourceWithInvalidKeyId(@AccessToken(audience = "https://my.audience") @KeyIdHeader("abc") String header) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer hvaomshelst");
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-        
-        String url = "http://localhost:" + randomServerPort + "/protected";
-        
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-        System.out.println(response.getHeaders().get("Location"));
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        HttpHeaders responseHeaders = webTestClient
+            .get()
+            .uri("/protected")
+            .header("Authorization", "Bearer hvaomshelst")
+            .exchange()
+            .expectStatus().isUnauthorized()
+            .returnResult(String.class)
+            .getResponseHeaders();
+
+        System.out.println(responseHeaders.get("Location"));
     }
-    
-    
+
+
 }

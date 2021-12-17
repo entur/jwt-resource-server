@@ -1,7 +1,8 @@
 package org.entur.jwt.spring;
 
+import org.entur.jwt.spring.config.AuthorizationWebSecurityConfig;
 import org.entur.jwt.spring.config.JwtFilterWebSecurityConfig;
-import org.entur.jwt.spring.filter.JwtAuthenticationFilter;
+import org.entur.jwt.spring.filter.JwtServerAuthenticationConverter;
 import org.entur.jwt.spring.properties.SecurityProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,12 +12,14 @@ import org.springframework.boot.autoconfigure.condition.*;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.config.BeanIds;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.server.ServerAuthenticationEntryPoint;
 
 /**
  * This starter exists so that it can be excluded for those wanting to configure their own spring security filter chain.
@@ -55,50 +58,73 @@ public class JwtWebSecurityAutoConfiguration {
     @Configuration
     @ConditionalOnMissingBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
     @ConditionalOnExpression("${entur.authorization.enabled:true} && ${entur.jwt.enabled:true}")
-    @EnableGlobalMethodSecurity(prePostEnabled = true)
     @EnableWebFluxSecurity
+    @EnableReactiveMethodSecurity
     public static class CompositeWebSecurityConfiguration {
 
+        private AuthorizationWebSecurityConfig authorizationWebSecurityConfig;
         private JwtFilterWebSecurityConfig jwtFilterWebSecurityConfig;
 
         // combine everything into the same chain
 
         @Autowired
-        public CompositeWebSecurityConfiguration(SecurityProperties properties, JwtAuthenticationFilter<?> filter) {
+        public CompositeWebSecurityConfiguration(SecurityProperties properties, ReactiveAuthenticationManager manager, JwtServerAuthenticationConverter<?> converter, @Autowired(required = false) ServerAuthenticationEntryPoint serverAuthenticationEntryPoint) {
             log.info("Configure JWT authentication filter + authorization");
-            jwtFilterWebSecurityConfig = new JwtFilterWebSecurityConfig(filter, properties.getAuthorization(), properties.getJwt()) {
+            authorizationWebSecurityConfig = new AuthorizationWebSecurityConfig(properties.getAuthorization()) {
+            };
+            jwtFilterWebSecurityConfig = new JwtFilterWebSecurityConfig(manager, converter, serverAuthenticationEntryPoint) {
             };
         }
 
         @Bean
         public SecurityWebFilterChain configure(ServerHttpSecurity http) throws Exception {
-            return jwtFilterWebSecurityConfig.configure(http);
+            authorizationWebSecurityConfig.configure(http);
+            return jwtFilterWebSecurityConfig.configure(http).build();
         }
     }
 
-//    @Configuration
-//    @ConditionalOnMissingBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
-//    @ConditionalOnExpression("${entur.authorization.enabled:true} && !${entur.jwt.enabled:true}")
-//    @EnableGlobalMethodSecurity(prePostEnabled = true)
-//    public static class EnturAuthorizationWebSecurityConfigConfigurerAdapter extends JwtFilterWebSecurityConfig {
-//
-//        @Autowired
-//        public EnturAuthorizationWebSecurityConfigConfigurerAdapter(SecurityProperties properties) {
-//            super(properties.getAuthorization());
-//            log.info("Configure authorization");
-//        }
-//    }
+    @Configuration
+    @ConditionalOnMissingBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
+    @ConditionalOnExpression("${entur.authorization.enabled:true} && !${entur.jwt.enabled:true}")
+    @EnableWebFluxSecurity
+    @EnableReactiveMethodSecurity
+    public static class EnturAuthorizationWebSecurityConfigConfigurerAdapter {
+
+        private AuthorizationWebSecurityConfig authorizationWebSecurityConfig;
+
+        @Autowired
+        public EnturAuthorizationWebSecurityConfigConfigurerAdapter(SecurityProperties properties) {
+            this.authorizationWebSecurityConfig = new AuthorizationWebSecurityConfig(properties.getAuthorization()) {
+            };
+        }
+
+        @Bean
+        public SecurityWebFilterChain configure(ServerHttpSecurity http) throws Exception {
+            log.info("Configure authorization");
+            return authorizationWebSecurityConfig.configure(http).build();
+        }
+    }
 
     @Configuration
     @ConditionalOnMissingBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
     @ConditionalOnExpression("!${entur.authorization.enabled:true} && ${entur.jwt.enabled:true}")
-    @EnableGlobalMethodSecurity(prePostEnabled = true)
-    public static class EnturJwtFilterWebSecurityConfig extends JwtFilterWebSecurityConfig {
+    @EnableWebFluxSecurity
+    @EnableReactiveMethodSecurity
+    public static class EnturJwtFilterWebSecurityConfig {
+
+        private JwtFilterWebSecurityConfig jwtFilterWebSecurityConfig;
 
         @Autowired
-        public EnturJwtFilterWebSecurityConfig(JwtAuthenticationFilter<?> filter, SecurityProperties properties) {
-            super(filter, properties.getAuthorization(), properties.getJwt());
-            log.info("Configure JWT authentication filter and authorization");
+        public EnturJwtFilterWebSecurityConfig(ReactiveAuthenticationManager manager, JwtServerAuthenticationConverter<?> converter, @Autowired(required = false) ServerAuthenticationEntryPoint serverAuthenticationEntryPoint) {
+            this.jwtFilterWebSecurityConfig = new JwtFilterWebSecurityConfig(manager, converter, serverAuthenticationEntryPoint) {
+            };
+        }
+
+        @Bean
+        public SecurityWebFilterChain configure(ServerHttpSecurity http){
+            log.info("Configure JWT authentication filter");
+
+            return jwtFilterWebSecurityConfig.configure(http).build();
         }
     }
 

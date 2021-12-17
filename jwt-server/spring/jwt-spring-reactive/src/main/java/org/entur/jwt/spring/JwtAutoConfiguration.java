@@ -20,13 +20,11 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsConfigurationSource;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
-import org.springframework.web.reactive.HandlerAdapter;
 import org.springframework.web.reactive.config.WebFluxConfigurer;
 import org.springframework.web.reactive.result.method.annotation.ArgumentResolverConfigurer;
 
@@ -120,7 +118,7 @@ public class JwtAutoConfiguration {
         if (tenants.isEmpty()) {
             Set<String> disabled = new HashSet<>(jwtProperties.getTenants().keySet());
             disabled.removeAll(enabledTenants.keySet());
-            if (filter != null && !filter.isEmpty()) {
+            if (!filter.isEmpty()) {
                 throw new IllegalStateException("No configured tenants for filter '" + filter + "', candidates were " + enabledTenants.keySet() + " (" + disabled + " were disabled)" );
             } else {
                 throw new IllegalStateException("No configured tenants (" + disabled + " were disabled)");
@@ -160,9 +158,9 @@ public class JwtAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(JwtAuthenticationFilter.class)
-    public <T> JwtAuthenticationFilter<T> auth(SecurityProperties properties, JwtVerifier<T> verifier, @Autowired(required = false) JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtAuthorityMapper<T> authorityMapper,
-               JwtClaimExtractor<T> extractor, @Lazy HandlerAdapter handlerAdapter, JwtPrincipalMapper jwtPrincipalMapper, JwtDetailsMapper jwtDetailsMapper) {
+    @ConditionalOnMissingBean(JwtServerAuthenticationConverter.class)
+    public <T> JwtServerAuthenticationConverter<T> auth(SecurityProperties properties, JwtVerifier<T> verifier, @Autowired(required = false) JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtAuthorityMapper<T> authorityMapper,
+                                                        JwtClaimExtractor<T> extractor, JwtPrincipalMapper jwtPrincipalMapper, JwtDetailsMapper jwtDetailsMapper) {
         AuthorizationProperties authorizationProperties = properties.getAuthorization();
 
         PermitAll permitAll = authorizationProperties.getPermitAll();
@@ -174,7 +172,7 @@ public class JwtAutoConfiguration {
         } else {
             log.info("Authentication with Json Web Token is optional");
         }
-        return new JwtAuthenticationFilter<>(verifier, tokenMustBePresent, authorityMapper, mdcMapper, extractor, handlerAdapter, jwtPrincipalMapper, jwtDetailsMapper);
+        return new JwtServerAuthenticationConverter<>(verifier, authorityMapper, mdcMapper, extractor, tokenMustBePresent, jwtDetailsMapper, jwtPrincipalMapper);
     }
 
     @Bean("corsConfigurationSource")

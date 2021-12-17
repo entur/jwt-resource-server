@@ -153,6 +153,11 @@
 				<artifactId>jwt-spring-core</artifactId>
 				<version>${project.version}</version>
 			</dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>jwt-spring-reactive</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 			<dependency>
 				<groupId>${project.groupId}</groupId>
 				<artifactId>jwt-junit5-entur</artifactId>
@@ -609,6 +614,7 @@
 		<module>jwt-server/spring/jwt-spring-core</module>
         <module>jwt-server/spring/jwt-spring-reactive</module>
 		<module>jwt-server/spring/jwt-spring-auth0</module>
+        <module>jwt-server/spring/jwt-spring-reactive-auth0</module>
 		<module>jwt-server/spring/jwt-spring-camel</module>
 		<module>jwt-server/spring/jwt-spring-grpc</module>
 	</modules>

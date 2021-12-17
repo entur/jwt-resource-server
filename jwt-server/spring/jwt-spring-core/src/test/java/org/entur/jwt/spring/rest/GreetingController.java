@@ -72,7 +72,7 @@ public class GreetingController {
 
         return new Greeting(counter.incrementAndGet(), "Hello protected", null, authentication.getAuthorities());
     }
-    
+
     @GetMapping("/protected/optionalTenant")
     public Greeting protectedWithRequiredTenant(@Nullable Tenant tenant) {
         if (tenant != null) {
@@ -84,7 +84,7 @@ public class GreetingController {
             return new Greeting(counter.incrementAndGet(), "Hello protected without optional tenant");
         }
     }
-    
+
     @GetMapping("/protected/requiredTenant")
     @PreAuthorize("isFullyAuthenticated()")
     public Greeting protectedWithPartnerTenant(Tenant tenant) {
