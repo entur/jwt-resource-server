@@ -40,7 +40,7 @@ For YAML, this amounts to something like
 ```yaml
 entur:
   jwt:
-    enabled: true # note: this is the default value
+    enabled: true # note: false is the default value
     tenants:
       myKeycloak: # i.e. tenant id
         issuer: https://myRealm.keycloak.com
