@@ -7,7 +7,6 @@ import org.entur.jwt.spring.properties.PermitAll;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 
 /**
@@ -24,7 +23,6 @@ public abstract class AuthorizationWebSecurityConfig {
         this.authorizationProperties = authorizationProperties;
     }
 
-    @Bean
     public ServerHttpSecurity configure(ServerHttpSecurity http) throws Exception {
         log.info("Configure authorization filter");
         if (authorizationProperties.isEnabled()) {

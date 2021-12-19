@@ -9,12 +9,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.core.userdetails.*;
 import org.springframework.security.web.server.ServerAuthenticationEntryPoint;
 import org.springframework.security.web.server.authentication.AuthenticationWebFilter;
 import org.springframework.security.web.server.context.NoOpServerSecurityContextRepository;
+import reactor.core.publisher.Mono;
 
 
 /**
@@ -24,9 +23,9 @@ public abstract class JwtFilterWebSecurityConfig {
 
     private static Logger log = LoggerFactory.getLogger(JwtAutoConfiguration.class);
 
-    protected static class NoUserDetailsService implements UserDetailsService {
+    protected static class NoUserDetailsService implements ReactiveUserDetailsService {
         @Override
-        public UserDetails loadUserByUsername(String username) {
+        public Mono<UserDetails> findByUsername(String username) {
             throw new UsernameNotFoundException("");
         }
     }
@@ -42,6 +41,11 @@ public abstract class JwtFilterWebSecurityConfig {
     }
 
     @Bean
+    public ReactiveUserDetailsService reactiveUserDetailsService() {
+        // avoid the default user.
+        return new NoUserDetailsService();
+    }
+
     public ServerHttpSecurity configure(ServerHttpSecurity http) {
         log.info("Configure JWT filter");
 
