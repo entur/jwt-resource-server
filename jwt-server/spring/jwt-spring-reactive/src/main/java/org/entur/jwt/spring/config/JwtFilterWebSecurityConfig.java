@@ -12,6 +12,8 @@ import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.security.web.server.ServerAuthenticationEntryPoint;
 import org.springframework.security.web.server.authentication.AuthenticationWebFilter;
+import org.springframework.security.web.server.authentication.ServerAuthenticationFailureHandler;
+import org.springframework.security.web.server.authorization.ExceptionTranslationWebFilter;
 import org.springframework.security.web.server.context.NoOpServerSecurityContextRepository;
 import reactor.core.publisher.Mono;
 
@@ -31,12 +33,18 @@ public abstract class JwtFilterWebSecurityConfig {
     }
 
     protected final AuthenticationWebFilter authenticationFilter;
+    protected final ExceptionTranslationWebFilter exceptionTranslationWebFilter;
     protected final ServerAuthenticationEntryPoint serverAuthenticationEntryPoint;
 
     @Autowired
-    public JwtFilterWebSecurityConfig(ReactiveAuthenticationManager manager, JwtServerAuthenticationConverter<?> converter, ServerAuthenticationEntryPoint serverAuthenticationEntryPoint) {
+    public JwtFilterWebSecurityConfig(ReactiveAuthenticationManager manager, JwtServerAuthenticationConverter<?> converter, ServerAuthenticationEntryPoint serverAuthenticationEntryPoint, ServerAuthenticationFailureHandler serverAuthenticationFailureHandler) {
         this.authenticationFilter = new AuthenticationWebFilter(manager);
         this.authenticationFilter.setServerAuthenticationConverter(converter);
+        this.authenticationFilter.setAuthenticationFailureHandler(serverAuthenticationFailureHandler);
+
+        this.exceptionTranslationWebFilter = new ExceptionTranslationWebFilter();
+        this.exceptionTranslationWebFilter.setAuthenticationEntryPoint(serverAuthenticationEntryPoint);
+
         this.serverAuthenticationEntryPoint = serverAuthenticationEntryPoint;
     }
 
@@ -49,10 +57,6 @@ public abstract class JwtFilterWebSecurityConfig {
     public ServerHttpSecurity configure(ServerHttpSecurity http) {
         log.info("Configure JWT filter");
 
-        if (serverAuthenticationEntryPoint != null) {
-            http.exceptionHandling().authenticationEntryPoint(serverAuthenticationEntryPoint);
-        }
-
         return http
                 .securityContextRepository(NoOpServerSecurityContextRepository.getInstance())
                 .csrf().disable()
@@ -61,7 +65,10 @@ public abstract class JwtFilterWebSecurityConfig {
                 .logout().disable()
                 .cors()
                 .and()
-                .addFilterAt(authenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION);
+                .exceptionHandling().authenticationEntryPoint(serverAuthenticationEntryPoint)
+                .and()
+                .addFilterAt(authenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
+                .addFilterAt(exceptionTranslationWebFilter, SecurityWebFiltersOrder.EXCEPTION_TRANSLATION);
     }
 
 }

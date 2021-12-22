@@ -10,7 +10,6 @@ import org.entur.jwt.verifier.JwtVerifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -48,70 +47,57 @@ public class JwtServerAuthenticationConverter<T> implements ServerAuthentication
 
     @Override
     public Mono<Authentication> convert(ServerWebExchange exchange) {
-        String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        return Mono.justOrEmpty(exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION))
+            .switchIfEmpty(Mono.defer(() -> {
+                if (!required) return Mono.empty();
 
-        if (authHeader == null && !required) {
-            return Mono.empty();
-        }
+                throw new BadCredentialsException("Expected token");
+            }))
+            .mapNotNull(authHeader -> {
+                    String bearerToken = authHeader.substring(BEARER.length());
 
-        if (authHeader != null) {
-            String bearerToken = authHeader.substring(BEARER.length());
+                    try {
+                        T token = verifier.verify(bearerToken); // note: can return null
 
-            try {
+                        if (token != null) {
+                            List<GrantedAuthority> authorities = authorityMapper.getGrantedAuthorities(token);
 
-                T token = verifier.verify(bearerToken); // note: can return null
+                            Map<String, Object> claims = extractor.getClaims(token);
 
-                if (token != null) {
-                    List<GrantedAuthority> authorities = authorityMapper.getGrantedAuthorities(token);
+                            Serializable details = detailsMapper.getDetails(exchange.getRequest(), claims);
+                            Serializable principal = principalMapper.getPrincipal(claims);
 
-                    Map<String, Object> claims = extractor.getClaims(token);
+                            Authentication jwtToken = new JwtAuthenticationToken(claims, bearerToken, authorities, principal, details);
 
-                    Serializable details = detailsMapper.getDetails(exchange.getRequest(), claims);
-                    Serializable principal = principalMapper.getPrincipal(claims);
+                            if (mdcMapper != null) {
+                                mdcMapper.addContext(token);
+                                try {
+                                    return (jwtToken);
+                                } finally {
+                                    mdcMapper.removeContext(token);
+                                }
+                            }
 
-                    JwtAuthenticationToken jwtToken = new JwtAuthenticationToken(claims, bearerToken, authorities, principal, details);
+                            return (jwtToken);
+                        } else {
+                            // do not use a high log level, assume garbage request from the internet
+                            log.debug("Unable to verify token");
 
-                    if (mdcMapper != null) {
-                        mdcMapper.addContext(token);
-                        try {
-                            return Mono.justOrEmpty(jwtToken);
-                        } finally {
-                            mdcMapper.removeContext(token);
+                            throw new BadCredentialsException("Unable to verify token");
                         }
+
+                    } catch (JwtClientException | JwksClientException e) { // assume client misconfiguration
+                        log.debug("JWT verification failed due to {}", e.getMessage());
+
+                        throw new BadCredentialsException("Unable to verify token", e);
+                    } catch (JwksException | JwtException e) { // assume server issue
+                        // technically we should only see JwksServiceException or JwtServiceException here
+                        // but use superclass to catch all
+                        log.warn("Unable to process token", e);
+
+                        throw new JwtAuthenticationServiceUnavailableException("Unable to process token", e);
                     }
-
-                    return Mono.justOrEmpty(jwtToken);
-                } else {
-                    // do not use a high log level, assume garbage request from the internet
-                    log.debug("Unable to verify token");
-
-                    exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-                    exchange.getResponse().writeWith(Mono.error(new RuntimeException("Unable to verify token")));
-                }
-
-
-            } catch (JwtClientException | JwksClientException e) { // assume client misconfiguration
-                log.debug("JWT verification failed due to {}", e.getMessage());
-
-                exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-                exchange.getResponse().writeWith(Mono.error(new BadCredentialsException("Unable to verify token", e)));
-
-
-                //throw  new BadCredentialsException("Unable to verify token", e);
-            } catch (JwksException | JwtException e) { // assume server issue
-                // technically we should only see JwksServiceException or JwtServiceException here
-                // but use superclass to catch all
-
-                log.warn("Unable to process token", e);
-                exchange.getResponse().setStatusCode(HttpStatus.SERVICE_UNAVAILABLE);
-                exchange.getResponse().writeWith(Mono.error(new JwtAuthenticationServiceUnavailableException("Unable to process token", e)));
-
-                //throw new JwtAuthenticationServiceUnavailableException("Unable to process token", e);
-            }
-            return Mono.empty();
-        } else {
-            exchange.getResponse().writeWith(Mono.error(new BadCredentialsException("Expected token")));
-            return Mono.empty();
-        }
+            });
     }
+
 }

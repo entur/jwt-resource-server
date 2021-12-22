@@ -45,10 +45,10 @@ public class JwtArgumentResolver implements HandlerMethodArgumentResolver {
 
                 throw new TenantExpectedAuthenticationException("Expected " + JwtAuthenticationToken.class.getName() + " authorization, was none");
                 }))
-            .map(authentication1 -> {
-                if (authentication1 != null && !(authentication1 instanceof AnonymousAuthenticationToken)) {
-                    if (authentication1 instanceof JwtAuthenticationToken) {
-                        JwtAuthenticationToken token = (JwtAuthenticationToken) authentication1;
+            .map(authentication -> {
+                if (authentication != null && !(authentication instanceof AnonymousAuthenticationToken)) {
+                    if (authentication instanceof JwtAuthenticationToken) {
+                        JwtAuthenticationToken token = (JwtAuthenticationToken) authentication;
 
                         Class<?> target = parameter.getParameterType();
 
@@ -66,7 +66,7 @@ public class JwtArgumentResolver implements HandlerMethodArgumentResolver {
                         return Mono.empty();
                     }
                     // return http 403 forbidden
-                    throw new JwtArgumentResolverException("Expected " + JwtAuthenticationToken.class.getName() + " authorization, was " + authentication1.getClass().getName());
+                    throw new JwtArgumentResolverException("Expected " + JwtAuthenticationToken.class.getName() + " authorization, was " + authentication.getClass().getName());
                 }
                 if (parameter.isOptional()) {
                     return Mono.empty();

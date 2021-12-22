@@ -1,8 +1,5 @@
 package org.entur.jwt.spring.rest;
 
-import static com.google.common.truth.Truth.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,16 +7,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.boot.web.server.LocalServerPort;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
-import org.springframework.test.web.reactive.server.FluxExchangeResult;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 import java.time.Duration;
@@ -33,11 +22,19 @@ import java.time.Duration;
 @AuthorizationServer
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@TestPropertySource(properties = { "entur.authorization.permit-all.path-matcher.patterns=/actuator/health,/unprotected/**" })
+@TestPropertySource(properties = { "entur.authorization.permit-all.ant-matcher.patterns=/actuator/health,/unprotected/**" })
 public class GreetingControllerUnauthenticatedWhitelist1Test {
 
     @Autowired
     private WebTestClient webTestClient;
+
+    @BeforeEach
+    public void setUp() {
+        webTestClient = webTestClient
+            .mutate()
+            .responseTimeout(Duration.ofMillis(1000000))
+            .build();
+    }
 
     @Test
     public void testUnprotectedResourceOnWhitelist() {
@@ -63,7 +60,7 @@ public class GreetingControllerUnauthenticatedWhitelist1Test {
             .get()
             .uri("/unprotected/requiredTenant")
             .exchange()
-            .expectStatus().isUnauthorized();
+            .expectStatus().isForbidden();
     }
 
 
@@ -73,7 +70,7 @@ public class GreetingControllerUnauthenticatedWhitelist1Test {
             .get()
             .uri("/protected")
             .exchange()
-            .expectStatus().isUnauthorized();
+            .expectStatus().isForbidden();
     }
 
 
@@ -85,7 +82,7 @@ public class GreetingControllerUnauthenticatedWhitelist1Test {
             .get()
             .uri("/protected/requiredTenant")
             .exchange()
-            .expectStatus().isUnauthorized();
+            .expectStatus().isForbidden();
     }
 
     @Test

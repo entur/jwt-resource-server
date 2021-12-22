@@ -4,12 +4,15 @@ import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.junit5.headers.KeyIdHeader;
 import org.entur.jwt.junit5.sabotage.Signature;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.http.*;
 import org.springframework.test.web.reactive.server.WebTestClient;
+
+import java.time.Duration;
 
 /**
  *
@@ -24,6 +27,14 @@ public class InvalidAuthenticationTokenTest {
     @Autowired
     private WebTestClient webTestClient;
 
+    @BeforeEach
+    public void setUp() {
+        webTestClient = webTestClient
+            .mutate()
+            .responseTimeout(Duration.ofMillis(1000000))
+            .build();
+    }
+
     @Test
     public void testUnprotectedResource() {
         webTestClient
@@ -31,7 +42,7 @@ public class InvalidAuthenticationTokenTest {
             .uri("/unprotected")
             .header("Authorization", "Bearer hvaomshelst")
             .exchange()
-            .expectStatus().isUnauthorized();
+            .expectStatus().isForbidden();
     }
 
     @Test
@@ -41,7 +52,7 @@ public class InvalidAuthenticationTokenTest {
             .uri("/protected")
             .header("Authorization", "Bearer hvaomshelst")
             .exchange()
-            .expectStatus().isUnauthorized();
+            .expectStatus().isForbidden();
     }
 
     @Test
@@ -51,7 +62,7 @@ public class InvalidAuthenticationTokenTest {
             .uri("/protected")
             .header("Authorization", "Bearer hvaomshelst")
             .exchange()
-            .expectStatus().isUnauthorized();
+            .expectStatus().isForbidden();
 
     }
 
@@ -62,7 +73,7 @@ public class InvalidAuthenticationTokenTest {
             .uri("/protected")
             .header("Authorization", "Bearer hvaomshelst")
             .exchange()
-            .expectStatus().isUnauthorized()
+            .expectStatus().isForbidden()
             .returnResult(String.class)
             .getResponseHeaders();
 

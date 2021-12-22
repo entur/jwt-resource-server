@@ -20,6 +20,7 @@ import org.springframework.security.config.annotation.web.reactive.EnableWebFlux
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.ServerAuthenticationEntryPoint;
+import org.springframework.security.web.server.authentication.ServerAuthenticationFailureHandler;
 
 /**
  * This starter exists so that it can be excluded for those wanting to configure their own spring security filter chain.
@@ -41,7 +42,7 @@ public class JwtWebSecurityAutoConfiguration {
     public static class AuthorizationConfigurationGuard {
 
         public AuthorizationConfigurationGuard() {
-            throw new IllegalStateException("Authorization does not work for custom spring filter chain. Add 'entur.authorization.enabled=false' or disable this starter using @SpringBootApplication(exclude = {JwtWebSecurityConfigurerAdapterAutoConfiguration.class}).");
+            throw new IllegalStateException("Authorization does not work for custom spring filter chain. Add 'entur.authorization.enabled=false' or disable this starter using @SpringBootApplication(exclude = {JwtWebSecurityAutoConfiguration.class}).");
         }
     }
 
@@ -51,7 +52,7 @@ public class JwtWebSecurityAutoConfiguration {
     public static class JwtConfigurationGuard {
 
         public JwtConfigurationGuard() {
-            throw new IllegalStateException("JWT filter does not work for custom spring filter chain. Add 'entur.jwt.enabled=false' or disable this starter using @SpringBootApplication(exclude = {JwtWebSecurityConfigurerAdapterAutoConfiguration.class}).");
+            throw new IllegalStateException("JWT filter does not work for custom spring filter chain. Add 'entur.jwt.enabled=false' or disable this starter using @SpringBootApplication(exclude = {JwtWebSecurityAutoConfiguration.class}).");
         }
     }
 
@@ -68,11 +69,11 @@ public class JwtWebSecurityAutoConfiguration {
         // combine everything into the same chain
 
         @Autowired
-        public CompositeWebSecurityConfiguration(SecurityProperties properties, ReactiveAuthenticationManager manager, JwtServerAuthenticationConverter<?> converter, @Autowired(required = false) ServerAuthenticationEntryPoint serverAuthenticationEntryPoint) {
+        public CompositeWebSecurityConfiguration(SecurityProperties properties, ReactiveAuthenticationManager manager, JwtServerAuthenticationConverter<?> converter, @Autowired(required = false) ServerAuthenticationEntryPoint serverAuthenticationEntryPoint, ServerAuthenticationFailureHandler serverAuthenticationFailureHandler) {
             log.info("Configure JWT authentication filter + authorization");
             authorizationWebSecurityConfig = new AuthorizationWebSecurityConfig(properties.getAuthorization()) {
             };
-            jwtFilterWebSecurityConfig = new JwtFilterWebSecurityConfig(manager, converter, serverAuthenticationEntryPoint) {
+            jwtFilterWebSecurityConfig = new JwtFilterWebSecurityConfig(manager, converter, serverAuthenticationEntryPoint, serverAuthenticationFailureHandler) {
             };
         }
 
@@ -115,8 +116,8 @@ public class JwtWebSecurityAutoConfiguration {
         private JwtFilterWebSecurityConfig jwtFilterWebSecurityConfig;
 
         @Autowired
-        public EnturJwtFilterWebSecurityConfig(ReactiveAuthenticationManager manager, JwtServerAuthenticationConverter<?> converter, @Autowired(required = false) ServerAuthenticationEntryPoint serverAuthenticationEntryPoint) {
-            this.jwtFilterWebSecurityConfig = new JwtFilterWebSecurityConfig(manager, converter, serverAuthenticationEntryPoint) {
+        public EnturJwtFilterWebSecurityConfig(ReactiveAuthenticationManager manager, JwtServerAuthenticationConverter<?> converter, @Autowired(required = false) ServerAuthenticationEntryPoint serverAuthenticationEntryPoint, ServerAuthenticationFailureHandler serverAuthenticationFailureHandler) {
+            this.jwtFilterWebSecurityConfig = new JwtFilterWebSecurityConfig(manager, converter, serverAuthenticationEntryPoint, serverAuthenticationFailureHandler) {
             };
         }
 

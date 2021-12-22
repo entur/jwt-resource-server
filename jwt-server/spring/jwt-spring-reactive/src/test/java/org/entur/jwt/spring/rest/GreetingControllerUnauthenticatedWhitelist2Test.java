@@ -26,14 +26,14 @@ import io.restassured.http.ContentType;
 @AuthorizationServer
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@TestPropertySource(properties = { "entur.authorization.permit-all.path-matcher.method.get.patterns=/unprotected" })
+@TestPropertySource(properties = { "entur.authorization.permit-all.ant-matcher.method.get.patterns=/unprotected" })
 public class GreetingControllerUnauthenticatedWhitelist2Test {
 
     @LocalServerPort
     protected int port;
 
     @Test
-    public void getIsAllowed() throws Exception {
+    public void getIsAllowed() {
         given()
         .when()
             .log().all()
@@ -55,6 +55,6 @@ public class GreetingControllerUnauthenticatedWhitelist2Test {
         .then()
             .log().all()
             .assertThat()
-            .statusCode(HttpStatus.UNAUTHORIZED.value());
+            .statusCode(HttpStatus.FORBIDDEN.value());
     }
 }

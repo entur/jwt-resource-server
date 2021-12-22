@@ -37,20 +37,20 @@ public abstract class AuthorizationWebSecurityConfig {
 
     protected void configurePermitAll(ServerHttpSecurity http, PermitAll permitAll) throws Exception {
 
-        MatcherConfiguration pathMatcher = permitAll.getPathMatcher();
-        if (pathMatcher.isActive()) {
-            configurePermitAllPathMatchers(http, pathMatcher);
+        MatcherConfiguration antMatcher = permitAll.getAntMatcher();
+        if (antMatcher.isActive()) {
+            configurePermitAllAntMatchers(http, antMatcher);
         }
     }
 
-    protected void configurePermitAllPathMatchers(ServerHttpSecurity http, MatcherConfiguration pathMatchers) throws Exception {
-        if (pathMatchers.hasPatterns()) {
+    protected void configurePermitAllAntMatchers(ServerHttpSecurity http, MatcherConfiguration antMatchers) throws Exception {
+        if (antMatchers.hasPatterns()) {
             // for all methods
-            http.authorizeExchange().pathMatchers(pathMatchers.getPatternsAsArray()).permitAll();
+            http.authorizeExchange().pathMatchers(antMatchers.getPatternsAsArray()).permitAll();
         }
 
         // for specific methods
-        for (HttpMethodMatcher httpMethodMatcher : pathMatchers.getMethod().getActiveMethods()) {
+        for (HttpMethodMatcher httpMethodMatcher : antMatchers.getMethod().getActiveMethods()) {
             // check that active, empty patterns will be interpreted as permit all the method type (empty patterns vs varargs)
             if (httpMethodMatcher.isActive()) {
                 http.authorizeExchange().pathMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();

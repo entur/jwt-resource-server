@@ -22,7 +22,7 @@ entur:
     mode: api
   authorization:
     permit-all:
-      path-matcher:
+      ant-matcher:
         patterns:
          - /actuator/health
          - /actuator/health/*

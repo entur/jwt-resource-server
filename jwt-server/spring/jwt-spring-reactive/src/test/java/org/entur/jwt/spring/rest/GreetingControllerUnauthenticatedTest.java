@@ -6,13 +6,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.boot.web.server.LocalServerPort;
-import org.springframework.http.*;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
-import static com.google.common.truth.Truth.assertThat;
 
 /**
  *
@@ -36,7 +32,7 @@ public class GreetingControllerUnauthenticatedTest {
             .get()
             .uri("/unprotected")
             .exchange()
-            .expectStatus().isUnauthorized();
+            .expectStatus().isForbidden();
     }
 
     @Test
@@ -45,7 +41,7 @@ public class GreetingControllerUnauthenticatedTest {
             .get()
             .uri("/unprotected/optionalTenant")
             .exchange()
-            .expectStatus().isUnauthorized();
+            .expectStatus().isForbidden();
     }
 
     @Test
@@ -54,7 +50,7 @@ public class GreetingControllerUnauthenticatedTest {
             .get()
             .uri("/unprotected/requiredTenant")
             .exchange()
-            .expectStatus().isUnauthorized();
+            .expectStatus().isForbidden();
     }
 
 
@@ -64,7 +60,7 @@ public class GreetingControllerUnauthenticatedTest {
             .get()
             .uri("/protected")
             .exchange()
-            .expectStatus().isUnauthorized();
+            .expectStatus().isForbidden();
     }
 
 
@@ -76,7 +72,7 @@ public class GreetingControllerUnauthenticatedTest {
             .get()
             .uri("/protected/requiredTenant")
             .exchange()
-            .expectStatus().isUnauthorized();
+            .expectStatus().isForbidden();
     }
 
 
@@ -86,6 +82,6 @@ public class GreetingControllerUnauthenticatedTest {
             .get()
             .uri("/actuator/someother")
             .exchange()
-            .expectStatus().isUnauthorized();
+            .expectStatus().isForbidden();
     }
 }

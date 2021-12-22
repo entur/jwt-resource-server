@@ -3,7 +3,7 @@ package org.entur.jwt.spring.rest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.entur.jwt.junit5.AuthorizationServer;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,8 +13,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.reactive.server.WebTestClient;
-
-import java.time.Duration;
 
 /**
  *
@@ -26,19 +24,11 @@ import java.time.Duration;
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("customEntryPoint")
+@Disabled("This functionality is not supported yet")
 public class InvalidAuthenticationTokenControllerAdviceTest {
 
     @Autowired
     private WebTestClient webTestClient;
-
-
-    @BeforeEach
-    public void setUp() {
-        webTestClient = webTestClient
-            .mutate()
-            .responseTimeout(Duration.ofMillis(1000000))
-            .build();
-    }
 
     @Test
     public void testUnprotectedResource() {
@@ -51,7 +41,7 @@ public class InvalidAuthenticationTokenControllerAdviceTest {
             .returnResult(String.class)
             .getResponseHeaders();
 
-        assertThat(responseHeaders.get(CustomServerAuthenticationEntryPoint.ENTRY_POINT)).containsExactly("true");
+        assertThat(responseHeaders.get(CustomJwtFilterControllerAdvice.CONTROLLER_ADVICE)).containsExactly("true");
     }
 
     @Test
@@ -65,7 +55,7 @@ public class InvalidAuthenticationTokenControllerAdviceTest {
             .returnResult(String.class)
             .getResponseHeaders();
 
-        assertThat(responseHeaders.get(CustomServerAuthenticationEntryPoint.ENTRY_POINT)).containsExactly("true");
+        assertThat(responseHeaders.get(CustomJwtFilterControllerAdvice.CONTROLLER_ADVICE)).containsExactly("true");
     }
 
 }
