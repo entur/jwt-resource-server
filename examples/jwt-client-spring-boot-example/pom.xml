@@ -119,6 +119,7 @@
 					<failBuildOnCVSS>7</failBuildOnCVSS>
 					<failOnError>false</failOnError>
 					<skipTestScope>true</skipTestScope>
+					<nodeAuditSkipDevDependencies>true</nodeAuditSkipDevDependencies>
 					<!-- suppressionFiles: see https://jeremylong.github.io/DependencyCheck/general/suppression.html -->
 					<suppressionFiles>
 						<suppressionFile>${maven.multiModuleProjectDirectory}/dependencycheck-root-suppression.xml</suppressionFile>
