@@ -1,13 +1,25 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>8</source>
+                    <target>8</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
     <parent>
 		<groupId>org.entur.jwt-rs</groupId>
 		<artifactId>parent</artifactId>
-		<version>1.1.17-SNAPSHOT</version>
+		<version>1.1.16-SNAPSHOT</version>
 		<relativePath>../../../pom.xml</relativePath>
 	</parent>
-	<artifactId>jwt-spring-core</artifactId>
+	<artifactId>jwt-spring-reactive</artifactId>
 
 	<dependencies>
 		<dependency>
@@ -28,11 +40,7 @@
 		</dependency>
 		<dependency>
 		    <groupId>org.springframework.boot</groupId>
-		    <artifactId>spring-boot-starter</artifactId>
-		</dependency>
-		<dependency>
-		    <groupId>org.springframework.boot</groupId>
-		    <artifactId>spring-boot-starter-web</artifactId>
+		    <artifactId>spring-boot-starter-webflux</artifactId>
 		</dependency>
 		<dependency>
 		    <groupId>org.springframework.boot</groupId>
@@ -44,7 +52,7 @@
 		    <artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
 
-		<!-- test -->
+        <!-- test -->
 		<dependency>
 			<groupId>org.entur.jwt-rs</groupId>
 		    <artifactId>jwt-verifier-auth0</artifactId>
@@ -85,11 +93,21 @@
 		    <artifactId>jackson-databind</artifactId>
 		    <scope>test</scope>
 		</dependency>
-		<dependency>
-		    <groupId>io.rest-assured</groupId>
-		    <artifactId>rest-assured</artifactId>
-		    <scope>test</scope>
-		</dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>mockwebserver</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <scope>test</scope>
+        </dependency>
 
 	</dependencies>
 </project>

@@ -1,0 +1,43 @@
+entur:
+  jwt:
+    enabled: true
+    claims:
+      expires-at-leeway: 15
+      issued-at-leeway: 5
+
+    mdc:
+      enabled: true
+      mappings:
+      - from: issuer
+        to: issuer
+    jwk:
+      health-indicator:
+        enabled: true
+      cache:
+        preemptive:
+          eager:
+            enabled: true
+  cors:
+    enabled: true
+    mode: api
+  authorization:
+    permit-all:
+      ant-matcher:
+        patterns:
+         - /actuator/health
+         - /actuator/health/*
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,jwks
+
+spring:
+  main:
+    web-application-type: reactive
+    allow-bean-definition-overriding: true
+
+logging.level.org.entur: DEBUG

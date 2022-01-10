@@ -4,20 +4,20 @@
     <parent>
 		<groupId>org.entur.jwt-rs</groupId>
 		<artifactId>parent</artifactId>
-		<version>1.1.17-SNAPSHOT</version>
+		<version>1.1.16-SNAPSHOT</version>
 		<relativePath>../../../pom.xml</relativePath>
 	</parent>
-	<artifactId>jwt-spring-core</artifactId>
+	<artifactId>jwt-spring-reactive-auth0</artifactId>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.entur.jwt-rs</groupId>
-			<artifactId>jwt-verifier-core</artifactId>
+			<artifactId>jwt-spring-reactive</artifactId>
 		</dependency>
-        <dependency>
-            <groupId>org.entur.jwt-rs</groupId>
-            <artifactId>jwt-spring-common</artifactId>
-        </dependency>
+		<dependency>
+			<groupId>org.entur.jwt-rs</groupId>
+		    <artifactId>jwt-verifier-auth0</artifactId>
+		</dependency>
 		<dependency>
 		    <groupId>org.springframework.boot</groupId>
 		    <artifactId>spring-boot-autoconfigure</artifactId>
@@ -32,13 +32,8 @@
 		</dependency>
 		<dependency>
 		    <groupId>org.springframework.boot</groupId>
-		    <artifactId>spring-boot-starter-web</artifactId>
+		    <artifactId>spring-boot-starter-webflux</artifactId>
 		</dependency>
-		<dependency>
-		    <groupId>org.springframework.boot</groupId>
-		    <artifactId>spring-boot-starter-actuator</artifactId>
-		</dependency>
-		<!-- spring security starter seems to lag a bit behind the others, so add it last -->
 		<dependency>
 		    <groupId>org.springframework.boot</groupId>
 		    <artifactId>spring-boot-starter-security</artifactId>
@@ -47,14 +42,19 @@
 		<!-- test -->
 		<dependency>
 			<groupId>org.entur.jwt-rs</groupId>
-		    <artifactId>jwt-verifier-auth0</artifactId>
+			<artifactId>jwt-junit5-spring</artifactId>
 			<scope>test</scope>
 		</dependency>
-        <dependency>
-            <groupId>org.entur.jwt-rs</groupId>
-            <artifactId>jwt-junit5-spring</artifactId>
-            <scope>test</scope>
-        </dependency>
+		<dependency>
+			<groupId>org.entur.jwt-rs</groupId>
+			<artifactId>jwt-junit5-core</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+		    <groupId>org.springframework.boot</groupId>
+		    <artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter</artifactId>
@@ -83,11 +83,6 @@
 		<dependency>
 		    <groupId>com.fasterxml.jackson.core</groupId>
 		    <artifactId>jackson-databind</artifactId>
-		    <scope>test</scope>
-		</dependency>
-		<dependency>
-		    <groupId>io.rest-assured</groupId>
-		    <artifactId>rest-assured</artifactId>
 		    <scope>test</scope>
 		</dependency>
 
