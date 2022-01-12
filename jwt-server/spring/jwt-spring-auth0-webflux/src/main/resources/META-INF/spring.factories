@@ -1,0 +1,2 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+org.entur.jwt.spring.reactive.auth0.Auth0SecurityAutoConfigurationWebFlux

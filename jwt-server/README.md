@@ -338,9 +338,9 @@ The core implementation expects a few beans to be present:
 * JwtArgumentResolver - argument resolver support. Transforms the JwtAuthenticationToken to an object of your desire for
   injection in downstream method arguments.
 
-See [jwt-spring-auth0] for a concrete implementation example.
+See [jwt-spring-auth0-web] for a concrete implementation example.
 
-[jwt-spring-auth0]: spring/jwt-spring-auth0
+[jwt-spring-auth0-web]: spring/jwt-spring-auth0-web
 [jwt-test]: ../jwt-test
 [jwt-junit5-spring]: ../jwt-test/jwt-junit5-spring
 [method access-control expressions]: [https://www.baeldung.com/spring-security-method-security](https://www.baeldung.com/spring-security-method-security)

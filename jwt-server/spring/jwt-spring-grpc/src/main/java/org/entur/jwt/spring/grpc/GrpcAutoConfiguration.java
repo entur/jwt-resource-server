@@ -1,7 +1,6 @@
 package org.entur.jwt.spring.grpc;
 
-import java.util.List;
-
+import io.grpc.util.TransmitStatusRuntimeExceptionInterceptor;
 import org.entur.jwt.spring.JwtAutoConfiguration;
 import org.entur.jwt.spring.filter.JwtAuthorityMapper;
 import org.entur.jwt.spring.filter.JwtDetailsMapper;
@@ -28,49 +27,58 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
-import io.grpc.util.TransmitStatusRuntimeExceptionInterceptor;
+import java.util.List;
 
 @Configuration
-@EnableConfigurationProperties({ GrpcPermitAll.class })
-@ConditionalOnProperty(name = { "entur.jwt.enabled" }, havingValue = "true", matchIfMissing = false)
+@EnableConfigurationProperties({GrpcPermitAll.class})
+@ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = false)
 @AutoConfigureAfter(value = JwtAutoConfiguration.class)
 public class GrpcAutoConfiguration {
 
     private static Logger log = LoggerFactory.getLogger(GrpcAutoConfiguration.class);
-    
+
     @Bean
     public ServerCallSecurityExceptionTranslator serverCallSecurityExceptionTranslator() {
-    	return new ServerCallSecurityExceptionTranslator();
+        return new ServerCallSecurityExceptionTranslator();
     }
-    
+
     @Bean
     @ConditionalOnMissingBean(TransmitStatusRuntimeExceptionInterceptor.class)
     public ServerCallStatusRuntimeExceptionTranslator serverCallStatusRuntimeExceptionTranslator() {
-    	return new ServerCallStatusRuntimeExceptionTranslator();
-    }    
-    
-    @Bean
-    public <T> GrpcAuthenticationInterceptorFactory<T> grpcAuthenticationInterceptorFactory(SecurityProperties properties, JwtVerifier<T> verifier, @Autowired(required = false) JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtAuthorityMapper<T> authorityMapper,
-            JwtClaimExtractor<T> extractor, @Lazy HandlerExceptionResolver handlerExceptionResolver, GrpcPermitAll permitAll, JwtPrincipalMapper jwtPrincipalMapper, JwtDetailsMapper jwtDetailsMapper, List<ServerCallRuntimeExceptionTranslator> translators) {
+        return new ServerCallStatusRuntimeExceptionTranslator();
+    }
 
+    @Bean
+    public <T> GrpcAuthenticationInterceptorFactory<T> grpcAuthenticationInterceptorFactory(
+            SecurityProperties properties,
+            JwtVerifier<T> verifier,
+            @Autowired(required = false) JwtMappedDiagnosticContextMapper<T> mdcMapper,
+            JwtAuthorityMapper<T> authorityMapper,
+            JwtClaimExtractor<T> extractor,
+            @Lazy HandlerExceptionResolver handlerExceptionResolver,
+            GrpcPermitAll permitAll,
+            JwtPrincipalMapper jwtPrincipalMapper,
+            JwtDetailsMapper jwtDetailsMapper,
+            List<ServerCallRuntimeExceptionTranslator> translators
+    ) {
         // add an extra layer of checks if auth is always required
         GrpcServiceMethodFilter anonymous;
-        if(permitAll.isActive()) {
+        if (permitAll.isActive()) {
             anonymous = getGrpcServiceMethodFilter(permitAll.getGrpc());
         } else {
             log.info("No anonymous GRPC calls allowed");
             anonymous = null;
         }
-        
+
         JwtAuthenticationInterceptor<T> jwtAuthenticationInterceptor = new JwtAuthenticationInterceptor<>(verifier, anonymous, authorityMapper, mdcMapper, extractor, jwtPrincipalMapper, jwtDetailsMapper);
         return new GrpcAuthenticationInterceptorFactory<>(jwtAuthenticationInterceptor, translators);
     }
 
     private GrpcServiceMethodFilter getGrpcServiceMethodFilter(GrpcServicesConfiguration grpc) {
         DefaultGrpcServiceMethodFilter filter = new DefaultGrpcServiceMethodFilter();
-                
+
         for (ServiceMatcherConfiguration configuration : grpc.getServices()) {
-            if(isStar(configuration.getMethods())) {
+            if (isStar(configuration.getMethods())) {
                 log.info("Allow anonymous access to all methods of GRPC service " + configuration.getName());
                 filter.addService(configuration.getName());
             } else {
@@ -80,13 +88,13 @@ public class GrpcAutoConfiguration {
                 }
             }
         }
-                
+
         return filter;
     }
 
     private boolean isStar(List<String> methods) {
         for (String string : methods) {
-            if(string.equals("*")) {
+            if (string.equals("*")) {
                 return true;
             }
         }

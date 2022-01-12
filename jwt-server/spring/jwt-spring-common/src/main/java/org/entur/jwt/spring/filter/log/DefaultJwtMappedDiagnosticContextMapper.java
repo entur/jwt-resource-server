@@ -18,7 +18,7 @@ public class DefaultJwtMappedDiagnosticContextMapper<T> implements JwtMappedDiag
     protected final JwtClaimExtractor<T> extractor;
 
     public DefaultJwtMappedDiagnosticContextMapper(List<String> claims, List<String> keys, JwtClaimExtractor<T> extractor) {
-        this.from = claims.toArray(new String[claims.size()]);
+        this.from = claims.toArray(new String[0]);
         this.to = keys.toArray(new String[claims.size()]);
         this.extractor = extractor;
     }
@@ -45,8 +45,8 @@ public class DefaultJwtMappedDiagnosticContextMapper<T> implements JwtMappedDiag
     }
 
     public void removeContext(T token) {
-        for (int i = 0; i < to.length; i++) {
-            MDC.remove(to[i]);
+        for (String s : to) {
+            MDC.remove(s);
         }
     }
 }

@@ -162,12 +162,12 @@
             </dependency>
 			<dependency>
 				<groupId>${project.groupId}</groupId>
-				<artifactId>jwt-spring-core</artifactId>
+				<artifactId>jwt-spring-web</artifactId>
 				<version>${project.version}</version>
 			</dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
-                <artifactId>jwt-spring-reactive</artifactId>
+                <artifactId>jwt-spring-webflux</artifactId>
                 <version>${project.version}</version>
             </dependency>
 			<dependency>
@@ -187,7 +187,17 @@
 			</dependency>
 			<dependency>
 				<groupId>${project.groupId}</groupId>
-				<artifactId>jwt-spring-auth0</artifactId>
+				<artifactId>jwt-spring-auth0-common</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>${project.groupId}</groupId>
+				<artifactId>jwt-spring-auth0-web</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>${project.groupId}</groupId>
+				<artifactId>jwt-spring-auth0-webflux</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<!-- third party dependencies -->
@@ -634,11 +644,12 @@
 		<module>jwt-client/jwt-client-spring-core</module>
 		<module>jwt-client/jwt-client-spring-cloud</module>
 		<module>jwt-client/jwt-client-spring</module>
-        <module>jwt-server/spring/jwt-spring-core</module>
+        <module>jwt-server/spring/jwt-spring-web</module>
         <module>jwt-server/spring/jwt-spring-common</module>
-        <module>jwt-server/spring/jwt-spring-reactive</module>
-		<module>jwt-server/spring/jwt-spring-auth0</module>
-        <module>jwt-server/spring/jwt-spring-reactive-auth0</module>
+        <module>jwt-server/spring/jwt-spring-webflux</module>
+		<module>jwt-server/spring/jwt-spring-auth0-common</module>
+		<module>jwt-server/spring/jwt-spring-auth0-web</module>
+        <module>jwt-server/spring/jwt-spring-auth0-webflux</module>
 		<module>jwt-server/spring/jwt-spring-camel</module>
 		<module>jwt-server/spring/jwt-spring-grpc</module>
 	</modules>

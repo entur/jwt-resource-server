@@ -7,13 +7,17 @@
 		<version>1.1.17-SNAPSHOT</version>
 		<relativePath>../../../pom.xml</relativePath>
 	</parent>
-	<artifactId>jwt-spring-common</artifactId>
+	<artifactId>jwt-spring-web</artifactId>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.entur.jwt-rs</groupId>
 			<artifactId>jwt-verifier-core</artifactId>
 		</dependency>
+        <dependency>
+            <groupId>org.entur.jwt-rs</groupId>
+            <artifactId>jwt-spring-common</artifactId>
+        </dependency>
 		<dependency>
 		    <groupId>org.springframework.boot</groupId>
 		    <artifactId>spring-boot-autoconfigure</artifactId>
@@ -25,6 +29,10 @@
 		<dependency>
 		    <groupId>org.springframework.boot</groupId>
 		    <artifactId>spring-boot-starter</artifactId>
+		</dependency>
+		<dependency>
+		    <groupId>org.springframework.boot</groupId>
+		    <artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 		<dependency>
 		    <groupId>org.springframework.boot</groupId>

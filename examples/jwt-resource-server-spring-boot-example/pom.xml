@@ -23,7 +23,7 @@
 	<dependencies>
 		<dependency>
 			<groupId>org.entur.jwt-rs</groupId>
-			<artifactId>jwt-spring-auth0</artifactId>
+			<artifactId>jwt-spring-auth0-web</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
