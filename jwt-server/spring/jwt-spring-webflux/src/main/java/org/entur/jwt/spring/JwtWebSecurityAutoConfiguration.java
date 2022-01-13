@@ -34,7 +34,7 @@ import org.springframework.security.web.server.authentication.ServerAuthenticati
 @AutoConfigureAfter(JwtAutoConfigurationWebFlux.class)
 public class JwtWebSecurityAutoConfiguration {
 
-    private static final Logger LOG = LoggerFactory.getLogger(JwtWebSecurityAutoConfiguration.class);
+    private static final Logger log = LoggerFactory.getLogger(JwtWebSecurityAutoConfiguration.class);
 
     @Configuration
     @ConditionalOnBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
@@ -63,14 +63,14 @@ public class JwtWebSecurityAutoConfiguration {
     @EnableReactiveMethodSecurity
     public static class CompositeWebSecurityConfiguration {
 
-        private AuthorizationWebSecurityConfig authorizationWebSecurityConfig;
-        private JwtFilterWebSecurityConfig jwtFilterWebSecurityConfig;
+        private final AuthorizationWebSecurityConfig authorizationWebSecurityConfig;
+        private final JwtFilterWebSecurityConfig jwtFilterWebSecurityConfig;
 
         // combine everything into the same chain
 
         @Autowired
         public CompositeWebSecurityConfiguration(SecurityProperties properties, ReactiveAuthenticationManager manager, JwtServerAuthenticationConverter<?> converter, @Autowired(required = false) ServerAuthenticationEntryPoint serverAuthenticationEntryPoint, ServerAuthenticationFailureHandler serverAuthenticationFailureHandler) {
-            LOG.info("Configure JWT authentication filter + authorization");
+            log.info("Configure JWT authentication filter + authorization");
             authorizationWebSecurityConfig = new AuthorizationWebSecurityConfig(properties.getAuthorization()) {
             };
             jwtFilterWebSecurityConfig = new JwtFilterWebSecurityConfig(manager, converter, serverAuthenticationEntryPoint, serverAuthenticationFailureHandler) {
@@ -91,7 +91,7 @@ public class JwtWebSecurityAutoConfiguration {
     @EnableReactiveMethodSecurity
     public static class EnturAuthorizationWebSecurityConfigConfigurerAdapter {
 
-        private AuthorizationWebSecurityConfig authorizationWebSecurityConfig;
+        private final AuthorizationWebSecurityConfig authorizationWebSecurityConfig;
 
         @Autowired
         public EnturAuthorizationWebSecurityConfigConfigurerAdapter(SecurityProperties properties) {
@@ -101,7 +101,7 @@ public class JwtWebSecurityAutoConfiguration {
 
         @Bean
         public SecurityWebFilterChain configure(ServerHttpSecurity http) throws Exception {
-            LOG.info("Configure authorization");
+            log.info("Configure authorization");
             return authorizationWebSecurityConfig.configure(http).build();
         }
     }
@@ -113,7 +113,7 @@ public class JwtWebSecurityAutoConfiguration {
     @EnableReactiveMethodSecurity
     public static class EnturJwtFilterWebSecurityConfig {
 
-        private JwtFilterWebSecurityConfig jwtFilterWebSecurityConfig;
+        private final JwtFilterWebSecurityConfig jwtFilterWebSecurityConfig;
 
         @Autowired
         public EnturJwtFilterWebSecurityConfig(ReactiveAuthenticationManager manager, JwtServerAuthenticationConverter<?> converter, @Autowired(required = false) ServerAuthenticationEntryPoint serverAuthenticationEntryPoint, ServerAuthenticationFailureHandler serverAuthenticationFailureHandler) {
@@ -122,8 +122,8 @@ public class JwtWebSecurityAutoConfiguration {
         }
 
         @Bean
-        public SecurityWebFilterChain configure(ServerHttpSecurity http){
-            LOG.info("Configure JWT authentication filter");
+        public SecurityWebFilterChain configure(ServerHttpSecurity http) {
+            log.info("Configure JWT authentication filter");
 
             return jwtFilterWebSecurityConfig.configure(http).build();
         }

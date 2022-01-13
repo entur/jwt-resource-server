@@ -11,27 +11,21 @@ import org.entur.jwt.verifier.JwtVerifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.List;
 
-@Configuration
-@ConditionalOnClass(WebSecurityConfigurerAdapter.class)
-@EnableConfigurationProperties({SecurityProperties.class})
 @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true")
 public class JwtAutoConfigurationWeb extends JwtAutoConfiguration {
 
-    private static final Logger LOG = LoggerFactory.getLogger(JwtAutoConfigurationWeb.class);
+    private static final Logger log = LoggerFactory.getLogger(JwtAutoConfigurationWeb.class);
 
     @Configuration
     public static class DefaultEnturWebMvcConfigurer implements WebMvcConfigurer {
@@ -60,9 +54,9 @@ public class JwtAutoConfigurationWeb extends JwtAutoConfiguration {
         // add an extra layer of checks if auth is always required
         boolean tokenMustBePresent = authorizationProperties.isEnabled() && !permitAll.isActive();
         if (tokenMustBePresent) {
-            LOG.info("Authentication with Json Web Token is required");
+            log.info("Authentication with Json Web Token is required");
         } else {
-            LOG.info("Authentication with Json Web Token is optional");
+            log.info("Authentication with Json Web Token is optional");
         }
         return new JwtAuthenticationFilter<>(verifier, tokenMustBePresent, authorityMapper, mdcMapper, extractor, handlerExceptionResolver, jwtPrincipalMapper, jwtDetailsMapper);
     }

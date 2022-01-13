@@ -33,7 +33,7 @@ import java.util.Map.Entry;
 @ConditionalOnClass(WebSecurityConfigurerAdapter.class)
 @EnableConfigurationProperties({SecurityProperties.class})
 @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true")
-public class JwtAutoConfiguration {
+public abstract class JwtAutoConfiguration {
 
     private static final Logger LOG = LoggerFactory.getLogger(JwtAutoConfiguration.class);
 

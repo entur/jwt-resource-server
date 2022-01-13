@@ -9,7 +9,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.core.userdetails.*;
+import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.server.ServerAuthenticationEntryPoint;
 import org.springframework.security.web.server.authentication.AuthenticationWebFilter;
 import org.springframework.security.web.server.authentication.ServerAuthenticationFailureHandler;
@@ -23,7 +25,7 @@ import reactor.core.publisher.Mono;
  */
 public abstract class JwtFilterWebSecurityConfig {
 
-    private static Logger log = LoggerFactory.getLogger(JwtAutoConfigurationWebFlux.class);
+    private static final Logger log = LoggerFactory.getLogger(JwtAutoConfigurationWebFlux.class);
 
     protected static class NoUserDetailsService implements ReactiveUserDetailsService {
         @Override

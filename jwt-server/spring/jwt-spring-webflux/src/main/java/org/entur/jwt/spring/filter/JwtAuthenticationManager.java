@@ -8,6 +8,6 @@ public class JwtAuthenticationManager implements ReactiveAuthenticationManager {
 
     @Override
     public Mono<Authentication> authenticate(Authentication authentication) {
-        return Mono.just(authentication).filter(Authentication::isAuthenticated);
+            return Mono.just(authentication).filter(Authentication::isAuthenticated);
     }
 }
