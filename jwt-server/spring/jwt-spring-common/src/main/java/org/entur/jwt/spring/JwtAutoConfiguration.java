@@ -7,7 +7,11 @@ import org.entur.jwt.spring.filter.JwtDetailsMapper;
 import org.entur.jwt.spring.filter.JwtPrincipalMapper;
 import org.entur.jwt.spring.filter.log.DefaultJwtMappedDiagnosticContextMapper;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
-import org.entur.jwt.spring.properties.*;
+import org.entur.jwt.spring.properties.JwtProperties;
+import org.entur.jwt.spring.properties.MdcPair;
+import org.entur.jwt.spring.properties.MdcProperties;
+import org.entur.jwt.spring.properties.SecurityProperties;
+import org.entur.jwt.spring.properties.TenantFilter;
 import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.entur.jwt.verifier.JwtVerifier;
 import org.entur.jwt.verifier.JwtVerifierFactory;
@@ -22,12 +26,14 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 @Configuration
 @ConditionalOnClass(WebSecurityConfigurerAdapter.class)
@@ -136,74 +142,6 @@ public abstract class JwtAutoConfiguration {
     @ConditionalOnMissingBean(JwtPrincipalMapper.class)
     public JwtPrincipalMapper jwtPrincipalMapper() {
         return new DefaultJwtPrincipalMapper();
-    }
-
-    @Bean("corsConfigurationSource")
-    @ConditionalOnProperty(name = {"entur.cors.enabled"}, havingValue = "true")
-    public CorsConfigurationSource corsConfigurationSource(SecurityProperties oidcAuthProperties) {
-        CorsProperties cors = oidcAuthProperties.getCors();
-        if (cors.getMode().equals("api")) {
-            return getCorsConfiguration(cors);
-        } else {
-            if (!cors.getOrigins().isEmpty()) {
-                throw new IllegalStateException("Expected empty hosts configuration for CORS mode '" + cors.getMode() + "'");
-            }
-            LOG.info("Disable CORS requests for webapp mode");
-
-            return getEmptyCorsConfiguration();
-        }
-    }
-
-    @Bean("corsConfigurationSource")
-    @ConditionalOnProperty(name = {"entur.security.cors.mode"}, havingValue = "webapp")
-    public CorsConfigurationSource corsConfigurationSourceForWebapp(SecurityProperties properties) {
-        LOG.info("Disable CORS requests for webapp mode");
-        return getEmptyCorsConfiguration();
-    }
-
-    public static CorsConfigurationSource getEmptyCorsConfiguration() {
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(Collections.emptyList());
-        config.setAllowedHeaders(Collections.emptyList());
-        config.setAllowedMethods(Collections.emptyList());
-
-        source.registerCorsConfiguration("/**", config);
-
-        return source;
-    }
-
-    public static CorsConfigurationSource getCorsConfiguration(CorsProperties properties) {
-        List<String> defaultAllowedMethods = Arrays.asList("GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS");
-        List<String> defaultAllowedHeaders = Collections.singletonList("*");
-
-        List<String> origins = properties.getOrigins();
-        LOG.info("Enable CORS request with origins {}, methods {} and headers {} for API mode",
-                properties.getOrigins(),
-                properties.hasMethods() ? properties.getMethods() : "default (" + defaultAllowedMethods + ")",
-                properties.hasHeaders() ? properties.getHeaders() : "default (" + defaultAllowedHeaders + ")"
-        );
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(origins);
-        if (properties.hasHeaders()) {
-            config.setAllowedHeaders(properties.getHeaders());
-        } else {
-            config.setAllowedHeaders(defaultAllowedHeaders);
-        }
-        if (properties.hasMethods()) {
-            config.setAllowedMethods(properties.getMethods());
-        } else {
-            config.setAllowedMethods(defaultAllowedMethods); // XXX
-        }
-        config.setMaxAge(86400L);
-        config.setAllowCredentials(true);
-        source.registerCorsConfiguration("/**", config);
-
-        return source;
     }
 
     @Bean

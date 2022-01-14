@@ -1,6 +1,11 @@
 package org.entur.jwt.spring;
 
-import org.entur.jwt.spring.filter.*;
+import org.entur.jwt.spring.filter.JwtAuthenticationExceptionHandler;
+import org.entur.jwt.spring.filter.JwtAuthenticationManager;
+import org.entur.jwt.spring.filter.JwtAuthorityMapper;
+import org.entur.jwt.spring.filter.JwtDetailsMapper;
+import org.entur.jwt.spring.filter.JwtPrincipalMapper;
+import org.entur.jwt.spring.filter.JwtServerAuthenticationConverter;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
 import org.entur.jwt.spring.filter.resolver.JwtArgumentResolver;
 import org.entur.jwt.spring.properties.AuthorizationProperties;
@@ -15,6 +20,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.web.reactive.config.WebFluxConfigurer;
 import org.springframework.web.reactive.result.method.annotation.ArgumentResolverConfigurer;
 
@@ -62,5 +68,27 @@ public class JwtAutoConfigurationWebFlux extends JwtAutoConfiguration {
     public JwtAuthenticationExceptionHandler advice() {
         return new JwtAuthenticationExceptionHandler();
     }
+
+    @Bean
+    @ConditionalOnMissingBean(ReactiveAuthenticationManager.class)
+    @ConditionalOnProperty(name = "entur.jwt.enabled", havingValue = "true")
+    public ReactiveAuthenticationManager reactiveAuthenticationManager() {
+        return new JwtAuthenticationManager();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(CustomAuthenticationFailureHandler.class)
+    @ConditionalOnProperty(name = "entur.jwt.enabled", havingValue = "true")
+    public CustomAuthenticationFailureHandler customAuthenticationFailureHandler() {
+        return new CustomAuthenticationFailureHandler();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(CustomServerAuthenticationEntryPoint.class)
+    @ConditionalOnProperty(name = "entur.jwt.enabled", havingValue = "true")
+    public CustomServerAuthenticationEntryPoint customServerAuthenticationEntryPoint() {
+        return new CustomServerAuthenticationEntryPoint();
+    }
+
 
 }
