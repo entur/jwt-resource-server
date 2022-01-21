@@ -20,3 +20,4 @@ then later, when making a call, adding the appropriate header:
 headers.put("Authorization", "Bearer " + tokenService.getAccessToken(false).getValue());
 ```
 
+Running as standalone (non-test) requires additional configuration.
