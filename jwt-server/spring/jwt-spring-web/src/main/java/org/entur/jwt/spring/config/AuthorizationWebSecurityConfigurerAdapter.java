@@ -1,6 +1,5 @@
 package org.entur.jwt.spring.config;
 
-import org.entur.jwt.spring.JwtAutoConfigurationWeb;
 import org.entur.jwt.spring.properties.AuthorizationProperties;
 import org.entur.jwt.spring.properties.HttpMethodMatcher;
 import org.entur.jwt.spring.properties.MatcherConfiguration;
@@ -17,7 +16,7 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 
 public abstract class AuthorizationWebSecurityConfigurerAdapter extends WebSecurityConfigurerAdapter {
 
-    private static Logger log = LoggerFactory.getLogger(JwtAutoConfigurationWeb.class);
+    private static Logger log = LoggerFactory.getLogger(AuthorizationWebSecurityConfigurerAdapter.class);
 
     protected final AuthorizationProperties authorizationProperties;
 

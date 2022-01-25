@@ -1,6 +1,5 @@
 package org.entur.jwt.spring.config;
 
-import org.entur.jwt.spring.JwtAutoConfigurationWeb;
 import org.entur.jwt.spring.filter.JwtAuthenticationFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +19,7 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
  */
 public abstract class JwtFilterWebSecurityConfigurerAdapter extends WebSecurityConfigurerAdapter {
 
-    private static Logger log = LoggerFactory.getLogger(JwtAutoConfigurationWeb.class);
+    private static Logger log = LoggerFactory.getLogger(JwtFilterWebSecurityConfigurerAdapter.class);
 
     protected static class NoUserDetailsService implements UserDetailsService {
         @Override

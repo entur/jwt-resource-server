@@ -543,7 +543,7 @@
 				<version>${owasp-dependency-check.version}</version>
 				<configuration>
 					<failBuildOnCVSS>7</failBuildOnCVSS>
-					<failOnError>false</failOnError>
+					<failOnError>true</failOnError>
 					<skipTestScope>true</skipTestScope>
 					<!-- suppressionFiles: see https://jeremylong.github.io/DependencyCheck/general/suppression.html -->
 					<suppressionFiles>
