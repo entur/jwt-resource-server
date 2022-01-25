@@ -1,19 +1,18 @@
-package org.entur.jwt.spring;
+package org.entur.jwt.spring.auth0;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-
+import com.auth0.jwt.impl.NullClaim;
+import com.auth0.jwt.interfaces.Claim;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import org.entur.jwt.spring.filter.JwtAuthorityMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
-import com.auth0.jwt.impl.NullClaim;
-import com.auth0.jwt.interfaces.Claim;
-import com.auth0.jwt.interfaces.DecodedJWT;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 public class Auth0JwtAuthorityMapper implements JwtAuthorityMapper<DecodedJWT> {
 

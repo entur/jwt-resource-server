@@ -1,11 +1,11 @@
-package org.entur.jwt.spring.properties;
+package org.entur.jwt.spring.auth0.properties;
+
+import org.entur.jwt.verifier.config.JwkProperties;
+import org.entur.jwt.verifier.config.JwtClaimsProperties;
+import org.entur.jwt.verifier.config.JwtTenantProperties;
 
 import java.util.HashMap;
 import java.util.Map;
-
-import org.entur.jwt.verifier.config.JwtClaimsProperties;
-import org.entur.jwt.verifier.config.JwkProperties;
-import org.entur.jwt.verifier.config.JwtTenantProperties;
 
 public class JwtProperties {
 

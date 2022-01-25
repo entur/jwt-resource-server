@@ -1,9 +1,9 @@
 package org.entur.jwt.spring.config;
 
-import org.entur.jwt.spring.properties.AuthorizationProperties;
-import org.entur.jwt.spring.properties.HttpMethodMatcher;
-import org.entur.jwt.spring.properties.MatcherConfiguration;
-import org.entur.jwt.spring.properties.PermitAll;
+import org.entur.jwt.spring.auth0.properties.AuthorizationProperties;
+import org.entur.jwt.spring.auth0.properties.HttpMethodMatcher;
+import org.entur.jwt.spring.auth0.properties.MatcherConfiguration;
+import org.entur.jwt.spring.auth0.properties.PermitAll;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

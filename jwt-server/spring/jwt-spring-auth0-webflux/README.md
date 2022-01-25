@@ -1,4 +1,4 @@
-# jwt-spring-auth0-web
+# jwt-spring-auth0-webflux
 Json Web Token validation for Spring Reactive backed by Auth0 verifier implementation. Tested with tokens issued by
 
  * Auth0

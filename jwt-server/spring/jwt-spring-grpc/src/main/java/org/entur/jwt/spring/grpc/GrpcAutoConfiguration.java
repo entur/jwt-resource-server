@@ -12,7 +12,7 @@ import org.entur.jwt.spring.grpc.exception.ServerCallStatusRuntimeExceptionTrans
 import org.entur.jwt.spring.grpc.properties.GrpcPermitAll;
 import org.entur.jwt.spring.grpc.properties.GrpcServicesConfiguration;
 import org.entur.jwt.spring.grpc.properties.ServiceMatcherConfiguration;
-import org.entur.jwt.spring.properties.SecurityProperties;
+import org.entur.jwt.spring.auth0.properties.SecurityProperties;
 import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.entur.jwt.verifier.JwtVerifier;
 import org.slf4j.Logger;

@@ -1,9 +1,9 @@
 package org.entur.jwt.spring;
 
+import org.entur.jwt.spring.auth0.properties.SecurityProperties;
 import org.entur.jwt.spring.config.AuthorizationWebSecurityConfigurerAdapter;
 import org.entur.jwt.spring.config.JwtFilterWebSecurityConfigurerAdapter;
 import org.entur.jwt.spring.filter.JwtAuthenticationFilter;
-import org.entur.jwt.spring.properties.SecurityProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,7 +31,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 @ConditionalOnClass(WebSecurityConfigurerAdapter.class)
 @ConditionalOnExpression("${entur.authorization.enabled:true} || ${entur.jwt.enabled:false}")
 @EnableConfigurationProperties({SecurityProperties.class})
-@AutoConfigureAfter(JwtAutoConfigurationWeb.class)
+@AutoConfigureAfter(JwtWebAutoConfiguration.class)
 public class JwtWebSecurityConfigurerAdapterAutoConfiguration {
 
     private static Logger log = LoggerFactory.getLogger(JwtWebSecurityConfigurerAdapterAutoConfiguration.class);

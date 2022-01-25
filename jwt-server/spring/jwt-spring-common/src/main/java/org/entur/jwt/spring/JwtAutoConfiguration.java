@@ -1,17 +1,17 @@
 package org.entur.jwt.spring;
 
 import org.entur.jwt.spring.actuate.JwksHealthIndicator;
+import org.entur.jwt.spring.auth0.properties.JwtProperties;
+import org.entur.jwt.spring.auth0.properties.MdcPair;
+import org.entur.jwt.spring.auth0.properties.MdcProperties;
+import org.entur.jwt.spring.auth0.properties.SecurityProperties;
+import org.entur.jwt.spring.auth0.properties.TenantFilter;
 import org.entur.jwt.spring.filter.DefaultJwtDetailsMapper;
 import org.entur.jwt.spring.filter.DefaultJwtPrincipalMapper;
 import org.entur.jwt.spring.filter.JwtDetailsMapper;
 import org.entur.jwt.spring.filter.JwtPrincipalMapper;
 import org.entur.jwt.spring.filter.log.DefaultJwtMappedDiagnosticContextMapper;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
-import org.entur.jwt.spring.properties.JwtProperties;
-import org.entur.jwt.spring.properties.MdcPair;
-import org.entur.jwt.spring.properties.MdcProperties;
-import org.entur.jwt.spring.properties.SecurityProperties;
-import org.entur.jwt.spring.properties.TenantFilter;
 import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.entur.jwt.verifier.JwtVerifier;
 import org.entur.jwt.verifier.JwtVerifierFactory;

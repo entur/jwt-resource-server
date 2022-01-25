@@ -1,4 +1,4 @@
-package org.entur.jwt.spring.properties;
+package org.entur.jwt.spring.auth0.properties;
 /**
  * Basic configuration for spring security authorization filter ({@linkplain org.springframework.security.web.access.intercept.FilterSecurityInterceptor}).
  * <br><br>

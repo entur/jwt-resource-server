@@ -1,4 +1,4 @@
-package org.entur.jwt.spring.properties;
+package org.entur.jwt.spring.auth0.properties;
 
 import java.util.ArrayList;
 import java.util.List;

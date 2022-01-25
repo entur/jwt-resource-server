@@ -1,10 +1,11 @@
-package org.entur.jwt.spring.reactive.auth0;
+package org.entur.jwt.spring.auth0.web;
 
-import org.entur.jwt.spring.Auth0SecurityAutoConfiguration;
-import org.entur.jwt.spring.JwtAutoConfigurationWebFlux;
+import org.entur.jwt.spring.JwtAutoConfiguration;
+import org.entur.jwt.spring.auth0.Auth0AutoConfiguration;
+import org.entur.jwt.spring.auth0.properties.Auth0Properties;
 import org.entur.jwt.spring.filter.resolver.JwtArgumentResolver;
 import org.entur.jwt.spring.filter.resolver.JwtPayload;
-import org.entur.jwt.spring.properties.Auth0Properties;
+import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -14,8 +15,9 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @EnableConfigurationProperties(Auth0Properties.class)
-@AutoConfigureBefore(value = JwtAutoConfigurationWebFlux.class)
-public class Auth0SecurityAutoConfigurationWebFlux extends Auth0SecurityAutoConfiguration {
+@AutoConfigureAfter(value = Auth0AutoConfiguration.class)
+@AutoConfigureBefore(value = JwtAutoConfiguration.class)
+public class Auth0WebAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(JwtArgumentResolver.class)

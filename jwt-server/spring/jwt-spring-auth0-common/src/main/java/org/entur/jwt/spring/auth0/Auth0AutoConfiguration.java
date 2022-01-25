@@ -1,9 +1,10 @@
-package org.entur.jwt.spring;
+package org.entur.jwt.spring.auth0;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
+import org.entur.jwt.spring.JwtAutoConfiguration;
+import org.entur.jwt.spring.auth0.properties.Auth0AuthorityMapperProperties;
+import org.entur.jwt.spring.auth0.properties.Auth0Properties;
 import org.entur.jwt.spring.filter.JwtAuthorityMapper;
-import org.entur.jwt.spring.properties.Auth0AuthorityMapperProperties;
-import org.entur.jwt.spring.properties.Auth0Properties;
 import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.entur.jwt.verifier.JwtVerifierFactory;
 import org.entur.jwt.verifier.auth0.Auth0JwtClaimExtractor;
@@ -18,7 +19,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @EnableConfigurationProperties(Auth0Properties.class)
 @AutoConfigureBefore(value = JwtAutoConfiguration.class)
-public class Auth0SecurityAutoConfiguration {
+public class Auth0AutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(JwtClaimExtractor.class)

@@ -1,9 +1,9 @@
-package org.entur.jwt.spring.properties;
+package org.entur.jwt.spring.auth0.properties;
+
+import org.springframework.http.HttpMethod;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import org.springframework.http.HttpMethod;
 
 public class MethodMatcherConfiguration {
 

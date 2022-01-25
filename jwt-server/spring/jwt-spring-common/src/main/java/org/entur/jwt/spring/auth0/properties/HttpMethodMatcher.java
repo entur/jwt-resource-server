@@ -1,14 +1,14 @@
-package org.entur.jwt.spring.properties;
+package org.entur.jwt.spring.auth0.properties;
+
+import org.springframework.http.HttpMethod;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.http.HttpMethod;
-
 public class HttpMethodMatcher {
 
     private boolean enabled = true;
-    
+
     private List<String> patterns = new ArrayList<>();
 
     private final HttpMethod verb;

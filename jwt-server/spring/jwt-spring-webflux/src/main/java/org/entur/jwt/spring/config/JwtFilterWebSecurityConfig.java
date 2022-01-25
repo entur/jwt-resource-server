@@ -1,6 +1,6 @@
 package org.entur.jwt.spring.config;
 
-import org.entur.jwt.spring.JwtAutoConfigurationWebFlux;
+import org.entur.jwt.spring.JwtWebFluxAutoConfiguration;
 import org.entur.jwt.spring.filter.JwtServerAuthenticationConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +25,7 @@ import reactor.core.publisher.Mono;
  */
 public abstract class JwtFilterWebSecurityConfig {
 
-    private static final Logger log = LoggerFactory.getLogger(JwtAutoConfigurationWebFlux.class);
+    private static final Logger log = LoggerFactory.getLogger(JwtWebFluxAutoConfiguration.class);
 
     protected static class NoUserDetailsService implements ReactiveUserDetailsService {
         @Override

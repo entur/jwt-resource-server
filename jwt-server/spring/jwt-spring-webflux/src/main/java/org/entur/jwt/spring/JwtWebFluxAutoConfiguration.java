@@ -1,62 +1,64 @@
 package org.entur.jwt.spring;
 
-import org.entur.jwt.spring.filter.JwtAuthenticationExceptionAdvice;
-import org.entur.jwt.spring.filter.JwtAuthenticationFilter;
+import org.entur.jwt.spring.auth0.properties.AuthorizationProperties;
+import org.entur.jwt.spring.auth0.properties.CorsProperties;
+import org.entur.jwt.spring.auth0.properties.PermitAll;
+import org.entur.jwt.spring.auth0.properties.SecurityProperties;
+import org.entur.jwt.spring.filter.JwtAuthenticationExceptionHandler;
+import org.entur.jwt.spring.filter.JwtAuthenticationManager;
 import org.entur.jwt.spring.filter.JwtAuthorityMapper;
 import org.entur.jwt.spring.filter.JwtDetailsMapper;
 import org.entur.jwt.spring.filter.JwtPrincipalMapper;
+import org.entur.jwt.spring.filter.JwtServerAuthenticationConverter;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
 import org.entur.jwt.spring.filter.resolver.JwtArgumentResolver;
-import org.entur.jwt.spring.properties.AuthorizationProperties;
-import org.entur.jwt.spring.properties.CorsProperties;
-import org.entur.jwt.spring.properties.PermitAll;
-import org.entur.jwt.spring.properties.SecurityProperties;
 import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.entur.jwt.verifier.JwtVerifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.method.support.HandlerMethodArgumentResolver;
-import org.springframework.web.servlet.HandlerExceptionResolver;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.cors.reactive.CorsWebFilter;
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+import org.springframework.web.reactive.config.WebFluxConfigurer;
+import org.springframework.web.reactive.result.method.annotation.ArgumentResolverConfigurer;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true")
-public class JwtAutoConfigurationWeb extends JwtAutoConfiguration {
+@AutoConfigureAfter(value = JwtAutoConfiguration.class)
+public class JwtWebFluxAutoConfiguration {
 
-    private static final Logger log = LoggerFactory.getLogger(JwtAutoConfigurationWeb.class);
+    private static final Logger log = LoggerFactory.getLogger(JwtWebFluxAutoConfiguration.class);
 
     @Configuration
-    public static class DefaultEnturWebMvcConfigurer implements WebMvcConfigurer {
+    public static class DefaultEnturWebFluxConfigurer implements WebFluxConfigurer {
 
         private final JwtArgumentResolver resolver;
 
         @Autowired
-        public DefaultEnturWebMvcConfigurer(JwtArgumentResolver resolver) {
+        public DefaultEnturWebFluxConfigurer(JwtArgumentResolver resolver) {
             this.resolver = resolver;
         }
 
         @Override
-        public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
-            resolvers.add(resolver);
+        public void configureArgumentResolvers(ArgumentResolverConfigurer configurer) {
+            configurer.addCustomResolver(resolver);
         }
     }
 
     @Bean
-    @ConditionalOnMissingBean(JwtAuthenticationFilter.class)
-    public <T> JwtAuthenticationFilter<T> auth(SecurityProperties properties, JwtVerifier<T> verifier, @Autowired(required = false) JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtAuthorityMapper<T> authorityMapper,
-                                               JwtClaimExtractor<T> extractor, @Lazy HandlerExceptionResolver handlerExceptionResolver, JwtPrincipalMapper jwtPrincipalMapper, JwtDetailsMapper jwtDetailsMapper) {
+    @ConditionalOnMissingBean(JwtServerAuthenticationConverter.class)
+    public <T> JwtServerAuthenticationConverter<T> auth(SecurityProperties properties, JwtVerifier<T> verifier, @Autowired(required = false) JwtMappedDiagnosticContextMapper<T> mdcMapper, JwtAuthorityMapper<T> authorityMapper,
+                                                        JwtClaimExtractor<T> extractor, JwtPrincipalMapper jwtPrincipalMapper, JwtDetailsMapper jwtDetailsMapper) {
         AuthorizationProperties authorizationProperties = properties.getAuthorization();
 
         PermitAll permitAll = authorizationProperties.getPermitAll();
@@ -68,18 +70,39 @@ public class JwtAutoConfigurationWeb extends JwtAutoConfiguration {
         } else {
             log.info("Authentication with Json Web Token is optional");
         }
-        return new JwtAuthenticationFilter<>(verifier, tokenMustBePresent, authorityMapper, mdcMapper, extractor, handlerExceptionResolver, jwtPrincipalMapper, jwtDetailsMapper);
+        return new JwtServerAuthenticationConverter<>(verifier, authorityMapper, mdcMapper, extractor, tokenMustBePresent, jwtDetailsMapper, jwtPrincipalMapper);
     }
 
     @Bean
-    @ConditionalOnMissingBean(JwtAuthenticationExceptionAdvice.class) // allow for customization
-    public JwtAuthenticationExceptionAdvice advice() {
-        return new JwtAuthenticationExceptionAdvice();
+    @ConditionalOnMissingBean(JwtAuthenticationExceptionHandler.class) // allow for customization
+    public JwtAuthenticationExceptionHandler advice() {
+        return new JwtAuthenticationExceptionHandler();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(ReactiveAuthenticationManager.class)
+    @ConditionalOnProperty(name = "entur.jwt.enabled", havingValue = "true")
+    public ReactiveAuthenticationManager reactiveAuthenticationManager() {
+        return new JwtAuthenticationManager();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(CustomAuthenticationFailureHandler.class)
+    @ConditionalOnProperty(name = "entur.jwt.enabled", havingValue = "true")
+    public CustomAuthenticationFailureHandler customAuthenticationFailureHandler() {
+        return new CustomAuthenticationFailureHandler();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(CustomServerAuthenticationEntryPoint.class)
+    @ConditionalOnProperty(name = "entur.jwt.enabled", havingValue = "true")
+    public CustomServerAuthenticationEntryPoint customServerAuthenticationEntryPoint() {
+        return new CustomServerAuthenticationEntryPoint();
     }
 
     @Bean("corsConfigurationSource")
     @ConditionalOnProperty(name = {"entur.cors.enabled"}, havingValue = "true")
-    public CorsConfigurationSource corsConfigurationSource(SecurityProperties oidcAuthProperties) {
+    public CorsWebFilter corsConfigurationSource(SecurityProperties oidcAuthProperties) {
         CorsProperties cors = oidcAuthProperties.getCors();
         if (cors.getMode().equals("api")) {
             return getCorsConfiguration(cors);
@@ -95,12 +118,12 @@ public class JwtAutoConfigurationWeb extends JwtAutoConfiguration {
 
     @Bean("corsConfigurationSource")
     @ConditionalOnProperty(name = {"entur.security.cors.mode"}, havingValue = "webapp")
-    public CorsConfigurationSource corsConfigurationSourceForWebapp(SecurityProperties properties) {
+    public CorsWebFilter corsConfigurationSourceForWebapp(SecurityProperties properties) {
         log.info("Disable CORS requests for webapp mode");
         return getEmptyCorsConfiguration();
     }
 
-    public static CorsConfigurationSource getEmptyCorsConfiguration() {
+    public static CorsWebFilter getEmptyCorsConfiguration() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 
         CorsConfiguration config = new CorsConfiguration();
@@ -110,10 +133,10 @@ public class JwtAutoConfigurationWeb extends JwtAutoConfiguration {
 
         source.registerCorsConfiguration("/**", config);
 
-        return source;
+        return new CorsWebFilter(source);
     }
 
-    public static CorsConfigurationSource getCorsConfiguration(CorsProperties properties) {
+    public static CorsWebFilter getCorsConfiguration(CorsProperties properties) {
         List<String> defaultAllowedMethods = Arrays.asList("GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS");
         List<String> defaultAllowedHeaders = Collections.singletonList("*");
 
@@ -142,7 +165,7 @@ public class JwtAutoConfigurationWeb extends JwtAutoConfiguration {
         config.setAllowCredentials(true);
         source.registerCorsConfiguration("/**", config);
 
-        return source;
+        return new CorsWebFilter(source);
     }
 
 }
