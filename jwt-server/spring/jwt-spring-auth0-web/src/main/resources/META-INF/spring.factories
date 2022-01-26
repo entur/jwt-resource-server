@@ -1,0 +1,2 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+org.entur.jwt.spring.auth0.web.Auth0WebAutoConfiguration

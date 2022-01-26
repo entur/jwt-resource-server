@@ -1,0 +1,16 @@
+{
+  "https://entur.io/organisationID": 1,
+  "iss": "https://my.issuer",
+  "sub": "waad|a-b-c",
+  "aud": [
+    "https://portal.dev.entur.org"
+  ],
+  "iat": 1570520016,
+  "exp": 1570521216,
+  "azp": "xyz",
+  "scope": "openid profile email",
+  "permissions": [
+    "this:configure",
+    "that:configure"
+  ]
+}

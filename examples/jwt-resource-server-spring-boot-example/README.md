@@ -1,7 +1,7 @@
 
 # jwt-resource-server-spring-boot-example
 
-This repository contains a demo application showing how to use the `jwt-spring-auth0` and `jwt-spring-test`:
+This repository contains a demo application showing how to use the `jwt-spring-auth0-web` and `jwt-spring-test`:
 
   * Classic [Spring REST controller](src/main/java/org/entur/jwt/spring/demo/GreetingController.java)
   * YAML configuration

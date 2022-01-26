@@ -17,7 +17,7 @@
 	<dependencies>
 		<dependency>
 			<groupId>org.entur.jwt-rs</groupId>
-			<artifactId>jwt-spring-core</artifactId>
+			<artifactId>jwt-spring-web</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.camel</groupId>
@@ -57,7 +57,7 @@
 		</dependency>
 		<dependency>
 			<groupId>org.entur.jwt-rs</groupId>
-			<artifactId>jwt-spring-auth0</artifactId>
+			<artifactId>jwt-spring-auth0-web</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
