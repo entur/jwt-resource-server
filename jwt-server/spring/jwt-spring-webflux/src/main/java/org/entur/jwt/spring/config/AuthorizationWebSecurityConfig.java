@@ -37,6 +37,12 @@ public abstract class AuthorizationWebSecurityConfig {
 
     protected void configurePermitAll(ServerHttpSecurity http, PermitAll permitAll) throws Exception {
 
+        // TODO merge new vs old path syntax
+        MatcherConfiguration mvcMatcher = permitAll.getMvcMatcher();
+        if (mvcMatcher.isActive()) {
+            throw new IllegalStateException("MVC matches are not supported, use ant matchers");
+        }
+
         MatcherConfiguration antMatcher = permitAll.getAntMatcher();
         if (antMatcher.isActive()) {
             configurePermitAllAntMatchers(http, antMatcher);
