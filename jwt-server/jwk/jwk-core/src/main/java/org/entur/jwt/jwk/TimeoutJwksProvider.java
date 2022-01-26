@@ -1,5 +1,8 @@
 package org.entur.jwt.jwk;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -7,8 +10,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Simple provider for additional timeout protection. Creates a new thread pool for each invocation. 
@@ -41,17 +42,19 @@ public class TimeoutJwksProvider<T> extends BaseJwksProvider<T> {
         try {
            return future.get(duration, TimeUnit.MILLISECONDS);
         } catch (ExecutionException ex) {
-           Throwable cause = ex.getCause();
-           if(cause instanceof JwksException) {
-               throw (JwksException)cause;
-           } else {
-               throw new JwksUnavailableException(cause);
-           }
+            Throwable cause = ex.getCause();
+            if (cause instanceof JwksException) {
+                throw (JwksException) cause;
+            } else {
+                throw new JwksUnavailableException(cause);
+            }
         } catch (Exception e) {
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
             throw new JwksUnavailableException(e);
+        } finally {
+            executor.shutdown();
         }
     }
 
