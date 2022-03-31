@@ -68,7 +68,7 @@
 		<jwks-rsa.version>0.20.0</jwks-rsa.version>
 		<java-jwt.version>3.18.2</java-jwt.version>
 		<jadler.version>1.3.0</jadler.version>
-		<spring-boot.version>2.6.1</spring-boot.version>
+		<spring-boot.version>2.6.6</spring-boot.version>
 		<spring.version>5.3.13</spring.version>
 		<rest-assured.version>4.3.3</rest-assured.version>
 		<okhttp.version>4.9.1</okhttp.version>
