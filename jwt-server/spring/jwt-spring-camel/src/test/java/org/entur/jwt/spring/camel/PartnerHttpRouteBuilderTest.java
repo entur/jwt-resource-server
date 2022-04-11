@@ -16,10 +16,8 @@
 
 package org.entur.jwt.spring.camel;
 
-import static io.restassured.RestAssured.given;
-import java.net.URI;
-
 import org.apache.camel.model.ModelCamelContext;
+import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
 import org.entur.jwt.junit5.entur.test.auth0.PartnerAuth0AuthorizationServer;
 import org.entur.jwt.junit5.entur.test.auth0.PartnerAuth0Token;
 import org.junit.jupiter.api.Test;
@@ -27,12 +25,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.web.server.LocalServerPort;
 
+import java.net.URI;
+
+import static io.restassured.RestAssured.given;
+
 @PartnerAuth0AuthorizationServer
+@CamelSpringBootTest
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class PartnerHttpRouteBuilderTest {
-
-    // "{\"r\":\"adminEditRouteData\",\"o\":\"RB\"}")
-    // RoleAssignment.builder().withOrganisation("RB").withRole("adminEditRouteData").build().toJson();
 
     @LocalServerPort
     public int port;
@@ -44,7 +44,7 @@ public class PartnerHttpRouteBuilderTest {
     public void testPartnerRouteWithPartnerToken(@PartnerAuth0Token(organisationId = 1) String token) throws Exception {
         context.start();
 
-        URI uri = new URI("http://localhost:" + port + "/services/myPath/myCodeSpace");
+        URI uri = new URI("http://localhost:" + port + "/camel/myPath/myCodeSpace");
 
         given().header("Authorization", token).log().all().when().get(uri).then().log().all().assertThat().statusCode(200);
     }
@@ -53,9 +53,8 @@ public class PartnerHttpRouteBuilderTest {
     public void testPartnerRouteWithoutToken() throws Exception {
         context.start();
 
-        URI uri = new URI("http://localhost:" + port + "/services/myPath/myCodeSpace");
+        URI uri = new URI("http://localhost:" + port + "/camel/myPath/myCodeSpace");
 
         given().log().all().when().get(uri).then().log().all().assertThat().statusCode(401);
     }
-
 }

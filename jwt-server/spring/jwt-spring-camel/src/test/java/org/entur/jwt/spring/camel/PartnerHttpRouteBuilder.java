@@ -19,10 +19,10 @@ package org.entur.jwt.spring.camel;
 import org.apache.camel.CamelAuthorizationException;
 import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
+import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.spring.security.SpringSecurityAuthorizationPolicy;
 import org.apache.camel.model.rest.RestBindingMode;
 import org.apache.camel.model.rest.RestParamType;
-import org.apache.camel.spring.SpringRouteBuilder;
 import org.entur.jwt.verifier.JwtClaimException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -34,7 +34,7 @@ import org.springframework.stereotype.Component;
  * Test REST service
  */
 @Component
-public class PartnerHttpRouteBuilder extends SpringRouteBuilder {
+public class PartnerHttpRouteBuilder extends RouteBuilder {
 
     private static final String PLAIN = "text/plain";
 

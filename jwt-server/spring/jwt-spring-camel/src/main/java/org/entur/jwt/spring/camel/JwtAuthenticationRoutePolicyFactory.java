@@ -1,7 +1,7 @@
 package org.entur.jwt.spring.camel;
 
 import org.apache.camel.CamelContext;
-import org.apache.camel.model.RouteDefinition;
+import org.apache.camel.NamedNode;
 import org.apache.camel.spi.RoutePolicy;
 import org.apache.camel.spi.RoutePolicyFactory;
 
@@ -20,7 +20,7 @@ public class JwtAuthenticationRoutePolicyFactory implements RoutePolicyFactory {
     }
 
     @Override
-    public RoutePolicy createRoutePolicy(CamelContext camelContext, String routeId, RouteDefinition route) {
+    public RoutePolicy createRoutePolicy(CamelContext camelContext, String routeId, NamedNode route) {
         return jwtRoutePolicy;
     }
 

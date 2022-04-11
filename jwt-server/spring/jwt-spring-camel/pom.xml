@@ -9,19 +9,20 @@
 	</parent>
 	<artifactId>jwt-spring-camel</artifactId>
 
-	<properties>
-		<spring-boot.version>2.1.18.RELEASE</spring-boot.version>
-		<spring.version>5.1.20.RELEASE</spring.version>
-	</properties>
-
 	<dependencies>
+		<dependency>
+			<groupId>org.apache.camel.springboot</groupId>
+			<artifactId>camel-spring-boot-starter</artifactId>
+			<version>${camel.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel.springboot</groupId>
+			<artifactId>camel-servlet-starter</artifactId>
+			<version>${camel.version}</version>
+		</dependency>
 		<dependency>
 			<groupId>org.entur.jwt-rs</groupId>
 			<artifactId>jwt-spring-web</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.camel</groupId>
-			<artifactId>camel-spring-boot</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.camel</groupId>
@@ -49,12 +50,6 @@
 		</dependency>
 
 		<!-- test -->
-		<dependency>
-			<groupId>org.apache.camel</groupId>
-			<artifactId>camel-servlet-starter</artifactId>
-			<version>${camel.version}</version>
-			<scope>test</scope>
-		</dependency>
 		<dependency>
 			<groupId>org.entur.jwt-rs</groupId>
 			<artifactId>jwt-spring-auth0-web</artifactId>
@@ -110,6 +105,11 @@
 			<artifactId>rest-assured</artifactId>
 			<scope>test</scope>
 		</dependency>
-
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-test-spring-junit5</artifactId>
+			<version>${camel.version}</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 </project>
