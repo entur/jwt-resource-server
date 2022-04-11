@@ -63,7 +63,7 @@
 		<jjwt.version>0.11.2</jjwt.version>
 		<nimbus-jose-jwt.version>9.15.2</nimbus-jose-jwt.version>
 		<bucket4j-core.version>4.10.0</bucket4j-core.version>
-		<jackson-databind.version>2.13.0</jackson-databind.version>
+		<jackson-databind.version>2.13.2.1</jackson-databind.version>
 		<camel.version>2.25.4</camel.version>
 		<jwks-rsa.version>0.20.0</jwks-rsa.version>
 		<java-jwt.version>3.18.2</java-jwt.version>
