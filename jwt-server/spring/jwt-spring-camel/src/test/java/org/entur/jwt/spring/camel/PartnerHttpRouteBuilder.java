@@ -19,10 +19,10 @@ package org.entur.jwt.spring.camel;
 import org.apache.camel.CamelAuthorizationException;
 import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
-import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.spring.security.SpringSecurityAuthorizationPolicy;
 import org.apache.camel.model.rest.RestBindingMode;
 import org.apache.camel.model.rest.RestParamType;
+import org.apache.camel.spring.SpringRouteBuilder;
 import org.entur.jwt.verifier.JwtClaimException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -34,7 +34,7 @@ import org.springframework.stereotype.Component;
  * Test REST service
  */
 @Component
-public class PartnerHttpRouteBuilder extends RouteBuilder {
+public class PartnerHttpRouteBuilder extends SpringRouteBuilder {
 
     private static final String PLAIN = "text/plain";
 
@@ -51,14 +51,35 @@ public class PartnerHttpRouteBuilder extends RouteBuilder {
 
         getContext().addRoutePolicyFactory(factory);
 
-        onException(CamelAuthorizationException.class).handled(true).setHeader(Exchange.HTTP_RESPONSE_CODE, constant(401)).setHeader(Exchange.CONTENT_TYPE, constant("text/plain")).transform(exceptionMessage());
+        onException(CamelAuthorizationException.class)
+                .handled(true)
+                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant(401))
+                .setHeader(Exchange.CONTENT_TYPE, constant("text/plain"))
+                .transform(exceptionMessage());
 
-        onException(AccessDeniedException.class).handled(true).setHeader(Exchange.HTTP_RESPONSE_CODE, constant(403)).setHeader(Exchange.CONTENT_TYPE, constant("text/plain")).transform(exceptionMessage());
+        onException(AccessDeniedException.class)
+                .handled(true)
+                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant(403))
+                .setHeader(Exchange.CONTENT_TYPE, constant("text/plain"))
+                .transform(exceptionMessage());
 
-        onException(BadCredentialsException.class).handled(true).setHeader(Exchange.HTTP_RESPONSE_CODE, constant(401)).setHeader(Exchange.CONTENT_TYPE, constant("text/plain")).transform(exceptionMessage());
+        onException(BadCredentialsException.class)
+                .handled(true)
+                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant(401))
+                .setHeader(Exchange.CONTENT_TYPE, constant("text/plain"))
+                .transform(exceptionMessage());
 
-        rest("/myPath").get("/{codespace}").description("Test route").param().name("codespace").type(RestParamType.path).description("Provider Codespace").dataType("string").endParam().produces(PLAIN).bindingMode(RestBindingMode.off)
-                .responseMessage().code(200).endResponseMessage().responseMessage().code(400).message("Invalid codespace").endResponseMessage().route().policy(springSecurityAuthorizationPolicy).process(e -> {
+        rest("/myPath")
+                .get("/{codespace}")
+                .description("Test route")
+                .param().name("codespace").type(RestParamType.path).description("Provider Codespace").dataType("string").endParam()
+                .produces(PLAIN)
+                .bindingMode(RestBindingMode.off)
+                .responseMessage().code(200).endResponseMessage()
+                .responseMessage().code(400).message("Invalid codespace").endResponseMessage()
+                .route()
+                .policy(springSecurityAuthorizationPolicy)
+                .process(e -> {
                     try {
                         Number organsiationId = ExchangeJwtClaimExtractor.extract(e, "organisationID", Number.class);
                         e.getOut().setBody("My message for organsiation " + organsiationId);
@@ -66,7 +87,12 @@ public class PartnerHttpRouteBuilder extends RouteBuilder {
                         // whoops, no organisation id
                         throw new AccessDeniedException("Expected token with organisation id");
                     }
-                }).log(LoggingLevel.INFO, "Return simple response").removeHeaders("CamelHttp*").routeId("test-my-path").endRest();
+                })
+                .log(LoggingLevel.INFO, "Return simple response")
+                .removeHeaders("CamelHttp*")
+                .routeId("test-my-path")
+                .endRest();
 
     }
+
 }
