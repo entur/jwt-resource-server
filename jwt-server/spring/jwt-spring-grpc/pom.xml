@@ -38,6 +38,12 @@
             <groupId>io.github.lognet</groupId>
             <artifactId>grpc-spring-boot-starter</artifactId>
             <version>${lognet.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-netty-shaded</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.google.protobuf</groupId>
@@ -48,11 +54,6 @@
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java-util</artifactId>
             <version>${proto.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-netty-shaded</artifactId>
-            <version>${grpc.version}</version>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
@@ -89,7 +90,6 @@
             <artifactId>grpc-context</artifactId>
             <version>${grpc.version}</version>
         </dependency>
-
         <!-- test -->
         <dependency>
             <groupId>org.entur.jwt-rs</groupId>

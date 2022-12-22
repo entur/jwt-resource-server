@@ -78,7 +78,7 @@
 
 		<grpc.version>1.51.1</grpc.version>
 		<proto.version>3.21.9</proto.version>
-		<lognet.version>4.7.0</lognet.version>
+		<lognet.version>4.9.1</lognet.version>
 		<!-- https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-dependencies  -->
 		<!-- transient dependencies added due to security patching -->
 		<snakeyaml.version>1.33</snakeyaml.version>
@@ -392,19 +392,41 @@
 			</dependency>
 
 			<dependency>
+				<groupId>io.projectreactor.netty</groupId>
+				<artifactId>reactor-netty-http</artifactId>
+				<version>${reactor-netty-http.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>io.netty</groupId>
+				<artifactId>netty-codec-http</artifactId>
+				<version>${netty.version}</version>
+			</dependency>
+			<dependency>
 				<groupId>io.netty</groupId>
 				<artifactId>netty-codec-http2</artifactId>
 				<version>${netty.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>io.netty</groupId>
-				<artifactId>netty-handler-proxy</artifactId>
+				<artifactId>netty-transport-native-epoll</artifactId>
+				<version>${netty.version}</version>
+				<classifier>linux-x86_64</classifier>
+			</dependency>
+			<dependency>
+				<groupId>io.netty</groupId>
+				<artifactId>netty-transport-native-macos</artifactId>
+				<version>${netty.version}</version>
+				<classifier>osx-x86_64</classifier>
+			</dependency>
+			<dependency>
+				<groupId>io.netty</groupId>
+				<artifactId>netty-resolver-dns</artifactId>
 				<version>${netty.version}</version>
 			</dependency>
 			<dependency>
-				<groupId>io.projectreactor.netty</groupId>
-				<artifactId>reactor-netty-http</artifactId>
-				<version>${reactor-netty-http.version}</version>
+				<groupId>io.netty</groupId>
+				<artifactId>netty-handler-proxy</artifactId>
+				<version>${netty.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>io.netty</groupId>
