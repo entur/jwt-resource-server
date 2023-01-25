@@ -42,6 +42,14 @@ public class RestTemplateJwtClientAutoConfiguration extends JwtClientAutoConfigu
             }
         }
 
+        return restTemplateBuilder
+                .requestFactory(RestTemplateJwtClientAutoConfiguration::getHttpComponentsClientHttpRequestFactory)
+                .setConnectTimeout(Duration.of(connectTimeout, ChronoUnit.SECONDS))
+                .setReadTimeout(Duration.of(readTimeout, ChronoUnit.SECONDS))
+                .build();
+    }
+
+    private static HttpComponentsClientHttpRequestFactory getHttpComponentsClientHttpRequestFactory() {
         HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
 
         HttpClient httpClient = HttpClientBuilder.create()
@@ -57,12 +65,7 @@ public class RestTemplateJwtClientAutoConfiguration extends JwtClientAutoConfigu
                 })
                 .build();
         factory.setHttpClient(httpClient);
-
-        return restTemplateBuilder
-                .requestFactory((() -> factory))
-                .setConnectTimeout(Duration.of(connectTimeout, ChronoUnit.SECONDS))
-                .setReadTimeout(Duration.of(readTimeout, ChronoUnit.SECONDS))
-                .build();
+        return factory;
     }
 
     @Bean
