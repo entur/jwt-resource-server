@@ -55,11 +55,12 @@ public class RestTemplateJwtClientAutoConfiguration extends JwtClientAutoConfigu
                 .disableAutomaticRetries()
                 .disableRedirectHandling()
 
-                // do not keep alive, assuming new HTTP requests is the most robust
+                // do not keep alive, assuming creating new HTTP requests
+                // will be the most robust approach
                 .setKeepAliveStrategy((response, context) -> {
                     return -1;
                 })
-                
+
                 .build();
         factory.setHttpClient(httpClient);
 
