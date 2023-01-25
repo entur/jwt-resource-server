@@ -1,5 +1,8 @@
 package org.entur.jwt.client.spring.classic;
 
+import org.apache.http.client.HttpClient;
+import org.apache.http.conn.ConnectionKeepAliveStrategy;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.entur.jwt.client.spring.JwtClientAutoConfiguration;
 import org.entur.jwt.client.spring.SpringJwtClientProperties;
 import org.slf4j.Logger;
@@ -9,6 +12,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
@@ -23,7 +27,7 @@ public class RestTemplateJwtClientAutoConfiguration extends JwtClientAutoConfigu
     @Bean
     @Qualifier("jwtRestTemplate")
     public RestTemplate jwtRestTemplate(RestTemplateBuilder restTemplateBuilder, SpringJwtClientProperties properties) {
-
+        // use custom HTTP-client so that we do not get a cookie parse warning
         long connectTimeout = properties.getConnectTimeout();
         long readTimeout = properties.getReadTimeout();
 
@@ -38,10 +42,30 @@ public class RestTemplateJwtClientAutoConfiguration extends JwtClientAutoConfigu
             }
         }
 
-        restTemplateBuilder = restTemplateBuilder.setConnectTimeout(Duration.of(connectTimeout, ChronoUnit.SECONDS));
-        restTemplateBuilder = restTemplateBuilder.setReadTimeout(Duration.of(readTimeout, ChronoUnit.SECONDS));
+        return restTemplateBuilder
+                .requestFactory(RestTemplateJwtClientAutoConfiguration::getHttpComponentsClientHttpRequestFactory)
+                .setConnectTimeout(Duration.of(connectTimeout, ChronoUnit.SECONDS))
+                .setReadTimeout(Duration.of(readTimeout, ChronoUnit.SECONDS))
+                .build();
+    }
 
-        return restTemplateBuilder.build();
+    private static HttpComponentsClientHttpRequestFactory getHttpComponentsClientHttpRequestFactory() {
+        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
+
+        HttpClient httpClient = HttpClientBuilder.create()
+                .disableCookieManagement()
+                .disableAuthCaching()
+                .disableAutomaticRetries()
+                .disableRedirectHandling()
+
+                // do not keep alive, assuming creating new HTTP requests
+                // will be the most robust approach
+                .setKeepAliveStrategy((response, context) -> {
+                    return -1;
+                })
+                .build();
+        factory.setHttpClient(httpClient);
+        return factory;
     }
 
     @Bean

@@ -58,4 +58,9 @@
 		<!-- parsing untrusted yaml -->
 		<cve>CVE-2022-1471</cve>
 	</suppress>
+	<suppress>
+		<!-- parsing yaml might consume a lot of resources -->
+		<cve>CVE-2022-3064</cve>
+	</suppress>
+
 </suppressions>
