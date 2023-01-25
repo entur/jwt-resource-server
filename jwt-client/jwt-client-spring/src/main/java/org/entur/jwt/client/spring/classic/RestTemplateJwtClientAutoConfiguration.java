@@ -27,8 +27,6 @@ public class RestTemplateJwtClientAutoConfiguration extends JwtClientAutoConfigu
     @Bean
     @Qualifier("jwtRestTemplate")
     public RestTemplate jwtRestTemplate(RestTemplateBuilder restTemplateBuilder, SpringJwtClientProperties properties) {
-
-
         // use custom HTTP-client so that we do not get a cookie parse warning
         long connectTimeout = properties.getConnectTimeout();
         long readTimeout = properties.getReadTimeout();
@@ -46,9 +44,6 @@ public class RestTemplateJwtClientAutoConfiguration extends JwtClientAutoConfigu
 
         HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
 
-        factory.setConnectTimeout((int) (connectTimeout * 1000));
-        factory.setReadTimeout((int) (readTimeout * 1000));
-
         HttpClient httpClient = HttpClientBuilder.create()
                 .disableCookieManagement()
                 .disableAuthCaching()
@@ -60,11 +55,14 @@ public class RestTemplateJwtClientAutoConfiguration extends JwtClientAutoConfigu
                 .setKeepAliveStrategy((response, context) -> {
                     return -1;
                 })
-
                 .build();
         factory.setHttpClient(httpClient);
 
-        return restTemplateBuilder.build();
+        return restTemplateBuilder
+                .requestFactory((() -> factory))
+                .setConnectTimeout(Duration.of(connectTimeout, ChronoUnit.SECONDS))
+                .setReadTimeout(Duration.of(readTimeout, ChronoUnit.SECONDS))
+                .build();
     }
 
     @Bean
