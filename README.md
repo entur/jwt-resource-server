@@ -51,7 +51,7 @@ See documentation contained in each folder to get started. Or skip right to the 
 [European Union Public Licence v1.2](https://eupl.eu/).
 
 # History
- - 2.0.5: Ignore cookies as Apache did not accept the ones returned from Auth0 due to use of custom domain + bump dependencies
+ - 2.0.5-2.0.6: Ignore cookies as Apache did not accept the ones returned from Auth0 due to use of custom domain + bump dependencies
  - 2.0.2-2.0.4: Maintenance release
  - 2.0.0: Splits up the artifacts of web mvc (web) and reactive (webflux), respectively. Therefore, there are major renaming in some artifacts. For instance, if you are implementing `jwt-spring-auth0`, you should rename this to `jwt-spring-auth0-web`. 
  - 1.1.13: Support for WebClient (used in a synchronous way) in new `jwt-client-spring-cloud` artifact.
