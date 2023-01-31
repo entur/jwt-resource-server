@@ -1,7 +1,11 @@
 package org.entur.jwt.client.spring.classic;
 
+import org.apache.http.ConnectionReuseStrategy;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.config.CookieSpecs;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.conn.ConnectionKeepAliveStrategy;
+import org.apache.http.impl.NoConnectionReuseStrategy;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.entur.jwt.client.spring.JwtClientAutoConfiguration;
 import org.entur.jwt.client.spring.SpringJwtClientProperties;
@@ -52,17 +56,18 @@ public class RestTemplateJwtClientAutoConfiguration extends JwtClientAutoConfigu
     private static HttpComponentsClientHttpRequestFactory getHttpComponentsClientHttpRequestFactory() {
         HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
 
+        // https://stackoverflow.com/questions/7459279/httpclient-warning-cookie-rejected-illegal-domain-attribute
+        RequestConfig customizedRequestConfig = RequestConfig.custom().setCookieSpec(CookieSpecs.IGNORE_COOKIES).build();
+
         HttpClient httpClient = HttpClientBuilder.create()
                 .disableCookieManagement()
                 .disableAuthCaching()
                 .disableAutomaticRetries()
                 .disableRedirectHandling()
-
+                .setDefaultRequestConfig(customizedRequestConfig)
                 // do not keep alive, assuming creating new HTTP requests
                 // will be the most robust approach
-                .setKeepAliveStrategy((response, context) -> {
-                    return -1;
-                })
+                .setConnectionReuseStrategy(NoConnectionReuseStrategy.INSTANCE)
                 .build();
         factory.setHttpClient(httpClient);
         return factory;
