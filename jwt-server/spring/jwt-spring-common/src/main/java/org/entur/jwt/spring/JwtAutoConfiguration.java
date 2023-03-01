@@ -15,7 +15,7 @@ import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
 import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.entur.jwt.verifier.JwtVerifier;
 import org.entur.jwt.verifier.JwtVerifierFactory;
-import org.entur.jwt.verifier.config.JwtTenantProperties;
+import org.entur.jwt.spring.auth0.properties.jwk.JwtTenantProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;

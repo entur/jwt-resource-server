@@ -10,15 +10,14 @@ public class PermitAll {
 
     private boolean enabled = true;
 
-    private MatcherConfiguration mvcMatcher = new MatcherConfiguration();
-    private MatcherConfiguration antMatcher = new MatcherConfiguration();
-    
-    public void setMvcMatcher(MatcherConfiguration mvcMatchers) {
-        this.mvcMatcher = mvcMatchers;
+    private MatcherConfiguration matcher = new MatcherConfiguration();
+
+    public void setMatcher(MatcherConfiguration mvcMatchers) {
+        this.matcher = mvcMatchers;
     }
     
-    public MatcherConfiguration getMvcMatcher() {
-        return mvcMatcher;
+    public MatcherConfiguration getMatcher() {
+        return matcher;
     }
     
     public void setEnabled(boolean enabled) {
@@ -30,14 +29,7 @@ public class PermitAll {
     }
     
     public boolean isActive() {
-        return enabled && (mvcMatcher.isActive() || antMatcher.isActive());
+        return enabled && (matcher.isActive());
     }
-    
-    public void setAntMatcher(MatcherConfiguration antMatcher) {
-        this.antMatcher = antMatcher;
-    }
-    
-    public MatcherConfiguration getAntMatcher() {
-        return antMatcher;
-    }
+
 }

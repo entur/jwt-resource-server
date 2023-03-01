@@ -1,5 +1,14 @@
 package org.entur.jwt.verifier.auth0;
 
+import org.entur.jwt.jwk.auth0.Auth0JwkProviderBuilder;
+import org.entur.jwt.jwk.auth0.Auth0JwkReader;
+import org.entur.jwt.verifier.JwtClaimExtractor;
+import org.entur.jwt.verifier.JwtClaimVerifier;
+import org.entur.jwt.verifier.JwtVerifier;
+import org.entur.jwt.verifier.JwtVerifierFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.Duration;
@@ -9,34 +18,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.entur.jwt.jwk.JwkProvider;
-import org.entur.jwt.jwk.JwksProvider;
-import org.entur.jwt.jwk.UrlJwksProvider;
-import org.entur.jwt.jwk.auth0.Auth0JwkProviderBuilder;
-import org.entur.jwt.jwk.auth0.Auth0JwkReader;
-import org.entur.jwt.verifier.JwtClaimExtractor;
-import org.entur.jwt.verifier.JwtClaimVerifier;
-import org.entur.jwt.verifier.JwtVerifier;
-import org.entur.jwt.verifier.JwtVerifierFactory;
-import org.entur.jwt.verifier.config.JwkProperties;
-import org.entur.jwt.verifier.config.JwkCacheProperties;
-import org.entur.jwt.verifier.config.JwtClaimConstraintProperties;
-import org.entur.jwt.verifier.config.JwtClaimsProperties;
-import org.entur.jwt.verifier.config.JwkLocationProperties;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.entur.jwt.verifier.config.JwkOutageCacheProperties;
-import org.entur.jwt.verifier.config.JwkPreemptiveCacheProperties;
-import org.entur.jwt.verifier.config.JwkRateLimitProperties;
-import org.entur.jwt.verifier.config.JwkRetryProperties;
-import org.entur.jwt.verifier.config.JwtTenantProperties;
-
-import com.auth0.jwt.interfaces.JWTVerifier;
-import com.auth0.jwt.interfaces.Verification;
-import com.auth0.jwk.Jwk;
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.algorithms.Algorithm;
-import com.auth0.jwt.interfaces.DecodedJWT;
 
 public class Auth0JwtVerifierFactory implements JwtVerifierFactory<DecodedJWT> {
 

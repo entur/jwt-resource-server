@@ -17,7 +17,7 @@ public class DisabledJwtTest {
 
     @Test
     public void testContextLoads() {
-        assertTrue(adapter instanceof AuthorizationWebSecurityConfigurerAdapter);
+        assertTrue(adapter instanceof AuthorizationHttpSecurityConfigurer);
     }
 
 }

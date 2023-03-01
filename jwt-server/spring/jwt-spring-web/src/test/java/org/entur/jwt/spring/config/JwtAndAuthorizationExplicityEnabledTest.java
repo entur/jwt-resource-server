@@ -1,7 +1,7 @@
 package org.entur.jwt.spring.config;
 
 import org.entur.jwt.junit5.AuthorizationServer;
-import org.entur.jwt.spring.JwtWebSecurityConfigurerAdapterAutoConfiguration;
+import org.entur.jwt.spring.JwtWebSecurityChainConfiguration;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,7 +23,7 @@ public class JwtAndAuthorizationExplicityEnabledTest {
 
     @Test
     public void testContextLoads() {
-        assertTrue(adapter instanceof JwtWebSecurityConfigurerAdapterAutoConfiguration.CompositeWebSecurityConfigurerAdapter);
+        assertTrue(adapter instanceof JwtWebSecurityChainConfiguration.CompositeWebSecurityConfigurerAdapter);
     }
 
 }

@@ -11,10 +11,6 @@
 	
 	<dependencies>
 		<dependency>
-			<groupId>org.entur.jwt-rs</groupId>
-		    <artifactId>jwk-core</artifactId>
-		</dependency>
-		<dependency>
 		    <groupId>com.auth0</groupId>
 		    <artifactId>jwks-rsa</artifactId>
 		</dependency>
