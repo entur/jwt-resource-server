@@ -3,7 +3,6 @@ package org.entur.jwt.spring.grpc;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.entur.jwt.spring.filter.JwtAuthenticationToken;
 import org.entur.jwt.spring.grpc.test.GreetingRequest;
 import org.entur.jwt.spring.grpc.test.GreetingResponse;
 import org.entur.jwt.spring.grpc.test.GreetingServiceGrpc.GreetingServiceImplBase;
@@ -11,10 +10,8 @@ import org.lognet.springboot.grpc.GRpcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.AuthenticationException;
 
 import io.grpc.Status;
-import io.grpc.StatusException;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 

@@ -2,7 +2,6 @@ package org.entur.jwt.spring.rest;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.entur.jwt.spring.filter.JwtAuthenticationToken;
 import org.entur.jwt.spring.rest.config.PartnerTenant;
 import org.entur.jwt.spring.rest.config.Tenant;
 import org.slf4j.Logger;

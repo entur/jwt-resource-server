@@ -20,11 +20,13 @@
 	</properties>
 
 	<dependencies>
+		<!--
 		<dependency>
 			<groupId>org.entur.jwt-rs</groupId>
 			<artifactId>jwt-spring-auth0-web</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+		-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>

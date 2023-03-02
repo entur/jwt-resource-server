@@ -3,7 +3,6 @@ package org.entur.jwt.spring.rest.config;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.entur.jwt.spring.filter.JwtAuthorityMapper;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 

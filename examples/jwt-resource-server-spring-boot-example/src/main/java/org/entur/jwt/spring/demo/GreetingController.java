@@ -2,7 +2,6 @@ package org.entur.jwt.spring.demo;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.entur.jwt.spring.filter.JwtAuthenticationToken;
 import org.entur.jwt.spring.filter.resolver.JwtPayload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

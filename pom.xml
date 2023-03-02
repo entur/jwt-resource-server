@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.entur.jwt-rs</groupId>
 	<artifactId>parent</artifactId>
-	<version>2.0.7-SNAPSHOT</version>
+	<version>3.0.0-SNAPSHOT</version>
 	<packaging>pom</packaging>
 	<name>JWT Resource Server</name>
 	<description>Json Web Token resource-server utilities</description>
@@ -108,26 +108,6 @@
 			<dependency>
 				<groupId>${project.groupId}</groupId>
 				<artifactId>jwt-junit5-core</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwk-auth0</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwk-connect2id</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwt-verifier-core</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwt-verifier-auth0</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>
@@ -243,11 +223,6 @@
 				<artifactId>jackson-dataformat-properties</artifactId>
 				<version>${jackson-databind.version}</version>
 			</dependency>
-			<dependency>
-				<groupId>com.auth0</groupId>
-				<artifactId>jwks-rsa</artifactId>
-				<version>${jwks-rsa.version}</version>
-			</dependency>
 
 			<!-- need spring-web, but then we need to define the rest too, due to spring boot starter security -->
 			<dependency>
@@ -333,11 +308,6 @@
 			<dependency>
 				<groupId>org.springframework.security</groupId>
 				<artifactId>spring-security-oauth2-jose</artifactId>
-				<version>${spring-security.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>org.springframework.security.oauth</groupId>
-				<artifactId>spring-security-oauth2</artifactId>
 				<version>${spring-security.version}</version>
 			</dependency>
 
@@ -696,10 +666,6 @@
 		<module>jwt-test/jwt-junit5-core</module>
 		<module>jwt-test/jwt-junit5-entur</module>
 		<module>jwt-test/jwt-junit5-spring</module>
-		<module>jwt-server/jwk/jwk-auth0</module>
-		<module>jwt-server/jwk/jwk-connect2id</module>
-		<module>jwt-server/jwt-verifier/jwt-verifier-core</module>
-		<module>jwt-server/jwt-verifier/jwt-verifier-auth0</module>
 		<module>jwt-client/jwt-client-core</module>
 		<module>jwt-client/jwt-client-spring-core</module>
 		<module>jwt-client/jwt-client-spring-cloud</module>
@@ -707,9 +673,6 @@
         <module>jwt-server/spring/jwt-spring-web</module>
         <module>jwt-server/spring/jwt-spring-common</module>
         <module>jwt-server/spring/jwt-spring-webflux</module>
-		<module>jwt-server/spring/jwt-spring-auth0-common</module>
-		<module>jwt-server/spring/jwt-spring-auth0-web</module>
-        <module>jwt-server/spring/jwt-spring-auth0-webflux</module>
 		<module>jwt-server/spring/jwt-spring-grpc</module>
 	</modules>
 

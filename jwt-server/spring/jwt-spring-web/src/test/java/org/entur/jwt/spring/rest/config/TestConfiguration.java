@@ -3,7 +3,6 @@ package org.entur.jwt.spring.rest.config;
 import java.util.Map;
 import java.util.function.BiFunction;
 
-import org.entur.jwt.spring.filter.JwtAuthorityMapper;
 import org.entur.jwt.spring.filter.resolver.JwtArgumentResolver;
 import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.entur.jwt.verifier.JwtVerifierFactory;

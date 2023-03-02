@@ -1,15 +1,11 @@
 package org.entur.jwt.spring;
 
-import org.entur.jwt.spring.actuate.JwksHealthIndicator;
+import org.entur.jwt.spring.actuate.AbstractJwksHealthIndicator;
 import org.entur.jwt.spring.auth0.properties.JwtProperties;
 import org.entur.jwt.spring.auth0.properties.MdcPair;
 import org.entur.jwt.spring.auth0.properties.MdcProperties;
 import org.entur.jwt.spring.auth0.properties.SecurityProperties;
 import org.entur.jwt.spring.auth0.properties.TenantFilter;
-import org.entur.jwt.spring.filter.DefaultJwtDetailsMapper;
-import org.entur.jwt.spring.filter.DefaultJwtPrincipalMapper;
-import org.entur.jwt.spring.filter.JwtDetailsMapper;
-import org.entur.jwt.spring.filter.JwtPrincipalMapper;
 import org.entur.jwt.spring.filter.log.DefaultJwtMappedDiagnosticContextMapper;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
 import org.entur.jwt.verifier.JwtClaimExtractor;
@@ -19,7 +15,6 @@ import org.entur.jwt.spring.auth0.properties.jwk.JwtTenantProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -36,7 +31,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 @Configuration
-@ConditionalOnClass(WebSecurityConfigurerAdapter.class)
 @EnableConfigurationProperties({SecurityProperties.class})
 @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true")
 public abstract class JwtAutoConfiguration {
@@ -46,7 +40,7 @@ public abstract class JwtAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(JwtMappedDiagnosticContextMapper.class)
     @ConditionalOnProperty(name = {"entur.jwt.mdc.enabled"}, havingValue = "true")
-    public <T> JwtMappedDiagnosticContextMapper<T> mapper(SecurityProperties properties, JwtClaimExtractor<T> extractor) {
+    public JwtMappedDiagnosticContextMapper mapper(SecurityProperties properties) {
         MdcProperties mdc = properties.getJwt().getMdc();
         List<MdcPair> items = mdc.getMappings();
         List<String> to = new ArrayList<>();
@@ -59,7 +53,7 @@ public abstract class JwtAutoConfiguration {
 
             LOG.info("Map JWT claim '{}' to MDC key '{}'", item.getFrom(), item.getTo());
         }
-        return new DefaultJwtMappedDiagnosticContextMapper<>(from, to, extractor);
+        return new DefaultJwtMappedDiagnosticContextMapper(from, to);
     }
 
     @Bean(destroyMethod = "close")
@@ -147,7 +141,7 @@ public abstract class JwtAutoConfiguration {
     @Bean
     @ConditionalOnProperty(name = {"entur.jwt.jwk.health-indicator.enabled"}, havingValue = "true", matchIfMissing = true)
     @ConditionalOnBean(JwtVerifier.class)
-    public <T> JwksHealthIndicator jwksHealthIndicator(JwtVerifier<T> verifier) {
-        return new JwksHealthIndicator(verifier);
+    public <T> AbstractJwksHealthIndicator jwksHealthIndicator(JwtVerifier<T> verifier) {
+        return new AbstractJwksHealthIndicator(verifier, jwkSourceMap);
     }
 }

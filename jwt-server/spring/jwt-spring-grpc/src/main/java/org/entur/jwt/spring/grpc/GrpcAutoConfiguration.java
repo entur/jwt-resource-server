@@ -2,9 +2,6 @@ package org.entur.jwt.spring.grpc;
 
 import io.grpc.util.TransmitStatusRuntimeExceptionInterceptor;
 import org.entur.jwt.spring.JwtAutoConfiguration;
-import org.entur.jwt.spring.filter.JwtAuthorityMapper;
-import org.entur.jwt.spring.filter.JwtDetailsMapper;
-import org.entur.jwt.spring.filter.JwtPrincipalMapper;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
 import org.entur.jwt.spring.grpc.exception.ServerCallRuntimeExceptionTranslator;
 import org.entur.jwt.spring.grpc.exception.ServerCallSecurityExceptionTranslator;
