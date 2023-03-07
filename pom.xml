@@ -65,7 +65,7 @@
 		<jackson-databind.version>2.14.2</jackson-databind.version>
 		<jadler.version>1.3.1</jadler.version>
 		<spring-boot.version>3.0.3</spring-boot.version>
-		<httpclient.version>4.5.14</httpclient.version>
+		<httpclient.version>5.1.4</httpclient.version>
 		<!-- added due to security issue -->
 		<spring-security.version>6.0.2</spring-security.version>
 		<spring.version>6.0.5</spring.version>
@@ -153,21 +153,6 @@
 			<dependency>
 				<groupId>${project.groupId}</groupId>
 				<artifactId>jwt-junit5-spring</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwt-spring-auth0-common</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwt-spring-auth0-web</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwt-spring-auth0-webflux</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<!-- third party dependencies -->
@@ -395,9 +380,10 @@
 				<artifactId>netty-transport-native-unix-common</artifactId>
 				<version>${netty.version}</version>
 			</dependency>
+			<!-- https://mvnrepository.com/artifact/org.apache.httpcomponents.client5/httpclient5 -->
 			<dependency>
-				<groupId>org.apache.httpcomponents</groupId>
-				<artifactId>httpclient</artifactId>
+				<groupId>org.apache.httpcomponents.client5</groupId>
+				<artifactId>httpclient5</artifactId>
 				<version>${httpclient.version}</version>
 				<exclusions>
 					<exclusion>
@@ -672,8 +658,10 @@
 		<module>jwt-client/jwt-client-spring</module>
         <module>jwt-server/spring/jwt-spring-web</module>
         <module>jwt-server/spring/jwt-spring-common</module>
+		<!--
         <module>jwt-server/spring/jwt-spring-webflux</module>
 		<module>jwt-server/spring/jwt-spring-grpc</module>
+        -->
 	</modules>
 
 	<distributionManagement>

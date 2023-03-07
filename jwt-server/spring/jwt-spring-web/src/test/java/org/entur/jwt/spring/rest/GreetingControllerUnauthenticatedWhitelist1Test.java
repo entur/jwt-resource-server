@@ -1,8 +1,5 @@
 package org.entur.jwt.spring.rest;
 
-import static com.google.common.truth.Truth.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,7 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -19,16 +16,17 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
+import static com.google.common.truth.Truth.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 /**
- * 
  * Test accessing methods without a token, but with a whitelist for the unprotected endpoints and actuator.
- * 
  */
 
 @AuthorizationServer
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@TestPropertySource(properties = { "entur.authorization.permit-all.mvc-matcher.patterns=/actuator/health,/unprotected/**" })
+@TestPropertySource(properties = {"entur.authorization.permit-all.matcher.patterns=/actuator/health,/unprotected/**"})
 public class GreetingControllerUnauthenticatedWhitelist1Test {
 
     @LocalServerPort

@@ -1,23 +1,27 @@
 package org.entur.jwt.junit5;
 
-import java.io.IOException;
-
+import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.JWTParser;
 import org.entur.jwt.junit5.impl.KeycloakResourceAccessToken;
 import org.entur.jwt.junit5.impl.MyAuthorizationServer;
 import org.junit.jupiter.api.Test;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.interfaces.DecodedJWT;
-import static com.google.common.truth.Truth.*;
+import java.io.IOException;
+import java.text.ParseException;
+
+import static com.google.common.truth.Truth.assertThat;
 
 @MyAuthorizationServer
 public class KeycloakResourceAccessTokenTest {
 
     @Test
-    public void testTokenIsValid(@KeycloakResourceAccessToken(myId = 5) String token) throws IOException {
-        DecodedJWT decoded = JWT.decode(token.substring(7));
+    public void testTokenIsValid(@KeycloakResourceAccessToken(myId = 5) String token) throws IOException, ParseException {
+        JWT jwt = JWTParser.parse(token);
 
-        Integer value = decoded.getClaim("https://www.mock.com/organisationID").asInt();
+        JWTClaimsSet claims = jwt.getJWTClaimsSet();
+
+        Integer value = claims.getIntegerClaim("https://www.mock.com/organisationID");
         assertThat(value).isEqualTo(5);
     }
 

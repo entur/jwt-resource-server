@@ -1,6 +1,5 @@
 package org.entur.jwt.spring;
 
-import com.nimbusds.jose.jwk.source.JWKSource;
 import org.entur.jwt.spring.auth0.properties.AuthorizationProperties;
 import org.entur.jwt.spring.auth0.properties.JwtProperties;
 import org.entur.jwt.spring.auth0.properties.SecurityProperties;
@@ -8,7 +7,6 @@ import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
 import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
@@ -25,8 +23,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.SecurityFilterChain;
-
-import java.util.Map;
 
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
@@ -86,17 +82,21 @@ public class JwtWebSecurityChainConfiguration {
 
         @Bean
         @ConditionalOnMissingBean(SecurityFilterChain.class)
-        public SecurityFilterChain filterChain(@Autowired(required = true) HttpSecurity http, @Autowired(required = false) Map<String, JWKSource> jwkSources) throws Exception {
+        public SecurityFilterChain filterChain(HttpSecurity http, JwkSourceMap jwkSourceMap) throws Exception {
 
             AuthorizationProperties authorization = securityProperties.getAuthorization();
-            if(authorization.isEnabled()) {
+            if (authorization.isEnabled()) {
                 http.authorizeHttpRequests(new EnturAuthorizeHttpRequestsCustomizer(authorization));
             }
 
             JwtProperties jwt = securityProperties.getJwt();
-            if(jwt.isEnabled()) {
-                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwkSources));
+            if (jwt.isEnabled()) {
+                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources()));
             }
+
+            // https://www.baeldung.com/spring-prevent-xss
+            http.headers().xssProtection().and()
+                    .contentSecurityPolicy("script-src 'self'");
 
             return http
                     .sessionManagement().sessionCreationPolicy(STATELESS).and()

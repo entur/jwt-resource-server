@@ -23,10 +23,10 @@ entur:
     mode: api
   authorization:
     permit-all:
-      mvc-matcher:
+      matcher:
         patterns:
-         - /actuator/health
-         - /actuator/health/*
+          - /actuator/health
+          - /actuator/health/*
 management:
   endpoint:
     health:

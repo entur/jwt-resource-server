@@ -1,24 +1,24 @@
 package org.entur.jwt.junit5;
 
-import static com.google.common.truth.Truth.assertThat;
-
-import java.io.IOException;
-
+import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.JWTParser;
 import org.entur.jwt.junit5.impl.MyAccessToken;
 import org.entur.jwt.junit5.impl.MyAuthorizationServer;
 import org.junit.jupiter.api.Test;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.interfaces.DecodedJWT;
+import static com.google.common.truth.Truth.assertThat;
 
 @MyAuthorizationServer()
 public class MyAccessTokenTest {
 
     @Test
-    public void testTokenIsValid(@MyAccessToken(myId = 5) String token) throws IOException {
-        DecodedJWT decoded = JWT.decode(token.substring(7));
+    public void testTokenIsValid(@MyAccessToken(myId = 5) String token) throws Exception {
+        JWT jwt = JWTParser.parse(token);
 
-        Integer value = decoded.getClaim("https://www.mock.com/organisationID").asInt();
+        JWTClaimsSet claims = jwt.getJWTClaimsSet();
+
+        Integer value = claims.getIntegerClaim("https://www.mock.com/organisationID");
         assertThat(value).isEqualTo(5);
 
     }

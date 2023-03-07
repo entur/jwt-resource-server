@@ -15,15 +15,18 @@ public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator impleme
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ListJwksHealthIndicator.class);
 
-    private final long mayDelay;
+    private final long maxDelay;
 
     private final ExecutorService executorService;
-    private final List<DefaultJwksHealthIndicator> healthIndicators;
+    private List<DefaultJwksHealthIndicator> healthIndicators = new ArrayList<>();
 
-    public ListJwksHealthIndicator(long mayDelay, ExecutorService executorService, List<DefaultJwksHealthIndicator> healthIndicators) {
-        this.mayDelay = mayDelay;
+    public ListJwksHealthIndicator(long maxDelay, ExecutorService executorService) {
+        this.maxDelay = maxDelay;
         this.executorService = executorService;
-        this.healthIndicators = healthIndicators;
+    }
+
+    public void addHealthIndicators(DefaultJwksHealthIndicator healthIndicator) {
+        this.healthIndicators.add(healthIndicator);
     }
 
     @Override
@@ -33,6 +36,7 @@ public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator impleme
 
     @Override
     protected JwksHealth getJwksHealth() {
+        LOGGER.info("Get JWKs health");
         long time = System.currentTimeMillis();
 
         List<DefaultJwksHealthIndicator> unhealthy = new ArrayList<>(healthIndicators.size());
@@ -71,7 +75,7 @@ public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator impleme
 
         Future<?> timeout = executorService.submit(() -> {
             try {
-                Thread.sleep(mayDelay);
+                Thread.sleep(maxDelay);
 
                 for (Future<Boolean> worker : workerList) {
                     worker.cancel(true);
@@ -112,4 +116,5 @@ public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator impleme
             }
         }
     }
+
 }

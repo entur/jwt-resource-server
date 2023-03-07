@@ -1,14 +1,14 @@
 package org.entur.jwt.spring.demo;
 
-import java.util.concurrent.atomic.AtomicLong;
-
-import org.entur.jwt.spring.filter.resolver.JwtPayload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.concurrent.atomic.AtomicLong;
 
 @RestController
 public class GreetingController {
@@ -29,29 +29,21 @@ public class GreetingController {
     public Greeting body() {
         log.info("Get protected method");
 
-        JwtAuthenticationToken authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        BearerTokenAuthentication authentication = (BearerTokenAuthentication) SecurityContextHolder.getContext().getAuthentication();
 
         log.info("Authorization header: {}", authentication.getCredentials());
 
         return new Greeting(counter.incrementAndGet(), "Hello protected.");
     }
 
-    @GetMapping("/protected/withArgument")
-    @PreAuthorize("isFullyAuthenticated()")
-    public Greeting protectedWithPartnerTenant(JwtPayload body) {
-        log.info("Get method protected with argument resolver");
-
-        log.info("Claims: {}", body.getClaims());
-
-        return new Greeting(counter.incrementAndGet(), "Hello protected tenant.");
-    }
-
     @PreAuthorize("isFullyAuthenticated() && hasAnyAuthority('configure')")
     @GetMapping("/protected/withPermission")
-    public Greeting protectedWithPermission(JwtPayload body) {
+    public Greeting protectedWithPermission() {
         log.info("Get method protected by permission");
 
-        log.info("Claims: {}", body.getClaims());
+        BearerTokenAuthentication authentication = (BearerTokenAuthentication) SecurityContextHolder.getContext().getAuthentication();
+
+        log.info("Claims: {}", authentication.getCredentials());
 
         return new Greeting(counter.incrementAndGet(), "Hello protected tenant.");
     }

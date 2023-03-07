@@ -1,11 +1,5 @@
 package org.entur.jwt.spring.rest;
 
-import static com.google.common.truth.Truth.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.util.List;
-import java.util.Map.Entry;
-
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.junit5.claim.Scope;
@@ -16,7 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -24,11 +18,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
+import java.util.List;
+import java.util.Map.Entry;
+
+import static com.google.common.truth.Truth.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 /**
- * 
  * Test accessing methods with a token, with the global setting of requiring
- * an Authorization header for all requests. 
- * 
+ * an Authorization header for all requests.
  */
 
 @AuthorizationServer
@@ -107,11 +105,11 @@ public class GreetingControllerAuthenticatedTest {
 
         HttpHeaders responseHeaders = response.getHeaders();
         assertThat(responseHeaders.get("X-Content-Type-Options")).contains("nosniff");
-        assertThat(responseHeaders.get("X-XSS-Protection")).contains("1; mode=block");
         assertThat(responseHeaders.get("Cache-Control")).contains("no-cache, no-store, max-age=0, must-revalidate");
         assertThat(responseHeaders.get("Pragma")).contains("no-cache");
         assertThat(responseHeaders.get("Expires")).contains("0");
         assertThat(responseHeaders.get("X-Frame-Options")).contains("DENY");
+        assertThat(responseHeaders.get("X-XSS-Protection")).contains("1; mode=block");
     }
 
     @Test

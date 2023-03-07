@@ -1,26 +1,23 @@
 package org.entur.jwt.spring;
 
-import org.entur.jwt.spring.actuate.AbstractJwksHealthIndicator;
+import org.entur.jwt.spring.actuate.ListJwksHealthIndicator;
 import org.entur.jwt.spring.auth0.properties.JwtProperties;
 import org.entur.jwt.spring.auth0.properties.MdcPair;
 import org.entur.jwt.spring.auth0.properties.MdcProperties;
 import org.entur.jwt.spring.auth0.properties.SecurityProperties;
 import org.entur.jwt.spring.auth0.properties.TenantFilter;
+import org.entur.jwt.spring.auth0.properties.jwk.JwtTenantProperties;
 import org.entur.jwt.spring.filter.log.DefaultJwtMappedDiagnosticContextMapper;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
-import org.entur.jwt.verifier.JwtClaimExtractor;
-import org.entur.jwt.verifier.JwtVerifier;
-import org.entur.jwt.verifier.JwtVerifierFactory;
-import org.entur.jwt.spring.auth0.properties.jwk.JwtTenantProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,11 +26,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.Executors;
 
 @Configuration
 @EnableConfigurationProperties({SecurityProperties.class})
 @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true")
-public abstract class JwtAutoConfiguration {
+public class JwtAutoConfiguration {
 
     private static final Logger LOG = LoggerFactory.getLogger(JwtAutoConfiguration.class);
 
@@ -57,8 +55,13 @@ public abstract class JwtAutoConfiguration {
     }
 
     @Bean(destroyMethod = "close")
-    @ConditionalOnMissingBean(JwtVerifier.class)
-    public <T> JwtVerifier<T> jwtVerifier(SecurityProperties properties, JwtVerifierFactory<T> factory) {
+    public ListJwksHealthIndicator healthIndicator() {
+        return new ListJwksHealthIndicator(1000L, Executors.newCachedThreadPool());
+    }
+
+    @Bean(destroyMethod = "close")
+    @ConditionalOnMissingBean(JwkSourceMap.class)
+    public JwkSourceMap jwkSourceMap(SecurityProperties properties, ListJwksHealthIndicator listJwksHealthIndicator) {
         JwtProperties jwtProperties = properties.getJwt();
 
         Map<String, JwtTenantProperties> enabledTenants = new HashMap<>();
@@ -106,10 +109,12 @@ public abstract class JwtAutoConfiguration {
             }
         }
 
-        // add a wrapper so that the verifier is closed on shutdown
-        return factory.getVerifier(tenants, jwtProperties.getJwk(), jwtProperties.getClaims());
-    }
 
+        JwkSourceMapFactory factory = new JwkSourceMapFactory();
+
+        // add a wrapper so that the verifier is closed on shutdown
+        return factory.getJwkSourceMap(tenants, jwtProperties.getJwk(), listJwksHealthIndicator);
+    }
 
     @Bean
     @ConditionalOnMissingBean(TenantsProperties.class)
@@ -126,22 +131,93 @@ public abstract class JwtAutoConfiguration {
         return tenantsProperties;
     }
 
+    /*
     @Bean
     @ConditionalOnMissingBean(JwtDetailsMapper.class)
     public JwtDetailsMapper jwtDetailsMapper() {
         return new DefaultJwtDetailsMapper();
     }
+*/
 
     @Bean
-    @ConditionalOnMissingBean(JwtPrincipalMapper.class)
-    public JwtPrincipalMapper jwtPrincipalMapper() {
-        return new DefaultJwtPrincipalMapper();
+    public List<OAuth2TokenValidator<Jwt>> claimConstraints(SecurityProperties properties) {
+        OAuth2TokenValidatorFactory oAuth2TokenValidatorFactory = new OAuth2TokenValidatorFactory();
+
+        return oAuth2TokenValidatorFactory.create(properties.getJwt().getClaims());
     }
 
+
+    /*
     @Bean
-    @ConditionalOnProperty(name = {"entur.jwt.jwk.health-indicator.enabled"}, havingValue = "true", matchIfMissing = true)
-    @ConditionalOnBean(JwtVerifier.class)
-    public <T> AbstractJwksHealthIndicator jwksHealthIndicator(JwtVerifier<T> verifier) {
-        return new AbstractJwksHealthIndicator(verifier, jwkSourceMap);
+    public static BeanDefinitionRegistryPostProcessor jwtClientBeanDefinitionRegistryPostProcessor() {
+        // note : adding @Configuration to JwtClientBeanDefinitionRegistryPostProcessor works (as an alternative to @Bean),
+        // but gives an ugly warning message.
+        return new JwtClientBeanDefinitionRegistryPostProcessor();
     }
+
+
+    // https://stackoverflow.com/questions/53462889/create-n-number-of-beans-with-beandefinitionregistrypostprocessor
+    public static class JwtClientBeanDefinitionRegistryPostProcessor implements BeanDefinitionRegistryPostProcessor, EnvironmentAware {
+
+        // note: autowiring does not work, must bind via environment
+        private SpringJwtClientProperties properties;
+
+        @Override
+        public void postProcessBeanFactory(ConfigurableListableBeanFactory factory) {
+            // noop
+        }
+
+        @Override
+        public void setEnvironment(@Nullable Environment environment) {
+            bindProperties(environment);
+        }
+
+        private void bindProperties(Environment environment) {
+            this.properties = Binder.get(environment)
+                    .bind("entur.jwt.clients", SpringJwtClientProperties.class)
+                    .orElse(new SpringJwtClientProperties());
+        }
+
+        @Override
+        public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) {
+            // populate default values
+            add(registry, "newAuth0Instance", enabled(properties.getAuth0()));
+            add(registry, "newKeycloakInstance", enabled(properties.getKeycloak()));
+        }
+
+        private Set<String> enabled(Map<String, ? extends AbstractJwtClientProperties> auth0) {
+            // order by name
+            List<String> enabled = new ArrayList<>();
+            for (Entry<String, ? extends AbstractJwtClientProperties> entry : auth0.entrySet()) {
+                if (entry.getValue().isEnabled()) {
+                    enabled.add(entry.getKey());
+                }
+            }
+            Collections.sort(enabled);
+            return new LinkedHashSet<>(enabled);
+        }
+
+        private void add(BeanDefinitionRegistry registry, String method, Set<String> keySet) {
+            for (String key : keySet) {
+
+                if (registry.containsBeanDefinition(key)) {
+                    continue;
+                }
+                GenericBeanDefinition beanDefinition = new GenericBeanDefinition();
+                beanDefinition.setBeanClass(AccessTokenProvider.class);
+                beanDefinition.setFactoryBeanName("jwtClientBeanDefinitionRegistryPostProcessorSupport");
+                beanDefinition.setFactoryMethodName(method);
+                beanDefinition.setDestroyMethodName("close");
+
+                ConstructorArgumentValues constructorArgumentValues = new ConstructorArgumentValues();
+                constructorArgumentValues.addGenericArgumentValue(key);
+                beanDefinition.setAutowireCandidate(true);
+                beanDefinition.setConstructorArgumentValues(constructorArgumentValues);
+
+                registry.registerBeanDefinition(key, beanDefinition);
+            }
+        }
+    }
+     */
+
 }

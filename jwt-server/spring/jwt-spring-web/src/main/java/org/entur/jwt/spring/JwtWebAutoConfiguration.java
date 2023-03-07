@@ -2,21 +2,14 @@ package org.entur.jwt.spring;
 
 import org.entur.jwt.spring.auth0.properties.CorsProperties;
 import org.entur.jwt.spring.auth0.properties.SecurityProperties;
-import org.entur.jwt.spring.filter.JwtAuthenticationExceptionAdvice;
-import org.entur.jwt.spring.filter.resolver.JwtArgumentResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.method.support.HandlerMethodArgumentResolver;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -27,28 +20,6 @@ import java.util.List;
 public class JwtWebAutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(JwtWebAutoConfiguration.class);
-
-    @Configuration
-    public static class DefaultEnturWebMvcConfigurer implements WebMvcConfigurer {
-
-        private final JwtArgumentResolver resolver;
-
-        @Autowired
-        public DefaultEnturWebMvcConfigurer(JwtArgumentResolver resolver) {
-            this.resolver = resolver;
-        }
-
-        @Override
-        public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
-            resolvers.add(resolver);
-        }
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(JwtAuthenticationExceptionAdvice.class) // allow for customization
-    public JwtAuthenticationExceptionAdvice advice() {
-        return new JwtAuthenticationExceptionAdvice();
-    }
 
     @Bean("corsConfigurationSource")
     @ConditionalOnProperty(name = {"entur.cors.enabled"}, havingValue = "true")

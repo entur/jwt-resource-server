@@ -1,13 +1,13 @@
 package org.entur.jwt.spring.demo;
 
-import static io.restassured.RestAssured.given;
-
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.context.TestPropertySource;
+
+import static io.restassured.RestAssured.given;
 
 @AuthorizationServer
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)

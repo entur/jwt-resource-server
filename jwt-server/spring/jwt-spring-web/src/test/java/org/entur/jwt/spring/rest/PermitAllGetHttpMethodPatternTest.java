@@ -1,28 +1,25 @@
 package org.entur.jwt.spring.rest;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
 @AuthorizationServer
-@ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@TestPropertySource(properties = { "entur.authorization.permit-all.mvc-matcher.patterns=/actuator/**,/unprotected/path/{pathVariable}" })
-public class PermitAllAnyHttpMethodMvcPatternTest {
+@TestPropertySource(properties = {"entur.authorization.permit-all.matcher.method.get.patterns=/actuator/**,/unprotected/path/{pathVariable}"})
+public class PermitAllGetHttpMethodPatternTest {
 
     @LocalServerPort
     private int randomServerPort;

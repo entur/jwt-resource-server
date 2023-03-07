@@ -1,12 +1,8 @@
 package org.entur.jwt.client.spring.classic;
 
-import org.apache.http.ConnectionReuseStrategy;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.config.CookieSpecs;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.conn.ConnectionKeepAliveStrategy;
-import org.apache.http.impl.NoConnectionReuseStrategy;
-import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.hc.client5.http.classic.HttpClient;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.entur.jwt.client.spring.JwtClientAutoConfiguration;
 import org.entur.jwt.client.spring.SpringJwtClientProperties;
 import org.slf4j.Logger;
@@ -19,8 +15,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
+import java.util.concurrent.TimeUnit;
 
 @Configuration
 @EnableConfigurationProperties(SpringJwtClientProperties.class)
@@ -32,42 +27,42 @@ public class RestTemplateJwtClientAutoConfiguration extends JwtClientAutoConfigu
     @Qualifier("jwtRestTemplate")
     public RestTemplate jwtRestTemplate(RestTemplateBuilder restTemplateBuilder, SpringJwtClientProperties properties) {
         // use custom HTTP-client so that we do not get a cookie parse warning
-        long connectTimeout = properties.getConnectTimeout();
-        long readTimeout = properties.getReadTimeout();
+        int connectTimeout = properties.getConnectTimeout();
+        int readTimeout = properties.getReadTimeout();
 
         Long timeout = getTimeout(properties);
 
-        if(timeout != null) {
-            if(connectTimeout > timeout) {
+        if (timeout != null) {
+            if (connectTimeout > timeout) {
                 throw new IllegalArgumentException("Connect timeout of " + connectTimeout + "s exceeds cache refresh time of " + timeout + "s");
             }
-            if(readTimeout > timeout) {
+            if (readTimeout > timeout) {
                 throw new IllegalArgumentException("Read timeout of " + readTimeout + "s exceeds cache refresh time of " + timeout + "s");
             }
         }
 
         return restTemplateBuilder
-                .requestFactory(RestTemplateJwtClientAutoConfiguration::getHttpComponentsClientHttpRequestFactory)
-                .setConnectTimeout(Duration.of(connectTimeout, ChronoUnit.SECONDS))
-                .setReadTimeout(Duration.of(readTimeout, ChronoUnit.SECONDS))
+                .requestFactory(() -> getHttpComponentsClientHttpRequestFactory(connectTimeout, readTimeout))
                 .build();
     }
 
-    private static HttpComponentsClientHttpRequestFactory getHttpComponentsClientHttpRequestFactory() {
+    private static HttpComponentsClientHttpRequestFactory getHttpComponentsClientHttpRequestFactory(int connectTimeout, int readTimeout) {
         HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
 
         // https://stackoverflow.com/questions/7459279/httpclient-warning-cookie-rejected-illegal-domain-attribute
-        RequestConfig customizedRequestConfig = RequestConfig.custom().setCookieSpec(CookieSpecs.IGNORE_COOKIES).build();
+        //RequestConfig customizedRequestConfig = RequestConfig.custom().setCookieSpec(CookieSpecSupport.createDefaultBuilder().IGNORE_COOKIES).build();
+
+        RequestConfig requestConfig = RequestConfig.custom().setConnectTimeout(connectTimeout, TimeUnit.SECONDS).setResponseTimeout(readTimeout, TimeUnit.SECONDS).build();
 
         HttpClient httpClient = HttpClientBuilder.create()
                 .disableCookieManagement()
                 .disableAuthCaching()
                 .disableAutomaticRetries()
                 .disableRedirectHandling()
-                .setDefaultRequestConfig(customizedRequestConfig)
+                .setDefaultRequestConfig(requestConfig)
                 // do not keep alive, assuming creating new HTTP requests
                 // will be the most robust approach
-                .setConnectionReuseStrategy(NoConnectionReuseStrategy.INSTANCE)
+                .setConnectionReuseStrategy((a, b, c) -> false)
                 .build();
         factory.setHttpClient(httpClient);
         return factory;

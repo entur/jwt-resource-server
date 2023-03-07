@@ -1,6 +1,13 @@
 package org.entur.jwt.spring;
 
+import com.nimbusds.jose.jwk.source.JWKSetBasedJWKSource;
 import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.jwk.source.JWKSourceBuilder;
+import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jose.util.DefaultResourceRetriever;
+import org.entur.jwt.spring.actuate.DefaultJwksHealthIndicator;
+import org.entur.jwt.spring.actuate.JwkSetSourceEventListener;
+import org.entur.jwt.spring.actuate.ListJwksHealthIndicator;
 import org.entur.jwt.spring.auth0.properties.jwk.JwkCacheProperties;
 import org.entur.jwt.spring.auth0.properties.jwk.JwkLocationProperties;
 import org.entur.jwt.spring.auth0.properties.jwk.JwkOutageCacheProperties;
@@ -8,29 +15,28 @@ import org.entur.jwt.spring.auth0.properties.jwk.JwkPreemptiveCacheProperties;
 import org.entur.jwt.spring.auth0.properties.jwk.JwkProperties;
 import org.entur.jwt.spring.auth0.properties.jwk.JwkRateLimitProperties;
 import org.entur.jwt.spring.auth0.properties.jwk.JwkRetryProperties;
-import org.entur.jwt.spring.auth0.properties.jwk.JwtClaimConstraintProperties;
-import org.entur.jwt.spring.auth0.properties.jwk.JwtClaimsProperties;
 import org.entur.jwt.spring.auth0.properties.jwk.JwtTenantProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.time.Duration;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class JwkSourceMapFactory<C> {
 
-    public JwkSourceMap getVerifier(Map<String, JwtTenantProperties> tenants, JwkProperties jwkConfiguration, JwtClaimsProperties claims) {
+    private static final Logger LOGGER = LoggerFactory.getLogger(JwtAutoConfiguration.class);
+
+
+    public JwkSourceMap getJwkSourceMap(Map<String, JwtTenantProperties> tenants, JwkProperties jwkConfiguration, ListJwksHealthIndicator listJwksHealthIndicator) {
         Map<String, JWKSource> jwkSources = new HashMap<>();
 
-        boolean healthIndicator = jwkConfiguration.getHealthIndicator().isEnabled();
+        JwkSetSourceEventListener eventListener = new JwkSetSourceEventListener();
 
-        List<JwtClaimConstraintProperties> valueConstraints = getValueConstraints(claims);
         for (Map.Entry<String, JwtTenantProperties> entry : tenants.entrySet()) {
             JwtTenantProperties tenantConfiguration = entry.getValue();
-            if(!tenantConfiguration.isEnabled()) {
+            if (!tenantConfiguration.isEnabled()) {
                 continue;
             }
 
@@ -38,7 +44,7 @@ public class JwkSourceMapFactory<C> {
             if (tenantJwkConfiguration == null) {
                 throw new IllegalStateException("Missing JWK location for " + entry.getKey());
             }
-            log.info("Configure tenant '{}' with issuer '{}' and JWK location {}", entry.getKey(), tenantConfiguration.getIssuer(), tenantConfiguration.getJwk().getLocation());
+            LOGGER.info("Configure tenant '{}' with issuer '{}' and JWK location {}", entry.getKey(), tenantConfiguration.getIssuer(), tenantConfiguration.getJwk().getLocation());
 
             String location = tenantJwkConfiguration.getLocation();
             if (location == null) {
@@ -52,12 +58,12 @@ public class JwkSourceMapFactory<C> {
                 throw new IllegalArgumentException("Invalid location " + tenantJwkConfiguration.getLocation() + " for " + entry.getKey());
             }
 
-            long connectTimeout = jwkConfiguration.getConnectTimeout();
-            long readTimeout = jwkConfiguration.getReadTimeout();
+            int connectTimeout = jwkConfiguration.getConnectTimeout();
+            int readTimeout = jwkConfiguration.getReadTimeout();
 
-            UrlJwksProvider<Jwk> urlProvider = new UrlJwksProvider<>(url, new Auth0JwkReader(), connectTimeout * 1000, readTimeout * 1000);
+            DefaultResourceRetriever retriever = new DefaultResourceRetriever(connectTimeout * 1000, readTimeout * 1000, 51200);
 
-            Auth0JwkProviderBuilder builder = new Auth0JwkProviderBuilder(urlProvider);
+            JWKSourceBuilder<SecurityContext> builder = JWKSourceBuilder.create(url, retriever);
 
             JwkRateLimitProperties rateLimiting = jwkConfiguration.getRateLimit();
             if (rateLimiting != null && rateLimiting.isEnabled()) {
@@ -65,72 +71,58 @@ public class JwkSourceMapFactory<C> {
 
                 double secondsPerToken = 1d / tokensPerSecond;
 
-                int millisecondsPerToken = (int)(secondsPerToken * 1000); // note quantization, ms precision is sufficient
+                int millisecondsPerToken = (int) (secondsPerToken * 1000); // note quantization, ms precision is sufficient
 
-                builder.rateLimited(rateLimiting.getBucketSize(), 1, Duration.ofMillis(millisecondsPerToken));
+                builder.rateLimited(millisecondsPerToken);
             } else {
                 builder.rateLimited(false);
             }
 
             JwkCacheProperties cache = jwkConfiguration.getCache();
             if (cache != null && cache.isEnabled()) {
-                builder.cached(Duration.ofSeconds(cache.getTimeToLive()), Duration.ofSeconds(cache.getRefreshTimeout()));
+                builder.cache(cache.getTimeToLive() * 1000, cache.getRefreshTimeout() * 1000, eventListener);
 
                 JwkPreemptiveCacheProperties preemptive = cache.getPreemptive();
                 if (preemptive != null && preemptive.isEnabled()) {
-                    builder.preemptiveCacheRefresh(Duration.ofSeconds(preemptive.getTimeToExpires()), preemptive.getEager().isEnabled());
+                    builder.refreshAheadCache(preemptive.getTimeToExpires() * 1000, preemptive.getEager().isEnabled(), eventListener);
                 } else {
-                    builder.preemptiveCacheRefresh(false);
+                    builder.refreshAheadCache(false);
                 }
             } else {
-                builder.cached(false);
-                builder.preemptiveCacheRefresh(false);
+                builder.cache(false);
+                builder.refreshAheadCache(false);
             }
 
             JwkRetryProperties retrying = jwkConfiguration.getRetry();
-            builder.retrying(retrying != null && retrying.isEnabled());
+            if (retrying != null && retrying.isEnabled()) {
+                builder.retrying(eventListener);
+            }
 
             JwkOutageCacheProperties outageCache = jwkConfiguration.getOutageCache();
             if (outageCache != null && outageCache.isEnabled()) {
-                builder.outageCached(Duration.ofSeconds(outageCache.getTimeToLive()));
+                builder.outageTolerant(outageCache.getTimeToLive() * 1000, eventListener);
             } else {
-                builder.outageCached(false);
+                builder.outageTolerant(false);
             }
 
-            builder.health(healthIndicator);
+            DefaultJwksHealthIndicator healthIndicator = null;
+            if (jwkConfiguration.getHealthIndicator().isEnabled()) {
+                healthIndicator = new DefaultJwksHealthIndicator();
+                builder.healthReporting(healthIndicator);
 
-            JwkProvider<Jwk> jwkProvider = builder.build();
+                LOGGER.info("Add health indicator");
 
-            if (healthIndicator) {
-                jwkProvider.getHealth(false); // verify that health is supported
-                statusProviders.add(jwkProvider);
+                listJwksHealthIndicator.addHealthIndicators(healthIndicator);
             }
 
-            JwtKeyProvider keyProvider = new JwtKeyProvider(jwkProvider);
+            JWKSetBasedJWKSource<SecurityContext> jwkSource = (JWKSetBasedJWKSource) builder.build();
 
-            Verification jwtBuilder = JWT.require(Algorithm.RSA256(keyProvider)).withIssuer(tenantConfiguration.getIssuer()) // strictly not necessary, but lets add it anyways
-                    .acceptExpiresAt(claims.getExpiresAtLeeway()).acceptIssuedAt(claims.getIssuedAtLeeway());
+            if (healthIndicator != null) {
+                healthIndicator.setJwkSetSource(jwkSource.getJWKSetSource());
+            }
 
-            // value verification directly supported by auth0
-            addValueConstraints(jwtBuilder, valueConstraints);
-
-            CloseableJWTVerifier verifier = new AudienceJWTVerifier(jwtBuilder.build(), jwkProvider, claims.getAudiences());
-            verifiers.put(tenantConfiguration.getIssuer(), verifier);
+            jwkSources.put(tenantConfiguration.getIssuer(), jwkSource);
         }
-
-        JwtVerifier<DecodedJWT> verifier;
-        if (!statusProviders.isEmpty()) {
-            verifier = new MultiTenantJwtVerifier(verifiers, statusProviders);
-        } else {
-            verifier = new MultiTenantJwtVerifier(verifiers);
-        }
-
-        List<JwtClaimConstraintProperties> dataTypeConstraints = getDataTypeConstraints(claims);
-        if (!dataTypeConstraints.isEmpty()) {
-            return getVerifierForDataTypes(verifier, dataTypeConstraints);
-        }
-
-
 
         return new JwkSourceMap(jwkSources);
     }
