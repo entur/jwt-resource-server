@@ -63,6 +63,13 @@ public class JwtWebSecurityChainConfiguration {
 
     @Bean
     @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = false)
+    @ConditionalOnMissingBean(JwtAuthorityEnricher.class)
+    public JwtAuthorityEnricher jwtAuthorityEnricher() {
+        return new DefaultJwtAuthorityEnricher();
+    }
+    
+    @Bean
+    @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = false)
     @ConditionalOnMissingBean(UserDetailsService.class)
     public UserDetailsService userDetailsService() {
         return new NoUserDetailsService();  // avoid the default user.
@@ -82,7 +89,7 @@ public class JwtWebSecurityChainConfiguration {
 
         @Bean
         @ConditionalOnMissingBean(SecurityFilterChain.class)
-        public SecurityFilterChain filterChain(HttpSecurity http, JwkSourceMap jwkSourceMap) throws Exception {
+        public SecurityFilterChain filterChain(HttpSecurity http, JwkSourceMap jwkSourceMap, JwtAuthorityEnricher jwtAuthorityEnricher) throws Exception {
 
             AuthorizationProperties authorization = securityProperties.getAuthorization();
             if (authorization.isEnabled()) {
@@ -91,7 +98,7 @@ public class JwtWebSecurityChainConfiguration {
 
             JwtProperties jwt = securityProperties.getJwt();
             if (jwt.isEnabled()) {
-                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources()));
+                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources(), jwtAuthorityEnricher));
             }
 
             // https://www.baeldung.com/spring-prevent-xss

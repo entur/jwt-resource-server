@@ -18,7 +18,7 @@ import static io.restassured.RestAssured.given;
 @AuthorizationServer
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@TestPropertySource(properties = { "entur.cors.mode=api", "entur.cors.origins[0]=https://petstore.swagger.io", "entur.cors.origins[1]=https://developer.entur.org", "entur.cors.origins[2]=https://myportal.apigee.io", "entur.authorization.permit-all.mvc-matcher.patterns=/unprotected"})
+@TestPropertySource(properties = { "entur.cors.mode=api", "entur.cors.origins[0]=https://petstore.swagger.io", "entur.cors.origins[1]=https://developer.entur.org", "entur.cors.origins[2]=https://myportal.apigee.io", "entur.authorization.permit-all.matcher.patterns=/unprotected"})
 public class CorsAPIHostsTest {
 
     @LocalServerPort

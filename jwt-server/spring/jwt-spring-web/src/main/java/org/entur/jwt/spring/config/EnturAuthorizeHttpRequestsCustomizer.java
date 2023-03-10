@@ -46,13 +46,24 @@ public class EnturAuthorizeHttpRequestsCustomizer implements Customizer<Authoriz
     protected void configurePermitAllMatchers(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry registry, MatcherConfiguration matchers) {
         if (matchers.hasPatterns()) {
             // for all methods
-            registry.requestMatchers(matchers.getPatternsAsArray()).permitAll();
+            String[] patternsAsArray = matchers.getPatternsAsArray();
+
+            registry.requestMatchers(patternsAsArray).permitAll();
+
+            for(String pattern : patternsAsArray) {
+                log.info("Permit all for " + pattern);
+            }
         }
 
         // for specific methods
         for (HttpMethodMatcher httpMethodMatcher : matchers.getMethod().getActiveMethods()) {
             // check that active, empty patterns will be interpreted as permit all of the method type (empty patterns vs varargs)
             if (httpMethodMatcher.isActive()) {
+                String[] patternsAsArray = httpMethodMatcher.getPatternsAsArray();
+                for(String pattern : patternsAsArray) {
+                    log.info("Permit all " + httpMethodMatcher.getVerb() + " for " + pattern);
+                }
+
                 registry.requestMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();
             }
         }

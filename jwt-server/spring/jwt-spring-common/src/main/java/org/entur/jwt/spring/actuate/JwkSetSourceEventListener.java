@@ -11,6 +11,6 @@ public class JwkSetSourceEventListener implements EventListener {
 
     @Override
     public void notify(Event event) {
-        LOGGER.info(event.toString());
+        LOGGER.info(event.getClass().getName());
     }
 }

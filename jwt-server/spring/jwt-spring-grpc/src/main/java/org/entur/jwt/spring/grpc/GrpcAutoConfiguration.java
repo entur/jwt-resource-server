@@ -2,27 +2,19 @@ package org.entur.jwt.spring.grpc;
 
 import io.grpc.util.TransmitStatusRuntimeExceptionInterceptor;
 import org.entur.jwt.spring.JwtAutoConfiguration;
-import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
-import org.entur.jwt.spring.grpc.exception.ServerCallRuntimeExceptionTranslator;
 import org.entur.jwt.spring.grpc.exception.ServerCallSecurityExceptionTranslator;
 import org.entur.jwt.spring.grpc.exception.ServerCallStatusRuntimeExceptionTranslator;
 import org.entur.jwt.spring.grpc.properties.GrpcPermitAll;
 import org.entur.jwt.spring.grpc.properties.GrpcServicesConfiguration;
 import org.entur.jwt.spring.grpc.properties.ServiceMatcherConfiguration;
-import org.entur.jwt.spring.auth0.properties.SecurityProperties;
-import org.entur.jwt.verifier.JwtClaimExtractor;
-import org.entur.jwt.verifier.JwtVerifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.util.List;
 
@@ -45,11 +37,12 @@ public class GrpcAutoConfiguration {
         return new ServerCallStatusRuntimeExceptionTranslator();
     }
 
+    /*
     @Bean
     public <T> GrpcAuthenticationInterceptorFactory<T> grpcAuthenticationInterceptorFactory(
             SecurityProperties properties,
             JwtVerifier<T> verifier,
-            @Autowired(required = false) JwtMappedDiagnosticContextMapper<T> mdcMapper,
+            @Autowired(required = false) JwtMappedDiagnosticContextMapper mdcMapper,
             JwtAuthorityMapper<T> authorityMapper,
             JwtClaimExtractor<T> extractor,
             @Lazy HandlerExceptionResolver handlerExceptionResolver,
@@ -70,7 +63,7 @@ public class GrpcAutoConfiguration {
         JwtAuthenticationInterceptor<T> jwtAuthenticationInterceptor = new JwtAuthenticationInterceptor<>(verifier, anonymous, authorityMapper, mdcMapper, extractor, jwtPrincipalMapper, jwtDetailsMapper);
         return new GrpcAuthenticationInterceptorFactory<>(jwtAuthenticationInterceptor, translators);
     }
-
+*/
     private GrpcServiceMethodFilter getGrpcServiceMethodFilter(GrpcServicesConfiguration grpc) {
         DefaultGrpcServiceMethodFilter filter = new DefaultGrpcServiceMethodFilter();
 

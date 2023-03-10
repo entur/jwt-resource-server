@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -15,33 +16,30 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-@ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true")
+@Configuration
+@ConditionalOnProperty(name = {"entur.cors.enabled"}, havingValue = "true", matchIfMissing = true)
 @AutoConfigureAfter(value = JwtAutoConfiguration.class)
 public class JwtWebAutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(JwtWebAutoConfiguration.class);
 
     @Bean("corsConfigurationSource")
-    @ConditionalOnProperty(name = {"entur.cors.enabled"}, havingValue = "true")
     public CorsConfigurationSource corsConfigurationSource(SecurityProperties oidcAuthProperties) {
         CorsProperties cors = oidcAuthProperties.getCors();
-        if (cors.getMode().equals("api")) {
+
+        String mode = cors.getMode();
+        if (mode.equals("api")) {
             return getCorsConfiguration(cors);
-        } else {
+        } else if(mode.equals("webapp")){
             if (!cors.getOrigins().isEmpty()) {
-                throw new IllegalStateException("Expected empty hosts configuration for CORS mode '" + cors.getMode() + "'");
+                throw new IllegalStateException("Expected empty origins configuration for CORS mode '" + cors.getMode() + "'");
             }
             log.info("Disable CORS requests for webapp mode");
 
             return getEmptyCorsConfiguration();
+        } else {
+            throw new IllegalStateException("Unknown cors mode " + mode);
         }
-    }
-
-    @Bean("corsConfigurationSource")
-    @ConditionalOnProperty(name = {"entur.security.cors.mode"}, havingValue = "webapp")
-    public CorsConfigurationSource corsConfigurationSourceForWebapp(SecurityProperties properties) {
-        log.info("Disable CORS requests for webapp mode");
-        return getEmptyCorsConfiguration();
     }
 
     public static CorsConfigurationSource getEmptyCorsConfiguration() {
