@@ -17,7 +17,7 @@ public class KeycloakResourceAccessTokenTest {
 
     @Test
     public void testTokenIsValid(@KeycloakResourceAccessToken(myId = 5) String token) throws IOException, ParseException {
-        JWT jwt = JWTParser.parse(token);
+        JWT jwt = JWTParser.parse(token.substring(7));
 
         JWTClaimsSet claims = jwt.getJWTClaimsSet();
 

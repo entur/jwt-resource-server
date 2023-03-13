@@ -24,7 +24,7 @@ public class PartnerAccessTokenTest {
 
     @Test
     public void testTokenWithOrganisation(@PartnerAuth0Token(organisationId = 5) String token) throws Exception {
-        JWT jwt = JWTParser.parse(token);
+        JWT jwt = JWTParser.parse(token.substring(7));
 
         JWTClaimsSet claims = jwt.getJWTClaimsSet();
 
@@ -57,18 +57,18 @@ public class PartnerAccessTokenTest {
     public void testTokenIsExpired(@ExpiredPartnerAuth0Token String token) throws Exception {
         JWTClaimsSet decodedJWT = decode(token);
 
-        long claim = decodedJWT.getLongClaim("exp"); // in seconds
+        long claim = decodedJWT.getDateClaim("exp").getTime(); // in seconds
 
-        assertThat(claim).isLessThan(System.currentTimeMillis() / 1000);
+        assertThat(claim).isLessThan(System.currentTimeMillis());
     }
 
     @Test
     public void testTokenIsNotYetIssued(@NotYetIssuedPartnerAuth0Token String token) throws Exception {
         JWTClaimsSet decodedJWT = decode(token);
 
-        long claim = decodedJWT.getLongClaim("iat"); // in seconds
+        long claim = decodedJWT.getDateClaim("iat").getTime(); // in seconds
 
-        assertThat(claim).isGreaterThan(System.currentTimeMillis() / 1000 + Integer.MAX_VALUE / 2);
+        assertThat(claim).isGreaterThan(System.currentTimeMillis() + Integer.MAX_VALUE / 2);
     }
 
     @Test
@@ -113,7 +113,7 @@ public class PartnerAccessTokenTest {
     private JWTClaimsSet decode(String token) throws ParseException {
         //return JWT.decode(token.substring(7));
 
-        JWT jwt = JWTParser.parse(token);
+        JWT jwt = JWTParser.parse(token.substring(7));
 
         return jwt.getJWTClaimsSet();
     }
@@ -121,7 +121,7 @@ public class PartnerAccessTokenTest {
     private Header decodeHeader(String token) throws ParseException {
         //return JWT.decode(token.substring(7));
 
-        JWT jwt = JWTParser.parse(token);
+        JWT jwt = JWTParser.parse(token.substring(7));
 
         return jwt.getHeader();
     }

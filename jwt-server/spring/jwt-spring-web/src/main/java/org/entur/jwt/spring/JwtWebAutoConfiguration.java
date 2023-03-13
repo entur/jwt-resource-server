@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+
 @Configuration
 @ConditionalOnProperty(name = {"entur.cors.enabled"}, havingValue = "true", matchIfMissing = true)
 @AutoConfigureAfter(value = JwtAutoConfiguration.class)

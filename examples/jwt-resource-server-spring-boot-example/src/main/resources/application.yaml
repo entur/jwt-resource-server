@@ -17,8 +17,9 @@ entur:
       health-indicator:
         enabled: true
   authorization:
+    enabled: true
     permit-all:
-      mvc-matcher:
+      matcher:
         patterns:
           - /actuator/health
           - /unprotected

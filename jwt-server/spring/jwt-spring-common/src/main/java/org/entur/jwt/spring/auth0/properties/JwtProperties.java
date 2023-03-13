@@ -30,6 +30,8 @@ public class JwtProperties {
         return tenants;
     }
 
+    private Flavours flavours = new Flavours();
+
     public void setTenants(Map<String, JwtTenantProperties> tenants) {
         this.tenants = tenants;
     }
@@ -74,4 +76,11 @@ public class JwtProperties {
         this.claims = claims;
     }
 
+    public Flavours getFlavours() {
+        return flavours;
+    }
+
+    public void setFlavours(Flavours flavours) {
+        this.flavours = flavours;
+    }
 }

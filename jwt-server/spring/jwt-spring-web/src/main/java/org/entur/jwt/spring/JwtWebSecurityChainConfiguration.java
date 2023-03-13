@@ -1,10 +1,17 @@
 package org.entur.jwt.spring;
 
+import org.entur.jwt.spring.auth0.properties.Auth0Flavour;
 import org.entur.jwt.spring.auth0.properties.AuthorizationProperties;
+import org.entur.jwt.spring.auth0.properties.Flavours;
 import org.entur.jwt.spring.auth0.properties.JwtProperties;
+import org.entur.jwt.spring.auth0.properties.KeycloakFlavour;
+import org.entur.jwt.spring.auth0.properties.MdcProperties;
 import org.entur.jwt.spring.auth0.properties.SecurityProperties;
 import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
 import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
+import org.entur.jwt.spring.config.JwtMappedDiagnosticContextFilter;
+import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
+import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapperFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
@@ -23,11 +30,15 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
 @Configuration
-@ConditionalOnExpression("${entur.authorization.enabled:true} || ${entur.jwt.enabled:false}")
+@ConditionalOnExpression("${entur.authorization.enabled:true} || ${entur.jwt.enabled:true}")
 @EnableConfigurationProperties({SecurityProperties.class})
 @AutoConfigureAfter(JwtWebAutoConfiguration.class)
 public class JwtWebSecurityChainConfiguration {
@@ -53,7 +64,7 @@ public class JwtWebSecurityChainConfiguration {
 
     @Configuration
     @ConditionalOnBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
-    @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = false)
+    @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
     public static class JwtConfigurationGuard {
 
         public JwtConfigurationGuard() {
@@ -62,7 +73,7 @@ public class JwtWebSecurityChainConfiguration {
     }
 
     @Bean
-    @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = false)
+    @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
     @ConditionalOnMissingBean(JwtAuthorityEnricher.class)
     public JwtAuthorityEnricher jwtAuthorityEnricher() {
         return new DefaultJwtAuthorityEnricher();
@@ -77,7 +88,7 @@ public class JwtWebSecurityChainConfiguration {
 
     @Configuration
     @ConditionalOnMissingBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
-    @ConditionalOnExpression("${entur.authorization.enabled:false} || ${entur.jwt.enabled:false}")
+    @ConditionalOnExpression("${entur.authorization.enabled:true} || ${entur.jwt.enabled:true}")
     @EnableGlobalMethodSecurity(prePostEnabled = true, securedEnabled = true)
     public static class CompositeWebSecurityConfigurerAdapter {
 
@@ -88,8 +99,7 @@ public class JwtWebSecurityChainConfiguration {
         }
 
         @Bean
-        @ConditionalOnMissingBean(SecurityFilterChain.class)
-        public SecurityFilterChain filterChain(HttpSecurity http, JwkSourceMap jwkSourceMap, JwtAuthorityEnricher jwtAuthorityEnricher) throws Exception {
+        public SecurityFilterChain filterChain(HttpSecurity http, JwkSourceMap jwkSourceMap, List<JwtAuthorityEnricher> jwtAuthorityEnrichers) throws Exception {
 
             AuthorizationProperties authorization = securityProperties.getAuthorization();
             if (authorization.isEnabled()) {
@@ -98,7 +108,34 @@ public class JwtWebSecurityChainConfiguration {
 
             JwtProperties jwt = securityProperties.getJwt();
             if (jwt.isEnabled()) {
-                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources(), jwtAuthorityEnricher));
+
+                Flavours flavours = jwt.getFlavours();
+                if (flavours.isEnabled()) {
+                    List<JwtAuthorityEnricher> enrichers = new ArrayList<>(jwtAuthorityEnrichers);
+
+                    Auth0Flavour auth0 = flavours.getAuth0();
+                    if (auth0.isEnabled()) {
+                        enrichers.add(new Auth0JwtAuthorityEnricher());
+                    }
+
+                    KeycloakFlavour keycloak = flavours.getKeycloak();
+                    if (keycloak.isEnabled()) {
+                        enrichers.add(new KeycloakJwtAuthorityEnricher());
+                    }
+
+                    jwtAuthorityEnrichers = enrichers;
+                }
+
+                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers));
+            }
+
+            MdcProperties mdc = jwt.getMdc();
+            if (mdc.isEnabled()) {
+                JwtMappedDiagnosticContextMapperFactory factory = new JwtMappedDiagnosticContextMapperFactory();
+                JwtMappedDiagnosticContextMapper mapper = factory.mapper(mdc);
+                JwtMappedDiagnosticContextFilter filter = new JwtMappedDiagnosticContextFilter(mapper);
+
+                http.addFilterBefore(filter, AuthorizationFilter.class);
             }
 
             // https://www.baeldung.com/spring-prevent-xss

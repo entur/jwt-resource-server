@@ -57,7 +57,7 @@
 		<commons-io.version>2.11.0</commons-io.version>
 		<google-truth.version>1.1.3</google-truth.version>
 		<junit.version>5.9.2</junit.version>
-		<mockito.version>4.8.1</mockito.version>
+		<mockito.version>5.2.0</mockito.version>
 		<hamcrest.version>2.2</hamcrest.version>
 		<slf4j.version>2.0.6</slf4j.version>
 		<jjwt.version>0.11.5</jjwt.version>
@@ -84,7 +84,7 @@
 
 		<!-- plugins -->
 		<build-helper-maven-plugin.version>1.9.1</build-helper-maven-plugin.version>
-		<jacoco-maven-plugin.version>0.8.5</jacoco-maven-plugin.version>
+		<jacoco-maven-plugin.version>0.8.8</jacoco-maven-plugin.version>
 		<nexus-staging-maven-plugin.version>1.6.7</nexus-staging-maven-plugin.version>
 		<maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
 		<maven-source-plugin.version>2.2.1</maven-source-plugin.version>
@@ -511,7 +511,7 @@
 				<artifactId>maven-javadoc-plugin</artifactId>
 				<version>${maven-javadoc-plugin.version}</version>
 				<configuration>
-					<source>8</source>
+					<source>17</source>
 					<detectJavaApiLink>false</detectJavaApiLink>
 				</configuration>
 				<executions>
@@ -654,8 +654,8 @@
 		<module>jwt-test/jwt-junit5-spring</module>
 		<module>jwt-client/jwt-client-core</module>
 		<module>jwt-client/jwt-client-spring-core</module>
-		<module>jwt-client/jwt-client-spring-cloud</module>
 		<module>jwt-client/jwt-client-spring</module>
+		<module>jwt-client/jwt-client-spring-cloud</module>
         <module>jwt-server/spring/jwt-spring-web</module>
         <module>jwt-server/spring/jwt-spring-common</module>
 		<!--

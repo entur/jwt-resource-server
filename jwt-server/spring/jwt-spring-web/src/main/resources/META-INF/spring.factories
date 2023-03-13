@@ -1,2 +1,0 @@
-org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-org.entur.jwt.spring.JwtWebAutoConfiguration,org.entur.jwt.spring.JwtWebSecurityChainConfiguration

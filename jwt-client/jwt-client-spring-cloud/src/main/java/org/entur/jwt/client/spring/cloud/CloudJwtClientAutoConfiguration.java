@@ -9,16 +9,19 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
 
-@Configuration
 @EnableConfigurationProperties(SpringJwtClientProperties.class)
 public class CloudJwtClientAutoConfiguration extends JwtClientAutoConfiguration {
 
+
     private static Logger log = LoggerFactory.getLogger(CloudJwtClientAutoConfiguration.class);
+
+    public CloudJwtClientAutoConfiguration() {
+        log.info("Configre " + getClass().getSimpleName());
+    }
 
     @Bean
     @Qualifier("jwtWebClient")

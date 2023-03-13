@@ -1,4 +1,4 @@
-package org.entur.jwt.client.springcloud;
+package org.entur.jwt.client.spring.cloud;
 
 import org.springframework.core.io.Resource;
 import org.springframework.util.FileCopyUtils;

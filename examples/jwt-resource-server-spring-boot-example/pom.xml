@@ -16,17 +16,26 @@
 
 	<properties>
 		<java.version>17</java.version>
+		<nimbus-jose-jwt.version>9.31</nimbus-jose-jwt.version>
 		<truth.version>1.1.3</truth.version>
 	</properties>
 
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>com.nimbusds</groupId>
+				<artifactId>nimbus-jose-jwt</artifactId>
+				<version>${nimbus-jose-jwt.version}</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
 	<dependencies>
-		<!--
 		<dependency>
 			<groupId>org.entur.jwt-rs</groupId>
-			<artifactId>jwt-spring-auth0-web</artifactId>
+			<artifactId>jwt-spring-web</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-		-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>

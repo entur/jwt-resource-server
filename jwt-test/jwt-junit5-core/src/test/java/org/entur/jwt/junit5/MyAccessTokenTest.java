@@ -14,7 +14,7 @@ public class MyAccessTokenTest {
 
     @Test
     public void testTokenIsValid(@MyAccessToken(myId = 5) String token) throws Exception {
-        JWT jwt = JWTParser.parse(token);
+        JWT jwt = JWTParser.parse(token.substring(7));
 
         JWTClaimsSet claims = jwt.getJWTClaimsSet();
 

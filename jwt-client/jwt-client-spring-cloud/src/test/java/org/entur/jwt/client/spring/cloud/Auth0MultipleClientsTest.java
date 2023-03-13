@@ -1,4 +1,4 @@
-package org.entur.jwt.client.springcloud;
+package org.entur.jwt.client.spring.cloud;
 
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -24,7 +24,7 @@ import java.io.IOException;
 
 import static com.google.common.truth.Truth.assertThat;
 import static io.restassured.RestAssured.given;
-import static org.entur.jwt.client.springcloud.TestUtils.asString;
+import static org.entur.jwt.client.spring.cloud.TestUtils.asString;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)

@@ -11,7 +11,7 @@ import static io.restassured.RestAssured.given;
 
 @AuthorizationServer
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@TestPropertySource(properties = { "entur.authorization.permit-all.ant-matcher.method.get.patterns=/actuator/**" })
+@TestPropertySource(properties = {"entur.authorization.permit-all.matcher.method.get.patterns=/actuator/**"})
 public class ActuatorTest {
 
     // see also alternative approach with com.jayway.restassured:spring-mock-mvc

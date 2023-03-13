@@ -5,25 +5,22 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.JWSAlgorithmFamilyJWSKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
-
 import org.entur.jwt.spring.EnrichedJwtGrantedAuthoritiesConverter;
 import org.entur.jwt.spring.JwtAuthorityEnricher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.convert.converter.Converter;
-import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationManagerResolver;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider;
 import org.springframework.security.oauth2.server.resource.authentication.JwtIssuerAuthenticationManagerResolver;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2ResourceServerConfigurer<HttpSecurity>> {
@@ -31,11 +28,11 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
     private static Logger LOGGER = LoggerFactory.getLogger(EnturOauth2ResourceServerCustomizer.class);
 
     private final Map<String, JWKSource> jwkSources;
-    private final JwtAuthorityEnricher jwtAuthorityEnricher;
+    private final List<JwtAuthorityEnricher> jwtAuthorityEnrichers;
 
-    public EnturOauth2ResourceServerCustomizer(Map<String, JWKSource> jwkSources, JwtAuthorityEnricher jwtAuthorityEnricher) {
+    public EnturOauth2ResourceServerCustomizer(Map<String, JWKSource> jwkSources, List<JwtAuthorityEnricher> jwtAuthorityEnrichers) {
         this.jwkSources = jwkSources;
-        this.jwtAuthorityEnricher = jwtAuthorityEnricher;
+        this.jwtAuthorityEnrichers = jwtAuthorityEnrichers;
     }
 
     @Override
@@ -54,7 +51,7 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
             JwtAuthenticationProvider authenticationProvider = new JwtAuthenticationProvider(new NimbusJwtDecoder(jwtProcessor));
 
             JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-            jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(new EnrichedJwtGrantedAuthoritiesConverter(jwtAuthorityEnricher));
+            jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(new EnrichedJwtGrantedAuthoritiesConverter(jwtAuthorityEnrichers));
             
 			authenticationProvider.setJwtAuthenticationConverter(jwtAuthenticationConverter);
             

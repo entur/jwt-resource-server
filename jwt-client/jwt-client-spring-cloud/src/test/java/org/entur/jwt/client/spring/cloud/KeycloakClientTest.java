@@ -1,4 +1,4 @@
-package org.entur.jwt.client.springcloud;
+package org.entur.jwt.client.spring.cloud;
 
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -18,7 +18,6 @@ import org.springframework.test.context.TestPropertySource;
 import java.io.IOException;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.entur.jwt.client.springcloud.TestUtils.asString;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
@@ -56,7 +55,7 @@ public class KeycloakClientTest {
 
     @Test
     public void testAccessToken() throws Exception {
-        mockWebServer.enqueue(new MockResponse().setBody(asString(resource)));
+        mockWebServer.enqueue(new MockResponse().setBody(TestUtils.asString(resource)));
 
         AccessToken accessToken = accessTokenProvider.getAccessToken(false);
 
