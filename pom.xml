@@ -86,6 +86,8 @@
 		<tomcat.version>9.0.71</tomcat.version>
 		<netty.version>4.1.89.Final</netty.version>
 
+		<json-smart.version>2.4.10</json-smart.version>
+
 		<!-- plugins -->
 		<build-helper-maven-plugin.version>1.9.1</build-helper-maven-plugin.version>
 		<jacoco-maven-plugin.version>0.8.5</jacoco-maven-plugin.version>
@@ -261,6 +263,11 @@
 				<groupId>com.auth0</groupId>
 				<artifactId>jwks-rsa</artifactId>
 				<version>${jwks-rsa.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>net.minidev</groupId>
+				<artifactId>json-smart</artifactId>
+				<version>${json-smart.version}</version>
 			</dependency>
 
 			<!-- need spring-web, but then we need to define the rest too, due to spring boot starter security -->
