@@ -62,5 +62,9 @@
 		<!-- parsing yaml might consume a lot of resources -->
 		<cve>CVE-2022-3064</cve>
 	</suppress>
+	<suppress>
+		<!-- false positive -->
+		<cve>CVE-2022-45688</cve>
+	</suppress>
 
 </suppressions>
