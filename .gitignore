@@ -9,6 +9,7 @@
 /build
 /captures
 /target
+pom.xml.versionsBackup
 
 .factorypath
 **/*.attach_pid*
