@@ -26,11 +26,12 @@ import org.springframework.security.config.BeanIds;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,16 +42,9 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
 @ConditionalOnExpression("${entur.authorization.enabled:true} || ${entur.jwt.enabled:true}")
 @EnableConfigurationProperties({SecurityProperties.class})
 @AutoConfigureAfter(JwtWebAutoConfiguration.class)
-public class JwtWebSecurityChainConfiguration {
+public class JwtWebSecurityChainAutoConfiguration {
 
-    protected static class NoUserDetailsService implements UserDetailsService {
-        @Override
-        public UserDetails loadUserByUsername(String username) {
-            throw new UsernameNotFoundException("");
-        }
-    }
-
-    private static Logger log = LoggerFactory.getLogger(JwtWebSecurityChainConfiguration.class);
+    private static Logger log = LoggerFactory.getLogger(JwtWebSecurityChainAutoConfiguration.class);
 
     @Configuration
     @ConditionalOnBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
@@ -99,7 +93,12 @@ public class JwtWebSecurityChainConfiguration {
         }
 
         @Bean
-        public SecurityFilterChain filterChain(HttpSecurity http, JwkSourceMap jwkSourceMap, List<JwtAuthorityEnricher> jwtAuthorityEnrichers) throws Exception {
+        public SecurityFilterChain filterChain(
+                HttpSecurity http,
+                JwkSourceMap jwkSourceMap,
+                List<JwtAuthorityEnricher> jwtAuthorityEnrichers,
+                List<OAuth2TokenValidator<Jwt>> jwtValidators
+        ) throws Exception {
 
             AuthorizationProperties authorization = securityProperties.getAuthorization();
             if (authorization.isEnabled()) {
@@ -126,7 +125,7 @@ public class JwtWebSecurityChainConfiguration {
                     jwtAuthorityEnrichers = enrichers;
                 }
 
-                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers));
+                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers, jwtValidators));
             }
 
             MdcProperties mdc = jwt.getMdc();
@@ -139,7 +138,9 @@ public class JwtWebSecurityChainConfiguration {
             }
 
             // https://www.baeldung.com/spring-prevent-xss
-            http.headers().xssProtection().and()
+            http.headers()
+                    .xssProtection().headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK)
+                    .and()
                     .contentSecurityPolicy("script-src 'self'");
 
             return http

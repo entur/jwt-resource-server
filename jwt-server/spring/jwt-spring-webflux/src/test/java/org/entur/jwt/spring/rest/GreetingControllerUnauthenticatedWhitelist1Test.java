@@ -22,7 +22,7 @@ import java.time.Duration;
 @AuthorizationServer
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@TestPropertySource(properties = { "entur.authorization.permit-all.ant-matcher.patterns=/actuator/health,/unprotected/**" })
+@TestPropertySource(properties = {"entur.authorization.permit-all.matcher.patterns=/actuator/health,/unprotected/**"})
 public class GreetingControllerUnauthenticatedWhitelist1Test {
 
     @Autowired
@@ -46,43 +46,12 @@ public class GreetingControllerUnauthenticatedWhitelist1Test {
     }
 
     @Test
-    public void testUnprotectedResourceWithOptionalTenantNotPresent() {
-        webTestClient
-            .get()
-            .uri("/unprotected/optionalTenant")
-            .exchange()
-            .expectStatus().is2xxSuccessful();
-    }
-
-    @Test
-    public void testUnprotectedResourceWithRequiredTenantNotPresent() {
-        webTestClient
-            .get()
-            .uri("/unprotected/requiredTenant")
-            .exchange()
-            .expectStatus().isForbidden();
-    }
-
-
-    @Test
     public void testProtectedResource() {
         webTestClient
-            .get()
-            .uri("/protected")
-            .exchange()
-            .expectStatus().isForbidden();
-    }
-
-
-    @Test
-    public void testProtectedResourceWithRequiredTenantNotPresent() {
-        // note to self: this illustrates that the argument resolver runs BEFORE the
-        // method permissions
-        webTestClient
-            .get()
-            .uri("/protected/requiredTenant")
-            .exchange()
-            .expectStatus().isForbidden();
+                .get()
+                .uri("/protected")
+                .exchange()
+                .expectStatus().isUnauthorized();
     }
 
     @Test

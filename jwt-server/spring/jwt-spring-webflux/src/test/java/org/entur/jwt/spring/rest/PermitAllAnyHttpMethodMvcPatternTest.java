@@ -15,7 +15,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 @AuthorizationServer
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@TestPropertySource(properties = {"entur.authorization.permit-all.ant-matcher.patterns=/actuator/**,/unprotected/path/{pathVariable}"})
+@TestPropertySource(properties = {"entur.authorization.permit-all.matcher.patterns=/actuator/**,/unprotected/path/{pathVariable}"})
 
 @Deprecated // seems ant + mvc has been merged to "path matchers", investigate further
 public class PermitAllAnyHttpMethodMvcPatternTest {

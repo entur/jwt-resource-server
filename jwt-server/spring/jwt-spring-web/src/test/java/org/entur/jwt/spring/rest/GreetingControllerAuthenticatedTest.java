@@ -3,7 +3,6 @@ package org.entur.jwt.spring.rest;
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.junit5.claim.Scope;
-import org.entur.jwt.spring.rest.token.MyAccessToken;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -85,7 +84,7 @@ public class GreetingControllerAuthenticatedTest {
         assertThat(responseHeaders.get("Pragma")).contains("no-cache");
         assertThat(responseHeaders.get("Expires")).contains("0");
         assertThat(responseHeaders.get("X-Frame-Options")).contains("DENY");
-        assertThat(responseHeaders.get("X-XSS-Protection")).contains("0");
+        assertThat(responseHeaders.get("X-XSS-Protection")).contains("1; mode=block");
     }
 
     @Test

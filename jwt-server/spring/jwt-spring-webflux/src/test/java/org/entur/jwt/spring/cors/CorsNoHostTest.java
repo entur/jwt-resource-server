@@ -1,24 +1,24 @@
 package org.entur.jwt.spring.cors;
 
-import static io.restassured.RestAssured.given;
-
-import java.util.Arrays;
-import java.util.List;
-
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
+import java.util.Arrays;
+import java.util.List;
+
+import static io.restassured.RestAssured.given;
+
 @AuthorizationServer
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@TestPropertySource(properties = { "entur.cors.mode=api", "entur.authorization.permit-all.ant-matcher.patterns=/unprotected"})
+@TestPropertySource(properties = {"entur.cors.mode=api", "entur.authorization.permit-all.matcher.patterns=/unprotected"})
 public class CorsNoHostTest {
 
     @LocalServerPort

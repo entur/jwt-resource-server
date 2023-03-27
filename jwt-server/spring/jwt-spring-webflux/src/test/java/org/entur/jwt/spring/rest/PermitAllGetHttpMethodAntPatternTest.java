@@ -15,7 +15,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 @AuthorizationServer
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@TestPropertySource(properties = { "entur.authorization.permit-all.ant-matcher.method.get.patterns=/actuator/**,/unprotected/path/{pathVariable}" })
+@TestPropertySource(properties = {"entur.authorization.permit-all.matcher.method.get.patterns=/actuator/**,/unprotected/path/{pathVariable}"})
 public class PermitAllGetHttpMethodAntPatternTest {
 
     @Autowired

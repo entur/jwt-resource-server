@@ -16,7 +16,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-
 @Configuration
 @ConditionalOnProperty(name = {"entur.cors.enabled"}, havingValue = "true", matchIfMissing = true)
 @AutoConfigureAfter(value = JwtAutoConfiguration.class)
@@ -33,7 +32,7 @@ public class JwtWebAutoConfiguration {
             return getCorsConfiguration(cors);
         } else if(mode.equals("webapp")){
             if (!cors.getOrigins().isEmpty()) {
-                throw new IllegalStateException("Expected empty origins configuration for CORS mode '" + cors.getMode() + "'");
+                throw new IllegalStateException("Expected empty hosts configuration for CORS mode '" + cors.getMode() + "'");
             }
             log.info("Disable CORS requests for webapp mode");
 

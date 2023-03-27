@@ -1,12 +1,5 @@
 package org.entur.jwt.spring.rest;
 
-import static com.google.common.truth.Truth.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.springframework.http.HttpHeaders.AUTHORIZATION;
-
-import java.util.List;
-import java.util.Map.Entry;
-
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.junit5.claim.Scope;
@@ -16,22 +9,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.boot.web.server.LocalServerPort;
-import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
-import org.springframework.test.web.reactive.server.FluxExchangeResult;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import java.util.List;
+import java.util.Map.Entry;
+
+import static com.google.common.truth.Truth.assertThat;
+import static org.springframework.http.HttpHeaders.AUTHORIZATION;
+
 /**
- *
  * Test accessing methods with a token, with the global setting of requiring
  * an Authorization header for all requests.
- *
  */
 
 @AuthorizationServer
@@ -69,25 +59,6 @@ public class GreetingControllerAuthenticatedTest {
             .getResponseBody().blockLast();
 
         assertThat(greeting.getContent()).isEqualTo("Hello protected");
-    }
-
-    @Test
-    public void testProtectedResourceTenant(@MyAccessToken(myId = 1) String token) {
-        webTestClient
-            .get()
-            .uri("/protected/requiredTenant")
-            .header(AUTHORIZATION, token)
-            .exchange()
-            .expectStatus().is2xxSuccessful();
-    }
-
-    @Test
-    public void testProtectedResourceTenantOfSpecificSubtype(@MyAccessToken(myId = 1) String token) {
-        webTestClient.get()
-            .uri("/protected/requiredPartnerTenant")
-            .header(AUTHORIZATION, token)
-            .exchange()
-            .expectStatus().is2xxSuccessful();
     }
 
     @Test
@@ -136,7 +107,7 @@ public class GreetingControllerAuthenticatedTest {
             .returnResult(Greeting.class)
             .getResponseBody().blockLast();
 
-        assertThat(greeting.getContent()).isEqualTo("Hello protected partner tenant 1 with authority");
+        assertThat(greeting.getContent()).isEqualTo("Hello protected with authority");
         assertThat(greeting.getAuthorities()).containsExactly("configure");
     }
 

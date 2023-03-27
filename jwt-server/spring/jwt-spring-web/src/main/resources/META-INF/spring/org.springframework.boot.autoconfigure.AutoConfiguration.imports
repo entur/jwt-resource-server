@@ -1,2 +1,2 @@
 org.entur.jwt.spring.JwtWebAutoConfiguration
-org.entur.jwt.spring.JwtWebSecurityChainConfiguration
+org.entur.jwt.spring.JwtWebSecurityChainAutoConfiguration
