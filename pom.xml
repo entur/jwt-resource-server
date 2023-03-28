@@ -675,9 +675,7 @@
         <module>jwt-server/spring/jwt-spring-web</module>
         <module>jwt-server/spring/jwt-spring-common</module>
 		<module>jwt-server/spring/jwt-spring-webflux</module>
-		<!--
 		<module>jwt-server/spring/jwt-spring-grpc</module>
-        -->
 	</modules>
 
 	<distributionManagement>

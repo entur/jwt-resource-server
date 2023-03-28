@@ -53,18 +53,6 @@ entur:
         - https://my.audience
 ```
 
-A tenant id-filter can be used to conveniently enable/disable specific tenants. Using this filter could also simplify sharing configuration, for example using a ConfigMap in Kubernetes.
-
-```
-entur:
-  jwt:
-    filter:
-      ids: # tenants
-        - partner-auth0
-```
-
-The filter matches ids ending with `*` (for a prefix check), i.e. `partner-*`.
-
 ## Authorization configuration
 
 By default, all requests must be so-called _fully authenticated_. In other words all requests must have a valid JWT
@@ -321,22 +309,6 @@ Note that the bean name must be as above in order for Spring to pick up the bean
 
 In general, the API gateway should respond with HTTP 403 to requests with unknown origins. All other requests, including
 OPTIONS calls, can be sent backwards to the Spring application.
-
-### Custom WebSecurityConfigurerAdapter
-
-This starter only configures a single `WebSecurityConfigurerAdapter`, and we recommend you do so as well.
-Exclude `JwtWebSecurityConfigurerAdapterAutoConfiguration` starter and roll your own, possibly borrowing
-from `AuthorizationWebSecurityConfigurerAdapter` and/or `JwtFilterWebSecurityConfigurerAdapter`.
-
-### Implementing framework support
-
-The core implementation expects a few beans to be present:
-
-* JwtVerifierFactory - JwtVerifier factory
-* JwtClaimExtractor - JWT claim extractor for log context (MDC) support and authorization detailing.
-* JwtAuthorityMapper - mapping from JWT (scope, permissions, etc) to authority
-* JwtArgumentResolver - argument resolver support. Transforms the JwtAuthenticationToken to an object of your desire for
-  injection in downstream method arguments.
 
 See [jwt-spring-auth0-web] for a concrete implementation example.
 

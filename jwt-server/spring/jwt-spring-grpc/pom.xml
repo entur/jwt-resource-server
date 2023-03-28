@@ -4,11 +4,7 @@
     <parent>
         <groupId>org.entur.jwt-rs</groupId>
         <artifactId>parent</artifactId>
-<<<<<<< HEAD
         <version>3.0.0-SNAPSHOT</version>
-=======
-        <version>2.0.8-SNAPSHOT</version>
->>>>>>> 351b2478ffda8c9a9a6b6e9336d1a8903acdb4b9
         <relativePath>../../../pom.xml</relativePath>
     </parent>
     <artifactId>jwt-spring-grpc</artifactId>

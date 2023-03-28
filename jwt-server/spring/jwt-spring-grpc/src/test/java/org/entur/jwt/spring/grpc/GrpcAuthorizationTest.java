@@ -1,22 +1,26 @@
 package org.entur.jwt.spring.grpc;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
-import java.io.Closeable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import io.grpc.Context;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.lognet.springboot.grpc.security.GrpcSecurity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
-import io.grpc.Context;
+import java.io.Closeable;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class GrpcAuthorizationTest implements GrpcAuthorization {
     
@@ -29,7 +33,7 @@ public class GrpcAuthorizationTest implements GrpcAuthorization {
 
         public ContextWrapper(JwtAuthenticationToken jwtAuthenticationToken) {
             Context current = Context.current();
-            context = current.withValue(GrpcAuthorization.SECURITY_CONTEXT_AUTHENTICATION, jwtAuthenticationToken);
+            context = current.withValue(GrpcSecurity.AUTHENTICATION_CONTEXT_KEY, jwtAuthenticationToken);
             context.attach();
         }
 
@@ -44,13 +48,14 @@ public class GrpcAuthorizationTest implements GrpcAuthorization {
         String credentials = "Bearer x.y.z";
         Map<String, Object> claims = new HashMap<>();
         claims.put("aud", Arrays.asList("http://entur.org"));
-        
+
         List<GrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority("read"));
         authorities.add(new SimpleGrantedAuthority("modify"));
-        
-        jwtAuthenticationToken = new JwtAuthenticationToken(claims, credentials, authorities, "principal", "deails");
 
+        Jwt jwt = new Jwt(credentials, Instant.EPOCH, Instant.MAX, Collections.emptyMap(), claims);
+
+        jwtAuthenticationToken = new JwtAuthenticationToken(jwt, authorities);
     }
 
     @Test
