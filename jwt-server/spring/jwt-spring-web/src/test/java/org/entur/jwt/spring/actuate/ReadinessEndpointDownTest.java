@@ -33,20 +33,23 @@ public class ReadinessEndpointDownTest {
 
     @LocalServerPort
     private int randomServerPort;
-    
+
     @Autowired
     private TestRestTemplate restTemplate;
-    
+
     @Value("${entur.jwt.tenants.unreliable.jwk.location}")
     private String jwkLocation;
 
-    @Test 
+    @Autowired
+    private ListJwksHealthIndicator indicator;
+
+    @Test
     public void testReadinessDownWithTransistionToUp() {
         HttpHeaders headers = new HttpHeaders();
         HttpEntity<String> entity = new HttpEntity<String>(headers);
 
         String url = "http://localhost:" + randomServerPort + "/actuator/health/readiness";
-        
+
         File jwkFile = new File(jwkLocation.substring(7));
         File jwkRenameFile = new File(jwkFile.getParentFile(), jwkFile.getName() + ".renamed");
         

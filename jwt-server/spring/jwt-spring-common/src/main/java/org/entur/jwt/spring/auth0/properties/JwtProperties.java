@@ -15,13 +15,6 @@ public class JwtProperties {
 
     private Map<String, JwtTenantProperties> tenants = new HashMap<>();
 
-    /**
-     * Tenant filter (on tenant name). This is a useful feature when configuration
-     * is shared across multiple applications, i.e. like a common config-map in
-     * Kubernetes.
-     */
-    private TenantFilter filter = new TenantFilter(); //
-
     private JwkProperties jwk = new JwkProperties();
 
     private JwtClaimsProperties claims = new JwtClaimsProperties();
@@ -60,13 +53,6 @@ public class JwtProperties {
         this.mdc = mdc;
     }
 
-    public TenantFilter getFilter() {
-        return filter;
-    }
-
-    public void setFilter(TenantFilter filter) {
-        this.filter = filter;
-    }
 
     public JwtClaimsProperties getClaims() {
         return claims;

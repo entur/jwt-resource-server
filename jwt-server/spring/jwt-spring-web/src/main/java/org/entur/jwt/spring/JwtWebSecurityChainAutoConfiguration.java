@@ -29,6 +29,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.web.DefaultSecurityFilterChain;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter;
@@ -93,6 +94,22 @@ public class JwtWebSecurityChainAutoConfiguration {
         }
 
         @Bean
+        @ConditionalOnExpression("${entur.authorization.enabled:true} && !${entur.jwt.enabled:true}")
+        public SecurityFilterChain securityWebFilterChain(
+                HttpSecurity http
+        ) throws Exception {
+            log.info("Configure without JWT");
+
+            AuthorizationProperties authorization = securityProperties.getAuthorization();
+            if (authorization.isEnabled()) {
+                http.authorizeHttpRequests(new EnturAuthorizeHttpRequestsCustomizer(authorization));
+            }
+
+            return getSecurityFilterChain(http);
+        }
+
+        @Bean
+        @ConditionalOnExpression("${entur.jwt.enabled:true}")
         public SecurityFilterChain filterChain(
                 HttpSecurity http,
                 JwkSourceMap jwkSourceMap,
@@ -137,6 +154,10 @@ public class JwtWebSecurityChainAutoConfiguration {
                 http.addFilterBefore(filter, AuthorizationFilter.class);
             }
 
+            return getSecurityFilterChain(http);
+        }
+
+        private static DefaultSecurityFilterChain getSecurityFilterChain(HttpSecurity http) throws Exception {
             // https://www.baeldung.com/spring-prevent-xss
             http.headers()
                     .xssProtection().headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK)

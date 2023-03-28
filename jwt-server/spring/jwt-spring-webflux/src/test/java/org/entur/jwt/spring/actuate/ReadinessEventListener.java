@@ -1,4 +1,4 @@
-package org.entur.jwt.spring.rest.config;
+package org.entur.jwt.spring.actuate;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -101,17 +101,7 @@ public class JwtWebFluxSecurityAutoConfiguration {
                 http.authorizeExchange(new EnturAuthorizeHttpRequestsCustomizer(authorization));
             }
 
-            // https://www.baeldung.com/spring-prevent-xss
-            http.headers().xssProtection().headerValue(XXssProtectionServerHttpHeadersWriter.HeaderValue.ENABLED_MODE_BLOCK);
-
-            return http
-                    .requestCache().requestCache(NoOpServerRequestCache.getInstance()).and()  // Disable WebSession read on every request
-                    .csrf().disable()
-                    .formLogin().disable()
-                    .httpBasic().disable()
-                    .logout().disable()
-                    .cors(Customizer.withDefaults())
-                    .build();
+            return getSecurityWebFilterChain(http);
         }
 
         @Bean
@@ -158,6 +148,11 @@ public class JwtWebFluxSecurityAutoConfiguration {
                 throw new IllegalStateException("MDC not supported for webflux yet");
             }
 
+            // https://www.baeldung.com/spring-prevent-xss
+            return getSecurityWebFilterChain(http);
+        }
+
+        private static SecurityWebFilterChain getSecurityWebFilterChain(ServerHttpSecurity http) {
             // https://www.baeldung.com/spring-prevent-xss
             http.headers().xssProtection().headerValue(XXssProtectionServerHttpHeadersWriter.HeaderValue.ENABLED_MODE_BLOCK);
 

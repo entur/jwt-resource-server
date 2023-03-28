@@ -5,7 +5,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 
 /**
- * Test that context loads, and that the composite web security adapter is loaded
+ * Test that context loads
  */
 @AuthorizationServer
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)

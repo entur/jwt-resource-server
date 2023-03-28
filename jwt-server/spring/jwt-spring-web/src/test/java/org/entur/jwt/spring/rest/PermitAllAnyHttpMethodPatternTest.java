@@ -1,4 +1,4 @@
-package org.entur.jwt.spring.actuate;
+package org.entur.jwt.spring.rest;
 
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.junit.jupiter.api.Test;
@@ -10,19 +10,16 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.TestPropertySource;
 
-import static org.assertj.core.api.Assertions.assertThat;
-/**
- * 
- * Test readiness probe up. 
- * 
- */
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 
 @AuthorizationServer
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-public class ReadinessEndpointUpTest {
+@TestPropertySource(properties = {"entur.authorization.permit-all.matcher.patterns=/actuator/**,/unprotected/path/{pathVariable}"})
+public class PermitAllAnyHttpMethodPatternTest {
 
     @LocalServerPort
     private int randomServerPort;
@@ -30,18 +27,27 @@ public class ReadinessEndpointUpTest {
     @Autowired
     private TestRestTemplate restTemplate;
 
-    @Autowired
-    private ListJwksHealthIndicator indicator;
-
     @Test
-    public void testReadiness() {
+    public void testUnprotectedResourceWithPathVariableOnWhitelist() {
         HttpHeaders headers = new HttpHeaders();
         HttpEntity<String> entity = new HttpEntity<String>(headers);
 
-        String url = "http://localhost:" + randomServerPort + "/actuator/health/readiness";
+        String url = "http://localhost:" + randomServerPort + "/unprotected/path/123";
 
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        assertTrue(response.getStatusCode().is2xxSuccessful());
     }
 
+    @Test
+    public void testActuatorOnWhitelist() {
+        HttpHeaders headers = new HttpHeaders();
+        HttpEntity<String> entity = new HttpEntity<String>(headers);
+
+        String url = "http://localhost:" + randomServerPort + "/actuator/health";
+
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+        assertTrue(response.getStatusCode().is2xxSuccessful());
+    }
 }
