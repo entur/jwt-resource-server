@@ -24,7 +24,7 @@ entur:
             methods:
               - unprotected
               - unprotectedWithOptionalTenant
-      mvc-matcher:
+      matcher:
         patterns:
          - /actuator/health
 

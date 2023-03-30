@@ -16,6 +16,7 @@ import io.grpc.ServerInterceptor;
 @Configuration
 public class GrpcConfiguration {
 
+    /*
     @Bean
     @GRpcGlobalInterceptor
     public ServerInterceptor exceptionTranslationInterceptor(GrpcAuthenticationInterceptorFactory<?> wrapper) {
@@ -28,5 +29,5 @@ public class GrpcConfiguration {
     public JwtAuthenticationInterceptor<?> grpcAuth(GrpcAuthenticationInterceptorFactory<?> wrapper) {
         return wrapper.getJwtAuthenticationInterceptor();
     }
-
+*/
 }
