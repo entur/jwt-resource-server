@@ -9,10 +9,10 @@ entur:
     mdc:
       enabled: true
       mappings:
-      - from: iss
-        to: issuer
-      - from: azp
-        to: azp
+        - from: iss
+          to: issuer
+        - from: azp
+          to: azp
     jwk:
       health-indicator:
         enabled: true
@@ -26,8 +26,8 @@ entur:
               - unprotectedWithOptionalTenant
       matcher:
         patterns:
-         - /actuator/health
+          - /actuator/health
 
 grpc:
   port: 0
-  security.auth.enabled: false
+  security.auth.enabled: true

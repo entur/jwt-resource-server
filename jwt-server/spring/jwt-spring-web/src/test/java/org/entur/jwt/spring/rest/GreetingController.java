@@ -23,14 +23,14 @@ public class GreetingController {
 
     @GetMapping("/unprotected")
     public Greeting unprotected() {
-        log.info("Get unprotected method");
+        log.info("Get unprotected method " + SecurityContextHolder.getContext().getAuthentication());
 
         return new Greeting(counter.incrementAndGet(), "Hello unprotected");
     }
 
     @PostMapping(path = "/unprotected", consumes = "application/json", produces = "application/json")
     public Greeting unprotectedPost(@RequestBody Greeting greeting) {
-        log.info("Get unprotected method with POST");
+        log.info("Get unprotected method with POST " + SecurityContextHolder.getContext().getAuthentication());
 
         return new Greeting(counter.incrementAndGet(), "Hello unprotected");
     }

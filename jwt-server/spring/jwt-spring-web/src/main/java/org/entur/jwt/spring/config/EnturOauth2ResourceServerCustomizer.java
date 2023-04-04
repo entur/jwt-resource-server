@@ -58,7 +58,7 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
             jwtProcessor.setJWSKeySelector(keySelector);
 
             NimbusJwtDecoder nimbusJwtDecoder = new NimbusJwtDecoder(jwtProcessor);
-            nimbusJwtDecoder.setJwtValidator(getJwtValidators(entry));
+            nimbusJwtDecoder.setJwtValidator(getJwtValidators(entry.getKey()));
 
             JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
             jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(new EnrichedJwtGrantedAuthoritiesConverter(jwtAuthorityEnrichers));
@@ -76,9 +76,9 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
         configurer.authenticationManagerResolver(jwtIssuerAuthenticationManagerResolver);
     }
 
-    private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(Map.Entry<String, JWKSource> entry) {
+    private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(String issuer) {
         List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();
-        validators.add(new JwtIssuerValidator(entry.getKey())); // this check is implicit, but lets add it regardless
+        validators.add(new JwtIssuerValidator(issuer)); // this check is implicit, but lets add it regardless
         validators.addAll(jwtValidators);
         DelegatingOAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(validators);
         return validator;

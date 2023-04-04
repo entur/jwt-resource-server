@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,7 +26,15 @@ public class GreetingController {
     public Mono<Greeting> unprotected() {
         log.info("Get unprotected method");
 
-        return Mono.just(new Greeting(counter.incrementAndGet(), "Hello unprotected"));
+        return ReactiveSecurityContextHolder.getContext()
+                .map(securityContext -> (JwtAuthenticationToken) securityContext.getAuthentication())
+                .map(authentication -> {
+                    log.info("Authorization {}", authentication);
+
+                    return new Greeting(counter.incrementAndGet(), "Hello unprotected", null, authentication.getAuthorities());
+                });
+
+        //return Mono.just(new Greeting(counter.incrementAndGet(), "Hello unprotected"));
     }
 
     @PostMapping(path = "/unprotected", consumes = "application/json", produces = "application/json")

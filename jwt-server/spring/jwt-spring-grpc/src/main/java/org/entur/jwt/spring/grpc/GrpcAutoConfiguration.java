@@ -1,71 +1,135 @@
 package org.entur.jwt.spring.grpc;
 
-import io.grpc.BindableService;
-import io.grpc.MethodDescriptor;
-import io.grpc.ServerServiceDefinition;
-import io.grpc.ServiceDescriptor;
-import io.grpc.util.TransmitStatusRuntimeExceptionInterceptor;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.KeySourceException;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.proc.JWSVerificationKeySelector;
+import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jwt.proc.DefaultJWTProcessor;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
+import org.entur.jwt.spring.DefaultJwtAuthorityEnricher;
+import org.entur.jwt.spring.EnrichedJwtGrantedAuthoritiesConverter;
+import org.entur.jwt.spring.JwkSourceMap;
+import org.entur.jwt.spring.JwtAuthorityEnricher;
 import org.entur.jwt.spring.JwtAutoConfiguration;
-import org.entur.jwt.spring.auth0.properties.SecurityProperties;
-import org.entur.jwt.spring.grpc.exception.ServerCallSecurityExceptionTranslator;
-import org.entur.jwt.spring.grpc.exception.ServerCallStatusRuntimeExceptionTranslator;
+import org.entur.jwt.spring.NoUserDetailsService;
 import org.entur.jwt.spring.grpc.properties.GrpcPermitAll;
 import org.entur.jwt.spring.grpc.properties.GrpcServicesConfiguration;
 import org.entur.jwt.spring.grpc.properties.ServiceMatcherConfiguration;
-import org.lognet.springboot.grpc.GRpcServicesRegistry;
+import org.lognet.springboot.grpc.GRpcErrorHandler;
+import org.lognet.springboot.grpc.recovery.ErrorHandlerAdapter;
+import org.lognet.springboot.grpc.recovery.GRpcExceptionHandler;
+import org.lognet.springboot.grpc.recovery.GRpcExceptionScope;
+import org.lognet.springboot.grpc.recovery.GRpcServiceAdvice;
 import org.lognet.springboot.grpc.security.GrpcSecurity;
 import org.lognet.springboot.grpc.security.GrpcSecurityConfigurerAdapter;
 import org.lognet.springboot.grpc.security.GrpcServiceAuthorizationConfigurer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.AuthenticationServiceException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.Optional;
 
 @Configuration
 @EnableConfigurationProperties({GrpcPermitAll.class})
-@ConditionalOnProperty(name = {"entur.jwt.authorization"}, havingValue = "true", matchIfMissing = true)
-@AutoConfigureAfter(value = {JwtAutoConfiguration.class, org.lognet.springboot.grpc.autoconfigure.security.SecurityAutoConfiguration.class})
+//@ConditionalOnProperty(name = {"entur.jwt.authorization"}, havingValue = "true", matchIfMissing = true)
+//@AutoConfigureAfter(value = {JwtAutoConfiguration.class, org.lognet.springboot.grpc.autoconfigure.security.SecurityAutoConfiguration.class})
+@AutoConfigureAfter(value = {JwtAutoConfiguration.class})
+@AutoConfigureBefore(value = {org.lognet.springboot.grpc.autoconfigure.security.SecurityAutoConfiguration.class})
 public class GrpcAutoConfiguration {
 
     private static Logger log = LoggerFactory.getLogger(GrpcAutoConfiguration.class);
 
+
+    @Bean
+    @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
+    @ConditionalOnMissingBean(JwtAuthorityEnricher.class)
+    public JwtAuthorityEnricher jwtAuthorityEnricher() {
+        return new DefaultJwtAuthorityEnricher();
+    }
+
+
     @Configuration
+    @ConditionalOnExpression("${entur.jwt.enabled:true}")
     public static class GrpcSecurityConfiguration extends GrpcSecurityConfigurerAdapter {
 
-        @Autowired
-        private JwtDecoder jwtDecoder;
+        JwkSourceMap jwkSourceMap;
 
-        @Autowired
+        List<JwtAuthorityEnricher> jwtAuthorityEnrichers;
+
+        List<OAuth2TokenValidator<Jwt>> jwtValidators;
+
         private GrpcPermitAll permitAll;
+
+        public GrpcSecurityConfiguration(JwkSourceMap jwkSourceMap, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators, GrpcPermitAll permitAll) {
+            this.jwkSourceMap = jwkSourceMap;
+            this.jwtAuthorityEnrichers = jwtAuthorityEnrichers;
+            this.jwtValidators = jwtValidators;
+            this.permitAll = permitAll;
+        }
 
         @Override
         public void configure(GrpcSecurity grpcSecurity) throws Exception {
+            log.info("Configure Grpc security");
+
             if (permitAll.isActive()) {
                 configureGrpcServiceMethodFilter(permitAll.getGrpc(), grpcSecurity);
             } else {
                 // default to authenticated
                 grpcSecurity.authorizeRequests().anyMethod().authenticated();
             }
+
+            Map<String, JWKSource> jwkSources = jwkSourceMap.getJwkSources();
+
+            Map<String, AuthenticationProvider> map = new HashMap<>(jwkSources.size() * 4);
+
+            for (Map.Entry<String, JWKSource> entry : jwkSources.entrySet()) {
+                JWKSource jwkSource = entry.getValue();
+
+                DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
+                JWSVerificationKeySelector keySelector = new JWSVerificationKeySelector(JWSAlgorithm.Family.SIGNATURE, jwkSource);
+                jwtProcessor.setJWSKeySelector(keySelector);
+
+                NimbusJwtDecoder nimbusJwtDecoder = new NimbusJwtDecoder(jwtProcessor);
+                nimbusJwtDecoder.setJwtValidator(getJwtValidators(entry.getKey()));
+
+                JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
+                jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(new EnrichedJwtGrantedAuthoritiesConverter(jwtAuthorityEnrichers));
+
+                JwtAuthenticationProvider authenticationProvider = new JwtAuthenticationProvider(nimbusJwtDecoder);
+                authenticationProvider.setJwtAuthenticationConverter(jwtAuthenticationConverter);
+
+                map.put(entry.getKey(), authenticationProvider);
+            }
+
+            grpcSecurity.authenticationProvider(new IssuerAuthenticationProvider(map));
         }
 
         private void configureGrpcServiceMethodFilter(GrpcServicesConfiguration grpc, GrpcSecurity grpcSecurity) throws Exception {
-
             GrpcServiceAuthorizationConfigurer.Registry registry = grpcSecurity.authorizeRequests();
 
             Map<String, List<String>> serviceNameMethodName = new HashMap<>();
@@ -94,11 +158,11 @@ public class GrpcAutoConfiguration {
             registry.anyMethodExcluding((method) -> {
                 String lowerCaseServiceName = method.getServiceName().toLowerCase();
                 List<String> methodNames = serviceNameMethodName.get(lowerCaseServiceName);
-                if(methodNames == null) {
+                if (methodNames == null) {
                     return false;
                 }
 
-                if(methodNames.contains("*")) {
+                if (methodNames.contains("*")) {
                     return true;
                 }
 
@@ -107,11 +171,59 @@ public class GrpcAutoConfiguration {
 
                 return methodNames.contains(lowerCaseBareMethodName) || methodNames.contains(lowerCaseFullMethodName);
             }).authenticated();
+        }
 
-
+        private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(String issuer) {
+            List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();
+            validators.add(new JwtIssuerValidator(issuer)); // this check is implicit, but lets add it regardless
+            validators.addAll(jwtValidators);
+            DelegatingOAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(validators);
+            return validator;
         }
     }
 
+    @Bean
+    @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
+    @ConditionalOnMissingBean(UserDetailsService.class)
+    public UserDetailsService userDetailsService() {
+        return new NoUserDetailsService();  // avoid the default user.
+    }
 
+    @GRpcServiceAdvice
+    public static class DefaultAuthErrorHandler extends ErrorHandlerAdapter {
+        public DefaultAuthErrorHandler(Optional<GRpcErrorHandler> errorHandler) {
+            super(errorHandler);
+        }
 
+        @GRpcExceptionHandler
+        public Status handle(AuthenticationException e, GRpcExceptionScope scope) {
+            if(e instanceof AuthenticationServiceException) {
+                Throwable cause1 = e.getCause();
+                if(cause1 instanceof JwtException) {
+                    Throwable cause2 = cause1.getCause();
+                    if(cause2 instanceof KeySourceException) {
+                        return handle(e, Status.UNAVAILABLE, scope);
+                    }
+                }
+            }
+            return handle(e, Status.UNAUTHENTICATED, scope);
+        }
+    }
+
+    @GRpcServiceAdvice
+    public static class StatusErrorHandler extends ErrorHandlerAdapter {
+        public StatusErrorHandler(Optional<GRpcErrorHandler> errorHandler) {
+            super(errorHandler);
+        }
+
+        @GRpcExceptionHandler
+        public Status handle(StatusRuntimeException e, GRpcExceptionScope scope) {
+            try {
+                throw new RuntimeException(e);
+            } catch(Exception ee) {
+                ee.printStackTrace();
+            }
+            return handle(e, e.getStatus(), scope);
+        }
+    }
 }

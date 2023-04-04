@@ -25,7 +25,7 @@ public class GreetingController extends GreetingServiceImplBase {
 
     public void unprotected(org.entur.jwt.spring.grpc.test.GreetingRequest request,
                             io.grpc.stub.StreamObserver<org.entur.jwt.spring.grpc.test.GreetingResponse> responseObserver) {
-        log.info("Get unprotected method");
+        log.info("Get unprotected method with " + GrpcSecurity.AUTHENTICATION_CONTEXT_KEY.get());
 
         responseObserver.onNext(GreetingResponse.newBuilder().setMessage("Hello unprotected").setStatus(counter.incrementAndGet()).build());
         responseObserver.onCompleted();

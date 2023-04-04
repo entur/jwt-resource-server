@@ -1,8 +1,11 @@
 package org.entur.jwt.spring.auth0.properties;
 
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
 import java.util.ArrayList;
 import java.util.List;
 
+@ConfigurationProperties(prefix = "entur.jwt.mdc")
 public class MdcProperties {
 
     private boolean enabled = true;

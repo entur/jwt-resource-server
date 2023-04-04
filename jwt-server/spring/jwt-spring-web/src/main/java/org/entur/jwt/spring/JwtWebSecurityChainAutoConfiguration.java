@@ -75,7 +75,7 @@ public class JwtWebSecurityChainAutoConfiguration {
     }
     
     @Bean
-    @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = false)
+    @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
     @ConditionalOnMissingBean(UserDetailsService.class)
     public UserDetailsService userDetailsService() {
         return new NoUserDetailsService();  // avoid the default user.
