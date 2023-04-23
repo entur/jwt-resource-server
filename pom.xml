@@ -82,7 +82,7 @@
 		<lognet.version>4.9.1</lognet.version>
 		<!-- https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-dependencies  -->
 		<!-- transient dependencies added due to security patching -->
-		<snakeyaml.version>1.33</snakeyaml.version>
+		<snakeyaml.version>2.0</snakeyaml.version>
 		<tomcat.version>9.0.74</tomcat.version>
 		<netty.version>4.1.91.Final</netty.version>
 
