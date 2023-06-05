@@ -67,5 +67,15 @@
 		<cve>CVE-2022-45688</cve>
 		<cve>CVE-2023-1370</cve>
 	</suppress>
+	<suppress>
+		<cve>CVE-2023-1370</cve>
+	</suppress>
+	<suppress>
+		<!-- snakeyaml, unable to upgrade -->
+		<cve>CVE-2023-2251</cve>
+		<cve>CVE-2022-25857</cve>
+	</suppress>
+
+
 
 </suppressions>
