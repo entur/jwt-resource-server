@@ -71,7 +71,7 @@
 		<spring-boot.version>2.7.13</spring-boot.version>
 		<httpclient.version>4.5.14</httpclient.version>
 		<!-- added due to security issue -->
-		<spring-security.version>5.7.9</spring-security.version>
+		<spring-security.version>5.7.10</spring-security.version>
 		<spring.version>5.3.27</spring.version>
 		<rest-assured.version>4.5.1</rest-assured.version>
 		<okhttp.version>4.9.3</okhttp.version>
