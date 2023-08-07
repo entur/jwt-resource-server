@@ -75,6 +75,10 @@
 		<cve>CVE-2023-2251</cve>
 		<cve>CVE-2022-25857</cve>
 	</suppress>
+	<suppress>
+		<!-- jackson -->
+		<cve>CVE-2022-45688</cve>
+	</suppress>
 
 
 
