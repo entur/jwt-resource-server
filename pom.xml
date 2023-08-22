@@ -70,6 +70,7 @@
 		<jadler.version>1.3.0</jadler.version>
 		<spring-boot.version>2.7.14</spring-boot.version>
 		<httpclient.version>4.5.14</httpclient.version>
+		<httpclient5.version>5.1.4</httpclient5.version>
 		<!-- added due to security issue -->
 		<spring-security.version>5.7.10</spring-security.version>
 		<spring.version>5.3.29</spring.version>
@@ -269,7 +270,11 @@
 				<artifactId>jwks-rsa</artifactId>
 				<version>${jwks-rsa.version}</version>
 			</dependency>
-
+			<dependency>
+				<groupId>org.apache.httpcomponents.client5</groupId>
+				<artifactId>httpclient5</artifactId>
+				<version>${httpclient5.version}</version>
+			</dependency>
 
 			<!-- need spring-web, but then we need to define the rest too, due to spring boot starter security -->
 			<dependency>
