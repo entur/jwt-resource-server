@@ -1,10 +1,8 @@
 package org.entur.jwt.client.spring.classic;
 
-import org.apache.http.ConnectionReuseStrategy;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
-import org.apache.http.conn.ConnectionKeepAliveStrategy;
 import org.apache.http.impl.NoConnectionReuseStrategy;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.entur.jwt.client.spring.JwtClientAutoConfiguration;
@@ -19,8 +17,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.concurrent.TimeUnit;
 
 @Configuration
 @EnableConfigurationProperties(SpringJwtClientProperties.class)
@@ -46,11 +46,19 @@ public class RestTemplateJwtClientAutoConfiguration extends JwtClientAutoConfigu
             }
         }
 
-        return restTemplateBuilder
-                .requestFactory(RestTemplateJwtClientAutoConfiguration::getHttpComponentsClientHttpRequestFactory)
-                .setConnectTimeout(Duration.of(connectTimeout, ChronoUnit.SECONDS))
-                .setReadTimeout(Duration.of(readTimeout, ChronoUnit.SECONDS))
-                .build();
+        if(useHttpClient5()) {
+            // i.e. spring boot 3.x
+            return restTemplateBuilder
+                    .requestFactory(() -> getHttpComponentsClientHttpRequestFactory((int)connectTimeout, (int)readTimeout))
+                    .build();
+        } else {
+            // i.e. spring boot 2.x
+            return restTemplateBuilder
+                    .requestFactory(RestTemplateJwtClientAutoConfiguration::getHttpComponentsClientHttpRequestFactory)
+                    .setConnectTimeout(Duration.of(connectTimeout, ChronoUnit.SECONDS))
+                    .setReadTimeout(Duration.of(readTimeout, ChronoUnit.SECONDS))
+                    .build();
+        }
     }
 
     private static HttpComponentsClientHttpRequestFactory getHttpComponentsClientHttpRequestFactory() {
@@ -78,5 +86,40 @@ public class RestTemplateJwtClientAutoConfiguration extends JwtClientAutoConfigu
         return new RestTemplateJwtClientBeanDefinitionRegistryPostProcessorSupport(restTemplate, properties);
     }
 
+    private static HttpComponentsClientHttpRequestFactory getHttpComponentsClientHttpRequestFactory(int connectTimeout, int readTimeout) {
+        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
+
+        org.apache.hc.client5.http.config.RequestConfig requestConfig = org.apache.hc.client5.http.config.RequestConfig.custom().setConnectTimeout(connectTimeout, TimeUnit.SECONDS).setResponseTimeout(readTimeout, TimeUnit.SECONDS).build();
+
+        org.apache.hc.client5.http.classic.HttpClient httpClient = org.apache.hc.client5.http.impl.classic.HttpClientBuilder.create()
+                .disableCookieManagement()
+                .disableAuthCaching()
+                .disableAutomaticRetries()
+                .disableRedirectHandling()
+                .setDefaultRequestConfig(requestConfig)
+                // do not keep alive, assuming creating new HTTP requests
+                // will be the most robust approach
+                .setConnectionReuseStrategy((a, b, c) -> false)
+                .build();
+
+        // workaround for incompatible spring 2.x vs spring 3.x
+        try {
+            Method setHttpClient = HttpComponentsClientHttpRequestFactory.class.getMethod("setHttpClient", org.apache.hc.client5.http.classic.HttpClient.class);
+            setHttpClient.invoke(factory, httpClient);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        return factory;
+    }
+
+    public static boolean useHttpClient5() {
+        try {
+            HttpComponentsClientHttpRequestFactory.class.getMethod("setHttpClient", org.apache.hc.client5.http.classic.HttpClient.class);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
 
 }
