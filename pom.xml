@@ -84,7 +84,7 @@
 		<!-- https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-dependencies  -->
 		<!-- transient dependencies added due to security patching -->
 		<snakeyaml.version>1.30</snakeyaml.version>
-		<tomcat.version>9.0.78</tomcat.version>
+		<tomcat.version>9.0.80</tomcat.version>
 		<netty.version>4.1.94.Final</netty.version>
 
 		<!-- plugins -->
