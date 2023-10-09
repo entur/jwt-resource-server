@@ -19,9 +19,6 @@ public class IssuerAuthenticationManagerResolver implements AuthenticationManage
 
     @Override
     public AuthenticationManager resolve(String issuer) {
-
-        LOGGER.info("Resolve " + issuer + " from " + map.keySet());
-
         return map.get(issuer);
     }
 }
