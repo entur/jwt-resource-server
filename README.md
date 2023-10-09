@@ -51,6 +51,9 @@ See documentation contained in each folder to get started. Or skip right to the 
 [European Union Public Licence v1.2](https://eupl.eu/).
 
 # History
+ - 3.0.x: Spring Boot 3 support
+   - `Auth0` artifacts replaced by Spring OAuth equivalents 
+   - Takes advantage of [latest Nimbus Jose JWKs handling](https://connect2id.com/products/nimbus-jose-jwt/examples/enhanced-jwk-retrieval).
  - 2.0.5-2.0.6: Ignore cookies as Apache did not accept the ones returned from Auth0 due to use of custom domain + bump dependencies
  - 2.0.2-2.0.4: Maintenance release
  - 2.0.0: Splits up the artifacts of web mvc (web) and reactive (webflux), respectively. Therefore, there are major renaming in some artifacts. For instance, if you are implementing `jwt-spring-auth0`, you should rename this to `jwt-spring-auth0-web`. 

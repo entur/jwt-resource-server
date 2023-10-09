@@ -1,1 +1,2 @@
 org.entur.jwt.spring.grpc.GrpcAutoConfiguration
+org.entur.jwt.spring.grpc.GrpcMdcAutoConfiguration

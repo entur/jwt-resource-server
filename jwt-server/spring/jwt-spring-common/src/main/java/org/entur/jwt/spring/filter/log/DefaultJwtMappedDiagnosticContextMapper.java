@@ -4,30 +4,28 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.entur.jwt.verifier.JwtClaimException;
-import org.entur.jwt.verifier.JwtClaimExtractor;
 import org.slf4j.MDC;
 
-public class DefaultJwtMappedDiagnosticContextMapper<T> implements JwtMappedDiagnosticContextMapper<T> {
+import org.springframework.security.oauth2.jwt.Jwt;
+
+
+public class DefaultJwtMappedDiagnosticContextMapper implements JwtMappedDiagnosticContextMapper {
 
     /** claim keys */
     protected final String[] from;
     /** mdc keys */
     protected final String[] to;
 
-    protected final JwtClaimExtractor<T> extractor;
-
-    public DefaultJwtMappedDiagnosticContextMapper(List<String> claims, List<String> keys, JwtClaimExtractor<T> extractor) {
+    public DefaultJwtMappedDiagnosticContextMapper(List<String> claims, List<String> keys) {
         this.from = claims.toArray(new String[0]);
         this.to = keys.toArray(new String[claims.size()]);
-        this.extractor = extractor;
     }
 
-    public Map<String, String> getContext(T token) throws JwtClaimException {
+    public Map<String, String> getContext(Jwt token){
     	Map<String, String> context = new HashMap<>();
     	
         for (int i = 0; i < from.length; i++) {
-            String value = extractor.getClaim(token, from[i], String.class);
+            String value = token.getClaim(from[i]);
             if (value != null) {
                 context.put(to[i], value);
             }
@@ -35,16 +33,16 @@ public class DefaultJwtMappedDiagnosticContextMapper<T> implements JwtMappedDiag
         return context;
     }
     
-    public void addContext(T token) throws JwtClaimException {
+    public void addContext(Jwt token) {
         for (int i = 0; i < from.length; i++) {
-            String value = extractor.getClaim(token, from[i], String.class);
+            String value = token.getClaim(from[i]);
             if (value != null) {
                 MDC.put(to[i], value);
             }
         }
     }
 
-    public void removeContext(T token) {
+    public void removeContext(Jwt token) {
         for (String s : to) {
             MDC.remove(s);
         }

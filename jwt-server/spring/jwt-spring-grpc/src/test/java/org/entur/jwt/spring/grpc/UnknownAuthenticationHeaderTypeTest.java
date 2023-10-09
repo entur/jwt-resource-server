@@ -1,20 +1,17 @@
 package org.entur.jwt.spring.grpc;
 
-import static com.google.common.truth.Truth.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
+import static com.google.common.truth.Truth.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * 
  * Test accessing methods with an unknown token token type. We only accept Bearer types.
@@ -22,7 +19,6 @@ import io.grpc.StatusRuntimeException;
  */
 
 @AuthorizationServer
-@ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @DirtiesContext

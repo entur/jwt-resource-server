@@ -4,7 +4,7 @@
     <parent>
 		<groupId>org.entur.jwt-rs</groupId>
 		<artifactId>parent</artifactId>
-		<version>2.0.15-SNAPSHOT</version>
+		<version>3.0.0-SNAPSHOT</version>
 		<relativePath>../../pom.xml</relativePath>
 	</parent>	
 	<artifactId>jwt-junit5-core</artifactId>
@@ -31,6 +31,7 @@
 		    <artifactId>jackson-databind</artifactId>
 		</dependency>		
 		<!-- test -->
+		<!--
 		<dependency>
 		    <groupId>com.auth0</groupId>
 		    <artifactId>java-jwt</artifactId>
@@ -41,6 +42,7 @@
 		    <artifactId>jwks-rsa</artifactId>
 		    <scope>test</scope>
 		</dependency>
+		-->
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter</artifactId>
@@ -61,5 +63,10 @@
 			<artifactId>mockito-core</artifactId>
 			<scope>test</scope>
 		</dependency>
-	</dependencies>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 </project>

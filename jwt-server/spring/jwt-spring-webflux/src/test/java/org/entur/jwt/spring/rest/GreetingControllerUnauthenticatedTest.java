@@ -29,38 +29,38 @@ public class GreetingControllerUnauthenticatedTest {
     @Test
     public void testUnprotectedResourceNotOnWhitelist() {
         webTestClient
-            .get()
-            .uri("/unprotected")
-            .exchange()
-            .expectStatus().isForbidden();
+                .get()
+                .uri("/unprotected")
+                .exchange()
+                .expectStatus().isUnauthorized();
     }
 
     @Test
     public void testUnprotectedResourceWithOptionalTenantNotPresent() {
         webTestClient
-            .get()
-            .uri("/unprotected/optionalTenant")
-            .exchange()
-            .expectStatus().isForbidden();
+                .get()
+                .uri("/unprotected/optionalTenant")
+                .exchange()
+                .expectStatus().isUnauthorized();
     }
 
     @Test
     public void testUnprotectedResourceWithRequiredTenantNotPresent() {
         webTestClient
-            .get()
-            .uri("/unprotected/requiredTenant")
-            .exchange()
-            .expectStatus().isForbidden();
+                .get()
+                .uri("/unprotected/requiredTenant")
+                .exchange()
+                .expectStatus().isUnauthorized();
     }
 
 
     @Test
     public void testProtectedResource() {
         webTestClient
-            .get()
-            .uri("/protected")
-            .exchange()
-            .expectStatus().isForbidden();
+                .get()
+                .uri("/protected")
+                .exchange()
+                .expectStatus().isUnauthorized();
     }
 
 
@@ -69,19 +69,19 @@ public class GreetingControllerUnauthenticatedTest {
         // note to self: this illustrates that the argument resolver runs BEFORE the
         // method permissions
         webTestClient
-            .get()
-            .uri("/protected/requiredTenant")
-            .exchange()
-            .expectStatus().isForbidden();
+                .get()
+                .uri("/protected/requiredTenant")
+                .exchange()
+                .expectStatus().isUnauthorized();
     }
 
 
     @Test
     public void testActuatorNotOnWhitelist() {
         webTestClient
-            .get()
-            .uri("/actuator/someother")
-            .exchange()
-            .expectStatus().isForbidden();
+                .get()
+                .uri("/actuator/someother")
+                .exchange()
+                .expectStatus().isUnauthorized();
     }
 }

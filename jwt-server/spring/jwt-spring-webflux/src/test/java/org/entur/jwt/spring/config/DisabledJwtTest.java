@@ -1,15 +1,14 @@
 package org.entur.jwt.spring.config;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.test.context.TestPropertySource;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@TestPropertySource(properties = {"entur.jwt.enabled=false"})
+@TestPropertySource(properties = {
+        "entur.jwt.enabled=false",
+        "management.endpoint.health.group.readiness.include=readinessState"
+})
 public class DisabledJwtTest {
 
     @Test

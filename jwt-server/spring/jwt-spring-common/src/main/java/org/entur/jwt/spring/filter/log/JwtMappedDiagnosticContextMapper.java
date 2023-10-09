@@ -2,13 +2,13 @@ package org.entur.jwt.spring.filter.log;
 
 import java.util.Map;
 
-import org.entur.jwt.verifier.JwtClaimException;
+import org.springframework.security.oauth2.jwt.Jwt;
 
-public interface JwtMappedDiagnosticContextMapper<T> {
+public interface JwtMappedDiagnosticContextMapper {
 
-    Map<String, String> getContext(T token) throws JwtClaimException;
+    Map<String, String> getContext(Jwt token);
 	
-    void addContext(T token) throws JwtClaimException;
+    void addContext(Jwt token);
 
-    void removeContext(T token);
+    void removeContext(Jwt token);
 }

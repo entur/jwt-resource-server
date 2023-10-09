@@ -8,7 +8,6 @@ This repository contains a demo application showing how to use the `jwt-spring-a
   * Protected and unprotected endpoints
       * `/unprotected` - no authentication required
       * `/protected` - checks that fully authenticated
-      * `/protected/withArgument` - with JWT injected in method signature
       * `/protected/withPermission` - with permission check (detailed access control)
   * [Units tests](src/test/java/org/entur/jwt/spring/demo/GreetingControllerTest.java) with mock tokens
       * tokens created via test method injection

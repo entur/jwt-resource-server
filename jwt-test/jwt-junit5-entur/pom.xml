@@ -4,7 +4,7 @@
     <parent>
 		<groupId>org.entur.jwt-rs</groupId>
 		<artifactId>parent</artifactId>
-		<version>2.0.15-SNAPSHOT</version>
+		<version>3.0.0-SNAPSHOT</version>
 		<relativePath>../../pom.xml</relativePath>
 	</parent>	
 	<artifactId>jwt-junit5-entur</artifactId>
@@ -19,6 +19,7 @@
 			<artifactId>junit-jupiter-api</artifactId>
 		</dependency>
 		<!-- test -->
+		<!--
 		<dependency>
 			<groupId>org.entur.jwt-rs</groupId>
 			<artifactId>jwt-verifier-auth0</artifactId>
@@ -34,6 +35,7 @@
 		    <artifactId>jwks-rsa</artifactId>
 		    <scope>test</scope>
 		</dependency>
+		-->
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter</artifactId>
@@ -54,5 +56,10 @@
 			<artifactId>mockito-core</artifactId>
 			<scope>test</scope>
 		</dependency>
-	</dependencies>
+        <dependency>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>nimbus-jose-jwt</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 </project>

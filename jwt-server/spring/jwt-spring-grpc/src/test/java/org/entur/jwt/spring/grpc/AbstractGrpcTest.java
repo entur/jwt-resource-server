@@ -1,7 +1,7 @@
 package org.entur.jwt.spring.grpc;
 
-import java.util.concurrent.TimeUnit;
-
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
 import org.entur.jwt.spring.grpc.test.GreetingRequest;
 import org.entur.jwt.spring.grpc.test.GreetingServiceGrpc;
 import org.entur.jwt.spring.grpc.test.GreetingServiceGrpc.GreetingServiceBlockingStub;
@@ -10,10 +10,9 @@ import org.entur.jwt.spring.grpc.test.GreetingServiceGrpc.GreetingServiceStub;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.lognet.springboot.grpc.context.LocalRunningGrpcPort;
-import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.boot.test.web.server.LocalServerPort;
 
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
+import java.util.concurrent.TimeUnit;
 
 public class AbstractGrpcTest {
 

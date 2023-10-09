@@ -1,70 +1,44 @@
 package org.entur.jwt.spring;
 
-import org.entur.jwt.spring.actuate.JwksHealthIndicator;
-import org.entur.jwt.spring.auth0.properties.JwtProperties;
-import org.entur.jwt.spring.auth0.properties.MdcPair;
-import org.entur.jwt.spring.auth0.properties.MdcProperties;
-import org.entur.jwt.spring.auth0.properties.SecurityProperties;
-import org.entur.jwt.spring.auth0.properties.TenantFilter;
-import org.entur.jwt.spring.filter.DefaultJwtDetailsMapper;
-import org.entur.jwt.spring.filter.DefaultJwtPrincipalMapper;
-import org.entur.jwt.spring.filter.JwtDetailsMapper;
-import org.entur.jwt.spring.filter.JwtPrincipalMapper;
-import org.entur.jwt.spring.filter.log.DefaultJwtMappedDiagnosticContextMapper;
-import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
-import org.entur.jwt.verifier.JwtClaimExtractor;
-import org.entur.jwt.verifier.JwtVerifier;
-import org.entur.jwt.verifier.JwtVerifierFactory;
-import org.entur.jwt.verifier.config.JwtTenantProperties;
+import org.entur.jwt.spring.actuate.ListJwksHealthIndicator;
+import org.entur.jwt.spring.properties.JwtProperties;
+import org.entur.jwt.spring.properties.SecurityProperties;
+import org.entur.jwt.spring.properties.jwk.JwtTenantProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.jwt.Jwt;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.Executors;
 
 @Configuration
-@ConditionalOnClass(WebSecurityConfigurerAdapter.class)
 @EnableConfigurationProperties({SecurityProperties.class})
 @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true")
-public abstract class JwtAutoConfiguration {
+public class JwtAutoConfiguration {
 
     private static final Logger LOG = LoggerFactory.getLogger(JwtAutoConfiguration.class);
 
-    @Bean
-    @ConditionalOnMissingBean(JwtMappedDiagnosticContextMapper.class)
-    @ConditionalOnProperty(name = {"entur.jwt.mdc.enabled"}, havingValue = "true")
-    public <T> JwtMappedDiagnosticContextMapper<T> mapper(SecurityProperties properties, JwtClaimExtractor<T> extractor) {
-        MdcProperties mdc = properties.getJwt().getMdc();
-        List<MdcPair> items = mdc.getMappings();
-        List<String> to = new ArrayList<>();
-        List<String> from = new ArrayList<>();
-
-        // note: possible to map the same claim to different values
-        for (MdcPair item : items) {
-            to.add(item.getTo());
-            from.add(item.getFrom());
-
-            LOG.info("Map JWT claim '{}' to MDC key '{}'", item.getFrom(), item.getTo());
-        }
-        return new DefaultJwtMappedDiagnosticContextMapper<>(from, to, extractor);
+    @Bean(destroyMethod = "close", value = "jwks")
+    @ConditionalOnProperty(name = {"entur.jwt.jwk.health-indicator.enabled"}, havingValue = "true", matchIfMissing = true)
+    public ListJwksHealthIndicator jwksHealthIndicator() {
+        return new ListJwksHealthIndicator(1000L, Executors.newCachedThreadPool());
     }
 
     @Bean(destroyMethod = "close")
-    @ConditionalOnMissingBean(JwtVerifier.class)
-    public <T> JwtVerifier<T> jwtVerifier(SecurityProperties properties, JwtVerifierFactory<T> factory) {
+    @ConditionalOnMissingBean(JwkSourceMap.class)
+    public JwkSourceMap jwkSourceMap(SecurityProperties properties, @Autowired(required = false) ListJwksHealthIndicator listJwksHealthIndicator) {
         JwtProperties jwtProperties = properties.getJwt();
 
         Map<String, JwtTenantProperties> enabledTenants = new HashMap<>();
@@ -73,81 +47,25 @@ public abstract class JwtAutoConfiguration {
                 enabledTenants.put(entry.getKey(), entry.getValue());
             }
         }
-
-        Map<String, JwtTenantProperties> tenants;
-        TenantFilter filter = jwtProperties.getFilter();
-        if (!filter.isEmpty()) {
-            tenants = new HashMap<>();
-
-            // filter on key
-            for (String id : filter.getIds()) {
-                id = id.trim();
-
-                boolean endsWith = id.endsWith("*");
-
-                if (endsWith) {
-                    String prefix = id.substring(0, id.length() - 1);
-                    for (Entry<String, JwtTenantProperties> entry : enabledTenants.entrySet()) {
-                        if (entry.getKey().startsWith(prefix)) {
-                            tenants.put(id, entry.getValue());
-                        }
-                    }
-                } else {
-                    JwtTenantProperties candidate = enabledTenants.get(id);
-                    if (candidate != null) {
-                        tenants.put(id, candidate);
-                    }
-                }
-            }
-        } else {
-            tenants = enabledTenants;
-        }
-        if (tenants.isEmpty()) {
+        if (enabledTenants.isEmpty()) {
             Set<String> disabled = new HashSet<>(jwtProperties.getTenants().keySet());
             disabled.removeAll(enabledTenants.keySet());
-            if (!filter.isEmpty()) {
-                throw new IllegalStateException("No configured tenants for filter '" + filter + "', candidates were " + enabledTenants.keySet() + " (" + disabled + " were disabled)");
-            } else {
-                throw new IllegalStateException("No configured tenants (" + disabled + " were disabled)");
-            }
+            throw new IllegalStateException("No configured tenants (" + disabled + " were disabled)");
         }
+
+        JwkSourceMapFactory factory = new JwkSourceMapFactory();
 
         // add a wrapper so that the verifier is closed on shutdown
-        return factory.getVerifier(tenants, jwtProperties.getJwk(), jwtProperties.getClaims());
-    }
-
-
-    @Bean
-    @ConditionalOnMissingBean(TenantsProperties.class)
-    public TenantsProperties tenantsProperties(SecurityProperties properties) {
-        TenantsProperties tenantsProperties = new TenantsProperties();
-
-        for (Entry<String, JwtTenantProperties> entry : properties.getJwt().getTenants().entrySet()) {
-            JwtTenantProperties value = entry.getValue();
-            if (value.isEnabled()) {
-                tenantsProperties.add(new TenantProperties(entry.getKey(), value.getIssuer(), value.getProperties()));
-            }
-        }
-
-        return tenantsProperties;
+        return factory.getJwkSourceMap(enabledTenants, jwtProperties.getJwk(), listJwksHealthIndicator);
     }
 
     @Bean
-    @ConditionalOnMissingBean(JwtDetailsMapper.class)
-    public JwtDetailsMapper jwtDetailsMapper() {
-        return new DefaultJwtDetailsMapper();
+    public List<OAuth2TokenValidator<Jwt>> claimConstraints(SecurityProperties properties) {
+        OAuth2TokenValidatorFactory oAuth2TokenValidatorFactory = new OAuth2TokenValidatorFactory();
+
+        return oAuth2TokenValidatorFactory.create(properties.getJwt().getClaims());
     }
 
-    @Bean
-    @ConditionalOnMissingBean(JwtPrincipalMapper.class)
-    public JwtPrincipalMapper jwtPrincipalMapper() {
-        return new DefaultJwtPrincipalMapper();
-    }
 
-    @Bean
-    @ConditionalOnProperty(name = {"entur.jwt.jwk.health-indicator.enabled"}, havingValue = "true", matchIfMissing = true)
-    @ConditionalOnBean(JwtVerifier.class)
-    public <T> JwksHealthIndicator jwksHealthIndicator(JwtVerifier<T> verifier) {
-        return new JwksHealthIndicator(verifier);
-    }
+
 }

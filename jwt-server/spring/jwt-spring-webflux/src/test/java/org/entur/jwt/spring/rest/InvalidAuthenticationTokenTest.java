@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.http.*;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 import java.time.Duration;
@@ -38,42 +38,42 @@ public class InvalidAuthenticationTokenTest {
     @Test
     public void testUnprotectedResource() {
         webTestClient
-            .get()
-            .uri("/unprotected")
-            .header("Authorization", "Bearer hvaomshelst")
-            .exchange()
-            .expectStatus().isForbidden();
+                .get()
+                .uri("/unprotected")
+                .header("Authorization", "Bearer hvaomshelst")
+                .exchange()
+                .expectStatus().isUnauthorized();
     }
 
     @Test
     public void testProtectedResource() {
         webTestClient
-            .get()
-            .uri("/protected")
-            .header("Authorization", "Bearer hvaomshelst")
-            .exchange()
-            .expectStatus().isForbidden();
+                .get()
+                .uri("/protected")
+                .header("Authorization", "Bearer hvaomshelst")
+                .exchange()
+                .expectStatus().isUnauthorized();
     }
 
     @Test
     public void testProtectedResourceWithInvalidSignature(@AccessToken(audience = "https://my.audience") @Signature("cheat") String header) {
         webTestClient
-            .get()
-            .uri("/protected")
-            .header("Authorization", "Bearer hvaomshelst")
-            .exchange()
-            .expectStatus().isForbidden();
+                .get()
+                .uri("/protected")
+                .header("Authorization", "Bearer hvaomshelst")
+                .exchange()
+                .expectStatus().isUnauthorized();
 
     }
 
     @Test
     public void testProtectedResourceWithInvalidKeyId(@AccessToken(audience = "https://my.audience") @KeyIdHeader("abc") String header) {
         HttpHeaders responseHeaders = webTestClient
-            .get()
-            .uri("/protected")
-            .header("Authorization", "Bearer hvaomshelst")
-            .exchange()
-            .expectStatus().isForbidden()
+                .get()
+                .uri("/protected")
+                .header("Authorization", "Bearer hvaomshelst")
+                .exchange()
+                .expectStatus().isUnauthorized()
             .returnResult(String.class)
             .getResponseHeaders();
 

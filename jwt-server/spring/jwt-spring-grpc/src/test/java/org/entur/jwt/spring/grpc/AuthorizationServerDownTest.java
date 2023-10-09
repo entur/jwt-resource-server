@@ -1,11 +1,7 @@
 package org.entur.jwt.spring.grpc;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
-import java.io.File;
-
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.junit5.headers.KeyIdHeader;
@@ -13,14 +9,16 @@ import org.entur.jwt.junit5.sabotage.Signature;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.boot.test.web.server.LocalServerPort;
 
-import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
+import java.io.File;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * 
  * Rename the jwk file so that it first cannot be found, check that service responses are as expected.

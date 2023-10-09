@@ -5,24 +5,35 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.7.14</version>
+		<version>3.1.4</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>org.entur.example</groupId>
 	<artifactId>jwt-resource-server-spring-boot-example</artifactId>
-	<version>2.0.15-SNAPSHOT</version>
+	<version>3.0.0-SNAPSHOT</version>
 	<name>jwt-resource-server-spring-boot-example</name>
 	<description>Demo project for Spring Boot</description>
 
 	<properties>
-		<java.version>1.8</java.version>
+		<java.version>17</java.version>
+		<nimbus-jose-jwt.version>9.36</nimbus-jose-jwt.version>
 		<truth.version>1.1.5</truth.version>
 	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>com.nimbusds</groupId>
+				<artifactId>nimbus-jose-jwt</artifactId>
+				<version>${nimbus-jose-jwt.version}</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.entur.jwt-rs</groupId>
-			<artifactId>jwt-spring-auth0-web</artifactId>
+			<artifactId>jwt-spring-web</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
@@ -94,6 +105,10 @@
 			<groupId>io.rest-assured</groupId>
 			<artifactId>rest-assured</artifactId>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-oauth2-resource-server</artifactId>
 		</dependency>
 	</dependencies>
 

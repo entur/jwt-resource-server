@@ -6,7 +6,7 @@ entur:
       issued-at-leeway: 5
 
     mdc:
-      enabled: true
+      enabled: false
       mappings:
       - from: issuer
         to: issuer
@@ -21,11 +21,12 @@ entur:
     enabled: true
     mode: api
   authorization:
+    enabled: true
     permit-all:
-      ant-matcher:
+      matcher:
         patterns:
-         - /actuator/health
-         - /actuator/health/*
+          - /actuator/health
+          - /actuator/health/*
 management:
   endpoint:
     health:

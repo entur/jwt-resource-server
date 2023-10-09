@@ -11,8 +11,8 @@ public class JwtClientProperties {
 
     protected Map<String, KeycloakJwtClientProperties> keycloak = new HashMap<>();
 
-    protected long connectTimeout = 15; // seconds
-    protected long readTimeout = 15; // seconds
+    protected int connectTimeout = 15; // seconds
+    protected int readTimeout = 15; // seconds
 
     public void setHealthIndicator(JwtHealthIndicator healthIndicator) {
         this.healthIndicator = healthIndicator;
@@ -38,19 +38,19 @@ public class JwtClientProperties {
         this.keycloak = keycloak;
     }
 
-    public long getConnectTimeout() {
+    public int getConnectTimeout() {
         return connectTimeout;
     }
 
-    public void setConnectTimeout(long connectTimeout) {
+    public void setConnectTimeout(int connectTimeout) {
         this.connectTimeout = connectTimeout;
     }
 
-    public long getReadTimeout() {
+    public int getReadTimeout() {
         return readTimeout;
     }
 
-    public void setReadTimeout(long readTimeout) {
+    public void setReadTimeout(int readTimeout) {
         this.readTimeout = readTimeout;
     }
 }

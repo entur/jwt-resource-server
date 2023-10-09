@@ -1,2 +1,2 @@
 org.entur.jwt.spring.JwtWebFluxAutoConfiguration
-org.entur.jwt.spring.JwtWebSecurityAutoConfiguration
+org.entur.jwt.spring.JwtWebFluxSecurityAutoConfiguration
