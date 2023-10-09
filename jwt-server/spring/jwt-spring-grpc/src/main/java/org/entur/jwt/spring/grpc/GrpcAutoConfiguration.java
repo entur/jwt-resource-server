@@ -56,10 +56,8 @@ import java.util.Optional;
 
 @Configuration
 @EnableConfigurationProperties({GrpcPermitAll.class})
-//@ConditionalOnProperty(name = {"entur.jwt.authorization"}, havingValue = "true", matchIfMissing = true)
-//@AutoConfigureAfter(value = {JwtAutoConfiguration.class, org.lognet.springboot.grpc.autoconfigure.security.SecurityAutoConfiguration.class})
 @AutoConfigureAfter(value = {JwtAutoConfiguration.class})
-@AutoConfigureBefore(value = {org.lognet.springboot.grpc.autoconfigure.security.SecurityAutoConfiguration.class})
+@AutoConfigureBefore(value = {org.lognet.springboot.grpc.autoconfigure.GRpcAutoConfiguration.class})
 public class GrpcAutoConfiguration {
 
     private static Logger log = LoggerFactory.getLogger(GrpcAutoConfiguration.class);
@@ -77,11 +75,11 @@ public class GrpcAutoConfiguration {
     @ConditionalOnExpression("${entur.jwt.enabled:true}")
     public static class GrpcSecurityConfiguration extends GrpcSecurityConfigurerAdapter {
 
-        JwkSourceMap jwkSourceMap;
+        private JwkSourceMap jwkSourceMap;
 
-        List<JwtAuthorityEnricher> jwtAuthorityEnrichers;
+        private List<JwtAuthorityEnricher> jwtAuthorityEnrichers;
 
-        List<OAuth2TokenValidator<Jwt>> jwtValidators;
+        private List<OAuth2TokenValidator<Jwt>> jwtValidators;
 
         private GrpcPermitAll permitAll;
 
@@ -218,12 +216,9 @@ public class GrpcAutoConfiguration {
 
         @GRpcExceptionHandler
         public Status handle(StatusRuntimeException e, GRpcExceptionScope scope) {
-            try {
-                throw new RuntimeException(e);
-            } catch(Exception ee) {
-                ee.printStackTrace();
-            }
             return handle(e, e.getStatus(), scope);
         }
     }
+
+
 }
