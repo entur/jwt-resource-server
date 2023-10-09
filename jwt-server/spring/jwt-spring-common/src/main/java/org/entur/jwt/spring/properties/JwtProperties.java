@@ -1,8 +1,8 @@
-package org.entur.jwt.spring.auth0.properties;
+package org.entur.jwt.spring.properties;
 
-import org.entur.jwt.spring.auth0.properties.jwk.JwkProperties;
-import org.entur.jwt.spring.auth0.properties.jwk.JwtClaimsProperties;
-import org.entur.jwt.spring.auth0.properties.jwk.JwtTenantProperties;
+import org.entur.jwt.spring.properties.jwk.JwkProperties;
+import org.entur.jwt.spring.properties.jwk.JwtClaimsProperties;
+import org.entur.jwt.spring.properties.jwk.JwtTenantProperties;
 
 import java.util.HashMap;
 import java.util.Map;

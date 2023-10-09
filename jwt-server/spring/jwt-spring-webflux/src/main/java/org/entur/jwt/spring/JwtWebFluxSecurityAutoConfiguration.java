@@ -1,12 +1,12 @@
 package org.entur.jwt.spring;
 
-import org.entur.jwt.spring.auth0.properties.Auth0Flavour;
-import org.entur.jwt.spring.auth0.properties.AuthorizationProperties;
-import org.entur.jwt.spring.auth0.properties.Flavours;
-import org.entur.jwt.spring.auth0.properties.JwtProperties;
-import org.entur.jwt.spring.auth0.properties.KeycloakFlavour;
-import org.entur.jwt.spring.auth0.properties.MdcProperties;
-import org.entur.jwt.spring.auth0.properties.SecurityProperties;
+import org.entur.jwt.spring.properties.Auth0Flavour;
+import org.entur.jwt.spring.properties.AuthorizationProperties;
+import org.entur.jwt.spring.properties.Flavours;
+import org.entur.jwt.spring.properties.JwtProperties;
+import org.entur.jwt.spring.properties.KeycloakFlavour;
+import org.entur.jwt.spring.properties.MdcProperties;
+import org.entur.jwt.spring.properties.SecurityProperties;
 import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
 import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
 import org.slf4j.Logger;

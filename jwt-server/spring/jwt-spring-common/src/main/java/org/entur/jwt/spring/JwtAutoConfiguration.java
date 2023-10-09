@@ -1,9 +1,9 @@
 package org.entur.jwt.spring;
 
 import org.entur.jwt.spring.actuate.ListJwksHealthIndicator;
-import org.entur.jwt.spring.auth0.properties.JwtProperties;
-import org.entur.jwt.spring.auth0.properties.SecurityProperties;
-import org.entur.jwt.spring.auth0.properties.jwk.JwtTenantProperties;
+import org.entur.jwt.spring.properties.JwtProperties;
+import org.entur.jwt.spring.properties.SecurityProperties;
+import org.entur.jwt.spring.properties.jwk.JwtTenantProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

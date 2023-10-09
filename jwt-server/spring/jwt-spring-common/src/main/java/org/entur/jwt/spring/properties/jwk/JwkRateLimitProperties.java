@@ -1,4 +1,4 @@
-package org.entur.jwt.spring.auth0.properties.jwk;
+package org.entur.jwt.spring.properties.jwk;
 
 public class JwkRateLimitProperties {
 

@@ -2,8 +2,7 @@ package org.entur.jwt.spring.grpc;
 
 import io.grpc.ServerInterceptor;
 import org.entur.jwt.spring.JwtAutoConfiguration;
-import org.entur.jwt.spring.auth0.properties.MdcProperties;
-import org.entur.jwt.spring.auth0.properties.SecurityProperties;
+import org.entur.jwt.spring.properties.MdcProperties;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapperFactory;
 import org.lognet.springboot.grpc.GRpcGlobalInterceptor;

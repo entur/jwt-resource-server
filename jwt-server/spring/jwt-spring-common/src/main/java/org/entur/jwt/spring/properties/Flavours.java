@@ -1,4 +1,4 @@
-package org.entur.jwt.spring.auth0.properties;
+package org.entur.jwt.spring.properties;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

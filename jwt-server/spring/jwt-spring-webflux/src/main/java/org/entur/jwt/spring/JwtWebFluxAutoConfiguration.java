@@ -1,7 +1,7 @@
 package org.entur.jwt.spring;
 
-import org.entur.jwt.spring.auth0.properties.CorsProperties;
-import org.entur.jwt.spring.auth0.properties.SecurityProperties;
+import org.entur.jwt.spring.properties.CorsProperties;
+import org.entur.jwt.spring.properties.SecurityProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;

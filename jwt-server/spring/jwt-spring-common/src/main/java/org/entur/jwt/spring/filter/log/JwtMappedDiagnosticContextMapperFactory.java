@@ -1,7 +1,7 @@
 package org.entur.jwt.spring.filter.log;
 
-import org.entur.jwt.spring.auth0.properties.MdcPair;
-import org.entur.jwt.spring.auth0.properties.MdcProperties;
+import org.entur.jwt.spring.properties.MdcPair;
+import org.entur.jwt.spring.properties.MdcProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

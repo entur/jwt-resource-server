@@ -1,7 +1,7 @@
 package org.entur.jwt.spring;
 
-import org.entur.jwt.spring.auth0.properties.jwk.JwtClaimConstraintProperties;
-import org.entur.jwt.spring.auth0.properties.jwk.JwtClaimsProperties;
+import org.entur.jwt.spring.properties.jwk.JwtClaimConstraintProperties;
+import org.entur.jwt.spring.properties.jwk.JwtClaimsProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;

@@ -48,7 +48,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-owasp-
       - name: Adjust memory use for Maven
-        run: echo "MAVEN_OPTS='-Xmx2g -XX:MaxPermSize=256m'" >> ~/.mavenrc
+        run: echo "MAVEN_OPTS='-Xmx2g'" >> ~/.mavenrc
       - name: Build with Maven
         run: mvn clean install -Dmaven.test.skip=true
       - name: Check dependencies
