@@ -661,7 +661,7 @@
 		<module>jwt-client/jwt-client-core</module>
 		<module>jwt-client/jwt-client-spring-core</module>
 		<module>jwt-client/jwt-client-spring</module>
-		<module>jwt-client/jwt-client-spring-cloud</module>
+		<module>jwt-client/jwt-client-spring-webflux</module>
         <module>jwt-server/spring/jwt-spring-web</module>
         <module>jwt-server/spring/jwt-spring-common</module>
 		<module>jwt-server/spring/jwt-spring-webflux</module>

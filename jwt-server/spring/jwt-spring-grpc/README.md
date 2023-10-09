@@ -1,4 +1,3 @@
-
 # Json Web Token Spring Boot Starter for gRPC
 Configure JWT issuers like in the Spring Boot Starter sibling project.
 
