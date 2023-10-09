@@ -20,8 +20,6 @@ public class IssuerAuthenticationManagerResolver implements ReactiveAuthenticati
 
     @Override
     public Mono<ReactiveAuthenticationManager> resolve(String issuer) {
-        LOGGER.info("Resolve " + issuer + " from " + map.keySet());
-
         ReactiveAuthenticationManager reactiveAuthenticationManager = map.get(issuer);
         
         return Mono.justOrEmpty(reactiveAuthenticationManager);
