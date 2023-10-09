@@ -36,4 +36,4 @@ management:
         enabled: true
       group:
         readiness:
-          include: "readinessState,jwks,accessTokenProvider"
+          include: "readinessState,jwks"
