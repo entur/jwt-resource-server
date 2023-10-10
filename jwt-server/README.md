@@ -1,8 +1,6 @@
 # jwt-server
 Validation of JSON Web tokens on resource servers. Components:
 
- * [jwk] - Makes JSON Web Keys published by the Authorization Server *'almost always'* available to higher-level frameworks. These are used to verify JSON Web Token signatures.
- * [jwt-verifier] - Verification of JSON Web Tokens tokens using JSON Web Keys. 
  * [spring] - Spring Boot integration (of the above) via Spring Security.
 
 ## Spring Boot Integration
@@ -316,7 +314,5 @@ See [jwt-spring-auth0-web] for a concrete implementation example.
 [jwt-test]: ../jwt-test
 [jwt-junit5-spring]: ../jwt-test/jwt-junit5-spring
 [method access-control expressions]: [https://www.baeldung.com/spring-security-method-security](https://www.baeldung.com/spring-security-method-security)
-[jwk]: jwk
-[jwt-verifier]: jwt-verifier
 [spring]: spring
 
