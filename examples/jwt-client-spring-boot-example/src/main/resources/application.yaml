@@ -7,8 +7,6 @@ entur:
           clientId: "myClient"
           secret: "mySecret"
           audience: "myAudience"
-      health-indicator:
-        enabled: true
 management:
   endpoint:
     health:
@@ -16,7 +14,7 @@ management:
         enabled: true
       group:
         readiness:
-          include: "readinessState,accessTokenProvider"
+          include: "readinessState,jwts"
   endpoints:
     web:
       exposure:

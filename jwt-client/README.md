@@ -177,15 +177,7 @@ This prevents adjustments of the access-token time-to-live (which can be dynamic
 which could negatively affect the authorization server.
 
 ### Health indicator configuration
-The library supports a Spring [HealthIndicator](https://docs.spring.io/spring-boot/docs/current/api/org/springframework/boot/actuate/health/HealthIndicator.html) via the configuration
-
-```yaml
-entur:
-    jwt:
-        clients:
-            health-indicator:
-                enabled: true
-```
+The library supports a Spring [HealthIndicator](https://docs.spring.io/spring-boot/docs/current/api/org/springframework/boot/actuate/health/HealthIndicator.html) via the enabling `jwts` health indicator.
 
 The health indicator looks at __the last attempt to get credentials__. It will trigger a refresh if
 

@@ -7,6 +7,7 @@ import org.entur.jwt.spring.properties.jwk.JwtTenantProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.actuate.autoconfigure.health.ConditionalOnEnabledHealthIndicator;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -31,7 +32,7 @@ public class JwtAutoConfiguration {
     private static final Logger LOG = LoggerFactory.getLogger(JwtAutoConfiguration.class);
 
     @Bean(destroyMethod = "close", value = "jwks")
-    @ConditionalOnProperty(name = {"entur.jwt.jwk.health-indicator.enabled"}, havingValue = "true", matchIfMissing = true)
+    @ConditionalOnEnabledHealthIndicator("jwks")
     public ListJwksHealthIndicator jwksHealthIndicator() {
         return new ListJwksHealthIndicator(1000L, Executors.newCachedThreadPool());
     }

@@ -13,6 +13,7 @@ import org.springframework.beans.factory.config.ConstructorArgumentValues;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
+import org.springframework.boot.actuate.autoconfigure.health.ConditionalOnEnabledHealthIndicator;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.context.EnvironmentAware;
@@ -124,8 +125,8 @@ public class JwtClientAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnProperty(value = "entur.jwt.clients.health-indicator.enabled", matchIfMissing = true)
-    public AccessTokenProviderHealthIndicator accessTokenProviderHealthIndicator(Map<String, AccessTokenProvider> providers) {
+    @ConditionalOnEnabledHealthIndicator("jwts")
+    public AccessTokenProviderHealthIndicator jwtsHealthIndicator(Map<String, AccessTokenProvider> providers) {
         // could verify that health is supported here, but that would interfere with
         // mocking / testing.
         List<String> statusProviders = new ArrayList<>();
