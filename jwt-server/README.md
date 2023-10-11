@@ -240,8 +240,6 @@ entur:
               enabled: true
               bucket-size: 10
               refill-rate: 0.1 # per second
-            health-indicator:
-              enabled: true
 ```
 
 Note that eager cache refresh (if enabled) does not kick off until first time the cache is populated, which would normally be through health checks or first time a token is to be validated.
@@ -250,7 +248,7 @@ Note that eager cache refresh (if enabled) does not kick off until first time th
 The authorization server might choose to rotate its keys. When that happens, the key id used to sign the access-tokens changes, and a new key id will be noted in the JWT header. This implementation will promptly refresh the keys and normally be able to instantly verify new tokens. Previously issued tokens will be able to verify if the key list still contains the old key.
 
 #### Health indicator
-The health indicator looks at __the last attempt__ to get signing keys. It will trigger a refresh if
+The library supports a Spring [HealthIndicator](https://docs.spring.io/spring-boot/docs/current/api/org/springframework/boot/actuate/health/HealthIndicator.html) via the enabling `jwks` health indicator. It looks at __the last attempt__ to get signing keys. It will trigger a refresh if
 
  * no previous attempt was made
  * last attempt was unsuccessful

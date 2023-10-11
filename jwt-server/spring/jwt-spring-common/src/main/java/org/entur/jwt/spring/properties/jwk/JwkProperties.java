@@ -18,8 +18,6 @@ public class JwkProperties {
 
     protected JwkRateLimitProperties rateLimit = new JwkRateLimitProperties();
 
-    protected JwkHealthIndicator healthIndicator = new JwkHealthIndicator();
-
     /**
      * HTTP connect timeout, in seconds
      */
@@ -76,14 +74,6 @@ public class JwkProperties {
 
     public void setRetry(JwkRetryProperties retrying) {
         this.retry = retrying;
-    }
-
-    public JwkHealthIndicator getHealthIndicator() {
-        return healthIndicator;
-    }
-
-    public void setHealthIndicator(JwkHealthIndicator healthIndicator) {
-        this.healthIndicator = healthIndicator;
     }
 
 }

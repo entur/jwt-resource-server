@@ -13,9 +13,6 @@ entur:
           to: issuer
         - from: azp
           to: azp
-    jwk:
-      health-indicator:
-        enabled: true
   authorization:
     enabled: true
     permit-all:

@@ -106,7 +106,7 @@ public class JwkSourceMapFactory<C> {
             }
 
             DefaultJwksHealthIndicator healthIndicator = null;
-            if (jwkConfiguration.getHealthIndicator().isEnabled()) {
+            if (listJwksHealthIndicator != null) {
                 healthIndicator = new DefaultJwksHealthIndicator();
                 builder.healthReporting(healthIndicator);
 

@@ -33,7 +33,7 @@ public abstract class JwtClientBeanDefinitionRegistryPostProcessorSupport<T> {
                 .withScope(properties.getScope())
                 .withAudience(properties.getAudience())
                 .build();
-        return toAccessTokenProvider(client, properties, credentials, rootProperties.getHealthIndicator().isEnabled() && properties.isHealth());
+        return toAccessTokenProvider(client, properties, credentials, properties.isHealth());
     }
 
     public AccessTokenProvider newKeycloakInstance(String key) {
@@ -50,7 +50,7 @@ public abstract class JwtClientBeanDefinitionRegistryPostProcessorSupport<T> {
                 .withRealm(properties.getRealm())
                 .build();
 
-        return toAccessTokenProvider(client, properties, credentials, rootProperties.getHealthIndicator().isEnabled() && properties.isHealth());
+        return toAccessTokenProvider(client, properties, credentials, properties.isHealth());
     }
 
     private AccessTokenProvider toAccessTokenProvider(T client, AbstractJwtClientProperties properties, ClientCredentials credentials, boolean health) {
