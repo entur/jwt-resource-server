@@ -19,8 +19,6 @@ public class IssuerAuthenticationProvider implements AuthenticationProvider {
 
     private static final String DECODING_ERROR_MESSAGE_TEMPLATE = "An error occurred while attempting to decode the Jwt: %s";
 
-    private static Logger LOGGER = LoggerFactory.getLogger(AuthenticationProvider.class);
-
     private final Map<String, AuthenticationProvider> map;
 
     public IssuerAuthenticationProvider(Map<String, AuthenticationProvider> map) {
@@ -48,8 +46,6 @@ public class IssuerAuthenticationProvider implements AuthenticationProvider {
 
     @Override
     public boolean supports(Class<?> authentication) {
-        LOGGER.info("Supports " + authentication);
-
         return authentication.equals(org.springframework.security.oauth2.server.resource.BearerTokenAuthenticationToken.class);
     }
 }

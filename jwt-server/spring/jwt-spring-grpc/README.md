@@ -47,16 +47,4 @@ entur:
         to: azp
 ```
 
-Use the `GrpcJwtMappedDiagnosticContextMapper` to populate and clear the MDC.
-
-```
-GrpcJwtMappedDiagnosticContextMapper.addContext();
-try {
-    // your log statements here
-} finally {
-    GrpcJwtMappedDiagnosticContextMapper.removeContext();
-}
-```
-
-### Example
-For a code example, see the `GreetingController` example in the test sources. 
+also implement a bean of type `GrpcMdcAdapter`.

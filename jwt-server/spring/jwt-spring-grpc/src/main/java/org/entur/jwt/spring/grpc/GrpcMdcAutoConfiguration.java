@@ -8,6 +8,7 @@ import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapperFactory;
 import org.lognet.springboot.grpc.GRpcGlobalInterceptor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -22,13 +23,14 @@ public class GrpcMdcAutoConfiguration {
 
     @Bean
     @GRpcGlobalInterceptor
+    @ConditionalOnBean(GrpcMdcAdapter.class)
     @ConditionalOnExpression("${entur.jwt.mdc.enabled:true}")
-    public MdcAuthorizationInterceptor mdcAuthorizationInterceptor(@Qualifier("springGrpcSecurityInterceptor") ServerInterceptor serverInterceptor, MdcProperties properties) throws Exception {
-        Ordered ordred = (Ordered) serverInterceptor;
+    public MdcAuthorizationServerInterceptor mdcAuthorizationInterceptor(@Qualifier("springGrpcSecurityInterceptor") ServerInterceptor serverInterceptor, MdcProperties properties, GrpcMdcAdapter adapter) throws Exception {
+        Ordered ordered = (Ordered) serverInterceptor;
 
         JwtMappedDiagnosticContextMapperFactory factory = new JwtMappedDiagnosticContextMapperFactory();
         JwtMappedDiagnosticContextMapper mapper = factory.mapper(properties);
 
-        return new MdcAuthorizationInterceptor(mapper, ordred.getOrder() + 1);
+        return new MdcAuthorizationServerInterceptor(mapper, ordered.getOrder() + 1, adapter);
     }
 }

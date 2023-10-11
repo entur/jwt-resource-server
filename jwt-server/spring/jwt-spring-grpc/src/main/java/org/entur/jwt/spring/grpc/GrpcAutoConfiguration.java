@@ -18,6 +18,8 @@ import org.entur.jwt.spring.grpc.properties.GrpcPermitAll;
 import org.entur.jwt.spring.grpc.properties.GrpcServicesConfiguration;
 import org.entur.jwt.spring.grpc.properties.ServiceMatcherConfiguration;
 import org.lognet.springboot.grpc.GRpcErrorHandler;
+import org.lognet.springboot.grpc.autoconfigure.ConditionalOnMissingErrorHandler;
+import org.lognet.springboot.grpc.autoconfigure.security.SecurityAutoConfiguration;
 import org.lognet.springboot.grpc.recovery.ErrorHandlerAdapter;
 import org.lognet.springboot.grpc.recovery.GRpcExceptionHandler;
 import org.lognet.springboot.grpc.recovery.GRpcExceptionScope;
@@ -57,7 +59,7 @@ import java.util.Optional;
 @Configuration
 @EnableConfigurationProperties({GrpcPermitAll.class})
 @AutoConfigureAfter(value = {JwtAutoConfiguration.class})
-@AutoConfigureBefore(value = {org.lognet.springboot.grpc.autoconfigure.GRpcAutoConfiguration.class})
+@AutoConfigureBefore(value = {org.lognet.springboot.grpc.autoconfigure.GRpcAutoConfiguration.class, SecurityAutoConfiguration.class})
 public class GrpcAutoConfiguration {
 
     private static Logger log = LoggerFactory.getLogger(GrpcAutoConfiguration.class);
@@ -132,13 +134,13 @@ public class GrpcAutoConfiguration {
 
             Map<String, List<String>> serviceNameMethodName = new HashMap<>();
             for (ServiceMatcherConfiguration configuration : grpc.getServices()) {
-                if(!configuration.isEnabled()) {
+                if (!configuration.isEnabled()) {
                     continue;
                 }
 
                 List<String> methods = configuration.getMethods();
 
-                if(methods.contains("*")) {
+                if (methods.contains("*")) {
                     log.info("Allow anonymous access to all methods of GRPC service " + configuration.getName());
                 } else {
                     log.info("Allow anonymous access to methods " + configuration.getMethods() + " of GRPC service " + configuration.getName());
@@ -187,38 +189,47 @@ public class GrpcAutoConfiguration {
         return new NoUserDetailsService();  // avoid the default user.
     }
 
-    @GRpcServiceAdvice
-    public static class DefaultAuthErrorHandler extends ErrorHandlerAdapter {
-        public DefaultAuthErrorHandler(Optional<GRpcErrorHandler> errorHandler) {
-            super(errorHandler);
-        }
+    @ConditionalOnMissingErrorHandler(AuthenticationException.class)
+    @Configuration
+    static class DefaultAuthErrorHandlerConfiguration {
 
-        @GRpcExceptionHandler
-        public Status handle(AuthenticationException e, GRpcExceptionScope scope) {
-            if(e instanceof AuthenticationServiceException) {
-                Throwable cause1 = e.getCause();
-                if(cause1 instanceof JwtException) {
-                    Throwable cause2 = cause1.getCause();
-                    if(cause2 instanceof KeySourceException) {
-                        return handle(e, Status.UNAVAILABLE, scope);
+        @GRpcServiceAdvice
+        public static class DefaultAuthErrorHandler extends ErrorHandlerAdapter {
+            public DefaultAuthErrorHandler(Optional<GRpcErrorHandler> errorHandler) {
+                super(errorHandler);
+            }
+
+            @GRpcExceptionHandler
+            public Status handle(AuthenticationException e, GRpcExceptionScope scope) {
+                if (e instanceof AuthenticationServiceException) {
+                    Throwable cause1 = e.getCause();
+                    if (cause1 instanceof JwtException) {
+                        Throwable cause2 = cause1.getCause();
+                        if (cause2 instanceof KeySourceException) {
+                            return handle(e, Status.UNAVAILABLE, scope);
+                        }
                     }
                 }
+                return handle(e, Status.UNAUTHENTICATED, scope);
             }
-            return handle(e, Status.UNAUTHENTICATED, scope);
         }
     }
 
-    @GRpcServiceAdvice
-    public static class StatusErrorHandler extends ErrorHandlerAdapter {
-        public StatusErrorHandler(Optional<GRpcErrorHandler> errorHandler) {
-            super(errorHandler);
-        }
 
-        @GRpcExceptionHandler
-        public Status handle(StatusRuntimeException e, GRpcExceptionScope scope) {
-            return handle(e, e.getStatus(), scope);
+    @ConditionalOnMissingErrorHandler(StatusRuntimeException.class)
+    @Configuration
+    static class DefaultStatusErrorHandlerConfiguration {
+        @GRpcServiceAdvice
+        public static class StatusErrorHandler extends ErrorHandlerAdapter {
+            public StatusErrorHandler(Optional<GRpcErrorHandler> errorHandler) {
+                super(errorHandler);
+            }
+
+            @GRpcExceptionHandler
+            public Status handle(StatusRuntimeException e, GRpcExceptionScope scope) {
+                return handle(e, e.getStatus(), scope);
+            }
         }
     }
-
 
 }
