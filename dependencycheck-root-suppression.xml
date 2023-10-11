@@ -79,7 +79,8 @@
 		<!-- jackson -->
 		<cve>CVE-2022-45688</cve>
 	</suppress>
-
-
-
+	<suppress>
+		<!-- netty -->
+		<cve>CVE-2023-4586</cve>
+	</suppress>
 </suppressions>
