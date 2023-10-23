@@ -83,6 +83,11 @@
             <groupId>io.grpc</groupId>
             <artifactId>grpc-context</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-inprocess</artifactId>
+        </dependency>
+
         <!-- test -->
         <dependency>
             <groupId>org.entur.jwt-rs</groupId>
