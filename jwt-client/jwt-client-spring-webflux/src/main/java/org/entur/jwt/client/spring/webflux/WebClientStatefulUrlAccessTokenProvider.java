@@ -79,7 +79,7 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
                 .onStatus(httpStatus -> httpStatus == HttpStatus.SERVICE_UNAVAILABLE,
                           response -> Mono.error(new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable.")))
                 .onStatus(httpStatus -> !httpStatus.is2xxSuccessful(),
-                          response -> Mono.error(new AccessTokenException("Authorization server responded with HTTP unexpected response code" + response.rawStatusCode())))
+                          response -> Mono.error(new AccessTokenException("Authorization server responded with HTTP unexpected response code" + response.statusCode())))
                 .bodyToMono(Resource.class);
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException(e);

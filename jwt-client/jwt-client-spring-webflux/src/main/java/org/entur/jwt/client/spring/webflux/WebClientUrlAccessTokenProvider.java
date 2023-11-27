@@ -64,7 +64,7 @@ public class WebClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProvi
                           response -> Mono.error(new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable."))
                 )
                 .onStatus(httpStatus -> !httpStatus.is2xxSuccessful(),
-                          response -> Mono.error(new AccessTokenException("Authorization server responded with HTTP unexpected response code " + response.rawStatusCode()))
+                          response -> Mono.error(new AccessTokenException("Authorization server responded with HTTP unexpected response code " + response.statusCode()))
                 )
                 .bodyToMono(Resource.class);
         } catch (URISyntaxException e) {
