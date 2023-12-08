@@ -2,7 +2,7 @@ package org.entur.jwt.spring.properties;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(prefix = "entur.jwt.flavour")
+@ConfigurationProperties(prefix = "entur.jwt.flavours")
 public class Flavours {
 
     private boolean enabled = true;

@@ -45,7 +45,7 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
 @AutoConfigureAfter(JwtWebAutoConfiguration.class)
 public class JwtWebSecurityChainAutoConfiguration {
 
-    private static Logger log = LoggerFactory.getLogger(JwtWebSecurityChainAutoConfiguration.class);
+    private static final Logger log = LoggerFactory.getLogger(JwtWebSecurityChainAutoConfiguration.class);
 
     @Configuration
     @ConditionalOnBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
