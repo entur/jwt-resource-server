@@ -71,7 +71,7 @@ public interface GrpcAuthorization {
             }
             // at least one of the required audiences was found
         } else {
-            throw new AuthenticationCredentialsNotFoundException("Unexpected authorization " + object);
+            throw new AuthenticationCredentialsNotFoundException("");
         }
     }
 
