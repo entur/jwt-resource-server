@@ -20,7 +20,7 @@ import java.util.Map;
  *
  */
 
-public class MdcAuthorizationServerInterceptor implements ServerInterceptor {
+public class MdcAuthorizationServerInterceptor implements ServerInterceptor, Ordered {
 
     private final JwtMappedDiagnosticContextMapper mdcMapper;
 
@@ -48,7 +48,7 @@ public class MdcAuthorizationServerInterceptor implements ServerInterceptor {
         return Contexts.interceptCall(Context.current(), call, headers, next);
     }
 
-    //@Override
+    @Override
     public int getOrder() {
         return order;
     }

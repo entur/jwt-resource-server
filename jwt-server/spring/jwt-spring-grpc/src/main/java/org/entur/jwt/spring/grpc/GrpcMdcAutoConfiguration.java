@@ -1,12 +1,10 @@
 package org.entur.jwt.spring.grpc;
 
-import io.grpc.ServerInterceptor;
 import org.entur.jwt.spring.JwtAutoConfiguration;
-import org.entur.jwt.spring.properties.MdcProperties;
+import org.entur.jwt.spring.grpc.properties.GrpcMdcProperties;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapperFactory;
 import org.lognet.springboot.grpc.GRpcGlobalInterceptor;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -18,7 +16,7 @@ import org.springframework.core.Ordered;
 
 @Configuration
 @ConditionalOnExpression("${entur.jwt.enabled:true}")
-@EnableConfigurationProperties({MdcProperties.class})
+@EnableConfigurationProperties({GrpcMdcProperties.class})
 @AutoConfigureAfter(value = {JwtAutoConfiguration.class, org.lognet.springboot.grpc.autoconfigure.security.SecurityAutoConfiguration.class})
 public class GrpcMdcAutoConfiguration {
 
@@ -26,12 +24,16 @@ public class GrpcMdcAutoConfiguration {
     @GRpcGlobalInterceptor
     @ConditionalOnBean(GrpcMdcAdapter.class)
     @ConditionalOnExpression("${entur.jwt.mdc.enabled:true}")
-    public MdcAuthorizationServerInterceptor mdcAuthorizationInterceptor(@Value("${grpc.security.auth.interceptor-order:-1}") int order, MdcProperties properties, GrpcMdcAdapter adapter) throws Exception {
-        int interceptorOrder = order != -1 ? order : Ordered.HIGHEST_PRECEDENCE+1;
+    public MdcAuthorizationServerInterceptor mdcAuthorizationInterceptor(GrpcMdcAdapter adapter, GrpcMdcProperties properties, @Value("${grpc.security.auth.interceptor-order:-1}") int defaultOrder) throws Exception {
+
+        Integer order = properties.getOrder();
+        if(order == null) {
+            order = 1 + (defaultOrder != -1 ? defaultOrder : Ordered.HIGHEST_PRECEDENCE);
+        }
 
         JwtMappedDiagnosticContextMapperFactory factory = new JwtMappedDiagnosticContextMapperFactory();
         JwtMappedDiagnosticContextMapper mapper = factory.mapper(properties);
 
-        return new MdcAuthorizationServerInterceptor(mapper, interceptorOrder + 1, adapter);
+        return new MdcAuthorizationServerInterceptor(mapper, order, adapter);
     }
 }
