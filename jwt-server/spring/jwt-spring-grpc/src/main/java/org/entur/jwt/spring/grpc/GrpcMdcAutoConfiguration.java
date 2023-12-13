@@ -4,6 +4,7 @@ import org.entur.jwt.spring.JwtAutoConfiguration;
 import org.entur.jwt.spring.grpc.properties.GrpcMdcProperties;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapperFactory;
+import org.entur.jwt.spring.properties.MdcProperties;
 import org.lognet.springboot.grpc.GRpcGlobalInterceptor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
@@ -16,7 +17,7 @@ import org.springframework.core.Ordered;
 
 @Configuration
 @ConditionalOnExpression("${entur.jwt.enabled:true}")
-@EnableConfigurationProperties({GrpcMdcProperties.class})
+@EnableConfigurationProperties({GrpcMdcProperties.class, MdcProperties.class})
 @AutoConfigureAfter(value = {JwtAutoConfiguration.class, org.lognet.springboot.grpc.autoconfigure.security.SecurityAutoConfiguration.class})
 public class GrpcMdcAutoConfiguration {
 
@@ -24,7 +25,7 @@ public class GrpcMdcAutoConfiguration {
     @GRpcGlobalInterceptor
     @ConditionalOnBean(GrpcMdcAdapter.class)
     @ConditionalOnExpression("${entur.jwt.mdc.enabled:true}")
-    public MdcAuthorizationServerInterceptor mdcAuthorizationInterceptor(GrpcMdcAdapter adapter, GrpcMdcProperties properties, @Value("${grpc.security.auth.interceptor-order:-1}") int defaultOrder) throws Exception {
+    public MdcAuthorizationServerInterceptor mdcAuthorizationInterceptor(GrpcMdcAdapter adapter, MdcProperties mdcProperties, GrpcMdcProperties properties, @Value("${grpc.security.auth.interceptor-order:-1}") int defaultOrder) throws Exception {
 
         Integer order = properties.getOrder();
         if(order == null) {
@@ -32,7 +33,7 @@ public class GrpcMdcAutoConfiguration {
         }
 
         JwtMappedDiagnosticContextMapperFactory factory = new JwtMappedDiagnosticContextMapperFactory();
-        JwtMappedDiagnosticContextMapper mapper = factory.mapper(properties);
+        JwtMappedDiagnosticContextMapper mapper = factory.mapper(mdcProperties);
 
         return new MdcAuthorizationServerInterceptor(mapper, order, adapter);
     }

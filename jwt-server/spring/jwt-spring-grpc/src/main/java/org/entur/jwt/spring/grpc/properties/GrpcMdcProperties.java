@@ -1,8 +1,10 @@
 package org.entur.jwt.spring.grpc.properties;
 
 import org.entur.jwt.spring.properties.MdcProperties;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
-public class GrpcMdcProperties extends MdcProperties  {
+@ConfigurationProperties(prefix = "entur.jwt.mdc.grpc")
+public class GrpcMdcProperties {
 
     private Integer order;
 
