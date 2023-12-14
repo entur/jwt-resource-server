@@ -13,7 +13,7 @@ import org.entur.jwt.spring.grpc.properties.GrpcPermitAll;
 import org.entur.jwt.spring.grpc.properties.GrpcServicesConfiguration;
 import org.entur.jwt.spring.grpc.properties.ServiceMatcherConfiguration;
 import org.entur.jwt.spring.properties.Auth0Flavour;
-import org.entur.jwt.spring.properties.Flavour;
+import org.entur.jwt.spring.properties.Flavours;
 import org.entur.jwt.spring.properties.KeycloakFlavour;
 import org.lognet.springboot.grpc.GRpcErrorHandler;
 import org.lognet.springboot.grpc.autoconfigure.ConditionalOnMissingErrorHandler;
@@ -55,7 +55,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @Configuration
-@EnableConfigurationProperties({GrpcPermitAll.class, Flavour.class})
+@EnableConfigurationProperties({GrpcPermitAll.class, Flavours.class})
 @AutoConfigureAfter(value = {JwtAutoConfiguration.class})
 @AutoConfigureBefore(value = {org.lognet.springboot.grpc.autoconfigure.GRpcAutoConfiguration.class, SecurityAutoConfiguration.class})
 public class GrpcAutoConfiguration {
@@ -81,14 +81,14 @@ public class GrpcAutoConfiguration {
         private List<OAuth2TokenValidator<Jwt>> jwtValidators;
 
         private GrpcPermitAll permitAll;
-        private Flavour flavour;
+        private Flavours flavours;
 
-        public GrpcSecurityConfiguration(JwkSourceMap jwkSourceMap, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators, GrpcPermitAll permitAll, Flavour flavour) {
+        public GrpcSecurityConfiguration(JwkSourceMap jwkSourceMap, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators, GrpcPermitAll permitAll, Flavours flavours) {
             this.jwkSourceMap = jwkSourceMap;
             this.jwtAuthorityEnrichers = jwtAuthorityEnrichers;
             this.jwtValidators = jwtValidators;
             this.permitAll = permitAll;
-            this.flavour = flavour;
+            this.flavours = flavours;
         }
 
         @Override
@@ -103,15 +103,15 @@ public class GrpcAutoConfiguration {
             }
 
             List<JwtAuthorityEnricher> jwtAuthorityEnrichers = this.jwtAuthorityEnrichers;
-            if (flavour.isEnabled()) {
+            if (flavours.isEnabled()) {
                 List<JwtAuthorityEnricher> enrichers = new ArrayList<>(jwtAuthorityEnrichers);
 
-                Auth0Flavour auth0 = flavour.getAuth0();
+                Auth0Flavour auth0 = flavours.getAuth0();
                 if (auth0.isEnabled()) {
                     enrichers.add(new Auth0JwtAuthorityEnricher());
                 }
 
-                KeycloakFlavour keycloak = flavour.getKeycloak();
+                KeycloakFlavour keycloak = flavours.getKeycloak();
                 if (keycloak.isEnabled()) {
                     enrichers.add(new KeycloakJwtAuthorityEnricher());
                 }

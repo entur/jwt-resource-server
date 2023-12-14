@@ -23,7 +23,7 @@ public class JwtProperties {
         return tenants;
     }
 
-    private Flavour flavour = new Flavour();
+    private Flavours flavours = new Flavours();
 
     public void setTenants(Map<String, JwtTenantProperties> tenants) {
         this.tenants = tenants;
@@ -62,11 +62,11 @@ public class JwtProperties {
         this.claims = claims;
     }
 
-    public Flavour getFlavours() {
-        return flavour;
+    public Flavours getFlavours() {
+        return flavours;
     }
 
-    public void setFlavours(Flavour flavour) {
-        this.flavour = flavour;
+    public void setFlavours(Flavours flavours) {
+        this.flavours = flavours;
     }
 }

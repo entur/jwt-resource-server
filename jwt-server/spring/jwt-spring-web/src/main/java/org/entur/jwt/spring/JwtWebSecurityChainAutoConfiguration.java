@@ -2,7 +2,7 @@ package org.entur.jwt.spring;
 
 import org.entur.jwt.spring.properties.Auth0Flavour;
 import org.entur.jwt.spring.properties.AuthorizationProperties;
-import org.entur.jwt.spring.properties.Flavour;
+import org.entur.jwt.spring.properties.Flavours;
 import org.entur.jwt.spring.properties.JwtProperties;
 import org.entur.jwt.spring.properties.KeycloakFlavour;
 import org.entur.jwt.spring.properties.MdcProperties;
@@ -125,16 +125,16 @@ public class JwtWebSecurityChainAutoConfiguration {
             JwtProperties jwt = securityProperties.getJwt();
             if (jwt.isEnabled()) {
 
-                Flavour flavour = jwt.getFlavours();
-                if (flavour.isEnabled()) {
+                Flavours flavours = jwt.getFlavours();
+                if (flavours.isEnabled()) {
                     List<JwtAuthorityEnricher> enrichers = new ArrayList<>(jwtAuthorityEnrichers);
 
-                    Auth0Flavour auth0 = flavour.getAuth0();
+                    Auth0Flavour auth0 = flavours.getAuth0();
                     if (auth0.isEnabled()) {
                         enrichers.add(new Auth0JwtAuthorityEnricher());
                     }
 
-                    KeycloakFlavour keycloak = flavour.getKeycloak();
+                    KeycloakFlavour keycloak = flavours.getKeycloak();
                     if (keycloak.isEnabled()) {
                         enrichers.add(new KeycloakJwtAuthorityEnricher());
                     }
