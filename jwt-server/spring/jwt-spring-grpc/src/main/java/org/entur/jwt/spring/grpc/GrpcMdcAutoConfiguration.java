@@ -27,7 +27,7 @@ public class GrpcMdcAutoConfiguration {
     @ConditionalOnExpression("${entur.jwt.mdc.enabled:true}")
     public MdcAuthorizationServerInterceptor mdcAuthorizationInterceptor(GrpcMdcAdapter adapter, MdcProperties mdcProperties, GrpcMdcProperties properties, @Value("${grpc.security.auth.interceptor-order:-1}") int defaultOrder) throws Exception {
 
-        Integer order = properties.getOrder();
+        Integer order = properties.getInterceptorOrder();
         if(order == null) {
             order = 1 + (defaultOrder != -1 ? defaultOrder : Ordered.HIGHEST_PRECEDENCE);
         }
