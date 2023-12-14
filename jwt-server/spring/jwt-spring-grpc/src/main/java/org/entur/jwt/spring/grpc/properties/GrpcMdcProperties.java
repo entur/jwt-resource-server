@@ -5,13 +5,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "entur.jwt.mdc.grpc")
 public class GrpcMdcProperties {
 
-    private Integer interceptorOrder;
+    private int interceptorOrder;
 
-    public Integer getInterceptorOrder() {
+    public int getInterceptorOrder() {
         return interceptorOrder;
     }
 
-    public void setInterceptorOrder(Integer interceptorOrder) {
+    public void setInterceptorOrder(int interceptorOrder) {
         this.interceptorOrder = interceptorOrder;
     }
 }
