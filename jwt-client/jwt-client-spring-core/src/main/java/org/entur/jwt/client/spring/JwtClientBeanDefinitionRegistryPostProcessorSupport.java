@@ -69,7 +69,7 @@ public abstract class JwtClientBeanDefinitionRegistryPostProcessorSupport<T> {
                 .withRefreshPath(properties.getRefreshPath())
                 .withRevokePath(properties.getRevokePath())
                 .withAuthorizationHeader(
-                        properties.getClientSecretRequestFormat() == GenericJwtClientProperties.ClientSecretRequestFormat.AUTHORIZATION_HEADER
+                        properties.getClientCredentialsRequestFormat() == GenericJwtClientProperties.ClientCredentialsRequestFormat.AUTHORIZATION_HEADER
                 )
                 .build();
 

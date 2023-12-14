@@ -5,7 +5,7 @@ public class GenericJwtClientProperties extends AbstractJwtClientProperties {
     protected String refreshPath;
     protected String revokePath;
 
-    protected ClientSecretRequestFormat clientSecretRequestFormat = ClientSecretRequestFormat.URL_PARAMETERS;
+    protected ClientCredentialsRequestFormat clientCredentialsRequestFormat = ClientCredentialsRequestFormat.URL_PARAMETERS;
 
     public String getIssuePath() {
         return issuePath;
@@ -31,15 +31,15 @@ public class GenericJwtClientProperties extends AbstractJwtClientProperties {
         this.revokePath = revokePath;
     }
 
-    public ClientSecretRequestFormat getClientSecretRequestFormat() {
-        return clientSecretRequestFormat;
+    public ClientCredentialsRequestFormat getClientCredentialsRequestFormat() {
+        return clientCredentialsRequestFormat;
     }
 
-    public void setClientSecretRequestFormat(ClientSecretRequestFormat clientSecretRequestFormat) {
-        this.clientSecretRequestFormat = clientSecretRequestFormat;
+    public void setClientCredentialsRequestFormat(ClientCredentialsRequestFormat clientCredentialsRequestFormat) {
+        this.clientCredentialsRequestFormat = clientCredentialsRequestFormat;
     }
 
-    public enum ClientSecretRequestFormat {
+    public enum ClientCredentialsRequestFormat {
         URL_PARAMETERS,
         AUTHORIZATION_HEADER
     }
