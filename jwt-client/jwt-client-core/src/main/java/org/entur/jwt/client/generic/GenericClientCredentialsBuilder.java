@@ -10,7 +10,18 @@ public class GenericClientCredentialsBuilder extends AbstractClientCredentialsBu
 
     @Override
     public ClientCredentials build() {
-        return build(false);
+        return build(authorizationHeader);
+    }
+
+    protected Boolean authorizationHeader;
+
+    public GenericClientCredentialsBuilder withAuthorizationHeader(Boolean authorizationHeader) {
+        this.authorizationHeader = authorizationHeader;
+        return this;
+    }
+
+    public Boolean getAuthorizationHeader() {
+        return authorizationHeader;
     }
 }
 

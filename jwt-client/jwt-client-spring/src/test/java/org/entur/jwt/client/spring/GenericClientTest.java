@@ -23,7 +23,10 @@ import org.springframework.web.client.RestTemplate;
 import java.net.URI;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.hamcrest.Matchers.any;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.headerDoesNotExist;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
@@ -38,7 +41,12 @@ public class GenericClientTest {
     private RestTemplate restTemplate;
 
     @Autowired
-    private AccessTokenProvider accessTokenProvider;
+    @Qualifier("firstClient")
+    private AccessTokenProvider firstAccessTokenProvider;
+
+    @Autowired
+    @Qualifier("secondClient")
+    private AccessTokenProvider secondAccessTokenProvider;
 
     @Autowired
     private AccessTokenProviderHealthIndicator healthIndicator;
@@ -58,15 +66,35 @@ public class GenericClientTest {
 
     @Test
     public void contextLoads() {
-        assertNotNull(accessTokenProvider);
+        assertNotNull(firstAccessTokenProvider);
+        assertNotNull(secondAccessTokenProvider);
         assertNotNull(healthIndicator);
     }
 
     @Test
-    public void testAccessToken() throws Exception {
-        mockServer.expect(ExpectedCount.once(), requestTo(new URI("http://localhost:8000/v1/oauth/token"))).andExpect(method(HttpMethod.POST))
+    public void testAccessTokenWithClientSecretInRequestUrlParameters() throws Exception {
+        mockServer
+                .expect(ExpectedCount.once(), requestTo(new URI("http://localhost:8000/v1/oauth/token")))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(headerDoesNotExist("Authorization"))
                 .andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).body(resource));
-        AccessToken accessToken = accessTokenProvider.getAccessToken(false);
+
+        AccessToken accessToken = firstAccessTokenProvider.getAccessToken(false);
+
+        assertThat(accessToken.getType()).isEqualTo("Bearer");
+        assertThat(accessToken.getValue()).isEqualTo("x.y.z");
+        assertThat(accessToken.getExpires()).isLessThan(System.currentTimeMillis() + 86400 * 1000);
+    }
+
+    @Test
+    public void testAccessTokenWithClientSecretInRequestAuthorizationHeader() throws Exception {
+        mockServer
+                .expect(ExpectedCount.once(), requestTo(new URI("http://localhost:8001/v1/oauth/token")))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("Authorization", any(String.class)))
+                .andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).body(resource));
+
+        AccessToken accessToken = secondAccessTokenProvider.getAccessToken(false);
 
         assertThat(accessToken.getType()).isEqualTo("Bearer");
         assertThat(accessToken.getValue()).isEqualTo("x.y.z");
