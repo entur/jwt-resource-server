@@ -9,6 +9,8 @@ public class JwtClientProperties {
 
     protected Map<String, KeycloakJwtClientProperties> keycloak = new HashMap<>();
 
+    protected Map<String, GenericJwtClientProperties> generic = new HashMap<>();
+
     protected int connectTimeout = 15; // seconds
     protected int readTimeout = 15; // seconds
 
@@ -19,6 +21,10 @@ public class JwtClientProperties {
     public Map<String, KeycloakJwtClientProperties> getKeycloak() {
         return keycloak;
     }
+
+    public Map<String, GenericJwtClientProperties> getGeneric() {
+        return generic;
+    }
     
     public void setAuth0(Map<String, Auth0JwtClientProperties> auth0) {
         this.auth0 = auth0;
@@ -26,6 +32,10 @@ public class JwtClientProperties {
     
     public void setKeycloak(Map<String, KeycloakJwtClientProperties> keycloak) {
         this.keycloak = keycloak;
+    }
+
+    public void setGeneric(Map<String, GenericJwtClientProperties> generic) {
+        this.generic = generic;
     }
 
     public int getConnectTimeout() {
