@@ -4,6 +4,7 @@ import org.entur.jwt.client.AccessTokenProvider;
 import org.entur.jwt.client.AccessTokenProviderBuilder;
 import org.entur.jwt.client.ClientCredentials;
 import org.entur.jwt.client.auth0.Auth0ClientCredentialsBuilder;
+import org.entur.jwt.client.generic.GenericClientCredentialsBuilder;
 import org.entur.jwt.client.keycloak.KeycloakClientCredentialsBuilder;
 import org.entur.jwt.client.properties.*;
 
@@ -48,6 +49,28 @@ public abstract class JwtClientBeanDefinitionRegistryPostProcessorSupport<T> {
                 .withScope(properties.getScope())
                 .withAudience(properties.getAudience())
                 .withRealm(properties.getRealm())
+                .build();
+
+        return toAccessTokenProvider(client, properties, credentials, properties.isHealth());
+    }
+
+    public AccessTokenProvider newGenericInstance(String key) {
+        GenericJwtClientProperties properties = this.rootProperties.getGeneric().get(key);
+
+        ClientCredentials credentials = GenericClientCredentialsBuilder.newInstance()
+                .withPort(properties.getPort())
+                .withProtocol(properties.getProtocol())
+                .withHost(properties.getHost())
+                .withClientId(properties.getClientId())
+                .withSecret(properties.getSecret())
+                .withScope(properties.getScope())
+                .withAudience(properties.getAudience())
+                .withIssuePath(properties.getIssuePath())
+                .withRefreshPath(properties.getRefreshPath())
+                .withRevokePath(properties.getRevokePath())
+                .withAuthorizationHeader(
+                        properties.getClientCredentialsRequestFormat() == GenericJwtClientProperties.ClientCredentialsRequestFormat.AUTHORIZATION_HEADER
+                )
                 .build();
 
         return toAccessTokenProvider(client, properties, credentials, properties.isHealth());

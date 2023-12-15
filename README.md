@@ -51,6 +51,7 @@ See documentation contained in each folder to get started. Or skip right to the 
 [European Union Public Licence v1.2](https://eupl.eu/).
 
 # History
+ - 3.1.0: Support for a `generic` JWT client type (by [viliket](https://github.com/viliket))
  - 3.0.x: Spring Boot 3 support
    - `Auth0` artifacts replaced by Spring OAuth equivalents 
    - Takes advantage of [latest Nimbus Jose JWKs handling](https://connect2id.com/products/nimbus-jose-jwt/examples/enhanced-jwk-retrieval).

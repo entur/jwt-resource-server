@@ -88,6 +88,7 @@ public class JwtClientAutoConfiguration {
             // populate default values
             add(registry, "newAuth0Instance", enabled(properties.getAuth0()));
             add(registry, "newKeycloakInstance", enabled(properties.getKeycloak()));
+            add(registry, "newGenericInstance", enabled(properties.getGeneric()));
         }
 
         private Set<String> enabled(Map<String, ? extends AbstractJwtClientProperties> auth0) {
