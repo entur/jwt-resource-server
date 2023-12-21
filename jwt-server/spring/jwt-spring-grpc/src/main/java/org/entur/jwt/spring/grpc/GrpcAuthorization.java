@@ -22,19 +22,6 @@ import java.util.stream.Collectors;
 
 public interface GrpcAuthorization {
 
-    /**
-     * Key for MDC-mappings. Applying the mappings to the actual MDC is out of scope for this library.
-     */
-    public static final Context.Key<Object> SECURITY_CONTEXT_MDC = Context.key("SECURITY_CONTEXT_MDC");
-
-    public default Map<String, String> getAuthorizationMDC() {
-        Object object = GrpcAuthorization.SECURITY_CONTEXT_MDC.get();
-        if (object instanceof Map) {
-            return (Map<String, String>) object;
-        }
-        return null;
-    }
-
     public default Object getPrincial() {
         Object object = GrpcSecurity.AUTHENTICATION_CONTEXT_KEY.get();
         if (object instanceof JwtAuthenticationToken) {

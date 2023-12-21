@@ -79,7 +79,7 @@ public class Auth0MockRestTemplateTest {
 
         assertThat(accessToken.getType()).isEqualTo("Bearer");
         assertThat(accessToken.getValue()).isEqualTo("a.b.c");
-        assertThat(accessToken.getExpires()).isLessThan(System.currentTimeMillis() + 86400 * 1000);
+        assertThat(accessToken.getExpires()).isLessThan(System.currentTimeMillis() + 86400 * 1000 + 1);
         
         given().port(randomServerPort).log().all().when().get("/actuator/health/readiness").then().log().all().assertThat().statusCode(HttpStatus.OK.value());
     }

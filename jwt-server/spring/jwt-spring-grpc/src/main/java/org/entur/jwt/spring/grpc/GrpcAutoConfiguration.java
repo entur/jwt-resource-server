@@ -8,15 +8,13 @@ import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import org.entur.jwt.spring.DefaultJwtAuthorityEnricher;
-import org.entur.jwt.spring.EnrichedJwtGrantedAuthoritiesConverter;
-import org.entur.jwt.spring.JwkSourceMap;
-import org.entur.jwt.spring.JwtAuthorityEnricher;
-import org.entur.jwt.spring.JwtAutoConfiguration;
-import org.entur.jwt.spring.NoUserDetailsService;
+import org.entur.jwt.spring.*;
 import org.entur.jwt.spring.grpc.properties.GrpcPermitAll;
 import org.entur.jwt.spring.grpc.properties.GrpcServicesConfiguration;
 import org.entur.jwt.spring.grpc.properties.ServiceMatcherConfiguration;
+import org.entur.jwt.spring.properties.Auth0Flavour;
+import org.entur.jwt.spring.properties.Flavours;
+import org.entur.jwt.spring.properties.KeycloakFlavour;
 import org.lognet.springboot.grpc.GRpcErrorHandler;
 import org.lognet.springboot.grpc.autoconfigure.ConditionalOnMissingErrorHandler;
 import org.lognet.springboot.grpc.autoconfigure.security.SecurityAutoConfiguration;
@@ -57,7 +55,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @Configuration
-@EnableConfigurationProperties({GrpcPermitAll.class})
+@EnableConfigurationProperties({GrpcPermitAll.class, Flavours.class})
 @AutoConfigureAfter(value = {JwtAutoConfiguration.class})
 @AutoConfigureBefore(value = {org.lognet.springboot.grpc.autoconfigure.GRpcAutoConfiguration.class, SecurityAutoConfiguration.class})
 public class GrpcAutoConfiguration {
@@ -72,7 +70,6 @@ public class GrpcAutoConfiguration {
         return new DefaultJwtAuthorityEnricher();
     }
 
-
     @Configuration
     @ConditionalOnExpression("${entur.jwt.enabled:true}")
     public static class GrpcSecurityConfiguration extends GrpcSecurityConfigurerAdapter {
@@ -84,12 +81,14 @@ public class GrpcAutoConfiguration {
         private List<OAuth2TokenValidator<Jwt>> jwtValidators;
 
         private GrpcPermitAll permitAll;
+        private Flavours flavours;
 
-        public GrpcSecurityConfiguration(JwkSourceMap jwkSourceMap, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators, GrpcPermitAll permitAll) {
+        public GrpcSecurityConfiguration(JwkSourceMap jwkSourceMap, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators, GrpcPermitAll permitAll, Flavours flavours) {
             this.jwkSourceMap = jwkSourceMap;
             this.jwtAuthorityEnrichers = jwtAuthorityEnrichers;
             this.jwtValidators = jwtValidators;
             this.permitAll = permitAll;
+            this.flavours = flavours;
         }
 
         @Override
@@ -101,6 +100,23 @@ public class GrpcAutoConfiguration {
             } else {
                 // default to authenticated
                 grpcSecurity.authorizeRequests().anyMethod().authenticated();
+            }
+
+            List<JwtAuthorityEnricher> jwtAuthorityEnrichers = this.jwtAuthorityEnrichers;
+            if (flavours.isEnabled()) {
+                List<JwtAuthorityEnricher> enrichers = new ArrayList<>(jwtAuthorityEnrichers);
+
+                Auth0Flavour auth0 = flavours.getAuth0();
+                if (auth0.isEnabled()) {
+                    enrichers.add(new Auth0JwtAuthorityEnricher());
+                }
+
+                KeycloakFlavour keycloak = flavours.getKeycloak();
+                if (keycloak.isEnabled()) {
+                    enrichers.add(new KeycloakJwtAuthorityEnricher());
+                }
+
+                jwtAuthorityEnrichers = enrichers;
             }
 
             Map<String, JWKSource> jwkSources = jwkSourceMap.getJwkSources();
@@ -118,6 +134,7 @@ public class GrpcAutoConfiguration {
                 nimbusJwtDecoder.setJwtValidator(getJwtValidators(entry.getKey()));
 
                 JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
+
                 jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(new EnrichedJwtGrantedAuthoritiesConverter(jwtAuthorityEnrichers));
 
                 JwtAuthenticationProvider authenticationProvider = new JwtAuthenticationProvider(nimbusJwtDecoder);

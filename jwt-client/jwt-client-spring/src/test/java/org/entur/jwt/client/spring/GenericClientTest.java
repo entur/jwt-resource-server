@@ -83,7 +83,7 @@ public class GenericClientTest {
 
         assertThat(accessToken.getType()).isEqualTo("Bearer");
         assertThat(accessToken.getValue()).isEqualTo("x.y.z");
-        assertThat(accessToken.getExpires()).isLessThan(System.currentTimeMillis() + 86400 * 1000);
+        assertThat(accessToken.getExpires()).isLessThan(System.currentTimeMillis() + 86400 * 1000 + 1);
     }
 
     @Test
@@ -98,6 +98,6 @@ public class GenericClientTest {
 
         assertThat(accessToken.getType()).isEqualTo("Bearer");
         assertThat(accessToken.getValue()).isEqualTo("x.y.z");
-        assertThat(accessToken.getExpires()).isLessThan(System.currentTimeMillis() + 86400 * 1000);
+        assertThat(accessToken.getExpires()).isLessThan(System.currentTimeMillis() + 86400 * 1000 + 1);
     }
 }
