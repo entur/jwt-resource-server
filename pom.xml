@@ -632,6 +632,8 @@
         <module>jwt-server/spring/jwt-spring-common</module>
 		<module>jwt-server/spring/jwt-spring-webflux</module>
 		<module>jwt-server/spring/jwt-spring-grpc</module>
+		<module>examples/jwt-resource-server-spring-boot-example</module>
+		<module>examples/jwt-client-spring-boot-example</module>
 	</modules>
 
 	<distributionManagement>

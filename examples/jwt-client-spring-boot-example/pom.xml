@@ -10,9 +10,9 @@
 	</parent>
 	<groupId>org.entur.example</groupId>
 	<artifactId>jwt-client-spring-boot-example</artifactId>
-	<version>4.0.1-SNAPSHOT</version>
 	<name>jwt-client-spring-boot-example</name>
 	<description>Demo project for Spring Boot</description>
+	<version>4.0.2-SNAPSHOT</version>
 
 	<properties>
 		<java.version>17</java.version>
@@ -114,14 +114,6 @@
 				<version>2.11.0</version>
 				<configuration>
 					<configFile>${maven.multiModuleProjectDirectory}/.eclipse-formatter-config.xml</configFile>
-				</configuration>
-			</plugin>
-			<plugin>
-				<!-- added to make the version increment during release -->
-				<groupId>org.sonatype.plugins</groupId>
-				<artifactId>nexus-staging-maven-plugin</artifactId>
-				<configuration>
-					<skipNexusStagingDeployMojo>true</skipNexusStagingDeployMojo>
 				</configuration>
 			</plugin>
 		</plugins>
