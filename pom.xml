@@ -537,6 +537,7 @@
 					<suppressionFiles>
 						<suppressionFile>${maven.multiModuleProjectDirectory}/dependencycheck-root-suppression.xml</suppressionFile>
 					</suppressionFiles>
+					<nvdApiKey>${NVD_API_KEY}</nvdApiKey>
 				</configuration>
 
 				<executions>
