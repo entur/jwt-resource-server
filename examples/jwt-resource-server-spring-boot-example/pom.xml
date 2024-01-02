@@ -18,6 +18,7 @@
 		<java.version>17</java.version>
 		<nimbus-jose-jwt.version>9.37.2</nimbus-jose-jwt.version>
 		<truth.version>1.2.0</truth.version>
+		<skipNexusStagingDeployMojo>true</skipNexusStagingDeployMojo>
 	</properties>
 
 	<dependencyManagement>
@@ -124,6 +125,14 @@
 				<version>2.11.0</version>
 				<configuration>
 					<configFile>${maven.multiModuleProjectDirectory}/.eclipse-formatter-config.xml</configFile>
+				</configuration>
+			</plugin>
+			<plugin>
+				<!-- added to make the version increment during release -->
+				<groupId>org.sonatype.plugins</groupId>
+				<artifactId>nexus-staging-maven-plugin</artifactId>
+				<configuration>
+					<skipNexusStagingDeployMojo>true</skipNexusStagingDeployMojo>
 				</configuration>
 			</plugin>
 		</plugins>
