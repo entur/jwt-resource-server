@@ -13,9 +13,6 @@ entur:
           to: issuer
         - from: azp
           to: azp
-    jwk:
-      health-indicator:
-        enabled: true
   authorization:
     permit-all:
       grpc:
@@ -24,6 +21,9 @@ entur:
             methods:
               - unprotected
               - unprotectedWithOptionalTenant
+          - name: grpc.health.v1.Health
+            methods:
+              - "*"
       matcher:
         patterns:
           - /actuator/health

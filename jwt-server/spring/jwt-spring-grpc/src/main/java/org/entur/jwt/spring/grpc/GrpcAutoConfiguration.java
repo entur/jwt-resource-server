@@ -147,8 +147,6 @@ public class GrpcAutoConfiguration {
         }
 
         private void configureGrpcServiceMethodFilter(GrpcServicesConfiguration grpc, GrpcSecurity grpcSecurity) throws Exception {
-            GrpcServiceAuthorizationConfigurer.Registry registry = grpcSecurity.authorizeRequests();
-
             Map<String, List<String>> serviceNameMethodName = new HashMap<>();
             for (ServiceMatcherConfiguration configuration : grpc.getServices()) {
                 if (!configuration.isEnabled()) {
@@ -172,7 +170,7 @@ public class GrpcAutoConfiguration {
             }
 
             // service name is included in method name
-            registry.anyMethodExcluding((method) -> {
+            grpcSecurity.authorizeRequests().anyMethodExcluding((method) -> {
                 String lowerCaseServiceName = method.getServiceName().toLowerCase();
                 List<String> methodNames = serviceNameMethodName.get(lowerCaseServiceName);
                 if (methodNames == null) {
@@ -231,7 +229,6 @@ public class GrpcAutoConfiguration {
             }
         }
     }
-
 
     @ConditionalOnMissingErrorHandler(StatusRuntimeException.class)
     @Configuration
