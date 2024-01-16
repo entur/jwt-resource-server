@@ -36,7 +36,6 @@ public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator impleme
 
     @Override
     protected JwksHealth getJwksHealth() {
-        LOGGER.info("Get JWKs health");
         long time = System.currentTimeMillis();
 
         List<DefaultJwksHealthIndicator> unhealthy = new ArrayList<>(healthIndicators.size());
