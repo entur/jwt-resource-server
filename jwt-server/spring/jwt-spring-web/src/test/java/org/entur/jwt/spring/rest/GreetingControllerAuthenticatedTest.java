@@ -116,7 +116,7 @@ public class GreetingControllerAuthenticatedTest {
         assertTrue(response.getStatusCode().is2xxSuccessful(), response.getStatusCode().toString());
 
         assertThat(response.getBody().getContent()).isEqualTo("Hello protected with authority");
-        assertThat(response.getBody().getAuthorities()).containsExactly("configure");
+        assertThat(response.getBody().getAuthorities()).containsExactly("SCOPE_configure");
     }
 
     @Test

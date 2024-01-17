@@ -51,6 +51,7 @@ See documentation contained in each folder to get started. Or skip right to the 
 [European Union Public Licence v1.2](https://eupl.eu/).
 
 # History
+ - 4.1.0: The JWT scope claim will now be converted to `GrantedAuthority` using the default Spring approach of prefixing with `SCOPE_`. Add a bean `NoopJwtAuthorityEnricher` to disable scope being converted to authorities all together.
  - 4.0.1: Dependency updates
  - 4.0.0: Adjust gRPC MDC handling + enrich gRPC authentication from Auth0/Keycloak access token
  - 3.1.0: Support for a `generic` JWT client type (by [viliket](https://github.com/viliket))

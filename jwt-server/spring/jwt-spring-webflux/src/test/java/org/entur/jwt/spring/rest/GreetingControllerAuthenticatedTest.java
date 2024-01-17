@@ -108,7 +108,7 @@ public class GreetingControllerAuthenticatedTest {
             .getResponseBody().blockLast();
 
         assertThat(greeting.getContent()).isEqualTo("Hello protected with authority");
-        assertThat(greeting.getAuthorities()).containsExactly("configure");
+        assertThat(greeting.getAuthorities()).containsExactly("SCOPE_configure");
     }
 
     @Test
