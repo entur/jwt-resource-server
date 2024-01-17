@@ -66,7 +66,7 @@ public class GreetingController {
 
     }
 
-    @PreAuthorize("isFullyAuthenticated() && hasAnyAuthority('configure')")
+    @PreAuthorize("isFullyAuthenticated() && hasAnyAuthority('SCOPE_configure')")
     @GetMapping("/protected/permission")
     public Mono<Greeting> protectedWithPermission() {
         log.info("Get method protected by partner tenant");

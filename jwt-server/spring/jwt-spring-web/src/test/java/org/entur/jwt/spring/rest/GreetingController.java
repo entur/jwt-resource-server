@@ -54,7 +54,7 @@ public class GreetingController {
         return new Greeting(counter.incrementAndGet(), "Hello protected", null, authentication.getAuthorities());
     }
 
-    @PreAuthorize("isFullyAuthenticated() && hasAnyAuthority('configure')")
+    @PreAuthorize("isFullyAuthenticated() && hasAnyAuthority('SCOPE_configure')")
     @GetMapping("/protected/permission")
     public Greeting protectedWithPermission() {
         log.info("Get method protected by partner tenant");
