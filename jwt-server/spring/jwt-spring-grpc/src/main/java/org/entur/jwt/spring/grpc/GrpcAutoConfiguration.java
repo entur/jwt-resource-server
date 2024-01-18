@@ -9,6 +9,7 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import org.entur.jwt.spring.*;
+import org.entur.jwt.spring.grpc.annotate.ConditionalOnMissingErrorHandlerForExactException;
 import org.entur.jwt.spring.grpc.properties.GrpcPermitAll;
 import org.entur.jwt.spring.grpc.properties.GrpcServicesConfiguration;
 import org.entur.jwt.spring.grpc.properties.ServiceMatcherConfiguration;
@@ -16,7 +17,6 @@ import org.entur.jwt.spring.properties.Auth0Flavour;
 import org.entur.jwt.spring.properties.Flavours;
 import org.entur.jwt.spring.properties.KeycloakFlavour;
 import org.lognet.springboot.grpc.GRpcErrorHandler;
-import org.lognet.springboot.grpc.autoconfigure.ConditionalOnMissingErrorHandler;
 import org.lognet.springboot.grpc.autoconfigure.security.SecurityAutoConfiguration;
 import org.lognet.springboot.grpc.recovery.ErrorHandlerAdapter;
 import org.lognet.springboot.grpc.recovery.GRpcExceptionHandler;
@@ -24,7 +24,6 @@ import org.lognet.springboot.grpc.recovery.GRpcExceptionScope;
 import org.lognet.springboot.grpc.recovery.GRpcServiceAdvice;
 import org.lognet.springboot.grpc.security.GrpcSecurity;
 import org.lognet.springboot.grpc.security.GrpcSecurityConfigurerAdapter;
-import org.lognet.springboot.grpc.security.GrpcServiceAuthorizationConfigurer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
@@ -35,6 +34,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.core.AuthenticationException;
@@ -204,7 +204,7 @@ public class GrpcAutoConfiguration {
         return new NoUserDetailsService();  // avoid the default user.
     }
 
-    @ConditionalOnMissingErrorHandler(AuthenticationException.class)
+    @ConditionalOnMissingErrorHandlerForExactException(AuthenticationException.class)
     @Configuration
     static class DefaultAuthErrorHandlerConfiguration {
 
@@ -230,7 +230,7 @@ public class GrpcAutoConfiguration {
         }
     }
 
-    @ConditionalOnMissingErrorHandler(StatusRuntimeException.class)
+    @ConditionalOnMissingErrorHandlerForExactException(StatusRuntimeException.class)
     @Configuration
     static class DefaultStatusErrorHandlerConfiguration {
         @GRpcServiceAdvice
@@ -245,5 +245,27 @@ public class GrpcAutoConfiguration {
             }
         }
     }
+
+    @ConditionalOnMissingErrorHandlerForExactException(AccessDeniedException.class)
+    @Configuration
+    static class DefaultAccessDeniedErrorHandlerConfig {
+
+        @GRpcServiceAdvice
+        public static class DefaultAccessDeniedErrorHandler extends ErrorHandlerAdapter {
+            @java.lang.SuppressWarnings("all")
+            private static final org.slf4j.Logger log =
+                    org.slf4j.LoggerFactory.getLogger(DefaultAccessDeniedErrorHandler.class);
+
+            public DefaultAccessDeniedErrorHandler(Optional<GRpcErrorHandler> errorHandler) {
+                super(errorHandler);
+            }
+
+            @GRpcExceptionHandler
+            public Status handle(AccessDeniedException e, GRpcExceptionScope scope) {
+                return handle(e, Status.PERMISSION_DENIED, scope);
+            }
+        }
+    }
+
 
 }
