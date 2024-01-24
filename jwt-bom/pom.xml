@@ -54,21 +54,21 @@
 				<artifactId>jwt-core</artifactId>
 				<version>${project.version}</version>
 			</dependency>
-            <dependency>
-                <groupId>${project.groupId}</groupId>
-                <artifactId>jwt-spring-common</artifactId>
-                <version>${project.version}</version>
-            </dependency>
+			<dependency>
+				<groupId>${project.groupId}</groupId>
+				<artifactId>jwt-spring-common</artifactId>
+				<version>${project.version}</version>
+			</dependency>
 			<dependency>
 				<groupId>${project.groupId}</groupId>
 				<artifactId>jwt-spring-web</artifactId>
 				<version>${project.version}</version>
 			</dependency>
-            <dependency>
-                <groupId>${project.groupId}</groupId>
-                <artifactId>jwt-spring-webflux</artifactId>
-                <version>${project.version}</version>
-            </dependency>
+			<dependency>
+				<groupId>${project.groupId}</groupId>
+				<artifactId>jwt-spring-webflux</artifactId>
+				<version>${project.version}</version>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 </project>
