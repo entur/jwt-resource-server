@@ -32,14 +32,11 @@ public class JwkSourceMapFactory<C> {
     public JwkSourceMap getJwkSourceMap(Map<String, JwtTenantProperties> tenants, JwkProperties jwkConfiguration, ListJwksHealthIndicator listJwksHealthIndicator) {
         Map<String, JWKSource> jwkSources = new HashMap<>();
 
-        JwkSetSourceEventListener eventListener = new JwkSetSourceEventListener();
-
         for (Map.Entry<String, JwtTenantProperties> entry : tenants.entrySet()) {
             JwtTenantProperties tenantConfiguration = entry.getValue();
             if (!tenantConfiguration.isEnabled()) {
                 continue;
             }
-
             JwkLocationProperties tenantJwkConfiguration = tenantConfiguration.getJwk();
             if (tenantJwkConfiguration == null) {
                 throw new IllegalStateException("Missing JWK location for " + entry.getKey());
@@ -77,6 +74,8 @@ public class JwkSourceMapFactory<C> {
             } else {
                 builder.rateLimited(false);
             }
+
+            JwkSetSourceEventListener eventListener = new JwkSetSourceEventListener(entry.getKey());
 
             JwkCacheProperties cache = jwkConfiguration.getCache();
             if (cache != null && cache.isEnabled()) {
