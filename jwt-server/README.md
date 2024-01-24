@@ -66,10 +66,10 @@ entur:
   authorization:
     enabled: true # note: this is the default value
     permit-all:
-      ant-matcher:
+      matcher:
         patterns:
           - /unprotected/**
-      mvc-matcher:
+      matcher:
         patterns:
          - /some/path/{myVariable}
 ```
@@ -89,7 +89,7 @@ add the MVC matcher `/open/country/{countryCode}`. Optionally also specify the H
 entur:
   authorization:
     permit-all:
-      mvc-matcher:
+      matcher:
         method:	
           get:
             patterns:
@@ -119,7 +119,7 @@ expose [actuator endpoints](https://docs.spring.io/spring-boot/docs/current/refe
 entur:
   authorization:
     permit-all:
-      ant-matcher:
+      matcher:
         patterns:
           - /actuator/**
 ```
