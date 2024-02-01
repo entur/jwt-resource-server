@@ -107,16 +107,16 @@ public abstract class AbstractClientCredentialsBuilder<B extends AbstractClientC
 
     protected ClientCredentials build(boolean authorizationHeader) {
 
-        if (clientId == null) {
+        if (clientId == null || clientId.isBlank()) {
             throw new IllegalStateException("Expected client-id");
         }
-        if (host == null) {
+        if (host == null || host.isBlank()) {
             throw new IllegalStateException("Expected host");
         }
-        if (issuePath == null) {
+        if (issuePath == null || issuePath.isBlank()) {
             throw new IllegalStateException("Expected issue (token) path");
         }
-        if (secret == null) {
+        if (secret == null || secret.isBlank()) {
             throw new IllegalStateException("Expected secret");
         }
 
