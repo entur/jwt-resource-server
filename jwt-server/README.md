@@ -236,7 +236,6 @@ entur:
               time-to-live: 36000 #seconds
             rate-limit: # per tenant
               enabled: true
-              bucket-size: 10
               refill-rate: 0.1 # per second
 ```
 
