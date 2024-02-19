@@ -51,6 +51,7 @@ See documentation contained in each folder to get started. Or skip right to the 
 [European Union Public Licence v1.2](https://eupl.eu/).
 
 # History
+ - 4.1.5: Add event listener to JWKs rate limiter, remove unused property. 
  - 4.1.4: Improve client builder empty string checks
  - 4.1.2: Improve logging of JWK events, bump dependencies.
  - 4.1.1: Improve GRPC exception handling configuration.
