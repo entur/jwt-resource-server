@@ -55,6 +55,8 @@ public class JwkSourceMapFactory<C> {
                 throw new IllegalArgumentException("Invalid location " + tenantJwkConfiguration.getLocation() + " for " + entry.getKey());
             }
 
+            JwkSetSourceEventListener eventListener = new JwkSetSourceEventListener(entry.getKey());
+
             int connectTimeout = jwkConfiguration.getConnectTimeout();
             int readTimeout = jwkConfiguration.getReadTimeout();
 
@@ -70,12 +72,10 @@ public class JwkSourceMapFactory<C> {
 
                 int millisecondsPerToken = (int) (secondsPerToken * 1000); // note quantization, ms precision is sufficient
 
-                builder.rateLimited(millisecondsPerToken);
+                builder.rateLimited(millisecondsPerToken, eventListener);
             } else {
                 builder.rateLimited(false);
             }
-
-            JwkSetSourceEventListener eventListener = new JwkSetSourceEventListener(entry.getKey());
 
             JwkCacheProperties cache = jwkConfiguration.getCache();
             if (cache != null && cache.isEnabled()) {
