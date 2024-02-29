@@ -7,9 +7,12 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator implements Closeable {
 
@@ -30,7 +33,7 @@ public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator impleme
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         this.executorService.shutdown();
     }
 
@@ -61,13 +64,21 @@ public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator impleme
             return new JwksHealth(time, false);
         }
 
-        // refresh multiple sources, wrap in completion service to them all at once
+        // refresh multiple sources, wrap in completion service to visit them all in parallel
         ExecutorCompletionService completionService = new ExecutorCompletionService(executorService);
 
         List<Future<Boolean>> workerList = new ArrayList<>(unhealthy.size());
 
-        for (DefaultJwksHealthIndicator defaultJwksHealthIndicator : unhealthy) {
-            Future<Boolean> future = completionService.submit(() -> defaultJwksHealthIndicator.refreshJwksHealth(time));
+        for (DefaultJwksHealthIndicator unhealthyJwksHealthIndicator : unhealthy) {
+            Future<Boolean> future = completionService.submit(() -> {
+                try {
+                    return unhealthyJwksHealthIndicator.refreshJwksHealth(time);
+                } catch(Exception e) {
+                    LOGGER.warn("Problem getting JWKs health", e);
+
+                    return false;
+                }
+            });
 
             workerList.add(future);
         }
@@ -75,6 +86,8 @@ public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator impleme
         Future<?> timeout = executorService.submit(() -> {
             try {
                 Thread.sleep(maxDelay);
+
+                LOGGER.warn("Timeout collecting " + workerList.size() + " JWKs health after" + maxDelay + "ms");
 
                 for (Future<Boolean> worker : workerList) {
                     worker.cancel(true);
@@ -98,8 +111,14 @@ public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator impleme
                     if (status != null && status) {
                         continue;
                     }
+                } catch(CancellationException e) {
+                    // ignore but return false
                 } catch (InterruptedException e) {
+                    // ignore but return false
                     Thread.currentThread().interrupt();
+                } catch (ExecutionException e) {
+                    // this should not happen as the jobs are wrapped in try - catch
+                    LOGGER.warn("Problem getting health info", e);
                 } catch (Exception e) {
                     // ignore
                     LOGGER.info("Problem getting health info", e);

@@ -73,7 +73,7 @@ public class GreetingControllerAuthenticatedTest {
             .getResponseHeaders();
 
         assertThat(responseHeaders.get("X-Content-Type-Options")).contains("nosniff");
-        assertThat(responseHeaders.get("X-XSS-Protection")).contains("1 ; mode=block");
+        assertThat(responseHeaders.get("X-XSS-Protection")).contains("1; mode=block");
         assertThat(responseHeaders.get("Cache-Control")).contains("no-cache, no-store, max-age=0, must-revalidate");
         assertThat(responseHeaders.get("Pragma")).contains("no-cache");
         assertThat(responseHeaders.get("Expires")).contains("0");
