@@ -3,6 +3,7 @@ package org.entur.jwt.spring;
 import org.entur.jwt.spring.actuate.ListJwksHealthIndicator;
 import org.entur.jwt.spring.properties.JwtProperties;
 import org.entur.jwt.spring.properties.SecurityProperties;
+import org.entur.jwt.spring.properties.jwk.JwkProperties;
 import org.entur.jwt.spring.properties.jwk.JwtTenantProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,8 +34,16 @@ public class JwtAutoConfiguration {
 
     @Bean(destroyMethod = "close", value = "jwks")
     @ConditionalOnEnabledHealthIndicator("jwks")
-    public ListJwksHealthIndicator jwksHealthIndicator() {
-        return new ListJwksHealthIndicator(1000L, Executors.newCachedThreadPool());
+    public ListJwksHealthIndicator jwksHealthIndicator(SecurityProperties properties) {
+        JwtProperties jwtProperties = properties.getJwt();
+        JwkProperties jwk = jwtProperties.getJwk();
+
+        // TODO should also the number of active provides be taken into account? Don't want the
+        // health check http response to time out
+
+        long maxDelay = (jwk.getConnectTimeout() + jwk.getReadTimeout()) * 1000;
+
+        return new ListJwksHealthIndicator(maxDelay, Executors.newCachedThreadPool());
     }
 
     @Bean(destroyMethod = "close")
