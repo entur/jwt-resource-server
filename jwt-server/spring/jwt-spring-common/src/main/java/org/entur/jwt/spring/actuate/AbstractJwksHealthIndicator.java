@@ -5,9 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health;
 
-import java.io.Closeable;
-import java.io.IOException;
-
 /**
  * 
  * Health indicator.
@@ -20,6 +17,14 @@ public abstract class AbstractJwksHealthIndicator extends AbstractHealthIndicato
 
     private JwksHealth previousHealth;
 
+    protected final String name;
+
+    // do we want to log status?
+    protected boolean silent;
+
+    protected AbstractJwksHealthIndicator(String name) {
+        this.name = name;
+    }
 
     @Override
     protected void doHealthCheck(Health.Builder builder) throws Exception {
@@ -43,17 +48,19 @@ public abstract class AbstractJwksHealthIndicator extends AbstractHealthIndicato
 
     protected void logInitialOrChangedState(JwksHealth health) {
         JwksHealth previousHealth = this.previousHealth; // defensive copy
-        if(previousHealth != null) {
-        	if(!previousHealth.isSuccess() && health.isSuccess()) {
-                logger.info("JWKs health transitioned to UP");
-        	} else if(previousHealth.isSuccess() && !health.isSuccess()) {
-        		logger.warn("JWKs health transitioned to DOWN");
-        	}
-        } else {
-            if(!health.isSuccess()) {
-                logger.warn("JWKs health initialized to DOWN");
+        if(!silent) {
+            if (previousHealth != null) {
+                if (!previousHealth.isSuccess() && health.isSuccess()) {
+                    logger.info("{} JWKs health transitioned to UP", name);
+                } else if (previousHealth.isSuccess() && !health.isSuccess()) {
+                    logger.warn("{} JWKs health transitioned to DOWN", name);
+                }
             } else {
-                logger.info("JWKs health initialized to UP");
+                if (!health.isSuccess()) {
+                    logger.warn("{} JWKs health initialized to DOWN", name);
+                } else {
+                    logger.info("{} JWKs health initialized to UP", name);
+                }
             }
         }
         this.previousHealth = health;
