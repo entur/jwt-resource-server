@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CancellationException;
@@ -12,7 +11,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator implements Closeable {
 
@@ -23,13 +21,16 @@ public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator impleme
     private final ExecutorService executorService;
     private List<DefaultJwksHealthIndicator> healthIndicators = new ArrayList<>();
 
-    public ListJwksHealthIndicator(long maxDelay, ExecutorService executorService) {
+    public ListJwksHealthIndicator(long maxDelay, ExecutorService executorService, String name) {
+        super(name);
         this.maxDelay = maxDelay;
         this.executorService = executorService;
     }
 
     public void addHealthIndicators(DefaultJwksHealthIndicator healthIndicator) {
         this.healthIndicators.add(healthIndicator);
+
+        this.silent = healthIndicators.size() <= 1;
     }
 
     @Override

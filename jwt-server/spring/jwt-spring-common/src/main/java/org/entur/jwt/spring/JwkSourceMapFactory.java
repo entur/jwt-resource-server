@@ -106,10 +106,10 @@ public class JwkSourceMapFactory<C> {
 
             DefaultJwksHealthIndicator healthIndicator = null;
             if (listJwksHealthIndicator != null) {
-                healthIndicator = new DefaultJwksHealthIndicator();
+                healthIndicator = new DefaultJwksHealthIndicator(entry.getKey());
                 builder.healthReporting(healthIndicator);
 
-                LOGGER.info("Add health indicator");
+                LOGGER.info("Add health indicator for " + entry.getKey());
 
                 listJwksHealthIndicator.addHealthIndicators(healthIndicator);
             }

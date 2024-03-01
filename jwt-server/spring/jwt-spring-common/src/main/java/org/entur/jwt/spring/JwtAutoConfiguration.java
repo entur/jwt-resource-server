@@ -43,7 +43,7 @@ public class JwtAutoConfiguration {
 
         long maxDelay = (jwk.getConnectTimeout() + jwk.getReadTimeout()) * 1000;
 
-        return new ListJwksHealthIndicator(maxDelay, Executors.newCachedThreadPool());
+        return new ListJwksHealthIndicator(maxDelay, Executors.newCachedThreadPool(), "List");
     }
 
     @Bean(destroyMethod = "close")

@@ -13,6 +13,10 @@ public class DefaultJwksHealthIndicator extends AbstractJwksHealthIndicator impl
 
     private HealthReport healthReport;
 
+    public DefaultJwksHealthIndicator(String name) {
+        super(name);
+    }
+
     public void setJwkSetSource(JWKSetSource jwkSetSource) {
         this.jwkSetSource = jwkSetSource;
     }
