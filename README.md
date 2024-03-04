@@ -51,7 +51,7 @@ See documentation contained in each folder to get started. Or skip right to the 
 [European Union Public Licence v1.2](https://eupl.eu/).
 
 # History
- - 4.2.0: Refresh health indicators in the background, add even more logging. 
+ - 4.2.0 to 4.2.1: Refresh health indicators in the background, add even more logging. 
  - 4.1.7: Adjust health indicator logging.
  - 4.1.6: Adjust health indicator timeout when multiple JWK sources + bump dependencies. 
  - 4.1.5: Add event listener to JWKs rate limiter, remove unused property. 
