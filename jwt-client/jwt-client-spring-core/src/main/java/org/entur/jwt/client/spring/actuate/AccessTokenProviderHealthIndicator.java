@@ -108,7 +108,7 @@ public class AccessTokenProviderHealthIndicator extends AbstractJwtHealthIndicat
             if(isIdle()) {
                 refreshHealth(healthy, unhealthy, time);
             } else {
-                LOGGER.info("Previous health refresh is still in progress ({} outstanding)", countDownLatch.getCount());
+                LOGGER.info("Previous JWT health refresh is still in progress ({} outstanding)", countDownLatch.getCount());
             }
         }
 

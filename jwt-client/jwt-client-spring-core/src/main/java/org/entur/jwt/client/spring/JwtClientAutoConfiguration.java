@@ -125,7 +125,7 @@ public class JwtClientAutoConfiguration {
         }
     }
 
-    @Bean
+    @Bean(destroyMethod = "close")
     @ConditionalOnEnabledHealthIndicator("jwts")
     public AccessTokenProviderHealthIndicator jwtsHealthIndicator(Map<String, AccessTokenProvider> providers) {
         // could trigger health update here, but that would interfere with
