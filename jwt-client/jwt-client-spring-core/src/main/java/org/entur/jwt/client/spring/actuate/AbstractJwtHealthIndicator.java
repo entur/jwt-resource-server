@@ -54,7 +54,7 @@ public abstract class AbstractJwtHealthIndicator extends AbstractHealthIndicator
             }
         } else {
             if (!health.isSuccess()) {
-                logger.warn("{} JWT health initialized to DOWN", name);
+                logger.info("{} JWT health initialized to DOWN", name);
             } else {
                 logger.info("{} JWT health initialized to UP", name);
             }

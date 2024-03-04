@@ -57,7 +57,7 @@ public abstract class AbstractJwksHealthIndicator extends AbstractHealthIndicato
                 }
             } else {
                 if (!health.isSuccess()) {
-                    logger.warn("{} JWKs health initialized to DOWN", name);
+                    logger.info("{} JWKs health initialized to DOWN", name);
                 } else {
                     logger.info("{} JWKs health initialized to UP", name);
                 }
