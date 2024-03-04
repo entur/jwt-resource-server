@@ -28,6 +28,12 @@ public class PermitAllAnyHttpMethodPatternTest extends AbstractActuatorTest {
 
     @Test
     public void testActuatorOnWhitelist() throws Exception {
+        webTestClient
+                .get()
+                .uri("/actuator/health")
+                .exchange()
+                .expectStatus().is5xxServerError();
+
         waitForHealth();
 
         webTestClient

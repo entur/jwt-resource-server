@@ -70,7 +70,7 @@ public class AccessTokenProviderHealthIndicator extends AbstractJwtHealthIndicat
 
     private volatile CountDownLatch countDownLatch = new CountDownLatch(0);
 
-    public AccessTokenProviderHealthIndicator(ThreadPoolExecutor executor, String name) {
+    public AccessTokenProviderHealthIndicator(ExecutorService executor, String name) {
         super(name);
         this.executor = executor;
     }

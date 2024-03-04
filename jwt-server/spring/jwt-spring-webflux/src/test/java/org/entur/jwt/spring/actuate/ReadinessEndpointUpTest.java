@@ -31,19 +31,20 @@ public class ReadinessEndpointUpTest extends AbstractActuatorTest {
     @Autowired
     private TestRestTemplate restTemplate;
 
-    @Autowired
-    private ListJwksHealthIndicator healthIndicator;
     @Test
     public void testReadiness() throws Exception {
-        waitForHealth();
-
         HttpHeaders headers = new HttpHeaders();
         HttpEntity<String> entity = new HttpEntity<String>(headers);
 
         String url = "http://localhost:" + randomServerPort + "/actuator/health/readiness";
 
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+
+        waitForHealth();
+        response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+
     }
 
 }

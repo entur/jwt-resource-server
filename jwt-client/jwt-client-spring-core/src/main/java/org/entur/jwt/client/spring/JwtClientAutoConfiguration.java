@@ -22,9 +22,7 @@ import org.springframework.lang.Nullable;
 
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 public class JwtClientAutoConfiguration {
@@ -148,11 +146,7 @@ public class JwtClientAutoConfiguration {
             log.info("Add health-indicator for {}/{} access-token provider(s) {}", statusProviders.size(), providers.size(), statusProviders.stream().collect(Collectors.joining("', '", "'", "'")));
         }
 
-        ThreadPoolExecutor executor = new ThreadPoolExecutor(0, Integer.MAX_VALUE,
-                60L, TimeUnit.SECONDS,
-                new SynchronousQueue<>());
-
-        AccessTokenProviderHealthIndicator list = new AccessTokenProviderHealthIndicator(executor, "List");
+        AccessTokenProviderHealthIndicator list = new AccessTokenProviderHealthIndicator(Executors.newCachedThreadPool(), "List");
 
         for (String key : statusProviders) {
             AccessTokenProvider accessTokenProvider = providers.get(key);

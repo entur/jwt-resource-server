@@ -26,8 +26,6 @@ public class ActuatorTest {
 
     public void waitForHealth() throws Exception {
         // make sure health is ready before visiting
-        healthIndicator.getHealth(false);
-
         long deadline = System.currentTimeMillis() + 1000;
         while (System.currentTimeMillis() < deadline && !healthIndicator.isIdle()) {
             Thread.sleep(10);
@@ -36,6 +34,7 @@ public class ActuatorTest {
 
     @Test
     public void actuatorHealth() throws Exception {
+        given().port(port).log().all().when().get("/actuator/health/readiness").then().log().all().assertThat().statusCode(HttpStatus.SERVICE_UNAVAILABLE.value());
         waitForHealth();
 
         given().port(port).log().all().when().get("/actuator/health/readiness").then().log().all().assertThat().statusCode(HttpStatus.OK.value());

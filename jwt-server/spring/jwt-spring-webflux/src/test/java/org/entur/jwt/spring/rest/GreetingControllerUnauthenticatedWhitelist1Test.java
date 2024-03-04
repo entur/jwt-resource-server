@@ -57,6 +57,12 @@ public class GreetingControllerUnauthenticatedWhitelist1Test extends AbstractAct
 
     @Test
     public void testActuatorOnWhitelist() throws Exception {
+        webTestClient
+                .get()
+                .uri("/actuator/health")
+                .exchange()
+                .expectStatus().is5xxServerError();
+
         waitForHealth();
         webTestClient
             .get()

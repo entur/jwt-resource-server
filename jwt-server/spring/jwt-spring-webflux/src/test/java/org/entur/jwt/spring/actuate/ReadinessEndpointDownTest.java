@@ -60,12 +60,14 @@ public class ReadinessEndpointDownTest extends AbstractActuatorTest {
         
         assertTrue(jwkFile.renameTo(jwkRenameFile));
 
-        waitForHealth();
-
         ResponseEntity<String> down = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
         assertThat(down.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
-        
+        waitForHealth();
+
         assertTrue(jwkRenameFile.renameTo(jwkFile));
+
+        down = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        assertThat(down.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
 
         waitForHealth();
 
