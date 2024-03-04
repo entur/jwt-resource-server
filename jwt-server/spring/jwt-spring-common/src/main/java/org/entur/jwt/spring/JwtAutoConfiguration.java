@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 @Configuration
 @EnableConfigurationProperties({SecurityProperties.class})
@@ -35,15 +35,7 @@ public class JwtAutoConfiguration {
     @Bean(destroyMethod = "close", value = "jwks")
     @ConditionalOnEnabledHealthIndicator("jwks")
     public ListJwksHealthIndicator jwksHealthIndicator(SecurityProperties properties) {
-        JwtProperties jwtProperties = properties.getJwt();
-        JwkProperties jwk = jwtProperties.getJwk();
-
-        // TODO should also the number of active provides be taken into account? Don't want the
-        // health check http response to time out
-
-        long maxDelay = (jwk.getConnectTimeout() + jwk.getReadTimeout()) * 1000;
-
-        return new ListJwksHealthIndicator(maxDelay, Executors.newCachedThreadPool(), "List");
+        return new ListJwksHealthIndicator(Executors.newCachedThreadPool(), "List");
     }
 
     @Bean(destroyMethod = "close")

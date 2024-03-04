@@ -13,7 +13,7 @@ import org.springframework.boot.actuate.health.Health;
 
 public abstract class AbstractJwksHealthIndicator extends AbstractHealthIndicator {
 
-    protected static final Logger logger = LoggerFactory.getLogger(AbstractJwksHealthIndicator.class);
+    private static final Logger logger = LoggerFactory.getLogger(AbstractJwksHealthIndicator.class);
 
     private JwksHealth previousHealth;
 
@@ -64,5 +64,9 @@ public abstract class AbstractJwksHealthIndicator extends AbstractHealthIndicato
             }
         }
         this.previousHealth = health;
+    }
+
+    public String getName() {
+        return name;
     }
 }

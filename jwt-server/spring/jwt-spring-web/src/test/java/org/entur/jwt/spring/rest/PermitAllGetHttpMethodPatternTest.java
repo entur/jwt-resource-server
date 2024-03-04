@@ -1,6 +1,7 @@
 package org.entur.jwt.spring.rest;
 
 import org.entur.jwt.junit5.AuthorizationServer;
+import org.entur.jwt.spring.actuate.ListJwksHealthIndicator;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,6 +28,9 @@ public class PermitAllGetHttpMethodPatternTest {
     @Autowired
     private TestRestTemplate restTemplate;
 
+    @Autowired
+    private ListJwksHealthIndicator healthIndicator;
+
     @Test
     public void testUnprotectedResourceWithPathVariableOnWhitelist() {
         HttpHeaders headers = new HttpHeaders();
@@ -40,7 +44,15 @@ public class PermitAllGetHttpMethodPatternTest {
     }
 
     @Test
-    public void testActuatorOnWhitelist() {
+    public void testActuatorOnWhitelist() throws Exception {
+        // make sure health is ready before visiting
+        healthIndicator.getHealth(false);
+
+        long deadline = System.currentTimeMillis() + 1000;
+        while(System.currentTimeMillis() < deadline && !healthIndicator.isIdle()) {
+            Thread.sleep(10);
+        }
+
         HttpHeaders headers = new HttpHeaders();
         HttpEntity<String> entity = new HttpEntity<String>(headers);
 

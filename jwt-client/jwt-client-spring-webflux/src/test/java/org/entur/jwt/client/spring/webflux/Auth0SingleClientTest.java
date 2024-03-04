@@ -29,8 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @TestPropertySource(locations = "/application-auth0-single.properties")
 @DirtiesContext(classMode = ClassMode.BEFORE_EACH_TEST_METHOD)
-public class Auth0SingleClientTest {
-
+public class Auth0SingleClientTest extends AbstractActuatorTest {
 
     @LocalServerPort
     private int randomServerPort;
@@ -85,6 +84,10 @@ public class Auth0SingleClientTest {
         mockWebServer.enqueue(new MockResponse().setBody(asString(resource)));
 
         given().port(randomServerPort).log().all().when().get("/actuator/health/readiness").then().log().all().assertThat().statusCode(HttpStatus.SERVICE_UNAVAILABLE.value());
+        waitForHealth();
+        given().port(randomServerPort).log().all().when().get("/actuator/health/readiness").then().log().all().assertThat().statusCode(HttpStatus.SERVICE_UNAVAILABLE.value());
+        waitForHealth();
+
         given().port(randomServerPort).log().all().when().get("/actuator/health/readiness").then().log().all().assertThat().statusCode(HttpStatus.OK.value());
 
     }

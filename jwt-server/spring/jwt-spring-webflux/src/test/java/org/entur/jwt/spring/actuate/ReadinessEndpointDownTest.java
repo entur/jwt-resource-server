@@ -13,6 +13,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.TestPropertySource;
 
 import java.io.File;
 
@@ -29,7 +30,13 @@ import static org.junit.Assert.assertTrue;
 
 @AuthorizationServer("unreliable")
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-public class ReadinessEndpointDownTest {
+
+// speed up test
+@TestPropertySource(properties = {
+        "entur.jwt.jwk.rateLimit.enabled=false",
+})
+
+public class ReadinessEndpointDownTest extends AbstractActuatorTest {
 
     @LocalServerPort
     private int randomServerPort;
@@ -40,8 +47,9 @@ public class ReadinessEndpointDownTest {
     @Value("${entur.jwt.tenants.unreliable.jwk.location}")
     private String jwkLocation;
 
+
     @Test 
-    public void testReadinessDownWithTransistionToUp() {
+    public void testReadinessDownWithTransistionToUp() throws Exception {
         HttpHeaders headers = new HttpHeaders();
         HttpEntity<String> entity = new HttpEntity<String>(headers);
 
@@ -51,12 +59,18 @@ public class ReadinessEndpointDownTest {
         File jwkRenameFile = new File(jwkFile.getParentFile(), jwkFile.getName() + ".renamed");
         
         assertTrue(jwkFile.renameTo(jwkRenameFile));
-        
+
         ResponseEntity<String> down = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
         assertThat(down.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
-        
+        waitForHealth();
+
         assertTrue(jwkRenameFile.renameTo(jwkFile));
-        
+
+        down = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        assertThat(down.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+
+        waitForHealth();
+
         ResponseEntity<String> up = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
         assertThat(up.getStatusCode()).isEqualTo(HttpStatus.OK);
     }

@@ -14,7 +14,6 @@ import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.boot.actuate.autoconfigure.health.ConditionalOnEnabledHealthIndicator;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Bean;
@@ -23,6 +22,7 @@ import org.springframework.lang.Nullable;
 
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 public class JwtClientAutoConfiguration {
@@ -128,7 +128,7 @@ public class JwtClientAutoConfiguration {
     @Bean
     @ConditionalOnEnabledHealthIndicator("jwts")
     public AccessTokenProviderHealthIndicator jwtsHealthIndicator(Map<String, AccessTokenProvider> providers) {
-        // could verify that health is supported here, but that would interfere with
+        // could trigger health update here, but that would interfere with
         // mocking / testing.
         List<String> statusProviders = new ArrayList<>();
         for (Entry<String, AccessTokenProvider> entry : providers.entrySet()) {
@@ -146,7 +146,15 @@ public class JwtClientAutoConfiguration {
             log.info("Add health-indicator for {}/{} access-token provider(s) {}", statusProviders.size(), providers.size(), statusProviders.stream().collect(Collectors.joining("', '", "'", "'")));
         }
 
-        return new AccessTokenProviderHealthIndicator(statusProviders.stream().map(key -> providers.get(key)).collect(Collectors.toList()));
+        AccessTokenProviderHealthIndicator list = new AccessTokenProviderHealthIndicator(Executors.newCachedThreadPool(), "List");
+
+        for (String key : statusProviders) {
+            AccessTokenProvider accessTokenProvider = providers.get(key);
+
+            list.addHealthIndicators(key, accessTokenProvider);
+        }
+
+        return list;
     }
 
     @Bean

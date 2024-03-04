@@ -1,6 +1,7 @@
 package org.entur.jwt.spring.rest;
 
 import org.entur.jwt.junit5.AuthorizationServer;
+import org.entur.jwt.spring.actuate.AbstractActuatorTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,7 +24,7 @@ import java.time.Duration;
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @TestPropertySource(properties = {"entur.authorization.permit-all.matcher.patterns=/actuator/health,/unprotected/**"})
-public class GreetingControllerUnauthenticatedWhitelist1Test {
+public class GreetingControllerUnauthenticatedWhitelist1Test extends AbstractActuatorTest {
 
     @Autowired
     private WebTestClient webTestClient;
@@ -55,7 +56,14 @@ public class GreetingControllerUnauthenticatedWhitelist1Test {
     }
 
     @Test
-    public void testActuatorOnWhitelist() {
+    public void testActuatorOnWhitelist() throws Exception {
+        webTestClient
+                .get()
+                .uri("/actuator/health")
+                .exchange()
+                .expectStatus().is5xxServerError();
+
+        waitForHealth();
         webTestClient
             .get()
             .uri("/actuator/health")

@@ -24,6 +24,7 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
+import java.util.concurrent.*;
 
 import static com.google.common.truth.Truth.assertThat;
 import static io.restassured.RestAssured.given;
@@ -35,7 +36,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @TestPropertySource(locations = "/application-auth0-multiple.properties")
 @DirtiesContext(classMode = ClassMode.BEFORE_EACH_TEST_METHOD)
-public class Auth0MultipleClientsTest {
+public class Auth0MultipleClientsTest extends AbstractActuatorTest {
 
     private MockRestServiceServer mockServer;
 
@@ -98,6 +99,11 @@ public class Auth0MultipleClientsTest {
     
     @Test
     public void testActuator() throws Exception {
+
+        // set the executor or requests will not arrive in the arranged order
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        healthIndicator.setExecutor(executor);
+
         // down (twice for retry)
         mockServer.expect(ExpectedCount.twice(), requestTo(new URI("https://first.entur.org/oauth/token"))).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.NOT_FOUND));
         mockServer.expect(ExpectedCount.twice(), requestTo(new URI("https://second.entur.org/oauth/token"))).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.NOT_FOUND));
@@ -105,9 +111,12 @@ public class Auth0MultipleClientsTest {
         // up
         mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://first.entur.org/oauth/token"))).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).body(resource2));
         mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://second.entur.org/oauth/token"))).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).body(resource1));
-        
+
         given().port(randomServerPort).log().all().when().get("/actuator/health/readiness").then().log().all().assertThat().statusCode(HttpStatus.SERVICE_UNAVAILABLE.value());
+        waitForHealth();
+        given().port(randomServerPort).log().all().when().get("/actuator/health/readiness").then().log().all().assertThat().statusCode(HttpStatus.SERVICE_UNAVAILABLE.value());
+        waitForHealth();
+
         given().port(randomServerPort).log().all().when().get("/actuator/health/readiness").then().log().all().assertThat().statusCode(HttpStatus.OK.value());
-        
-    }     
+    }
 }

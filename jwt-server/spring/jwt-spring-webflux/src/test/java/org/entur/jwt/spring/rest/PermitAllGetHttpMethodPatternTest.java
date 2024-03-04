@@ -2,6 +2,7 @@ package org.entur.jwt.spring.rest;
 
 
 import org.entur.jwt.junit5.AuthorizationServer;
+import org.entur.jwt.spring.actuate.AbstractActuatorTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,7 +14,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 @AuthorizationServer
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @TestPropertySource(properties = {"entur.authorization.permit-all.matcher.method.get.patterns=/actuator/**,/unprotected/path/{pathVariable}"})
-public class PermitAllGetHttpMethodPatternTest {
+public class PermitAllGetHttpMethodPatternTest extends AbstractActuatorTest {
 
     @Autowired
     private WebTestClient webTestClient;
@@ -28,7 +29,15 @@ public class PermitAllGetHttpMethodPatternTest {
     }
 
     @Test
-    public void testActuatorOnWhitelist() {
+    public void testActuatorOnWhitelist() throws Exception {
+        webTestClient
+                .get()
+                .uri("/actuator/health")
+                .exchange()
+                .expectStatus().is5xxServerError();
+
+        waitForHealth();
+
         webTestClient
             .get()
             .uri("/actuator/health")

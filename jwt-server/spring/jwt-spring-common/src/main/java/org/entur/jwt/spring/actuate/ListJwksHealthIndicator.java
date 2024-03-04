@@ -5,25 +5,22 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorCompletionService;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
+import java.util.Map;
+import java.util.concurrent.*;
 
 public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator implements Closeable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ListJwksHealthIndicator.class);
 
-    private final long maxDelay;
-
     private final ExecutorService executorService;
     private List<DefaultJwksHealthIndicator> healthIndicators = new ArrayList<>();
 
-    public ListJwksHealthIndicator(long maxDelay, ExecutorService executorService, String name) {
+    private CountDownLatch countDownLatch = new CountDownLatch(0);
+
+    public ListJwksHealthIndicator(ExecutorService executorService, String name) {
         super(name);
-        this.maxDelay = maxDelay;
         this.executorService = executorService;
     }
 
@@ -43,9 +40,12 @@ public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator impleme
         long time = System.currentTimeMillis();
 
         List<DefaultJwksHealthIndicator> unhealthy = new ArrayList<>(healthIndicators.size());
+        List<DefaultJwksHealthIndicator> healthy = new ArrayList<>(healthIndicators.size());
 
         for (DefaultJwksHealthIndicator healthIndicator : healthIndicators) {
-            if(!healthIndicator.isJwksHealtyReport()) {
+            if(healthIndicator.isJwksHealtyReport()) {
+                healthy.add(healthIndicator);
+            } else {
                 unhealthy.add(healthIndicator);
             }
         }
@@ -54,85 +54,74 @@ public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator impleme
             return new JwksHealth(time, true);
         }
 
-        if(unhealthy.size() == 1) {
-            DefaultJwksHealthIndicator indicator = unhealthy.get(0);
-
-            // so either not status or bad status
-            // attempt to refresh the cache
-            if(indicator.refreshJwksHealth(time)) {
-                return new JwksHealth(time, true);
+        // attempt to recover the unhealthy status in the background, but only if work is not already in progress
+        synchronized (this) {
+            if(isIdle()) {
+                refreshHealth(healthy, unhealthy, time);
+            } else {
+                LOGGER.info("Previous health refresh is still in progress ({} outstanding)", countDownLatch.getCount());
             }
-            return new JwksHealth(time, false);
         }
 
-        // refresh multiple sources, wrap in completion service to visit them all in parallel
-        ExecutorCompletionService completionService = new ExecutorCompletionService(executorService);
+        return new JwksHealth(time, false);
+    }
 
-        List<Future<Boolean>> workerList = new ArrayList<>(unhealthy.size());
+    private void refreshHealth(List<DefaultJwksHealthIndicator> healthy, List<DefaultJwksHealthIndicator> unhealthy, long time) {
+        countDownLatch = new CountDownLatch(unhealthy.size());
 
-        for (DefaultJwksHealthIndicator unhealthyJwksHealthIndicator : unhealthy) {
-            Future<Boolean> future = completionService.submit(() -> {
+        if(healthIndicators.size() > 1) {
+            // print summary
+            StringBuilder builder = new StringBuilder();
+            builder.append("Refreshing ");
+            builder.append(unhealthy.size());
+            builder.append(" unhealthy JWKs sources (");
+            for (DefaultJwksHealthIndicator defaultJwksHealthIndicator : unhealthy) {
+                builder.append(defaultJwksHealthIndicator.getName());
+                builder.append(", ");
+            }
+            builder.setLength(builder.length() - 2);
+            builder.append(") in the background.");
+            if (!healthy.isEmpty()) {
+                builder.append(" The other ");
+                builder.append(healthy.size());
+                builder.append(" JWKs sources (");
+                for (DefaultJwksHealthIndicator defaultJwksHealthIndicator : healthy) {
+                    builder.append(defaultJwksHealthIndicator.getName());
+                    builder.append(", ");
+                }
+                builder.setLength(builder.length() - 2);
+                builder.append(") are healthy.");
+            }
+
+            LOGGER.info(builder.toString());
+        }
+        for (DefaultJwksHealthIndicator indicator : unhealthy) {
+            executorService.submit(() -> {
                 try {
-                    return unhealthyJwksHealthIndicator.refreshJwksHealth(time);
-                } catch(Exception e) {
-                    LOGGER.warn("Problem getting JWKs health", e);
-
-                    return false;
+                    refresh(indicator, time);
+                } finally {
+                    countDownLatch.countDown();
                 }
             });
-
-            workerList.add(future);
         }
+    }
 
-        Future<?> timeout = executorService.submit(() -> {
-            try {
-                Thread.sleep(maxDelay);
+    private static boolean refresh(DefaultJwksHealthIndicator indicator, long time) {
+        // attempt to refresh the cache
+        if(indicator.refreshJwksHealth(time)) {
+            LOGGER.info("{} JWKs is now healthy (in {}ms)", indicator.getName(), System.currentTimeMillis() - time);
 
-                LOGGER.warn("Timeout collecting " + workerList.size() + " JWKs health after" + maxDelay + "ms");
+            return true;
+        } else {
+            LOGGER.info("{} JWKs remains unhealthy (in {}ms)", indicator.getName(), System.currentTimeMillis() - time);
 
-                for (Future<Boolean> worker : workerList) {
-                    worker.cancel(true);
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            } catch (Throwable e) {
-                // ignore
-            }
-        });
+            return false;
+        }
+    }
 
-        try {
-            // get the results as they come in
-            for (int i = 0; i < workerList.size(); i++) {
-                // if one fails, status is bad
-                // TODO add some kind of health policy
-                try {
-                    Future<Boolean> take = completionService.take();
-
-                    Boolean status = take.get();
-                    if (status != null && status) {
-                        continue;
-                    }
-                } catch(CancellationException e) {
-                    // ignore but return false
-                } catch (InterruptedException e) {
-                    // ignore but return false
-                    Thread.currentThread().interrupt();
-                } catch (ExecutionException e) {
-                    // this should not happen as the jobs are wrapped in try - catch
-                    LOGGER.warn("Problem getting health info", e);
-                } catch (Exception e) {
-                    // ignore
-                    LOGGER.info("Problem getting health info", e);
-                }
-                return new JwksHealth(time, false);
-            }
-            return new JwksHealth(time, true);
-        } finally {
-            timeout.cancel(true);
-
-            for (Future worker : workerList) {
-                worker.cancel(true);
-            }
+    public boolean isIdle() {
+        synchronized (this) {
+            return countDownLatch.getCount() == 0L;
         }
     }
 

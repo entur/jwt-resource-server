@@ -1,15 +1,16 @@
 package org.entur.jwt.client.spring.actuate;
 
 import org.entur.jwt.client.AccessTokenHealth;
-import org.entur.jwt.client.AccessTokenHealthNotSupportedException;
 import org.entur.jwt.client.AccessTokenHealthProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.actuate.health.AbstractHealthIndicator;
-import org.springframework.boot.actuate.health.Health;
 
+import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * 
@@ -19,97 +20,166 @@ import java.util.List;
  * 
  */
 
-public class AccessTokenProviderHealthIndicator extends AbstractHealthIndicator {
+public class AccessTokenProviderHealthIndicator extends AbstractJwtHealthIndicator implements Closeable {
 
-    protected static final Logger logger = LoggerFactory.getLogger(AccessTokenProviderHealthIndicator.class);
+    protected static final Logger LOGGER = LoggerFactory.getLogger(AccessTokenProviderHealthIndicator.class);
 
-    private final AccessTokenHealthProvider[] providers;
-    
-    private Boolean previousHealthSuccess;
+    private static class JwtHealthIndicator {
 
-    public AccessTokenProviderHealthIndicator(AccessTokenHealthProvider[] statusProviders) {
-        super();
-        this.providers = statusProviders;
+        private final AccessTokenHealthProvider provider;
+        private final String name;
+
+        public JwtHealthIndicator(String name, AccessTokenHealthProvider provider) {
+            this.name = name;
+            this.provider = provider;
+        }
+
+        public AccessTokenHealth refreshHealth() {
+            long time = System.currentTimeMillis();
+
+            try {
+                // note: the cache will refresh if an existing value is expired or bad
+                return provider.getHealth(true);
+            } catch (Exception e) {
+                LOGGER.warn("Unable to refresh " + name + " JWT health status", e);
+                return new AccessTokenHealth(time, false);
+            }
+        }
+
+        public boolean isHealthy() {
+            // do not refresh health, get whatever it is currently
+            try {
+                AccessTokenHealth health = provider.getHealth(false);
+
+                return health != null && health.isSuccess();
+            } catch (Exception e) {
+                // should never happen
+                LOGGER.warn("Unable to get " + name + " JWT health status", e);
+                return false;
+            }
+        }
+
+        public String getName() {
+            return name;
+        }
     }
 
-    public AccessTokenProviderHealthIndicator(List<AccessTokenHealthProvider> statusProviders) {
-        this(statusProviders.toArray(new AccessTokenHealthProvider[statusProviders.size()]));
+
+    private ExecutorService executor;
+    private List<JwtHealthIndicator> healthIndicators = new ArrayList<>();
+
+    private volatile CountDownLatch countDownLatch = new CountDownLatch(0);
+
+    public AccessTokenProviderHealthIndicator(ExecutorService executor, String name) {
+        super(name);
+        this.executor = executor;
+    }
+
+    public void addHealthIndicators(String name, AccessTokenHealthProvider provider) {
+        this.healthIndicators.add(new JwtHealthIndicator(name, provider));
     }
 
     @Override
-    protected void doHealthCheck(Health.Builder builder) throws Exception {
-        if(providers.length > 0) {
-            try {
-                // iterate over clients, and record the min / max timestamps.
-                boolean success = true;
-                long mostRecentTimestamp = Long.MIN_VALUE;
-                long leastRecentTimestamp = Long.MAX_VALUE;
-    
-                List<AccessTokenHealth> accessTokenHealths = new ArrayList<>(providers.length);
-                for(AccessTokenHealthProvider provider : providers) {
-                    AccessTokenHealth status = provider.getHealth(true);
-                    if(status != null) {
-                        accessTokenHealths.add(status);
-                    }
-                }
-    
-                if(!accessTokenHealths.isEmpty()) {
-                    for (AccessTokenHealth status : accessTokenHealths) {
-                        if (!status.isSuccess()) {
-                            success = false;
-                        }
-                        
-                        if(mostRecentTimestamp < status.getTimestamp()) {
-                            mostRecentTimestamp = status.getTimestamp();
-                        }
-                        if(leastRecentTimestamp > status.getTimestamp()) {
-                            leastRecentTimestamp = status.getTimestamp();
-                        }
-                    }
-                
-                    long time = System.currentTimeMillis();
-                    if(mostRecentTimestamp != Long.MIN_VALUE) {
-                        builder.withDetail("youngestTimestamp", (time - mostRecentTimestamp) / 1000);
-                    } 
-                    if(leastRecentTimestamp != Long.MAX_VALUE) {
-                        builder.withDetail("oldestTimestamp", (time - leastRecentTimestamp) / 1000);
-                    }
-                    
-                    logInitialOrChangedState(success);
-                    
-                    if (success) {
-                        builder.up();
-                    } else {
-                        builder.down();
-                    }
-                } else {
-                    // should never happen
-                    builder.unknown();
-                }
-            } catch (AccessTokenHealthNotSupportedException e) {
-                logger.error("Health checks are unexpectedly not supported", e);
-    
-                builder.unknown();
-            }
-        }
+    public void close() {
+        this.executor.shutdown();
     }
 
-    protected void logInitialOrChangedState(boolean success) {
-        Boolean previousSuccess = this.previousHealthSuccess; // defensive copy
-        if(previousSuccess != null) {
-            if(!previousSuccess && success) {
-                logger.info("Access-token-provider health transitioned to UP");
-            } else if(previousSuccess && !success) {
-                logger.warn("Access-token-provider health transitioned to DOWN");
-            }
-        } else {
-            if(!success) {
-                logger.warn("Access-token-provider health initialized to DOWN");
+    @Override
+    protected AccessTokenHealth refreshHealth() {
+        long time = System.currentTimeMillis();
+
+        List<JwtHealthIndicator> unhealthy = new ArrayList<>(healthIndicators.size());
+        List<JwtHealthIndicator> healthy = new ArrayList<>(healthIndicators.size());
+
+        for (JwtHealthIndicator healthIndicator : healthIndicators) {
+            if(healthIndicator.isHealthy()) {
+                healthy.add(healthIndicator);
             } else {
-                logger.info("Access-token-provider health initialized to UP");
+                unhealthy.add(healthIndicator);
             }
         }
-        this.previousHealthSuccess = success;
+
+        if(unhealthy.isEmpty()) {
+            return new AccessTokenHealth(time, true);
+        }
+
+        // attempt to recover the unhealthy status in the background, but only if work is not already in progress
+        synchronized (this) {
+            if(isIdle()) {
+                refreshHealth(healthy, unhealthy, time);
+            } else {
+                LOGGER.info("Previous health refresh is still in progress ({} outstanding)", countDownLatch.getCount());
+            }
+        }
+
+        return new AccessTokenHealth(time, false);
     }
 
+    private void refreshHealth(List<JwtHealthIndicator> healthy, List<JwtHealthIndicator> unhealthy, long time) {
+        countDownLatch = new CountDownLatch(unhealthy.size());
+
+        if(healthIndicators.size() > 1) {
+            // print summary
+            StringBuilder builder = new StringBuilder();
+            builder.append("Refreshing ");
+            builder.append(unhealthy.size());
+            builder.append(" unhealthy JWT sources (");
+            for (JwtHealthIndicator defaultJwksHealthIndicator : unhealthy) {
+                builder.append(defaultJwksHealthIndicator.getName());
+                builder.append(", ");
+            }
+            builder.setLength(builder.length() - 2);
+            builder.append(") in the background.");
+            if (!healthy.isEmpty()) {
+                builder.append(" The other ");
+                builder.append(healthy.size());
+                builder.append(" JWT sources (");
+                for (JwtHealthIndicator defaultJwksHealthIndicator : healthy) {
+                    builder.append(defaultJwksHealthIndicator.getName());
+                    builder.append(", ");
+                }
+                builder.setLength(builder.length() - 2);
+                builder.append(") are healthy.");
+            }
+
+            LOGGER.info(builder.toString());
+        }
+        for (JwtHealthIndicator indicator : unhealthy) {
+            executor.submit(() -> {
+                try {
+                    refresh(indicator, time);
+                } finally {
+                    countDownLatch.countDown();
+                }
+            });
+        }
+    }
+
+    private static boolean refresh(JwtHealthIndicator indicator, long time) {
+        // so either no status or bad status
+        // attempt to refresh the cache
+        LOGGER.info("Refresh {} JWT health", indicator.getName());
+
+        AccessTokenHealth health = indicator.refreshHealth();
+        if(health != null && health.isSuccess()) {
+            LOGGER.info("{} JWT is now healthy (in {}ms)", indicator.getName(), System.currentTimeMillis() - time);
+
+            return true;
+        } else {
+            LOGGER.info("{} JWT remains unhealthy (in {}ms)", indicator.getName(), System.currentTimeMillis() - time);
+
+            return false;
+        }
+    }
+
+    public boolean isIdle() {
+        synchronized (this) {
+            return countDownLatch.getCount() == 0L;
+        }
+    }
+
+    // for testing
+    public void setExecutor(ExecutorService executor) {
+        this.executor = executor;
+    }
 }

@@ -1,6 +1,7 @@
 package org.entur.jwt.spring.rest;
 
 import org.entur.jwt.junit5.AuthorizationServer;
+import org.entur.jwt.spring.actuate.AbstractActuatorTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @TestPropertySource(properties = {"entur.authorization.permit-all.matcher.patterns=/actuator/health,/unprotected/**"})
-public class GreetingControllerUnauthenticatedWhitelist1Test {
+public class GreetingControllerUnauthenticatedWhitelist1Test extends AbstractActuatorTest {
 
     @LocalServerPort
     private int randomServerPort;
@@ -59,14 +60,17 @@ public class GreetingControllerUnauthenticatedWhitelist1Test {
     }
 
     @Test
-    public void testActuatorOnWhitelist() {
+    public void testActuatorOnWhitelist() throws Exception {
         HttpHeaders headers = new HttpHeaders();
         HttpEntity<String> entity = new HttpEntity<String>(headers);
 
         String url = "http://localhost:" + randomServerPort + "/actuator/health";
 
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        assertTrue(response.getStatusCode().is5xxServerError());
+        waitForHealth();
 
+        response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
         assertTrue(response.getStatusCode().is2xxSuccessful());
     }   
 }
