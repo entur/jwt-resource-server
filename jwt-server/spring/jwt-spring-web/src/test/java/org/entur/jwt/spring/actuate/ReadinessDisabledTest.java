@@ -9,7 +9,6 @@ import org.springframework.test.context.TestPropertySource;
 @AuthorizationServer("unreliable")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(properties = {
-        "entur.jwt.jwk.health-indicator.enabled=false",
         "management.endpoint.health.group.readiness.include=readinessState"
 })
 public class ReadinessDisabledTest {

@@ -14,10 +14,12 @@ public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator impleme
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ListJwksHealthIndicator.class);
 
-    private final ThreadPoolExecutor executorService;
+    private final ExecutorService executorService;
     private List<DefaultJwksHealthIndicator> healthIndicators = new ArrayList<>();
 
-    public ListJwksHealthIndicator(ThreadPoolExecutor executorService, String name) {
+    private CountDownLatch countDownLatch = new CountDownLatch(0);
+
+    public ListJwksHealthIndicator(ExecutorService executorService, String name) {
         super(name);
         this.executorService = executorService;
     }
@@ -53,14 +55,20 @@ public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator impleme
         }
 
         // attempt to recover the unhealthy status in the background, but only if work is not already in progress
-        if(executorService.getActiveCount() == 0 && executorService.getQueue().size() == 0) {
-            refreshHealth(healthy, unhealthy, time);
+        synchronized (this) {
+            if(isIdle()) {
+                refreshHealth(healthy, unhealthy, time);
+            } else {
+                LOGGER.info("Previous health refresh is still in progress ({} outstanding)", countDownLatch.getCount());
+            }
         }
 
         return new JwksHealth(time, false);
     }
 
     private void refreshHealth(List<DefaultJwksHealthIndicator> healthy, List<DefaultJwksHealthIndicator> unhealthy, long time) {
+        countDownLatch = new CountDownLatch(unhealthy.size());
+
         if(healthIndicators.size() > 1) {
             // print summary
             StringBuilder builder = new StringBuilder();
@@ -89,19 +97,16 @@ public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator impleme
         }
         for (DefaultJwksHealthIndicator indicator : unhealthy) {
             executorService.submit(() -> {
-                refresh(indicator, time);
+                try {
+                    refresh(indicator, time);
+                } finally {
+                    countDownLatch.countDown();
+                }
             });
         }
     }
 
     private static boolean refresh(DefaultJwksHealthIndicator indicator, long time) {
-
-        boolean previousReport = indicator.isHealthReport();
-        if(previousReport) {
-            LOGGER.info("Attempt to recover health for {} JWKs..", indicator.getName());
-        }
-
-        // so either not status or bad status
         // attempt to refresh the cache
         if(indicator.refreshJwksHealth(time)) {
             LOGGER.info("{} JWKs is now healthy (in {}ms)", indicator.getName(), System.currentTimeMillis() - time);
@@ -111,6 +116,12 @@ public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator impleme
             LOGGER.info("{} JWKs remains unhealthy (in {}ms)", indicator.getName(), System.currentTimeMillis() - time);
 
             return false;
+        }
+    }
+
+    public boolean isIdle() {
+        synchronized (this) {
+            return countDownLatch.getCount() == 0L;
         }
     }
 

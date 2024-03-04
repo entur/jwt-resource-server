@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @AuthorizationServer
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-public class ReadinessEndpointUpTest {
+public class ReadinessEndpointUpTest extends AbstractActuatorTest {
 
     @LocalServerPort
     private int randomServerPort;
@@ -31,9 +31,12 @@ public class ReadinessEndpointUpTest {
     @Autowired
     private TestRestTemplate restTemplate;
 
-
+    @Autowired
+    private ListJwksHealthIndicator healthIndicator;
     @Test
-    public void testReadiness() {
+    public void testReadiness() throws Exception {
+        waitForHealth();
+
         HttpHeaders headers = new HttpHeaders();
         HttpEntity<String> entity = new HttpEntity<String>(headers);
 

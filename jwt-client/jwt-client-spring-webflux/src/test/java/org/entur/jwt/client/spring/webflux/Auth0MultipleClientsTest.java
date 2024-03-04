@@ -21,6 +21,8 @@ import org.springframework.test.annotation.DirtiesContext.ClassMode;
 import org.springframework.test.context.TestPropertySource;
 
 import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static com.google.common.truth.Truth.assertThat;
 import static io.restassured.RestAssured.given;
@@ -30,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @TestPropertySource(locations = "/application-auth0-multiple.properties")
 @DirtiesContext(classMode = ClassMode.BEFORE_EACH_TEST_METHOD)
-public class Auth0MultipleClientsTest {
+public class Auth0MultipleClientsTest extends AbstractActuatorTest {
 
     @LocalServerPort
     private int randomServerPort;
@@ -92,6 +94,10 @@ public class Auth0MultipleClientsTest {
 
     @Test
     public void testActuator() throws Exception {
+        // set the executor or requests will not arrive in the arranged order
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        healthIndicator.setExecutor(executor);
+
         // down
         mockWebServer.enqueue(new MockResponse().setResponseCode(HttpStatus.NOT_FOUND.value()));
         mockWebServer.enqueue(new MockResponse().setResponseCode(HttpStatus.NOT_FOUND.value()));
@@ -101,6 +107,9 @@ public class Auth0MultipleClientsTest {
         mockWebServer.enqueue(new MockResponse().setBody(asString(resource2)));
 
         given().port(randomServerPort).log().all().when().get("/actuator/health/readiness").then().log().all().assertThat().statusCode(HttpStatus.SERVICE_UNAVAILABLE.value());
+        waitForHealth();
+        given().port(randomServerPort).log().all().when().get("/actuator/health/readiness").then().log().all().assertThat().statusCode(HttpStatus.SERVICE_UNAVAILABLE.value());
+        waitForHealth();
         given().port(randomServerPort).log().all().when().get("/actuator/health/readiness").then().log().all().assertThat().statusCode(HttpStatus.OK.value());
 
     }
