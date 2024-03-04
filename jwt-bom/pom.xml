@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.entur.jwt-rs</groupId>
 		<artifactId>parent</artifactId>
-		<version>4.2.0</version>
+		<version>4.2.1-SNAPSHOT</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 	<artifactId>jwt-bom</artifactId>
@@ -17,37 +17,37 @@
 			<dependency>
 				<groupId>org.entur.jwt-rs</groupId>
 				<artifactId>jwt-junit5-core</artifactId>
-				<version>4.2.0</version>
+				<version>4.2.1-SNAPSHOT</version>
 			</dependency>
 			<dependency>
 				<groupId>org.entur.jwt-rs</groupId>
 				<artifactId>jwt-junit5-entur</artifactId>
-				<version>4.2.0</version>
+				<version>4.2.1-SNAPSHOT</version>
 			</dependency>
 			<dependency>
 				<groupId>org.entur.jwt-rs</groupId>
 				<artifactId>jwt-junit5-spring</artifactId>
-				<version>4.2.0</version>
+				<version>4.2.1-SNAPSHOT</version>
 			</dependency>
 			<dependency>
 				<groupId>org.entur.jwt-rs</groupId>
 				<artifactId>jwt-client-core</artifactId>
-				<version>4.2.0</version>
+				<version>4.2.1-SNAPSHOT</version>
 			</dependency>
 			<dependency>
 				<groupId>org.entur.jwt-rs</groupId>
 				<artifactId>jwt-client-spring-core</artifactId>
-				<version>4.2.0</version>
+				<version>4.2.1-SNAPSHOT</version>
 			</dependency>
 			<dependency>
 				<groupId>org.entur.jwt-rs</groupId>
 				<artifactId>jwt-client-spring</artifactId>
-				<version>4.2.0</version>
+				<version>4.2.1-SNAPSHOT</version>
 			</dependency>
 			<dependency>
 				<groupId>org.entur.jwt-rs</groupId>
 				<artifactId>jwt-client-spring-webflux</artifactId>
-				<version>4.2.0</version>
+				<version>4.2.1-SNAPSHOT</version>
 			</dependency>
 			<dependency>
 				<groupId>org.entur.jwt-rs</groupId>
@@ -57,22 +57,22 @@
 			<dependency>
 				<groupId>org.entur.jwt-rs</groupId>
 				<artifactId>jwt-spring-common</artifactId>
-				<version>4.2.0</version>
+				<version>4.2.1-SNAPSHOT</version>
 			</dependency>
 			<dependency>
 				<groupId>org.entur.jwt-rs</groupId>
 				<artifactId>jwt-spring-web</artifactId>
-				<version>4.2.0</version>
+				<version>4.2.1-SNAPSHOT</version>
 			</dependency>
 			<dependency>
 				<groupId>org.entur.jwt-rs</groupId>
 				<artifactId>jwt-spring-webflux</artifactId>
-				<version>4.2.0</version>
+				<version>4.2.1-SNAPSHOT</version>
 			</dependency>
 			<dependency>
 				<groupId>org.entur.jwt-rs</groupId>
 				<artifactId>jwt-spring-grpc</artifactId>
-				<version>4.2.0</version>
+				<version>4.2.1-SNAPSHOT</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
