@@ -1,3 +1,6 @@
+![Build Status](https://github.com/entur/jwt-resource-server/actions/workflows/maven.yml/badge.svg) 
+[![Maven Central](https://img.shields.io/maven-central/v/org.entur.jwt-rs/parent.svg)](https://mvnrepository.com/artifact/org.entur.jwt-rs)
+
 # jwt-resource-server
 
 Tools for synchronous (servlet-based) __OpenID resource servers__ relying on use of [Access Tokens]([https://auth0.com/docs/tokens/access-tokens](https://auth0.com/docs/tokens/access-tokens)) for authorization. These come in the form of JSON Web Tokens (JWT) issued by Authorization Servers like Auth0 and Keycloak. Authorization Servers __sign JWTs__ with private keys, resource servers then download the corresponding public keys from the Authorization Servers and __validate the JWTs__ by verifying the signature.
