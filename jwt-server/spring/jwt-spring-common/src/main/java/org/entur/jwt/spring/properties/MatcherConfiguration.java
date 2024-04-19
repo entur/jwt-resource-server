@@ -11,6 +11,8 @@ public class MatcherConfiguration {
 
     private List<String> patterns = new ArrayList<>();
 
+    private String type = "default";
+
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
     }
@@ -46,5 +48,12 @@ public class MatcherConfiguration {
     public boolean hasPatterns() {
         return !patterns.isEmpty();
     }
-    
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public String getType() {
+        return type;
+    }
 }
