@@ -11,8 +11,11 @@ public class HttpMethodMatcher {
 
     private List<String> patterns = new ArrayList<>();
 
+    // default or ant. inherits from parent if not st
+    private String type;
+
     private final HttpMethod verb;
-    
+
     public HttpMethodMatcher(HttpMethod verb) {
         super();
         this.verb = verb;
@@ -46,4 +49,11 @@ public class HttpMethodMatcher {
         return patterns.toArray(new String[patterns.size()]);
     }
 
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
 }
