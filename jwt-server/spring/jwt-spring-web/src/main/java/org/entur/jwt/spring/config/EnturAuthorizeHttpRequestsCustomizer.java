@@ -52,7 +52,7 @@ public class EnturAuthorizeHttpRequestsCustomizer implements Customizer<Authoriz
             String type = matchers.getType();
 
             for(String pattern : patternsAsArray) {
-                if(type == null || type.equals("default")) {
+                if(type.equals("default")) {
                     registry.requestMatchers(pattern).permitAll();
                 } else if(type.equals("ant")) {
                     registry.requestMatchers(AntPathRequestMatcher.antMatcher(pattern)).permitAll();

@@ -11,7 +11,7 @@ public class HttpMethodMatcher {
 
     private List<String> patterns = new ArrayList<>();
 
-    // default or ant. inherits from parent if not st
+    // default or ant. inherits from parent if not set
     private String type;
 
     private final HttpMethod verb;
