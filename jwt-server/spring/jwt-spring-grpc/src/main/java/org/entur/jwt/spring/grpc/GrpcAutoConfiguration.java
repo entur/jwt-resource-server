@@ -250,7 +250,7 @@ public class GrpcAutoConfiguration {
             private static final org.slf4j.Logger log =
                     org.slf4j.LoggerFactory.getLogger(StatusErrorHandler.class);
 
-            public StatusErrorHandler(GrpcExceptionHandlers grpcExceptionHandlers) {
+            public StatusErrorHandler() {
                 super();
 
             }
@@ -283,7 +283,7 @@ public class GrpcAutoConfiguration {
                 super();
 
                 GrpcException grpcException = grpcExceptionHandlers.find(AccessDeniedException.class);
-                this.logger = new GrpcErrorLogger(DefaultAuthErrorHandlerConfiguration.class.getName(), grpcException.getLog().getLevel(), grpcException.getLog().isStackTrace());
+                this.logger = new GrpcErrorLogger(DefaultAccessDeniedErrorHandler.class.getName(), grpcException.getLog().getLevel(), grpcException.getLog().isStackTrace());
             }
 
             @GRpcExceptionHandler
