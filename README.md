@@ -54,6 +54,7 @@ See documentation contained in each folder to get started. Or skip right to the 
 [European Union Public Licence v1.2](https://eupl.eu/).
 
 # History
+ - 4.2.4: Change log level for permission denied and authorization exceptions to INFO. `StatusRuntimeException` with `INTERNAL` status logs as ERROR, otherwise INFO.
  - 4.2.3: Allow authorization matcher to specify `ant` type. 
  - 4.2.2: Bump dependencies
  - 4.2.0 to 4.2.1: Refresh health indicators in the background, add even more logging. 
