@@ -10,15 +10,15 @@ import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import org.entur.jwt.spring.*;
 import org.entur.jwt.spring.grpc.annotate.ConditionalOnMissingErrorHandlerForExactException;
+import org.entur.jwt.spring.grpc.properties.GrpcException;
+import org.entur.jwt.spring.grpc.properties.GrpcExceptionHandlers;
 import org.entur.jwt.spring.grpc.properties.GrpcPermitAll;
 import org.entur.jwt.spring.grpc.properties.GrpcServicesConfiguration;
 import org.entur.jwt.spring.grpc.properties.ServiceMatcherConfiguration;
 import org.entur.jwt.spring.properties.Auth0Flavour;
 import org.entur.jwt.spring.properties.Flavours;
 import org.entur.jwt.spring.properties.KeycloakFlavour;
-import org.lognet.springboot.grpc.GRpcErrorHandler;
 import org.lognet.springboot.grpc.autoconfigure.security.SecurityAutoConfiguration;
-import org.lognet.springboot.grpc.recovery.ErrorHandlerAdapter;
 import org.lognet.springboot.grpc.recovery.GRpcExceptionHandler;
 import org.lognet.springboot.grpc.recovery.GRpcExceptionScope;
 import org.lognet.springboot.grpc.recovery.GRpcServiceAdvice;
@@ -52,13 +52,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Configuration
-@EnableConfigurationProperties({GrpcPermitAll.class, Flavours.class})
+@EnableConfigurationProperties({GrpcPermitAll.class, Flavours.class, GrpcExceptionHandlers.class})
 @AutoConfigureAfter(value = {JwtAutoConfiguration.class})
 @AutoConfigureBefore(value = {org.lognet.springboot.grpc.autoconfigure.GRpcAutoConfiguration.class, SecurityAutoConfiguration.class})
 public class GrpcAutoConfiguration {
+
+    // TODO spring factory for all sort of exception handling logging
+    // currently we only support two types
 
     private static Logger log = LoggerFactory.getLogger(GrpcAutoConfiguration.class);
 
@@ -209,9 +211,15 @@ public class GrpcAutoConfiguration {
     static class DefaultAuthErrorHandlerConfiguration {
 
         @GRpcServiceAdvice
-        public static class DefaultAuthErrorHandler extends ErrorHandlerAdapter {
-            public DefaultAuthErrorHandler(Optional<GRpcErrorHandler> errorHandler) {
-                super(errorHandler);
+        public static class DefaultAuthErrorHandler {
+
+            private GrpcErrorLogger logger;
+
+            public DefaultAuthErrorHandler(GrpcExceptionHandlers grpcExceptionHandlers) {
+                super();
+
+                GrpcException grpcException = grpcExceptionHandlers.find(AuthenticationException.class);
+                this.logger = new GrpcErrorLogger(DefaultAuthErrorHandler.class.getName(), grpcException.getLog().getLevel(), grpcException.getLog().isStackTrace());
             }
 
             @GRpcExceptionHandler
@@ -221,11 +229,15 @@ public class GrpcAutoConfiguration {
                     if (cause1 instanceof JwtException) {
                         Throwable cause2 = cause1.getCause();
                         if (cause2 instanceof KeySourceException) {
-                            return handle(e, Status.UNAVAILABLE, scope);
+                            logger.handle(e, Status.UNAVAILABLE, scope);
+
+                            return Status.UNAVAILABLE.withDescription(e.getMessage());
                         }
                     }
                 }
-                return handle(e, Status.UNAUTHENTICATED, scope);
+                logger.handle(e, Status.UNAUTHENTICATED, scope);
+
+                return Status.UNAUTHENTICATED.withDescription(e.getMessage());
             }
         }
     }
@@ -234,14 +246,26 @@ public class GrpcAutoConfiguration {
     @Configuration
     static class DefaultStatusErrorHandlerConfiguration {
         @GRpcServiceAdvice
-        public static class StatusErrorHandler extends ErrorHandlerAdapter {
-            public StatusErrorHandler(Optional<GRpcErrorHandler> errorHandler) {
-                super(errorHandler);
+        public static class StatusErrorHandler {
+            private static final org.slf4j.Logger log =
+                    org.slf4j.LoggerFactory.getLogger(StatusErrorHandler.class);
+
+            public StatusErrorHandler() {
+                super();
+
             }
 
             @GRpcExceptionHandler
             public Status handle(StatusRuntimeException e, GRpcExceptionScope scope) {
-                return handle(e, e.getStatus(), scope);
+
+                Status status = e.getStatus();
+                if(status == Status.INTERNAL) {
+                    log.error("Got error with status " + status.getCode().name(), e);
+                } else {
+                    log.info("Got error with status " + status.getCode().name(), e);
+                }
+
+                return status.withDescription(e.getMessage());
             }
         }
     }
@@ -251,18 +275,22 @@ public class GrpcAutoConfiguration {
     static class DefaultAccessDeniedErrorHandlerConfig {
 
         @GRpcServiceAdvice
-        public static class DefaultAccessDeniedErrorHandler extends ErrorHandlerAdapter {
-            @java.lang.SuppressWarnings("all")
-            private static final org.slf4j.Logger log =
-                    org.slf4j.LoggerFactory.getLogger(DefaultAccessDeniedErrorHandler.class);
+        public static class DefaultAccessDeniedErrorHandler {
 
-            public DefaultAccessDeniedErrorHandler(Optional<GRpcErrorHandler> errorHandler) {
-                super(errorHandler);
+            private GrpcErrorLogger logger;
+            @java.lang.SuppressWarnings("all")
+            public DefaultAccessDeniedErrorHandler(GrpcExceptionHandlers grpcExceptionHandlers) {
+                super();
+
+                GrpcException grpcException = grpcExceptionHandlers.find(AccessDeniedException.class);
+                this.logger = new GrpcErrorLogger(DefaultAccessDeniedErrorHandler.class.getName(), grpcException.getLog().getLevel(), grpcException.getLog().isStackTrace());
             }
 
             @GRpcExceptionHandler
             public Status handle(AccessDeniedException e, GRpcExceptionScope scope) {
-                return handle(e, Status.PERMISSION_DENIED, scope);
+                logger.handle(e, Status.PERMISSION_DENIED, scope);
+
+                return Status.PERMISSION_DENIED.withDescription(e.getMessage());
             }
         }
     }
