@@ -1,4 +1,3 @@
-![Build Status](https://github.com/entur/jwt-resource-server/actions/workflows/maven.yml/badge.svg) 
 [![Maven Central](https://img.shields.io/maven-central/v/org.entur.jwt-rs/parent.svg)](https://mvnrepository.com/artifact/org.entur.jwt-rs)
 
 # jwt-resource-server
