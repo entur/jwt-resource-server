@@ -53,6 +53,7 @@ See documentation contained in each folder to get started. Or skip right to the 
 [European Union Public Licence v1.2](https://eupl.eu/).
 
 # History
+ - 4.2.6: Adjust dependencies to better align with Spring Boot version
  - 4.2.5: Bump dependencies, now at Spring Boot 3.3. 
  - 4.2.4: Change log level for permission denied and authorization exceptions to INFO. `StatusRuntimeException` with `INTERNAL` status logs as ERROR, otherwise INFO.
  - 4.2.3: Allow authorization matcher to specify `ant` type. 
