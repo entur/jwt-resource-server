@@ -83,4 +83,6 @@
 		<!-- netty -->
 		<cve>CVE-2023-4586</cve>
 	</suppress>
+	<!-- xmlunit -->
+	<suppress><cve>CVE-2024-31573</cve></suppress>
 </suppressions>

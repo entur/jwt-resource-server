@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.2.4</version>
+		<version>3.3.5</version>
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>org.entur.example</groupId>
@@ -15,7 +15,7 @@
 
 	<properties>
 		<java.version>17</java.version>
-		<nimbus-jose-jwt.version>9.37.2</nimbus-jose-jwt.version>
+		<nimbus-jose-jwt.version>9.47</nimbus-jose-jwt.version>
 		<truth.version>1.2.0</truth.version>
 	</properties>
 
