@@ -30,10 +30,6 @@ public class AuthorizationServerImplementation {
         return authorizationServerEncoder;
     }
 
-    public AccessTokenImplementationFactory createAccessTokenFactory() {
-        return new AccessTokenImplementationFactory(this);
-    }
-
     public Annotation getAnnotation() {
         return annotation;
     }
