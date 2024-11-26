@@ -11,7 +11,7 @@ public class MatcherConfiguration {
 
     private List<String> patterns = new ArrayList<>();
 
-    private String type = "default";
+    private CustomHttpMethod type = CustomHttpMethod.DEFAULT;
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
@@ -50,10 +50,10 @@ public class MatcherConfiguration {
     }
 
     public void setType(String type) {
-        this.type = type;
+        this.type = CustomHttpMethod.fromString(type);
     }
 
-    public String getType() {
+    public CustomHttpMethod getType() {
         return type;
     }
 }
