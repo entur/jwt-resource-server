@@ -15,9 +15,9 @@ import java.util.concurrent.TimeUnit;
 public abstract class JwtClientBeanDefinitionRegistryPostProcessorSupport<T> {
 
     protected T client;
-    protected SpringJwtClientProperties rootProperties;
+    protected JwtClientProperties rootProperties;
 
-    public JwtClientBeanDefinitionRegistryPostProcessorSupport(T client, SpringJwtClientProperties properties) {
+    public JwtClientBeanDefinitionRegistryPostProcessorSupport(T client, JwtClientProperties properties) {
         this.client = client;
         this.rootProperties = properties;
     }

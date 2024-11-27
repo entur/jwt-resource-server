@@ -101,7 +101,7 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
                 throw new IllegalArgumentException("Please specify AccessToken authorization-server attribute when using multiple authorization servers");
             }
 
-            AccessTokenImplementationFactory factory = authorizationServerImplementation.createAccessTokenFactory();
+            AccessTokenImplementationFactory factory = new AccessTokenImplementationFactory(authorizationServerImplementation);
 
             String token = factory.create(accessToken, parameterContext, extensionContext, this);
             

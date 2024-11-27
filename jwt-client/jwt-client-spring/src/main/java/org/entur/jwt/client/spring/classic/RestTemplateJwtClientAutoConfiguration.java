@@ -3,8 +3,8 @@ package org.entur.jwt.client.spring.classic;
 import org.apache.hc.client5.http.classic.HttpClient;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
+import org.entur.jwt.client.properties.JwtClientProperties;
 import org.entur.jwt.client.spring.JwtClientAutoConfiguration;
-import org.entur.jwt.client.spring.SpringJwtClientProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -18,14 +18,14 @@ import org.springframework.web.client.RestTemplate;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
-@EnableConfigurationProperties(SpringJwtClientProperties.class)
+@EnableConfigurationProperties(JwtClientProperties.class)
 public class RestTemplateJwtClientAutoConfiguration extends JwtClientAutoConfiguration {
 
     private static Logger log = LoggerFactory.getLogger(RestTemplateJwtClientAutoConfiguration.class);
 
     @Bean
     @Qualifier("jwtRestTemplate")
-    public RestTemplate jwtRestTemplate(RestTemplateBuilder restTemplateBuilder, SpringJwtClientProperties properties) {
+    public RestTemplate jwtRestTemplate(RestTemplateBuilder restTemplateBuilder, JwtClientProperties properties) {
         // use custom HTTP-client so that we do not get a cookie parse warning
         int connectTimeout = properties.getConnectTimeout();
         int readTimeout = properties.getReadTimeout();
@@ -69,7 +69,7 @@ public class RestTemplateJwtClientAutoConfiguration extends JwtClientAutoConfigu
     }
 
     @Bean
-    public RestTemplateJwtClientBeanDefinitionRegistryPostProcessorSupport jwtClientBeanDefinitionRegistryPostProcessorSupport(@Qualifier("jwtRestTemplate") RestTemplate restTemplate, SpringJwtClientProperties properties) {
+    public RestTemplateJwtClientBeanDefinitionRegistryPostProcessorSupport jwtClientBeanDefinitionRegistryPostProcessorSupport(@Qualifier("jwtRestTemplate") RestTemplate restTemplate, JwtClientProperties properties) {
         return new RestTemplateJwtClientBeanDefinitionRegistryPostProcessorSupport(restTemplate, properties);
     }
 

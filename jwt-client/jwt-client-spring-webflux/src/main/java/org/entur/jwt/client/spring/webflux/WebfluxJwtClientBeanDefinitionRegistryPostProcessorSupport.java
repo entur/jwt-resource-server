@@ -2,8 +2,8 @@ package org.entur.jwt.client.spring.webflux;
 
 import org.entur.jwt.client.AccessTokenProvider;
 import org.entur.jwt.client.ClientCredentials;
+import org.entur.jwt.client.properties.JwtClientProperties;
 import org.entur.jwt.client.spring.JwtClientBeanDefinitionRegistryPostProcessorSupport;
-import org.entur.jwt.client.spring.SpringJwtClientProperties;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.net.URL;
@@ -11,7 +11,7 @@ import java.util.Map;
 
 public class WebfluxJwtClientBeanDefinitionRegistryPostProcessorSupport extends JwtClientBeanDefinitionRegistryPostProcessorSupport<WebClient> {
 
-    public WebfluxJwtClientBeanDefinitionRegistryPostProcessorSupport(WebClient client, SpringJwtClientProperties properties) {
+    public WebfluxJwtClientBeanDefinitionRegistryPostProcessorSupport(WebClient client, JwtClientProperties properties) {
         super(client, properties);
     }
 

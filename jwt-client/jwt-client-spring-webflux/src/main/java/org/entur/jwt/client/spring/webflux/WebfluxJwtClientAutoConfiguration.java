@@ -2,8 +2,9 @@ package org.entur.jwt.client.spring.webflux;
 
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
+
+import org.entur.jwt.client.properties.JwtClientProperties;
 import org.entur.jwt.client.spring.JwtClientAutoConfiguration;
-import org.entur.jwt.client.spring.SpringJwtClientProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -13,7 +14,7 @@ import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
 
-@EnableConfigurationProperties(SpringJwtClientProperties.class)
+@EnableConfigurationProperties(JwtClientProperties.class)
 public class WebfluxJwtClientAutoConfiguration extends JwtClientAutoConfiguration {
 
 
@@ -25,7 +26,7 @@ public class WebfluxJwtClientAutoConfiguration extends JwtClientAutoConfiguratio
 
     @Bean
     @Qualifier("jwtWebClient")
-    public WebClient jwtWebClient(WebClient.Builder webClientBuilder, SpringJwtClientProperties properties) {
+    public WebClient jwtWebClient(WebClient.Builder webClientBuilder, JwtClientProperties properties) {
 
         long connectTimeout = properties.getConnectTimeout();
         long readTimeout = properties.getReadTimeout();
@@ -50,7 +51,7 @@ public class WebfluxJwtClientAutoConfiguration extends JwtClientAutoConfiguratio
     }
 
     @Bean
-    public WebfluxJwtClientBeanDefinitionRegistryPostProcessorSupport jwtClientBeanDefinitionRegistryPostProcessorSupport(@Qualifier("jwtWebClient") WebClient webClient, SpringJwtClientProperties properties) {
+    public WebfluxJwtClientBeanDefinitionRegistryPostProcessorSupport jwtClientBeanDefinitionRegistryPostProcessorSupport(@Qualifier("jwtWebClient") WebClient webClient, JwtClientProperties properties) {
         return new WebfluxJwtClientBeanDefinitionRegistryPostProcessorSupport(webClient, properties);
     }
 

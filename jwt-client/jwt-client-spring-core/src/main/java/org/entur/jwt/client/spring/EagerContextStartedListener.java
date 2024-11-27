@@ -37,8 +37,8 @@ public class EagerContextStartedListener implements ApplicationListener<ContextS
 			for (Entry<String, AccessTokenProvider> entry : providersById.entrySet()) {
 				try {
 					entry.getValue().getAccessToken(false);
-				} catch (Throwable e) {
-					log.warn("Unable to eagerly load JWT on context started for {}", entry.getKey());
+				} catch (Exception e) {
+					log.warn("Unable to eagerly load JWT on context started for {}", entry.getKey(),e.toString());
 				}
 			}
 		}
