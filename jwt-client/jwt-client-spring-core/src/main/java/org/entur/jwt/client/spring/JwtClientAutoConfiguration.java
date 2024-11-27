@@ -3,6 +3,7 @@ package org.entur.jwt.client.spring;
 import org.entur.jwt.client.AccessTokenProvider;
 import org.entur.jwt.client.properties.AbstractJwtClientProperties;
 import org.entur.jwt.client.properties.JwtClientCache;
+import org.entur.jwt.client.properties.JwtClientProperties;
 import org.entur.jwt.client.properties.JwtPreemptiveRefresh;
 import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
 import org.slf4j.Logger;
@@ -29,7 +30,7 @@ public class JwtClientAutoConfiguration {
 
     private static Logger log = LoggerFactory.getLogger(JwtClientAutoConfiguration.class);
 
-    protected Long getTimeout(SpringJwtClientProperties properties) {
+    protected Long getTimeout(JwtClientProperties properties) {
         return getTimeout(properties.getAuth0(), getTimeout(properties.getKeycloak(), null));
     }
 
@@ -65,7 +66,7 @@ public class JwtClientAutoConfiguration {
     public static class JwtClientBeanDefinitionRegistryPostProcessor implements BeanDefinitionRegistryPostProcessor, EnvironmentAware {
 
         // note: autowiring does not work, must bind via environment
-        private SpringJwtClientProperties properties;
+        private JwtClientProperties properties;
 
         @Override
         public void postProcessBeanFactory(ConfigurableListableBeanFactory factory) {
@@ -79,8 +80,8 @@ public class JwtClientAutoConfiguration {
 
         private void bindProperties(Environment environment) {
             this.properties = Binder.get(environment)
-                    .bind("entur.jwt.clients", SpringJwtClientProperties.class)
-                    .orElse(new SpringJwtClientProperties());
+                    .bind("entur.jwt.clients", JwtClientProperties.class)
+                    .orElse(new JwtClientProperties());
         }
 
         @Override
@@ -158,7 +159,7 @@ public class JwtClientAutoConfiguration {
     }
 
     @Bean
-    public EagerContextStartedListener eagerContextRefreshedListener(Map<String, AccessTokenProvider> providersById, SpringJwtClientProperties springJwtClientProperties) {
+    public EagerContextStartedListener eagerContextRefreshedListener(Map<String, AccessTokenProvider> providersById, JwtClientProperties springJwtClientProperties) {
         Map<String, AccessTokenProvider> eagerAccessTokenProvidersById = new HashMap<>();
 
         for (Map<String, ? extends AbstractJwtClientProperties> map : Arrays.asList(springJwtClientProperties.getKeycloak(), springJwtClientProperties.getAuth0())) {
