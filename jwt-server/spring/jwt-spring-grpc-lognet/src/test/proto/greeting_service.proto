@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+package org.entur.jwt.spring.grpc.test;
+import "greeting_message.proto";
+
+// gRPC service definitions for sync messages
+service GreetingService {
+
+    // CustomerAccount management
+    rpc unprotected (org.entur.jwt.spring.grpc.test.GreetingRequest) returns (org.entur.jwt.spring.grpc.test.GreetingResponse);
+    
+    rpc unprotectedWithOptionalTenant (org.entur.jwt.spring.grpc.test.GreetingRequest) returns (org.entur.jwt.spring.grpc.test.GreetingResponse);
+    
+    rpc protectedWithPartnerTenant (org.entur.jwt.spring.grpc.test.GreetingRequest) returns (org.entur.jwt.spring.grpc.test.GreetingResponse);
+
+	// for exception translator testing    
+    rpc protectedOneToOneAuthenticationException (org.entur.jwt.spring.grpc.test.GreetingRequest) returns (org.entur.jwt.spring.grpc.test.GreetingResponse);
+    rpc protectedOneToManyAuthenticationException (org.entur.jwt.spring.grpc.test.GreetingRequest) returns (stream org.entur.jwt.spring.grpc.test.GreetingResponse);
+    rpc protectedManyToManyAuthenticationException (stream org.entur.jwt.spring.grpc.test.GreetingRequest) returns (stream org.entur.jwt.spring.grpc.test.GreetingResponse);
+    rpc protectedManyToOneAuthenticationException (stream org.entur.jwt.spring.grpc.test.GreetingRequest) returns (org.entur.jwt.spring.grpc.test.GreetingResponse);
+    
+    rpc protectedOneToOneStatusRuntimeException (org.entur.jwt.spring.grpc.test.GreetingRequest) returns (org.entur.jwt.spring.grpc.test.GreetingResponse);
+    rpc protectedOneToManyStatusRuntimeException (org.entur.jwt.spring.grpc.test.GreetingRequest) returns (stream org.entur.jwt.spring.grpc.test.GreetingResponse);
+    rpc protectedManyToManyStatusRuntimeException (stream org.entur.jwt.spring.grpc.test.GreetingRequest) returns (stream org.entur.jwt.spring.grpc.test.GreetingResponse);
+    rpc protectedManyToOneStatusRuntimeException (stream org.entur.jwt.spring.grpc.test.GreetingRequest) returns (org.entur.jwt.spring.grpc.test.GreetingResponse);
+}

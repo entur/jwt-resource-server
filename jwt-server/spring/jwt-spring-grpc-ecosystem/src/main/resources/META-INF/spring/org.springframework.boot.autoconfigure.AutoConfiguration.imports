@@ -1,0 +1,2 @@
+org.entur.jwt.spring.grpc.ecosystem.GrpcEcosystemAutoConfiguration
+org.entur.jwt.spring.grpc.ecosystem.GrpcEcosystemMdcAutoConfiguration

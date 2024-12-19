@@ -71,7 +71,17 @@
 			</dependency>
 			<dependency>
 				<groupId>org.entur.jwt-rs</groupId>
-				<artifactId>jwt-spring-grpc</artifactId>
+				<artifactId>jwt-spring-grpc-common</artifactId>
+				<version>4.2.8-SNAPSHOT</version>
+			</dependency>
+			<dependency>
+				<groupId>org.entur.jwt-rs</groupId>
+				<artifactId>jwt-spring-grpc-lognet</artifactId>
+				<version>4.2.8-SNAPSHOT</version>
+			</dependency>
+			<dependency>
+				<groupId>org.entur.jwt-rs</groupId>
+				<artifactId>jwt-spring-grpc-ecosystem</artifactId>
 				<version>4.2.8-SNAPSHOT</version>
 			</dependency>
 		</dependencies>

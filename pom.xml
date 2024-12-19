@@ -79,9 +79,11 @@
 		<grpc.version>1.68.1</grpc.version>
 		<proto.version>3.25.5</proto.version>
 		<lognet.version>5.1.5</lognet.version>
+		<ecosystem.version>3.1.0.RELEASE</ecosystem.version>
+
 		<!-- transient dependencies added due to security patching -->
 		<tomcat.version>10.1.33</tomcat.version>
-		<netty.version>4.1.115.Final</netty.version>
+		<netty.version>4.1.116.Final</netty.version>
 
 		<json-smart.version>2.5.1</json-smart.version>
 
@@ -138,6 +140,11 @@
                 <artifactId>jwt-spring-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
+			<dependency>
+				<groupId>org.entur.jwt-rs</groupId>
+				<artifactId>jwt-spring-grpc-common</artifactId>
+				<version>${project.version}</version>
+			</dependency>
 			<dependency>
 				<groupId>${project.groupId}</groupId>
 				<artifactId>jwt-spring-web</artifactId>
@@ -584,7 +591,9 @@
         <module>jwt-server/spring/jwt-spring-web</module>
         <module>jwt-server/spring/jwt-spring-common</module>
 		<module>jwt-server/spring/jwt-spring-webflux</module>
-		<module>jwt-server/spring/jwt-spring-grpc</module>
+		<module>jwt-server/spring/jwt-spring-grpc-common</module>
+		<module>jwt-server/spring/jwt-spring-grpc-lognet</module>
+		<module>jwt-server/spring/jwt-spring-grpc-ecosystem</module>
 		<module>jwt-bom</module>
 	</modules>
 
