@@ -1,19 +1,17 @@
 package org.entur.jwt.spring.grpc.ecosystem;
 
-import static net.devh.boot.grpc.common.security.SecurityConstants.AUTHORIZATION_HEADER;
-import static net.devh.boot.grpc.common.security.SecurityConstants.BEARER_AUTH_PREFIX;
-
-import java.util.function.Function;
-
+import io.grpc.Metadata;
+import io.grpc.ServerCall;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import net.devh.boot.grpc.server.security.authentication.GrpcAuthenticationReader;
-import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.util.Assert;
 
-import io.grpc.Metadata;
-import io.grpc.ServerCall;
+import java.util.function.Function;
+
+import static net.devh.boot.grpc.common.security.SecurityConstants.AUTHORIZATION_HEADER;
+import static net.devh.boot.grpc.common.security.SecurityConstants.BEARER_AUTH_PREFIX;
 
 /**
  * A version of {@linkplain net.devh.boot.grpc.server.security.authentication.BearerAuthenticationReader} which

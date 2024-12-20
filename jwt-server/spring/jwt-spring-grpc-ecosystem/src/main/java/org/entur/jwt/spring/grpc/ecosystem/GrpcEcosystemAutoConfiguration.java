@@ -70,6 +70,7 @@ import java.util.Map;
 @EnableConfigurationProperties({GrpcPermitAll.class, Flavours.class, GrpcExceptionHandlers.class})
 @AutoConfigureAfter(value = {JwtAutoConfiguration.class})
 @AutoConfigureBefore(value = {GrpcServerSecurityAutoConfiguration.class, SecurityAutoConfiguration.class})
+@ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
 public class GrpcEcosystemAutoConfiguration {
 
     // TODO spring factory for all sort of exception handling logging
@@ -78,7 +79,6 @@ public class GrpcEcosystemAutoConfiguration {
     private static Logger log = LoggerFactory.getLogger(GrpcEcosystemAutoConfiguration.class);
 
     @Bean
-    @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
     @ConditionalOnMissingBean(JwtAuthorityEnricher.class)
     public JwtAuthorityEnricher jwtAuthorityEnricher() {
         return new DefaultJwtAuthorityEnricher();
@@ -101,7 +101,7 @@ public class GrpcEcosystemAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnExpression("${entur.jwt.enabled:true}")
+    @ConditionalOnMissingBean(GrpcSecurityMetadataSource.class)
     public GrpcSecurityMetadataSource grpcSecurityMetadataSource(GrpcPermitAll permitAll) {
         final ManualGrpcSecurityMetadataSource source = new ManualGrpcSecurityMetadataSource();
 
@@ -167,6 +167,7 @@ public class GrpcEcosystemAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(AccessDecisionManager.class)
     public AccessDecisionManager accessDecisionManager() { // so that grpcSecurityMetadataSource takes effect, see docs
         final List<AccessDecisionVoter<?>> voters = new ArrayList<>();
         voters.add(new AccessPredicateVoter());
@@ -230,6 +231,7 @@ public class GrpcEcosystemAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(UserDetailsService.class)
     public AuthenticationManager authenticationManager(IssuerAuthenticationProvider provider) {
         final List<AuthenticationProvider> providers = new ArrayList<>();
         providers.add(provider);
@@ -238,7 +240,6 @@ public class GrpcEcosystemAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
     @ConditionalOnMissingBean(UserDetailsService.class)
     public UserDetailsService userDetailsService() {
         return new NoUserDetailsService();  // avoid the default user.

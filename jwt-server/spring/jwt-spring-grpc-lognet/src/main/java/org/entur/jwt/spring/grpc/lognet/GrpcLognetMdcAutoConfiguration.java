@@ -1,10 +1,10 @@
 package org.entur.jwt.spring.grpc.lognet;
 
 import org.entur.jwt.spring.JwtAutoConfiguration;
-import org.entur.jwt.spring.grpc.GrpcMdcAdapter;
-import org.entur.jwt.spring.grpc.properties.GrpcMdcProperties;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapperFactory;
+import org.entur.jwt.spring.grpc.GrpcMdcAdapter;
+import org.entur.jwt.spring.grpc.properties.GrpcMdcProperties;
 import org.entur.jwt.spring.properties.MdcProperties;
 import org.lognet.springboot.grpc.GRpcGlobalInterceptor;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
