@@ -1,16 +1,10 @@
 package org.entur.jwt.spring.grpc.lognet;
 
-import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.KeySourceException;
-import com.nimbusds.jose.jwk.source.JWKSource;
-import com.nimbusds.jose.proc.JWSVerificationKeySelector;
-import com.nimbusds.jose.proc.SecurityContext;
-import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import org.entur.jwt.spring.Auth0JwtAuthorityEnricher;
 import org.entur.jwt.spring.DefaultJwtAuthorityEnricher;
-import org.entur.jwt.spring.EnrichedJwtGrantedAuthoritiesConverter;
 import org.entur.jwt.spring.JwkSourceMap;
 import org.entur.jwt.spring.JwtAuthorityEnricher;
 import org.entur.jwt.spring.JwtAutoConfiguration;
@@ -43,18 +37,12 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtException;
-import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -129,31 +117,13 @@ public class GrpcLognetAutoConfiguration {
                 jwtAuthorityEnrichers = enrichers;
             }
 
-            Map<String, JWKSource> jwkSources = jwkSourceMap.getJwkSources();
+            IssuerAuthenticationProvider provider = IssuerAuthenticationProvider.newBuilder()
+                    .withJwkSourceMap(jwkSourceMap)
+                    .withJwtValidators(jwtValidators)
+                    .withJwtAuthorityEnrichers(jwtAuthorityEnrichers)
+                    .build();
 
-            Map<String, AuthenticationProvider> map = new HashMap<>(jwkSources.size() * 4);
-
-            for (Map.Entry<String, JWKSource> entry : jwkSources.entrySet()) {
-                JWKSource jwkSource = entry.getValue();
-
-                DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
-                JWSVerificationKeySelector keySelector = new JWSVerificationKeySelector(JWSAlgorithm.Family.SIGNATURE, jwkSource);
-                jwtProcessor.setJWSKeySelector(keySelector);
-
-                NimbusJwtDecoder nimbusJwtDecoder = new NimbusJwtDecoder(jwtProcessor);
-                nimbusJwtDecoder.setJwtValidator(getJwtValidators(entry.getKey()));
-
-                JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-
-                jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(new EnrichedJwtGrantedAuthoritiesConverter(jwtAuthorityEnrichers));
-
-                JwtAuthenticationProvider authenticationProvider = new JwtAuthenticationProvider(nimbusJwtDecoder);
-                authenticationProvider.setJwtAuthenticationConverter(jwtAuthenticationConverter);
-
-                map.put(entry.getKey(), authenticationProvider);
-            }
-
-            grpcSecurity.authenticationProvider(new IssuerAuthenticationProvider(map));
+            grpcSecurity.authenticationProvider(provider);
         }
 
         private void configureGrpcServiceMethodFilter(GrpcServicesConfiguration grpc, GrpcSecurity grpcSecurity) throws Exception {
@@ -198,13 +168,6 @@ public class GrpcLognetAutoConfiguration {
             }).authenticated();
         }
 
-        private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(String issuer) {
-            List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();
-            validators.add(new JwtIssuerValidator(issuer)); // this check is implicit, but lets add it regardless
-            validators.addAll(jwtValidators);
-            DelegatingOAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(validators);
-            return validator;
-        }
     }
 
     @Bean

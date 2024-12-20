@@ -1,10 +1,5 @@
 package org.entur.jwt.spring.grpc.ecosystem;
 
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.jwk.source.JWKSource;
-import com.nimbusds.jose.proc.JWSVerificationKeySelector;
-import com.nimbusds.jose.proc.SecurityContext;
-import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerCall;
 import net.devh.boot.grpc.server.autoconfigure.GrpcServerSecurityAutoConfiguration;
@@ -17,7 +12,6 @@ import net.devh.boot.grpc.server.security.check.GrpcSecurityMetadataSource;
 import net.devh.boot.grpc.server.security.check.ManualGrpcSecurityMetadataSource;
 import org.entur.jwt.spring.Auth0JwtAuthorityEnricher;
 import org.entur.jwt.spring.DefaultJwtAuthorityEnricher;
-import org.entur.jwt.spring.EnrichedJwtGrantedAuthoritiesConverter;
 import org.entur.jwt.spring.JwkSourceMap;
 import org.entur.jwt.spring.JwtAuthorityEnricher;
 import org.entur.jwt.spring.JwtAutoConfiguration;
@@ -35,7 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
@@ -56,10 +49,7 @@ import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -195,31 +185,11 @@ public class GrpcEcosystemAutoConfiguration {
             jwtAuthorityEnrichers = enrichers;
         }
 
-        Map<String, JWKSource> jwkSources = jwkSourceMap.getJwkSources();
-
-        Map<String, AuthenticationProvider> map = new HashMap<>(jwkSources.size() * 4);
-
-        for (Map.Entry<String, JWKSource> entry : jwkSources.entrySet()) {
-            JWKSource jwkSource = entry.getValue();
-
-            DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
-            JWSVerificationKeySelector keySelector = new JWSVerificationKeySelector(JWSAlgorithm.Family.SIGNATURE, jwkSource);
-            jwtProcessor.setJWSKeySelector(keySelector);
-
-            NimbusJwtDecoder nimbusJwtDecoder = new NimbusJwtDecoder(jwtProcessor);
-            nimbusJwtDecoder.setJwtValidator(getJwtValidators(entry.getKey(), jwtValidators));
-
-            JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-
-            jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(new EnrichedJwtGrantedAuthoritiesConverter(jwtAuthorityEnrichers));
-
-            JwtAuthenticationProvider authenticationProvider = new JwtAuthenticationProvider(nimbusJwtDecoder);
-            authenticationProvider.setJwtAuthenticationConverter(jwtAuthenticationConverter);
-
-            map.put(entry.getKey(), authenticationProvider);
-        }
-
-        return new IssuerAuthenticationProvider(map);
+        return IssuerAuthenticationProvider.newBuilder()
+                .withJwkSourceMap(jwkSourceMap)
+                .withJwtValidators(jwtValidators)
+                .withJwtAuthorityEnrichers(jwtAuthorityEnrichers)
+                .build();
     }
 
     private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(String issuer, List<OAuth2TokenValidator<Jwt>> jwtValidators) {
