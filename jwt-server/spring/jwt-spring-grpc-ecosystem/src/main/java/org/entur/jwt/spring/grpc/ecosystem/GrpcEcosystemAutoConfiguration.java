@@ -63,9 +63,6 @@ import java.util.Map;
 @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
 public class GrpcEcosystemAutoConfiguration {
 
-    // TODO spring factory for all sort of exception handling logging
-    // currently we only support two types
-
     private static Logger log = LoggerFactory.getLogger(GrpcEcosystemAutoConfiguration.class);
 
     @Bean
