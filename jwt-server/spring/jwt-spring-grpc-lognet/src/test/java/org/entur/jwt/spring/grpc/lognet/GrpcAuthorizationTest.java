@@ -21,7 +21,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class GrpcAuthorizationTest implements GrpcAuthorization {
+public class GrpcAuthorizationTest implements LognetGrpcAuthorization {
     
     private JwtAuthenticationToken jwtAuthenticationToken;
 

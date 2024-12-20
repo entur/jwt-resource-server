@@ -2,14 +2,13 @@ package org.entur.jwt.spring.grpc;
 
 import io.grpc.Context;
 import net.devh.boot.grpc.server.security.interceptors.AuthenticatingServerInterceptor;
-import org.entur.jwt.spring.grpc.ecosystem.GrpcAuthorization;
+import org.entur.jwt.spring.grpc.ecosystem.EcosystemGrpcAuthorization;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -18,14 +17,13 @@ import java.io.Closeable;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class GrpcAuthorizationTest implements GrpcAuthorization {
+public class GrpcAuthorizationTest implements EcosystemGrpcAuthorization {
     
     private JwtAuthenticationToken jwtAuthenticationToken;
 
