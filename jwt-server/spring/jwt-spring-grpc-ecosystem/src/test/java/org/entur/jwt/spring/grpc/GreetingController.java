@@ -28,7 +28,11 @@ public class GreetingController extends GreetingServiceImplBase {
     private JwtAuthenticationToken getToken() {
         SecurityContext securityContext = AuthenticatingServerInterceptor.SECURITY_CONTEXT_KEY.get();
         if(securityContext != null) {
-            return (JwtAuthenticationToken)securityContext.getAuthentication();
+            Authentication authentication = securityContext.getAuthentication();
+
+            if(authentication instanceof JwtAuthenticationToken t) {
+                return t;
+            }
         }
         return null;
     }

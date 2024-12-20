@@ -8,7 +8,7 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerCall;
 import net.devh.boot.grpc.server.autoconfigure.GrpcServerSecurityAutoConfiguration;
-import net.devh.boot.grpc.server.security.authentication.BearerAuthenticationReader;
+import net.devh.boot.grpc.server.security.authentication.AnonymousAuthenticationReader;
 import net.devh.boot.grpc.server.security.authentication.CompositeGrpcAuthenticationReader;
 import net.devh.boot.grpc.server.security.authentication.GrpcAuthenticationReader;
 import net.devh.boot.grpc.server.security.check.AccessPredicate;
@@ -45,10 +45,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.access.AccessDecisionManager;
 import org.springframework.security.access.AccessDecisionVoter;
 import org.springframework.security.access.vote.UnanimousBased;
+import org.springframework.security.authentication.AnonymousAuthenticationProvider;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
@@ -83,8 +85,19 @@ public class GrpcEcosystemAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(JwtExceptionTranslatingServerInterceptor.class)
+    public JwtExceptionTranslatingServerInterceptor extendedExceptionTranslatingServerInterceptor() {
+        return new JwtExceptionTranslatingServerInterceptor();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(GrpcAuthenticationReader.class)
     public GrpcAuthenticationReader authenticationReader() {
-        return new BearerAuthenticationReader(accessToken -> new BearerTokenAuthenticationToken(accessToken));
+        final List<GrpcAuthenticationReader> readers = new ArrayList<>();
+        readers.add(new MustBeBearerIfPresentAuthenticationReader(accessToken -> new BearerTokenAuthenticationToken(accessToken)));
+        // anon auth as found in spring security's use of AnonymousAuthenticationToken
+        readers.add(new AnonymousAuthenticationReader("key","anonymous", AuthorityUtils.createAuthorityList("ROLE_ANONYMOUS")));
+        return new CompositeGrpcAuthenticationReader(readers);
     }
 
     @Bean
@@ -161,6 +174,7 @@ public class GrpcEcosystemAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(IssuerAuthenticationProvider.class)
     public IssuerAuthenticationProvider issuerAuthenticationProvider(JwkSourceMap jwkSourceMap, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators, Flavours flavours) {
         log.info("Configure Grpc security");
 
@@ -219,6 +233,7 @@ public class GrpcEcosystemAutoConfiguration {
     public AuthenticationManager authenticationManager(IssuerAuthenticationProvider provider) {
         final List<AuthenticationProvider> providers = new ArrayList<>();
         providers.add(provider);
+        providers.add(new AnonymousAuthenticationProvider("key"));
         return new ProviderManager(providers);
     }
 

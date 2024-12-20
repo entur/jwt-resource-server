@@ -2,13 +2,10 @@ package org.entur.jwt.spring.grpc;
 
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTParser;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
 
@@ -29,7 +26,6 @@ public class IssuerAuthenticationProvider implements AuthenticationProvider {
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
         BearerTokenAuthenticationToken bearerTokenAuthenticationToken = (BearerTokenAuthenticationToken) authentication;
 
-        System.out.println("AUTHENTICATE");
         // note to self: there is two jwt classes, Jwt and JWT
         try {
             JWT parse = JWTParser.parse(bearerTokenAuthenticationToken.getToken());
@@ -47,6 +43,8 @@ public class IssuerAuthenticationProvider implements AuthenticationProvider {
 
     @Override
     public boolean supports(Class<?> authentication) {
-        return authentication.equals(BearerTokenAuthenticationToken.class);
+        // note: turns out there is two BearerTokenAuthenticationToken (the one deprecated extends the other)
+
+        return org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken.class.isAssignableFrom(authentication);
     }
 }
