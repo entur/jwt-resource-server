@@ -14,7 +14,10 @@ import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapperFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
+import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -43,6 +46,7 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
 @ConditionalOnExpression("${entur.authorization.enabled:true} || ${entur.jwt.enabled:true}")
 @EnableConfigurationProperties({SecurityProperties.class})
 @AutoConfigureAfter(JwtWebAutoConfiguration.class)
+@AutoConfigureBefore(org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration.class)
 public class JwtWebSecurityChainAutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(JwtWebSecurityChainAutoConfiguration.class);
@@ -52,8 +56,8 @@ public class JwtWebSecurityChainAutoConfiguration {
     @ConditionalOnProperty(name = {"entur.authorization.enabled"}, havingValue = "true", matchIfMissing = true)
     public static class AuthorizationConfigurationGuard {
 
-        public AuthorizationConfigurationGuard() {
-            throw new IllegalStateException("Authorization does not work for custom spring filter chain. Add 'entur.authorization.enabled=false' or disable this starter using @SpringBootApplication(exclude = {JwtWebSecurityConfigurerAdapterAutoConfiguration.class}).");
+        public AuthorizationConfigurationGuard(SecurityFilterChain chain) {
+            throw new IllegalStateException("Authorization does not work with preexisting spring filter chain " + chain.getClass().getName() + ". Add 'entur.jwt.enabled=false' or disable this starter using @SpringBootApplication(exclude = {" + JwtWebSecurityChainAutoConfiguration.class.getName() + "}).");
         }
     }
 
@@ -62,8 +66,8 @@ public class JwtWebSecurityChainAutoConfiguration {
     @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
     public static class JwtConfigurationGuard {
 
-        public JwtConfigurationGuard() {
-            throw new IllegalStateException("JWT authentication does not work for custom spring filter chain. Add 'entur.jwt.enabled=false' or disable this starter using @SpringBootApplication(exclude = {JwtWebSecurityConfigurerAdapterAutoConfiguration.class}).");
+        public JwtConfigurationGuard(SecurityFilterChain chain) {
+            throw new IllegalStateException("JWT authentication does not work with preexisting spring filter chain " + chain.getClass().getName() + ". Add 'entur.jwt.enabled=false' or disable this starter using @SpringBootApplication(exclude = {" + JwtWebSecurityChainAutoConfiguration.class.getName() + "}).");
         }
     }
 
