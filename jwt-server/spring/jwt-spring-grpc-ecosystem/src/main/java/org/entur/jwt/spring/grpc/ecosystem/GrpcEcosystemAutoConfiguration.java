@@ -127,19 +127,17 @@ public class GrpcEcosystemAutoConfiguration {
 
                         String lowerCaseServiceName = method.getServiceName().toLowerCase();
                         List<String> methodNames = serviceNameMethodName.get(lowerCaseServiceName);
-                        if (methodNames == null) {
-                            return false;
-                        }
+                        if (methodNames != null) {
+                            if (methodNames.contains("*")) {
+                                return true;
+                            }
 
-                        if (methodNames.contains("*")) {
-                            return true;
-                        }
+                            String lowerCaseBareMethodName = method.getBareMethodName().toLowerCase();
+                            String lowerCaseFullMethodName = method.getFullMethodName().toLowerCase();
 
-                        String lowerCaseBareMethodName = method.getBareMethodName().toLowerCase();
-                        String lowerCaseFullMethodName = method.getFullMethodName().toLowerCase();
-
-                        if (methodNames.contains(lowerCaseBareMethodName) || methodNames.contains(lowerCaseFullMethodName)) {
-                            return true;
+                            if (methodNames.contains(lowerCaseBareMethodName) || methodNames.contains(lowerCaseFullMethodName)) {
+                                return true;
+                            }
                         }
 
                         return AccessPredicate.fullyAuthenticated().test(authentication, serverCall);
