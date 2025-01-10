@@ -12,6 +12,7 @@ import net.devh.boot.grpc.server.interceptor.GrpcGlobalServerInterceptor;
 import net.devh.boot.grpc.server.security.interceptors.ExceptionTranslatingServerInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationServiceException;
@@ -28,12 +29,15 @@ import org.springframework.security.oauth2.jwt.JwtException;
  *
  */
 
-@GrpcGlobalServerInterceptor
-@Order(InterceptorOrder.ORDER_SECURITY_EXCEPTION_HANDLING)
-public class JwtExceptionTranslatingServerInterceptor extends ExceptionTranslatingServerInterceptor {
+public class JwtExceptionTranslatingServerInterceptor extends ExceptionTranslatingServerInterceptor implements Ordered {
 
     private static Logger log = LoggerFactory.getLogger(JwtExceptionTranslatingServerInterceptor.class);
 
+    protected final int order;
+
+    public JwtExceptionTranslatingServerInterceptor(int order) {
+        this.order = order;
+    }
 
     @Override
     public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(final ServerCall<ReqT, RespT> call,
@@ -80,6 +84,11 @@ public class JwtExceptionTranslatingServerInterceptor extends ExceptionTranslati
      */
     protected void closeCallAccessDenied(final ServerCall<?, ?> call, final AccessDeniedException e) {
         call.close(Status.PERMISSION_DENIED.withDescription(e.getMessage()), new Metadata());
+    }
+
+    @Override
+    public int getOrder() {
+        return order;
     }
 
     /**

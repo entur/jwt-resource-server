@@ -1,6 +1,8 @@
 package org.entur.jwt.spring.grpc.ecosystem;
 
+import net.devh.boot.grpc.common.util.InterceptorOrder;
 import net.devh.boot.grpc.server.autoconfigure.GrpcServerSecurityAutoConfiguration;
+import net.devh.boot.grpc.server.interceptor.GrpcGlobalServerInterceptor;
 import net.devh.boot.grpc.server.security.authentication.AnonymousAuthenticationReader;
 import net.devh.boot.grpc.server.security.authentication.CompositeGrpcAuthenticationReader;
 import net.devh.boot.grpc.server.security.authentication.GrpcAuthenticationReader;
@@ -70,8 +72,9 @@ public class GrpcEcosystemAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(JwtExceptionTranslatingServerInterceptor.class)
+    @GrpcGlobalServerInterceptor
     public JwtExceptionTranslatingServerInterceptor extendedExceptionTranslatingServerInterceptor() {
-        return new JwtExceptionTranslatingServerInterceptor();
+        return new JwtExceptionTranslatingServerInterceptor(InterceptorOrder.ORDER_SECURITY_EXCEPTION_HANDLING + 1);
     }
 
     @Bean
