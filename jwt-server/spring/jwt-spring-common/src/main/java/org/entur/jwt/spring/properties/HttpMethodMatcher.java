@@ -12,7 +12,7 @@ public class HttpMethodMatcher {
     private List<String> patterns = new ArrayList<>();
 
     // default or ant. inherits from parent if not set
-    private String type;
+    private CustomHttpMethod type;
 
     private final HttpMethod verb;
 
@@ -49,11 +49,11 @@ public class HttpMethodMatcher {
         return patterns.toArray(new String[patterns.size()]);
     }
 
-    public String getType() {
+    public CustomHttpMethod getType() {
         return type;
     }
 
     public void setType(String type) {
-        this.type = type;
+        this.type = CustomHttpMethod.fromString(type);
     }
 }

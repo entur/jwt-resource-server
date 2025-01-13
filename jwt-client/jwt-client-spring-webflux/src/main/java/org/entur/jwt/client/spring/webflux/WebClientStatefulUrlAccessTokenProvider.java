@@ -89,7 +89,7 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
     @Override
     protected int getResponseStatusCode(Mono<Resource> response) {
         // A non-blocking WebClient does not support access to the status code outside the http call scope. Therefore the errorhandling based on the
-        return 200;
+        return HttpStatus.OK.value();
     }
 
     @Override

@@ -182,40 +182,42 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
      */
 
     protected void preemptiveRefresh(final long time, final AccessTokenCacheItem cache, boolean forceRefresh) {
-        if (cache.isRefreshable(time) || forceRefresh) {
-            // cache will expires soon,
-            // preemptively update it
-
-            // check if an update is already in progress
-            if (cacheExpires < cache.getExpires()) {
-                // seems no update is in progress, see if we can get the lock
-                if (lazyLock.tryLock()) {
-                    try {
-                        // check again now that this thread holds the lock
-                        if (cacheExpires < cache.getExpires()) {
-
-                            // still no update is in progress
-                            cacheExpires = cache.getExpires();
-
-                            // run update in the background
-                            executorService.execute(() -> {
-                                try {
-                                    PreemptiveCachedAccessTokenProvider.super.getAccessTokenBlocking(time, cache);
-                                    
-                                    // so next time this method is invoked, it'll be with the updated cache item expiry time
-                                } catch (AccessTokenException e) {
-                                    // update failed, but another thread can retry
-                                    cacheExpires = -1L;
-                                    // ignore, unable to update
-                                    // another thread will attempt the same
-                                    logger.warn("Preemptive access-token refresh failed", e);
-                                }
-                            });
-                        }
-                    } finally {
-                        lazyLock.unlock();
-                    }
+        if(!cache.isRefreshable(time) && !forceRefresh){
+            // cache will not expire soon,
+            // no need to preemptively update.
+            return;
+        }
+        if(cacheExpires >= cache.getExpires()) {
+            // an update is in progress,
+            // no need to preemptively update.
+            return;
+        }
+        // Try to aquire a lock to update the cache.
+        if (lazyLock.tryLock()) {
+            try {
+                // check again now that this thread holds the lock
+                if (cacheExpires >= cache.getExpires()) {
+                    // an update is in progress,
+                    return;
                 }
+                 // still no update is in progress, so we start one.
+                 cacheExpires = cache.getExpires();
+
+                 // run update in the background
+                 executorService.execute(() -> {
+                     try {
+                         PreemptiveCachedAccessTokenProvider.super.getAccessTokenBlocking(time, cache);
+                         // so next time this method is invoked, it'll be with the updated cache item expiry time
+                     } catch (AccessTokenException e) {
+                         // update failed, but another thread can retry
+                         cacheExpires = -1L;
+                         // ignore, unable to update
+                         // another thread will attempt the same
+                         logger.warn("Preemptive access-token refresh failed", e);
+                     }
+                 });
+            } finally {
+                lazyLock.unlock();
             }
         }
     }
