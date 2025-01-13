@@ -1,8 +1,11 @@
 package org.entur.jwt.client.properties;
 
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
 import java.util.HashMap;
 import java.util.Map;
 
+@ConfigurationProperties(prefix = "entur.jwt.clients")
 public class JwtClientProperties {
 
     protected Map<String, Auth0JwtClientProperties> auth0 = new HashMap<>();
