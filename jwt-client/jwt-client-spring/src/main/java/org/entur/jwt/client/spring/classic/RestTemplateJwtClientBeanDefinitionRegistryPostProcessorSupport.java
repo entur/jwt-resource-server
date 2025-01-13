@@ -2,8 +2,8 @@ package org.entur.jwt.client.spring.classic;
 
 import org.entur.jwt.client.AccessTokenProvider;
 import org.entur.jwt.client.ClientCredentials;
+import org.entur.jwt.client.properties.JwtClientProperties;
 import org.entur.jwt.client.spring.JwtClientBeanDefinitionRegistryPostProcessorSupport;
-import org.entur.jwt.client.spring.SpringJwtClientProperties;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URL;
@@ -11,7 +11,7 @@ import java.util.Map;
 
 public class RestTemplateJwtClientBeanDefinitionRegistryPostProcessorSupport extends JwtClientBeanDefinitionRegistryPostProcessorSupport<RestTemplate> {
 
-    public RestTemplateJwtClientBeanDefinitionRegistryPostProcessorSupport(RestTemplate client, SpringJwtClientProperties properties) {
+    public RestTemplateJwtClientBeanDefinitionRegistryPostProcessorSupport(RestTemplate client, JwtClientProperties properties) {
         super(client, properties);
     }
 

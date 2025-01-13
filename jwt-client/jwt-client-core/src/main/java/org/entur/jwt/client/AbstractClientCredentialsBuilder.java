@@ -22,12 +22,7 @@ public abstract class AbstractClientCredentialsBuilder<B extends AbstractClientC
     protected static final String KEY_SECRET = "client_secret";
 
     protected static String createHeader(String clientId, String secret) {
-        // see https://www.base64encoder.io/java/ and
-        StringBuilder buf = new StringBuilder(clientId);
-        buf.append(':').append(secret);
-
-        // encode with padding
-        return "Basic " + java.util.Base64.getUrlEncoder().encodeToString(buf.toString().getBytes(StandardCharsets.UTF_8));
+        return AuthorizationHeaderUtil.createHeader(clientId, secret);
     }
 
     protected String protocol = "https";
