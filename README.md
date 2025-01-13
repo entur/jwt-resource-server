@@ -53,6 +53,7 @@ See documentation contained in each folder to get started. Or skip right to the 
 [European Union Public Licence v1.2](https://eupl.eu/).
 
 # History
+ - 5.0.0: Support for [gRPC Ecosystem](https://github.com/grpc-ecosystem). [Lognet grpc](https://github.com/LogNet/grpc-spring-boot-starter) is now deprecated.
  - 4.2.7: Bump dependencies
  - 4.2.6: Adjust dependencies to better align with Spring Boot version
  - 4.2.5: Bump dependencies, now at Spring Boot 3.3. 

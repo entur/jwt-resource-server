@@ -1,4 +1,7 @@
 # Json Web Token Spring Boot Starter for lognet gRPC
+
+__DEPRECATED: This module will be removed in 2025__
+
 Configure JWT issuers like in the Spring Boot Starter sibling project.
 
 ## Usage 
