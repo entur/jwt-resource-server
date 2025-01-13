@@ -95,6 +95,9 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
             String authorizationServer = accessToken.by();
             if (authorizationServer != null && !authorizationServer.isEmpty()) {
                 authorizationServerImplementation = getAuthorizationServerImplementation(authorizationServer);
+                if(authorizationServerImplementation == null) {
+                    throw new IllegalArgumentException("Unknown authorization server " + authorizationServer);
+                }
             } else if (servers.size() == 1) {
                 authorizationServerImplementation = servers.iterator().next();
             } else {
