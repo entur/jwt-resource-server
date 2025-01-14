@@ -14,7 +14,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 
 import java.util.concurrent.TimeUnit;
 
-public class AbstractGrpcTest {
+public abstract class AbstractGrpcTest {
 
     public static final int MAX_INBOUND_MESSAGE_SIZE = 1 << 20;
     public static final int MAX_OUTBOUND_MESSAGE_SIZE = 1 << 20;
