@@ -100,27 +100,27 @@ public class GrpcLognetAutoConfiguration {
                 grpcSecurity.authorizeRequests().anyMethod().authenticated();
             }
 
-            List<JwtAuthorityEnricher> jwtAuthorityEnrichers = this.jwtAuthorityEnrichers;
+            List<JwtAuthorityEnricher> enrichers = this.jwtAuthorityEnrichers;
             if (flavours.isEnabled()) {
-                List<JwtAuthorityEnricher> enrichers = new ArrayList<>(jwtAuthorityEnrichers);
+                List<JwtAuthorityEnricher> enrichersWithFlavours = new ArrayList<>(enrichers);
 
                 Auth0Flavour auth0 = flavours.getAuth0();
                 if (auth0.isEnabled()) {
-                    enrichers.add(new Auth0JwtAuthorityEnricher());
+                    enrichersWithFlavours.add(new Auth0JwtAuthorityEnricher());
                 }
 
                 KeycloakFlavour keycloak = flavours.getKeycloak();
                 if (keycloak.isEnabled()) {
-                    enrichers.add(new KeycloakJwtAuthorityEnricher());
+                    enrichersWithFlavours.add(new KeycloakJwtAuthorityEnricher());
                 }
 
-                jwtAuthorityEnrichers = enrichers;
+                enrichers = enrichersWithFlavours;
             }
 
             IssuerAuthenticationProvider provider = IssuerAuthenticationProvider.newBuilder()
                     .withJwkSourceMap(jwkSourceMap)
                     .withJwtValidators(jwtValidators)
-                    .withJwtAuthorityEnrichers(jwtAuthorityEnrichers)
+                    .withJwtAuthorityEnrichers(enrichers)
                     .build();
 
             grpcSecurity.authenticationProvider(provider);

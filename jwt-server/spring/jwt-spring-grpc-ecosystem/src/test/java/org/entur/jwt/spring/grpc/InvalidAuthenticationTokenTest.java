@@ -29,7 +29,6 @@ import io.grpc.StatusRuntimeException;
 public class InvalidAuthenticationTokenTest extends AbstractGrpcTest {
     
     @Test
-    @Disabled // XXX this shows need for updating lognet authentication
     public void testUnprotectedResource() {
         StatusRuntimeException exception = assertThrows(StatusRuntimeException.class, () -> {
             stub("Bearer hvaomshelst").unprotected(greetingRequest);

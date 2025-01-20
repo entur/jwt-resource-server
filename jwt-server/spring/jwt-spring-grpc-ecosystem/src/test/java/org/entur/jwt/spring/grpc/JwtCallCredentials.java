@@ -33,6 +33,6 @@ public class JwtCallCredentials extends CallCredentials {
 
     @Override
     public void thisUsesUnstableApi() {
-
+        // do nothing
     }
 }

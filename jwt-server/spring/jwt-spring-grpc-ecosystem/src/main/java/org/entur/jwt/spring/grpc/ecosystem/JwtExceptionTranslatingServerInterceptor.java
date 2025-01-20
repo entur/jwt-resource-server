@@ -62,6 +62,7 @@ public class JwtExceptionTranslatingServerInterceptor extends ExceptionTranslati
      * @param e The exception that was the cause.
      */
 
+    @Override
     protected void closeCallUnauthenticated(final ServerCall<?, ?> call, final AuthenticationException e) {
         if (e instanceof AuthenticationServiceException) {
             Throwable cause1 = e.getCause();
@@ -82,6 +83,7 @@ public class JwtExceptionTranslatingServerInterceptor extends ExceptionTranslati
      * @param call The call to close.
      * @param e The exception that was the cause.
      */
+    @Override
     protected void closeCallAccessDenied(final ServerCall<?, ?> call, final AccessDeniedException e) {
         call.close(Status.PERMISSION_DENIED.withDescription(e.getMessage()), new Metadata());
     }
