@@ -307,7 +307,7 @@ OPTIONS calls, can be sent backwards to the Spring application.
 
 See [jwt-spring-web] for a concrete implementation example.
 
-[jwt-spring-auth0-web]: spring/jwt-spring-web
+[jwt-spring-web]: spring/jwt-spring-web
 [jwt-test]: ../jwt-test
 [jwt-junit5-spring]: ../jwt-test/jwt-junit5-spring
 [method access-control expressions]: [https://www.baeldung.com/spring-security-method-security](https://www.baeldung.com/spring-security-method-security)
