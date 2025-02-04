@@ -305,9 +305,9 @@ Note that the bean name must be as above in order for Spring to pick up the bean
 In general, the API gateway should respond with HTTP 403 to requests with unknown origins. All other requests, including
 OPTIONS calls, can be sent backwards to the Spring application.
 
-See [jwt-spring-auth0-web] for a concrete implementation example.
+See [jwt-spring-web] for a concrete implementation example.
 
-[jwt-spring-auth0-web]: spring/jwt-spring-auth0-web
+[jwt-spring-auth0-web]: spring/jwt-spring-web
 [jwt-test]: ../jwt-test
 [jwt-junit5-spring]: ../jwt-test/jwt-junit5-spring
 [method access-control expressions]: [https://www.baeldung.com/spring-security-method-security](https://www.baeldung.com/spring-security-method-security)
