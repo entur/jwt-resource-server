@@ -1,5 +1,9 @@
-# jwt-client-core
-JWT client core implementation. 
+# jwt-client-grpc
+Some helper classes for use of gRPC:
+
+Key rotation support:
+
+ * optional force refresh token on UNAUTHENTICATED response
 
 ## Maven / Gradle coordinates
 
@@ -8,7 +12,7 @@ Maven coordinates:
 ```xml
 <dependency>
     <groupId>org.entur.jwt-rs</groupId>
-    <artifactId>jwt-client-core</artifactId>
+    <artifactId>jwt-client-grpc</artifactId>
     <version>${jwt-rs.version}</version>
 </dependency>
 ```
@@ -16,5 +20,5 @@ Maven coordinates:
 Gradle coordinates:
 
 ```groovy
-api("org.entur.jwt-rs:jwt-client-spring:${jwtResourceServerVersion}")
+api("org.entur.jwt-rs:jwt-client-grpc:${jwtResourceServerVersion}")
 ```
