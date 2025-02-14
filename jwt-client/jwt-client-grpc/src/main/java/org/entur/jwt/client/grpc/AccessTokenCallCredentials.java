@@ -11,17 +11,17 @@ import io.grpc.CallCredentials;
 import io.grpc.Metadata;
 import io.grpc.Status;
 
-public class JwtCallCredentials extends CallCredentials {
+public class AccessTokenCallCredentials extends CallCredentials {
 
 	public static final Metadata.Key<String> KEY_AUTHORIZATION = Metadata.Key.of("Authorization", Metadata.ASCII_STRING_MARSHALLER);
 
-	private static final Logger LOGGER = LoggerFactory.getLogger(JwtCallCredentials.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(AccessTokenCallCredentials.class);
 
 	public static final String BEARER_PREFIX = "Bearer ";
 
 	private final AccessTokenProvider accessTokenProvider;
 
-	public JwtCallCredentials(AccessTokenProvider accessTokenProvider) {
+	public AccessTokenCallCredentials(AccessTokenProvider accessTokenProvider) {
 		this.accessTokenProvider = accessTokenProvider;
 	}
 

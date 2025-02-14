@@ -7,7 +7,7 @@ import org.entur.jwt.client.recovery.UnauthenticatedAccessTokenRecoveryHandler;
  * Interceptor which detect an unauthorized response to outgoing calls.
  */
 
-public class JwkRotationAccessTokenRecoveryClientInterceptor implements ClientInterceptor {
+public class UnauthenticatedAccessTokenRecoveryClientInterceptor implements ClientInterceptor {
 
     public static Builder newBuilder() {
 		return new Builder();
@@ -16,35 +16,24 @@ public class JwkRotationAccessTokenRecoveryClientInterceptor implements ClientIn
 	public static class Builder {
 
 		private UnauthenticatedAccessTokenRecoveryHandler handler;
-		private JwtCallCredentials callCredentials;
-
-		public Builder withCallCredentials(JwtCallCredentials callCredentials) {
-			this.callCredentials = callCredentials;
-			return this;
-		}
 
 		public Builder withHandler(UnauthenticatedAccessTokenRecoveryHandler handler) {
 			this.handler = handler;
 			return this;
 		}
 
-		public JwkRotationAccessTokenRecoveryClientInterceptor build() {
+		public UnauthenticatedAccessTokenRecoveryClientInterceptor build() {
 			if(handler == null) {
 				throw new IllegalStateException();
 			}
-			if(callCredentials == null) {
-				throw new IllegalStateException();
-			}
 
-			return new JwkRotationAccessTokenRecoveryClientInterceptor(callCredentials, handler);
+			return new UnauthenticatedAccessTokenRecoveryClientInterceptor(handler);
 		}
 	}
 
-	protected final JwtCallCredentials callCredentials;
 	protected final UnauthenticatedAccessTokenRecoveryHandler handler;
 
-	public JwkRotationAccessTokenRecoveryClientInterceptor(JwtCallCredentials callCredentials, UnauthenticatedAccessTokenRecoveryHandler handler) {
-		this.callCredentials = callCredentials;
+	public UnauthenticatedAccessTokenRecoveryClientInterceptor(UnauthenticatedAccessTokenRecoveryHandler handler) {
 		this.handler = handler;
 	}
 
@@ -65,7 +54,19 @@ public class JwkRotationAccessTokenRecoveryClientInterceptor implements ClientIn
 					public void onHeaders(Metadata headers) {
 						super.onHeaders(headers);
 
-						authorizationHeader = headers.get(JwtCallCredentials.KEY_AUTHORIZATION);
+						authorizationHeader = headers.get(AccessTokenCallCredentials.KEY_AUTHORIZATION);
+
+						listener.onHeaders(headers);
+					}
+
+					@Override
+					public void onMessage(RespT message) {
+						listener.onMessage(message);
+					}
+
+					@Override
+					public void onReady() {
+						listener.onReady();
 					}
 
 					@Override
@@ -74,7 +75,7 @@ public class JwkRotationAccessTokenRecoveryClientInterceptor implements ClientIn
 							if(status.getCode() == Status.Code.UNAUTHENTICATED) {
 								if(authorizationHeader != null) {
 									CallCredentials credentials = callOptions.getCredentials();
-									if(credentials instanceof JwtCallCredentials jwtCallCredentials) {
+									if(credentials instanceof AccessTokenCallCredentials jwtCallCredentials) {
 										handler.handle(jwtCallCredentials.getAccessTokenProvider(), authorizationHeader, System.currentTimeMillis());
 									}
 								}
