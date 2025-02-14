@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 @EnableConfigurationProperties(JwtClientProperties.class)
 public class RestTemplateJwtClientAutoConfiguration extends JwtClientAutoConfiguration {
 
-    private static Logger log = LoggerFactory.getLogger(RestTemplateJwtClientAutoConfiguration.class);
+    private static final Logger log = LoggerFactory.getLogger(RestTemplateJwtClientAutoConfiguration.class);
 
     @Bean
     @Qualifier("jwtRestTemplate")

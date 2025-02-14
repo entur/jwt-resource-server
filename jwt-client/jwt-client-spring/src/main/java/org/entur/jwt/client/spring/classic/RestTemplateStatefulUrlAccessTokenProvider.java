@@ -56,7 +56,7 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
 
     @Override
     protected int getResponseStatusCode(ResponseEntity<Resource> response) throws IOException {
-        return response.getStatusCodeValue();
+        return response.getStatusCode().value();
     }
 
     @Override
