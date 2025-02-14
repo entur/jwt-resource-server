@@ -1,6 +1,5 @@
-package org.entur.jwt.client.grpc;
+package org.entur.jwt.client.recovery;
 
-import org.entur.jwt.client.AccessToken;
 import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenProvider;
 import org.slf4j.Logger;
@@ -20,9 +19,9 @@ import java.util.concurrent.*;
  * UNAUTHENTICATED is a seldom event, this is acceptable.
  */
 
-public abstract class AbstractRatelimitedJwkRotationAccessTokenRecoveryHandler implements JwkRotationAccessTokenRecoveryHandler {
+public abstract class AbstractRatelimitedUnauthenticatedAccessTokenRecoveryHandler implements UnauthenticatedAccessTokenRecoveryHandler {
 
-    private static final Logger log = LoggerFactory.getLogger(AbstractRatelimitedJwkRotationAccessTokenRecoveryHandler.class);
+    private static final Logger log = LoggerFactory.getLogger(AbstractRatelimitedUnauthenticatedAccessTokenRecoveryHandler.class);
 
     protected final ThreadPoolExecutor executor;
 
@@ -30,7 +29,7 @@ public abstract class AbstractRatelimitedJwkRotationAccessTokenRecoveryHandler i
     protected long nextOpeningTime = -1L;
     protected int counter = 0;
 
-    public AbstractRatelimitedJwkRotationAccessTokenRecoveryHandler(final long minTimeInterval) {
+    public AbstractRatelimitedUnauthenticatedAccessTokenRecoveryHandler(final long minTimeInterval) {
         this.minTimeInterval = minTimeInterval;
 
         this.executor = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), Executors.defaultThreadFactory());

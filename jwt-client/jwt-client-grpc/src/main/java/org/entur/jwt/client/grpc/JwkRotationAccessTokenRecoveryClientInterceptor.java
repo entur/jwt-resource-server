@@ -1,6 +1,7 @@
 package org.entur.jwt.client.grpc;
 
 import io.grpc.*;
+import org.entur.jwt.client.recovery.UnauthenticatedAccessTokenRecoveryHandler;
 
 /**
  * Interceptor which detect an unauthorized response to outgoing calls.
@@ -14,7 +15,7 @@ public class JwkRotationAccessTokenRecoveryClientInterceptor implements ClientIn
 
 	public static class Builder {
 
-		private JwkRotationAccessTokenRecoveryHandler handler;
+		private UnauthenticatedAccessTokenRecoveryHandler handler;
 		private JwtCallCredentials callCredentials;
 
 		public Builder withCallCredentials(JwtCallCredentials callCredentials) {
@@ -22,7 +23,7 @@ public class JwkRotationAccessTokenRecoveryClientInterceptor implements ClientIn
 			return this;
 		}
 
-		public Builder withHandler(JwkRotationAccessTokenRecoveryHandler handler) {
+		public Builder withHandler(UnauthenticatedAccessTokenRecoveryHandler handler) {
 			this.handler = handler;
 			return this;
 		}
@@ -40,9 +41,9 @@ public class JwkRotationAccessTokenRecoveryClientInterceptor implements ClientIn
 	}
 
 	protected final JwtCallCredentials callCredentials;
-	protected final JwkRotationAccessTokenRecoveryHandler handler;
+	protected final UnauthenticatedAccessTokenRecoveryHandler handler;
 
-	public JwkRotationAccessTokenRecoveryClientInterceptor(JwtCallCredentials callCredentials, JwkRotationAccessTokenRecoveryHandler handler) {
+	public JwkRotationAccessTokenRecoveryClientInterceptor(JwtCallCredentials callCredentials, UnauthenticatedAccessTokenRecoveryHandler handler) {
 		this.callCredentials = callCredentials;
 		this.handler = handler;
 	}

@@ -1,4 +1,4 @@
-package org.entur.jwt.client.grpc;
+package org.entur.jwt.client.recovery;
 
 import org.entur.jwt.client.AccessToken;
 import org.entur.jwt.client.AccessTokenException;
@@ -8,15 +8,15 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * Attempt to recover from a invalid access-token by simply doing a force refresh of the token.
+ * Attempt to recover from an invalid access-token by simply doing a force refresh of the token.
  *
  */
 
-public class DefaultRatelimitedJwkRotationAccessTokenRecoveryHandler extends AbstractRatelimitedJwkRotationAccessTokenRecoveryHandler {
+public class DefaultRatelimitedUnauthenticatedAccessTokenRecoveryHandler extends AbstractRatelimitedUnauthenticatedAccessTokenRecoveryHandler {
 
-    private static final Logger log = LoggerFactory.getLogger(DefaultRatelimitedJwkRotationAccessTokenRecoveryHandler.class);
+    private static final Logger log = LoggerFactory.getLogger(DefaultRatelimitedUnauthenticatedAccessTokenRecoveryHandler.class);
 
-    public DefaultRatelimitedJwkRotationAccessTokenRecoveryHandler(final long minTimeInterval) {
+    public DefaultRatelimitedUnauthenticatedAccessTokenRecoveryHandler(final long minTimeInterval) {
         super(minTimeInterval);
     }
 

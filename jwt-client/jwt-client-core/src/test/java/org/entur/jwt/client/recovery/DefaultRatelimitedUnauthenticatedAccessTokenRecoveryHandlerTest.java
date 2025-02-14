@@ -1,4 +1,4 @@
-package org.entur.jwt.client.grpc;
+package org.entur.jwt.client.recovery;
 
 import org.entur.jwt.client.AccessToken;
 import org.entur.jwt.client.AccessTokenProvider;
@@ -10,11 +10,11 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 import static org.mockito.Mockito.*;
 
-public class DefaultRatelimitedJwkRotationAccessTokenRecoveryHandlerTest {
+public class DefaultRatelimitedUnauthenticatedAccessTokenRecoveryHandlerTest {
 
     @Test
     public void testForceRefresh() throws Exception {
-        DefaultRatelimitedJwkRotationAccessTokenRecoveryHandler handler = new DefaultRatelimitedJwkRotationAccessTokenRecoveryHandler(30_000L);
+        DefaultRatelimitedUnauthenticatedAccessTokenRecoveryHandler handler = new DefaultRatelimitedUnauthenticatedAccessTokenRecoveryHandler(30_000L);
 
         try {
             AccessTokenProvider accessTokenProvider = mock(AccessTokenProvider.class);
@@ -40,7 +40,7 @@ public class DefaultRatelimitedJwkRotationAccessTokenRecoveryHandlerTest {
 
     @Test
     public void testAlreadyRefreshed() throws Exception {
-        DefaultRatelimitedJwkRotationAccessTokenRecoveryHandler handler = new DefaultRatelimitedJwkRotationAccessTokenRecoveryHandler(30_000L);
+        DefaultRatelimitedUnauthenticatedAccessTokenRecoveryHandler handler = new DefaultRatelimitedUnauthenticatedAccessTokenRecoveryHandler(30_000L);
         try {
             AccessTokenProvider accessTokenProvider = mock(AccessTokenProvider.class);
             String authorizationHeader = "Bearer x.y.z";
@@ -62,7 +62,7 @@ public class DefaultRatelimitedJwkRotationAccessTokenRecoveryHandlerTest {
 
     @Test
     public void testRatelimited() throws Exception {
-        DefaultRatelimitedJwkRotationAccessTokenRecoveryHandler handler = new DefaultRatelimitedJwkRotationAccessTokenRecoveryHandler(30_000L);
+        DefaultRatelimitedUnauthenticatedAccessTokenRecoveryHandler handler = new DefaultRatelimitedUnauthenticatedAccessTokenRecoveryHandler(30_000L);
 
         try {
             AccessTokenProvider accessTokenProvider = mock(AccessTokenProvider.class);
@@ -93,7 +93,7 @@ public class DefaultRatelimitedJwkRotationAccessTokenRecoveryHandlerTest {
 
     @Test
     public void testWaitForRatelimit() throws Exception {
-        DefaultRatelimitedJwkRotationAccessTokenRecoveryHandler handler = new DefaultRatelimitedJwkRotationAccessTokenRecoveryHandler(30_000L);
+        DefaultRatelimitedUnauthenticatedAccessTokenRecoveryHandler handler = new DefaultRatelimitedUnauthenticatedAccessTokenRecoveryHandler(30_000L);
 
         try {
             AccessTokenProvider accessTokenProvider = mock(AccessTokenProvider.class);
@@ -133,7 +133,7 @@ public class DefaultRatelimitedJwkRotationAccessTokenRecoveryHandlerTest {
 
     @Test
     public void testRatelimitedWithHeavyLoad() throws Exception {
-        DefaultRatelimitedJwkRotationAccessTokenRecoveryHandler handler = new DefaultRatelimitedJwkRotationAccessTokenRecoveryHandler(30_000L);
+        DefaultRatelimitedUnauthenticatedAccessTokenRecoveryHandler handler = new DefaultRatelimitedUnauthenticatedAccessTokenRecoveryHandler(30_000L);
 
         try {
             AccessTokenProvider accessTokenProvider = mock(AccessTokenProvider.class);
@@ -167,7 +167,7 @@ public class DefaultRatelimitedJwkRotationAccessTokenRecoveryHandlerTest {
     }
 
 
-    private static void wait(DefaultRatelimitedJwkRotationAccessTokenRecoveryHandler handler) throws InterruptedException {
+    private static void wait(DefaultRatelimitedUnauthenticatedAccessTokenRecoveryHandler handler) throws InterruptedException {
         ThreadPoolExecutor executor = handler.getExecutor();
         long deadline = System.currentTimeMillis() + 1000;
         Thread.sleep(10);
