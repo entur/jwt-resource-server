@@ -53,6 +53,8 @@ See documentation contained in each folder to get started. Or skip right to the 
 [European Union Public Licence v1.2](https://eupl.eu/).
 
 # History
+ - 5.0.3: Add support for refreshing access-tokens for clients which see unauthenticated responses. 
+   - Added a grpc module with an interceptor support for the above.
  - 5.0.2: Add Spring properties annotation processor for more friendly property configuration.
  - 5.0.1: Support for [gRPC Ecosystem](https://github.com/grpc-ecosystem). [Lognet grpc](https://github.com/LogNet/grpc-spring-boot-starter) is now deprecated.
  - 4.2.7: Bump dependencies
