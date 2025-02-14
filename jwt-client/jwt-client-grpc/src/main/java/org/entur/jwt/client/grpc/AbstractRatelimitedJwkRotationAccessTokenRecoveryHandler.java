@@ -10,27 +10,27 @@ import java.util.concurrent.*;
 
 /**
  *
- * Handle reactive refresh of JWT tokens upon UNAUTHENTICATED grpc status from downstream services,
- * which indicate that the JWK have been rotated (and the old keys were blacklisted).<br><br>
- *
- * There is however other reasons (i.e. bugs) to return UNAUTHENTICATED, so throttle how often the client
- * refreshes the access-token.
- * <br><br>
- * Refresh is performed in the background; there is no "retry" for the failed call, i.e. key rotations with key
- * revocation is such a seldom event that some noise is acceptable.
+ * Handle reactive recovery of JWT tokens upon UNAUTHENTICATED grpc status from downstream services.
+ * Some possible reasons for UNAUTHENTICATED:<br>
+ * - JWK rotation (and the old keys were nuked)<br>
+ * - bugs in the downstream service <br>
+ * - token misconfiguration (i.e. missing claims)<br>
+ * <br>
+ * Recovery is performed in the background; there is no "retry" for the failed call. Assuming
+ * UNAUTHENTICATED is a seldom event, this is acceptable.
  */
 
-public class RatelimitedJwkRotationAccessTokenRecoveryHandler implements JwkRotationAccessTokenRecoveryHandler {
+public abstract class AbstractRatelimitedJwkRotationAccessTokenRecoveryHandler implements JwkRotationAccessTokenRecoveryHandler {
 
-    private static final Logger log = LoggerFactory.getLogger(RatelimitedJwkRotationAccessTokenRecoveryHandler.class);
+    private static final Logger log = LoggerFactory.getLogger(AbstractRatelimitedJwkRotationAccessTokenRecoveryHandler.class);
 
-    private final ThreadPoolExecutor executor;
+    protected final ThreadPoolExecutor executor;
 
-    private final long minTimeInterval;
-    private long nextOpeningTime = -1L;
-    private int counter = 0;
+    protected final long minTimeInterval;
+    protected long nextOpeningTime = -1L;
+    protected int counter = 0;
 
-    public RatelimitedJwkRotationAccessTokenRecoveryHandler(final long minTimeInterval) {
+    public AbstractRatelimitedJwkRotationAccessTokenRecoveryHandler(final long minTimeInterval) {
         this.minTimeInterval = minTimeInterval;
 
         this.executor = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), Executors.defaultThreadFactory());
@@ -52,29 +52,25 @@ public class RatelimitedJwkRotationAccessTokenRecoveryHandler implements JwkRota
     private void queueRefresh(AccessTokenProvider accessTokenProvider, String header, long currentTime) {
         executor.submit(() -> {
             try {
-                AccessToken currentAccessToken = accessTokenProvider.getAccessToken(false);
-                if (!header.endsWith(currentAccessToken.getValue())) {
-                    // access-token already refreshed
-                    return;
-                }
                 if (isRateLimited(currentTime)) {
                     log.info("Not refreshing access-token due to rate limiting");
                     return;
                 }
-                log.info("Force refreshed access-token");
-                accessTokenProvider.getAccessToken(true);
+                recover(accessTokenProvider, header);
             } catch (Throwable e) {
                 log.warn("Problem refreshing access-token", e);
             }
         });
     }
 
+    protected abstract void recover(AccessTokenProvider accessTokenProvider, String header) throws AccessTokenException;
+
     protected boolean isRateLimited(long currentTime) {
         boolean rateLimitHit;
         synchronized (this) {
             if (nextOpeningTime <= currentTime) {
                 nextOpeningTime = currentTime + minTimeInterval;
-                counter = 1;
+                counter = 0;
                 rateLimitHit = false;
             } else {
                 rateLimitHit = counter <= 0;
