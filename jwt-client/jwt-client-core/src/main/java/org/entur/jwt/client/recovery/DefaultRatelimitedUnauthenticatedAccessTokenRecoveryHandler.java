@@ -23,12 +23,17 @@ public class DefaultRatelimitedUnauthenticatedAccessTokenRecoveryHandler extends
     @Override
     protected void recover(AccessTokenProvider accessTokenProvider, String header) throws AccessTokenException {
         AccessToken currentAccessToken = accessTokenProvider.getAccessToken(false);
-        if (!header.endsWith(currentAccessToken.getValue())) {
-            // access-token already refreshed
-            log.info("Access-token already refreshed");
-            return;
+        if(currentAccessToken != null) {
+            if (!header.endsWith(currentAccessToken.getValue())) {
+                // access-token already refreshed
+                log.info("Access-token already refreshed");
+                return;
+            }
+            log.info("Force refreshed access-token");
+            accessTokenProvider.getAccessToken(true);
+        } else {
+            // should never happen
+            // but count this as an attempt to refresh the token
         }
-        log.info("Force refreshed access-token");
-        accessTokenProvider.getAccessToken(true);
     }
 }
