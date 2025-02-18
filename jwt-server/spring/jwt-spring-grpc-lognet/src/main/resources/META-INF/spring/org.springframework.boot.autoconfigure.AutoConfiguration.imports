@@ -1,2 +1,0 @@
-org.entur.jwt.spring.grpc.lognet.GrpcLognetAutoConfiguration
-org.entur.jwt.spring.grpc.lognet.GrpcLognetMdcAutoConfiguration
