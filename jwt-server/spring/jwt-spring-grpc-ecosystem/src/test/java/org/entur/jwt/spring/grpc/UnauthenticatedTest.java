@@ -22,9 +22,6 @@ import io.grpc.StatusRuntimeException;
 @DirtiesContext
 public class UnauthenticatedTest extends AbstractGrpcTest {
 
-    @LocalServerPort
-    private int randomServerPort;
-    
     @Test 
     public void testProtectedResource() {
         StatusRuntimeException exception = assertThrows(StatusRuntimeException.class, () -> {

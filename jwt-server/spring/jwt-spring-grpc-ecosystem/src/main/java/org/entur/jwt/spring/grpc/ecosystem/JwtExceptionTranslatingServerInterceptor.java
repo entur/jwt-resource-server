@@ -9,14 +9,17 @@ import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import net.devh.boot.grpc.common.util.InterceptorOrder;
 import net.devh.boot.grpc.server.interceptor.GrpcGlobalServerInterceptor;
+import net.devh.boot.grpc.server.security.interceptors.AuthenticatingServerInterceptor;
 import net.devh.boot.grpc.server.security.interceptors.ExceptionTranslatingServerInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.oauth2.jwt.JwtException;
 
 /**
@@ -55,6 +58,14 @@ public class JwtExceptionTranslatingServerInterceptor extends ExceptionTranslati
         }
     }
 
+    protected boolean isAnon() {
+        SecurityContext securityContext = AuthenticatingServerInterceptor.SECURITY_CONTEXT_KEY.get();
+        if (securityContext != null) {
+            return securityContext.getAuthentication() instanceof AnonymousAuthenticationToken;
+        }
+        return false;
+    }
+
     /**
      * Close the call with {@link Status#UNAUTHENTICATED} or {@link Status#UNAVAILABLE}
      *
@@ -79,13 +90,18 @@ public class JwtExceptionTranslatingServerInterceptor extends ExceptionTranslati
 
     /**
      * Close the call with {@link Status#PERMISSION_DENIED}.
+     * If no authentication, close with {@link Status#UNAUTHENTICATED}.
      *
      * @param call The call to close.
      * @param e The exception that was the cause.
      */
     @Override
     protected void closeCallAccessDenied(final ServerCall<?, ?> call, final AccessDeniedException e) {
-        call.close(Status.PERMISSION_DENIED.withDescription(e.getMessage()), new Metadata());
+        if(isAnon()) {
+            call.close(Status.UNAUTHENTICATED.withDescription(e.getMessage()), new Metadata());
+        } else {
+            call.close(Status.PERMISSION_DENIED.withDescription(e.getMessage()), new Metadata());
+        }
     }
 
     @Override
