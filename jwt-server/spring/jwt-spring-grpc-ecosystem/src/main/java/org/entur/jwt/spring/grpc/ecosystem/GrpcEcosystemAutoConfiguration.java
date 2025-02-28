@@ -64,6 +64,12 @@ public class GrpcEcosystemAutoConfiguration {
 
     private static Logger log = LoggerFactory.getLogger(GrpcEcosystemAutoConfiguration.class);
 
+    private final Map<String, List<String>> permitAllMappings;
+
+    public GrpcEcosystemAutoConfiguration(GrpcPermitAll permitAll) {
+        permitAllMappings = getPermitAllMappings(permitAll.getGrpc());
+    }
+
     @Bean
     @ConditionalOnMissingBean(JwtAuthorityEnricher.class)
     public JwtAuthorityEnricher jwtAuthorityEnricher() {
@@ -79,11 +85,13 @@ public class GrpcEcosystemAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(GrpcAuthenticationReader.class)
-    public GrpcAuthenticationReader authenticationReader() {
+    public GrpcAuthenticationReader authenticationReader(GrpcPermitAll permitAll) {
         final List<GrpcAuthenticationReader> readers = new ArrayList<>();
         readers.add(new MustBeBearerIfPresentAuthenticationReader(accessToken -> new BearerTokenAuthenticationToken(accessToken)));
         // anon auth as found in spring security's use of AnonymousAuthenticationToken
-        readers.add(new AnonymousAuthenticationReader("key","anonymous", AuthorityUtils.createAuthorityList("ROLE_ANONYMOUS")));
+        if(!permitAllMappings.isEmpty()) {
+            readers.add(new MustBePermitAllAnonymousAuthenticationReader("key", "anonymous", AuthorityUtils.createAuthorityList("ROLE_ANONYMOUS"), permitAllMappings));
+        }
         return new CompositeGrpcAuthenticationReader(readers);
     }
 
@@ -94,39 +102,41 @@ public class GrpcEcosystemAutoConfiguration {
 
         AccessPredicate defaultAccessPredicate = AccessPredicate.fullyAuthenticated();
 
-        if (permitAll.isActive()) {
-            GrpcServicesConfiguration grpc = permitAll.getGrpc();
-
-            Map<String, List<String>> serviceNameMethodName = new HashMap<>();
-            for (ServiceMatcherConfiguration configuration : grpc.getServices()) {
-                if (!configuration.isEnabled()) {
-                    continue;
-                }
-
-                List<String> methods = configuration.getMethods();
-
-                if (methods.contains("*")) {
-                    log.info("Allow anonymous access to all methods of GRPC service " + configuration.getName());
-                } else {
-                    log.info("Allow anonymous access to methods " + configuration.getMethods() + " of GRPC service " + configuration.getName());
-                }
-                List<String> lowercaseMethodNames = new ArrayList<>();
-
-                for (String method : methods) {
-                    lowercaseMethodNames.add(method.toLowerCase());
-                }
-
-                serviceNameMethodName.put(configuration.getName().toLowerCase(), lowercaseMethodNames);
-            }
-
-            if(!serviceNameMethodName.isEmpty()) {
-                defaultAccessPredicate = new GrpcAnonymousAccessPredicate(serviceNameMethodName);
-            }
+        if (!permitAllMappings.isEmpty()) {
+            defaultAccessPredicate = new GrpcAnonymousAccessPredicate(permitAllMappings);
         }
 
         source.setDefault(defaultAccessPredicate);
 
         return source;
+    }
+
+    private static Map<String, List<String>> getPermitAllMappings(GrpcServicesConfiguration grpc) {
+        Map<String, List<String>> serviceNameMethodName = new HashMap<>();
+        for (ServiceMatcherConfiguration configuration : grpc.getServices()) {
+            if (!configuration.isEnabled()) {
+                continue;
+            }
+
+            List<String> methods = configuration.getMethods();
+            if(methods.isEmpty()) {
+                continue;
+            }
+
+            if (methods.contains("*")) {
+                log.info("Allow anonymous access to all methods of GRPC service " + configuration.getName());
+            } else {
+                log.info("Allow anonymous access to methods " + configuration.getMethods() + " of GRPC service " + configuration.getName());
+            }
+            List<String> lowercaseMethodNames = new ArrayList<>();
+
+            for (String method : methods) {
+                lowercaseMethodNames.add(method.toLowerCase());
+            }
+
+            serviceNameMethodName.put(configuration.getName().toLowerCase(), lowercaseMethodNames);
+        }
+        return serviceNameMethodName;
     }
 
     @Bean
@@ -139,7 +149,7 @@ public class GrpcEcosystemAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(AuthenticationManager.class)
-    public AuthenticationManager authenticationManager(JwkSourceMap jwkSourceMap, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators, Flavours flavours) {
+    public AuthenticationManager authenticationManager(GrpcPermitAll permitAll, JwkSourceMap jwkSourceMap, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators, Flavours flavours) {
 
         log.info("Configure GRPC security");
 
@@ -168,8 +178,10 @@ public class GrpcEcosystemAutoConfiguration {
         final List<AuthenticationProvider> providers = new ArrayList<>();
         providers.add(provider);
 
-        // TODO disable this if no anon access?
-        providers.add(new AnonymousAuthenticationProvider("key"));
+        if (permitAll.isActive()) {
+            providers.add(new AnonymousAuthenticationProvider("key"));
+        }
+
         return new ProviderManager(providers);
     }
 
