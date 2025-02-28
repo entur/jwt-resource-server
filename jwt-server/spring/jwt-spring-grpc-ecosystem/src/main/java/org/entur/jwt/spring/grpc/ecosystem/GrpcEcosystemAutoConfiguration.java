@@ -50,10 +50,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Configuration
 @EnableConfigurationProperties({GrpcPermitAll.class, Flavours.class, GrpcExceptionHandlers.class})
@@ -67,7 +64,11 @@ public class GrpcEcosystemAutoConfiguration {
     private final Map<String, List<String>> permitAllMappings;
 
     public GrpcEcosystemAutoConfiguration(GrpcPermitAll permitAll) {
-        permitAllMappings = getPermitAllMappings(permitAll.getGrpc());
+        if(permitAll.isEnabled()) {
+            permitAllMappings = getPermitAllMappings(permitAll.getGrpc());
+        } else {
+            permitAllMappings = Collections.emptyMap();
+        }
     }
 
     @Bean
@@ -149,7 +150,7 @@ public class GrpcEcosystemAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(AuthenticationManager.class)
-    public AuthenticationManager authenticationManager(GrpcPermitAll permitAll, JwkSourceMap jwkSourceMap, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators, Flavours flavours) {
+    public AuthenticationManager authenticationManager(JwkSourceMap jwkSourceMap, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators, Flavours flavours) {
 
         log.info("Configure GRPC security");
 
@@ -178,7 +179,7 @@ public class GrpcEcosystemAutoConfiguration {
         final List<AuthenticationProvider> providers = new ArrayList<>();
         providers.add(provider);
 
-        if (permitAll.isActive()) {
+        if (!permitAllMappings.isEmpty()) {
             providers.add(new AnonymousAuthenticationProvider("key"));
         }
 
