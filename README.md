@@ -54,6 +54,7 @@ See documentation contained in each folder to get started. Or skip right to the 
 
 # History
  - 6.0.0: Spring Boot 3.4.x + remove Lognet GRPC 
+ - 5.0.4: Adjust gRPC anonymous access so that PERMISSION_DENIED is converted to UNAUTHENTICATED in more cases. Reject non-whitelisted anonymous access earlier. 
  - 5.0.3: Add support for refreshing access-tokens for clients which see unauthenticated responses. 
    - Added a grpc module with an interceptor support for the above.
  - 5.0.2: Add Spring properties annotation processor for more friendly property configuration.
