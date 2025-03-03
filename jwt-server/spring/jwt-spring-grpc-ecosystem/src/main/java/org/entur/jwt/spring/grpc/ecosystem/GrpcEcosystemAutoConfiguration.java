@@ -3,7 +3,6 @@ package org.entur.jwt.spring.grpc.ecosystem;
 import net.devh.boot.grpc.common.util.InterceptorOrder;
 import net.devh.boot.grpc.server.autoconfigure.GrpcServerSecurityAutoConfiguration;
 import net.devh.boot.grpc.server.interceptor.GrpcGlobalServerInterceptor;
-import net.devh.boot.grpc.server.security.authentication.AnonymousAuthenticationReader;
 import net.devh.boot.grpc.server.security.authentication.CompositeGrpcAuthenticationReader;
 import net.devh.boot.grpc.server.security.authentication.GrpcAuthenticationReader;
 import net.devh.boot.grpc.server.security.check.AccessPredicate;
@@ -44,10 +43,8 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
 
 import java.util.*;
@@ -87,12 +84,15 @@ public class GrpcEcosystemAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(GrpcAuthenticationReader.class)
     public GrpcAuthenticationReader authenticationReader(GrpcPermitAll permitAll) {
-        final List<GrpcAuthenticationReader> readers = new ArrayList<>();
-        readers.add(new MustBeBearerIfPresentAuthenticationReader(accessToken -> new BearerTokenAuthenticationToken(accessToken)));
-        // anon auth as found in spring security's use of AnonymousAuthenticationToken
-        if(!permitAllMappings.isEmpty()) {
-            readers.add(new MustBePermitAllAnonymousAuthenticationReader("key", "anonymous", AuthorityUtils.createAuthorityList("ROLE_ANONYMOUS"), permitAllMappings));
+        MustBeBearerIfPresentAuthenticationReader mustBeBearerIfPresentAuthenticationReader = new MustBeBearerIfPresentAuthenticationReader(accessToken -> new BearerTokenAuthenticationToken(accessToken));
+        if(permitAllMappings.isEmpty()) {
+            return mustBeBearerIfPresentAuthenticationReader;
         }
+
+        final List<GrpcAuthenticationReader> readers = new ArrayList<>();
+        readers.add(mustBeBearerIfPresentAuthenticationReader);
+        // anon auth as found in spring security's use of AnonymousAuthenticationToken
+        readers.add(new MustBePermitAllAnonymousAuthenticationReader("key", "anonymous", AuthorityUtils.createAuthorityList("ROLE_ANONYMOUS"), permitAllMappings));
         return new CompositeGrpcAuthenticationReader(readers);
     }
 
@@ -104,7 +104,7 @@ public class GrpcEcosystemAutoConfiguration {
         AccessPredicate defaultAccessPredicate = AccessPredicate.fullyAuthenticated();
 
         if (!permitAllMappings.isEmpty()) {
-            defaultAccessPredicate = new GrpcAnonymousAccessPredicate(permitAllMappings);
+            defaultAccessPredicate = new MustBePermitAllAnonymousAccessPredicate(permitAllMappings);
         }
 
         source.setDefault(defaultAccessPredicate);
