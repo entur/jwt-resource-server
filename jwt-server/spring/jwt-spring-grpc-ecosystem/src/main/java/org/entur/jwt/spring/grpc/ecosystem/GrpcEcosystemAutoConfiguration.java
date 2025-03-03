@@ -104,7 +104,7 @@ public class GrpcEcosystemAutoConfiguration {
         AccessPredicate defaultAccessPredicate = AccessPredicate.fullyAuthenticated();
 
         if (!permitAllMappings.isEmpty()) {
-            defaultAccessPredicate = new MustBePermitAllAnonymousAccessPredicate(permitAllMappings);
+            defaultAccessPredicate = new MustBePermitAllAnonymousOrFullyAuthenticatedAccessPredicate(permitAllMappings);
         }
 
         source.setDefault(defaultAccessPredicate);

@@ -8,11 +8,11 @@ import org.springframework.security.core.Authentication;
 import java.util.List;
 import java.util.Map;
 
-public class MustBePermitAllAnonymousAccessPredicate implements AccessPredicate {
+public class MustBePermitAllAnonymousOrFullyAuthenticatedAccessPredicate implements AccessPredicate {
 
     protected final Map<String, List<String>> serviceNameMethodName;
 
-    public MustBePermitAllAnonymousAccessPredicate(Map<String, List<String>> serviceNameMethodName) {
+    public MustBePermitAllAnonymousOrFullyAuthenticatedAccessPredicate(Map<String, List<String>> serviceNameMethodName) {
         this.serviceNameMethodName = serviceNameMethodName;
     }
 
