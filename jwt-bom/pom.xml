@@ -76,11 +76,6 @@
 			</dependency>
 			<dependency>
 				<groupId>org.entur.jwt-rs</groupId>
-				<artifactId>jwt-spring-grpc-lognet</artifactId>
-				<version>5.0.5-SNAPSHOT</version>
-			</dependency>
-			<dependency>
-				<groupId>org.entur.jwt-rs</groupId>
 				<artifactId>jwt-spring-grpc-ecosystem</artifactId>
 				<version>5.0.5-SNAPSHOT</version>
 			</dependency>
