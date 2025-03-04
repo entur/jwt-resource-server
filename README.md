@@ -53,12 +53,12 @@ See documentation contained in each folder to get started. Or skip right to the 
 [European Union Public Licence v1.2](https://eupl.eu/).
 
 # History
- - 5.1.0: Spring Boot 3.4.x + remove Lognet GRPC 
+ - 5.1.0: Spring Boot 3.4.x + remove Lognet gRPC 
  - 5.0.4: Adjust gRPC anonymous access so that PERMISSION_DENIED is converted to UNAUTHENTICATED in more cases. Reject non-whitelisted anonymous access earlier. 
  - 5.0.3: Add support for refreshing access-tokens for clients which see unauthenticated responses. 
-   - Added a grpc module with an interceptor support for the above.
+   - Added a gRPC module with an interceptor support for the above.
  - 5.0.2: Add Spring properties annotation processor for more friendly property configuration.
- - 5.0.1: Support for [gRPC Ecosystem](https://github.com/grpc-ecosystem). [Lognet grpc](https://github.com/LogNet/grpc-spring-boot-starter) is now deprecated.
+ - 5.0.1: Support for [gRPC Ecosystem](https://github.com/grpc-ecosystem). [Lognet gRPC](https://github.com/LogNet/grpc-spring-boot-starter) is now deprecated.
  - 4.2.7: Bump dependencies
  - 4.2.6: Adjust dependencies to better align with Spring Boot version
  - 4.2.5: Bump dependencies, now at Spring Boot 3.3. 
@@ -71,7 +71,7 @@ See documentation contained in each folder to get started. Or skip right to the 
  - 4.1.5: Add event listener to JWKs rate limiter, remove unused property. 
  - 4.1.4: Improve client builder empty string checks
  - 4.1.2: Improve logging of JWK events, bump dependencies.
- - 4.1.1: Improve GRPC exception handling configuration.
+ - 4.1.1: Improve gRPC exception handling configuration.
  - 4.1.0: The JWT `scope` (or `scp`) claim will now be converted to `GrantedAuthority` using the default Spring approach of prefixing with `SCOPE_`. Add a bean `NoopJwtAuthorityEnricher` to disable scope being converted to authorities all together.
  - 4.0.1: Dependency updates
  - 4.0.0: Adjust gRPC MDC handling + enrich gRPC authentication from Auth0/Keycloak access token
