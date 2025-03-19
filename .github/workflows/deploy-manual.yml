@@ -1,0 +1,39 @@
+name: Deploy to Maven Central
+on:
+  workflow_dispatch:
+    inputs:
+      version-increment:
+        description: 'Version-increment'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  deploy-maven:
+    uses: entur/abt-gha-public/.github/workflows/maven-open-source-increment-version-and-release-to-maven-central.yml@v1.0.0
+    secrets: inherit
+    with: 
+      version-increment: ${{ inputs.version-increment }}
+
+  post-failure-to-slack:
+    needs: deploy-maven
+    if: failure()
+    uses: entur/gha-slack/.github/workflows/post.yml@v2
+    with:
+      channel_id: ${{ vars.CHANNEL_ID }}
+      message: "🔴 Maven artifact deploy failed for ${{ github.repository }}\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+    secrets: inherit
+
+  post-success-to-slack:
+    needs: deploy-maven
+    if: success()
+    uses: entur/gha-slack/.github/workflows/post.yml@v2
+    with:
+      channel_id: ${{ vars.CHANNEL_ID}}
+      message: "🟢 Maven artifact deploy success for ${{ github.repository }}\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+    secrets: inherit
+
+
