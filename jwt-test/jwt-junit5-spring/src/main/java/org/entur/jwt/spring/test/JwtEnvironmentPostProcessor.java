@@ -44,9 +44,9 @@ public class JwtEnvironmentPostProcessor implements EnvironmentPostProcessor {
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
         try {
-            Path path = Paths.get("jwt.junit5.properties");
+            Path path = AuthorizationServerExtension.detectPath();
             if (Files.exists(path)) {
-                ResourcePropertySource source = new ResourcePropertySource("file:jwt.junit5.properties");
+                ResourcePropertySource source = new ResourcePropertySource("file:" + path);
 
                 Map<String, Object> junit5Properties = source.getSource();
                 // see whether issuer is populated, if not create a mock value

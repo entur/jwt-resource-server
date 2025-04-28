@@ -1,3 +1,4 @@
+
 package org.entur.jwt.spring.demo;
 
 import org.entur.jwt.junit5.AccessToken;
@@ -23,7 +24,7 @@ import static io.restassured.RestAssured.given;
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {"entur.authorization.permit-all.matcher.method.get.patterns=/actuator/**,/unprotected"})
-public class GreetingControllerTest {
+public class GreetingController2Test {
 
     @LocalServerPort
     private int port;

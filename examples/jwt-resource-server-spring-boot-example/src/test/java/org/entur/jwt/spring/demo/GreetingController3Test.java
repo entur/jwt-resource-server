@@ -1,3 +1,4 @@
+
 package org.entur.jwt.spring.demo;
 
 import org.entur.jwt.junit5.AccessToken;
@@ -20,10 +21,11 @@ import static io.restassured.RestAssured.given;
  */
 
 @AuthorizationServer("entur")
+@AuthorizationServer("entur2")
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {"entur.authorization.permit-all.matcher.method.get.patterns=/actuator/**,/unprotected"})
-public class GreetingControllerTest {
+public class GreetingController3Test {
 
     @LocalServerPort
     private int port;
@@ -34,12 +36,12 @@ public class GreetingControllerTest {
     }
 
     @Test
-    public void testProtectedEndpoint(@AccessToken(audience = "https://my.audience") String token) {
+    public void testProtectedEndpoint(@AccessToken(audience = "https://my.audience", by="entur") String token) {
         given().port(port).log().all().when().header("Authorization", token).get("/protected").then().log().all().assertThat().statusCode(HttpStatus.OK.value());
     }
 
     @Test
-    public void testProtectedEndpointWithPermission(@AccessToken(audience = "https://my.audience") @StringArrayClaim(name = "permissions", value = { "configure" }) String token) {
+    public void testProtectedEndpointWithPermission(@AccessToken(audience = "https://my.audience", by="entur") @StringArrayClaim(name = "permissions", value = { "configure" }) String token) {
         given().port(port).log().all().when().header("Authorization", token).get("/protected/withPermission").then().log().all().assertThat().statusCode(HttpStatus.OK.value());
     }
 
@@ -49,7 +51,7 @@ public class GreetingControllerTest {
     }
 
     @Test
-    public void testProtectedEndpointWithIncorrectPermission(@AccessToken(audience = "https://my.audience") @StringArrayClaim(name = "permissions", value = { "myPermission" }) String token) {
+    public void testProtectedEndpointWithIncorrectPermission(@AccessToken(audience = "https://my.audience", by="entur") @StringArrayClaim(name = "permissions", value = { "myPermission" }) String token) {
         given().port(port).log().all().when().header("Authorization", token).get("/protected/withPermission").then().log().all().assertThat().statusCode(HttpStatus.FORBIDDEN.value());
     }
 }

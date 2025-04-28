@@ -1,5 +1,8 @@
 package org.entur.jwt.junit5.extention;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +30,9 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
 
     public static final Namespace NAMESPACE = Namespace.create(AuthorizationServerExtension.class);
 
+    // in-memory cache for jwks
+    protected static AuthorizationServerImplementationFactory factory = new AuthorizationServerImplementationFactory();
+
     protected List<AuthorizationServerImplementation> servers = new ArrayList<>();
     protected List<ResourceServerConfigurationEnricher> enrichers = new ArrayList<>();
     protected List<ResourceServerConfigurationResolver> resolvers = new ArrayList<>();
@@ -40,8 +46,6 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
     @Override
     public void beforeAll(ExtensionContext context) throws Exception {
         Class<?> testClass = context.getRequiredTestClass();
-
-        AuthorizationServerImplementationFactory factory = new AuthorizationServerImplementationFactory();
 
         servers = factory.create(testClass);
 
@@ -179,5 +183,30 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
         }
         return "https://mock.issuer." + tenant.substring(tenant.lastIndexOf('.') + 1) + ".xyz";
     }
+
+    public static Path detectParentPath() {
+        Path mavenPath =  Paths.get("target");
+        if (Files.exists(mavenPath)) {
+            return Paths.get("target","jwt.junit5.properties");
+        }
+        Path gradlePath =  Paths.get("build");
+        if (Files.exists(gradlePath)) {
+            return Paths.get("build","jwt.junit5.properties");
+        }
+        return Paths.get("jwt.junit5.properties");
+    }
+
+    public static Path detectPath() {
+        Path mavenPath =  Paths.get("target","jwt.junit5.properties");
+        if (Files.exists(mavenPath)) {
+            return mavenPath;
+        }
+        Path gradlePath =  Paths.get("build","jwt.junit5.properties");
+        if (Files.exists(gradlePath)) {
+            return gradlePath;
+        }
+        return Paths.get("jwt.junit5.properties");
+    }
+
 
 }

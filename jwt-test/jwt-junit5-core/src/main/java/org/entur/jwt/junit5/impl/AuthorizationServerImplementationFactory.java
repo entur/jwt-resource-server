@@ -6,8 +6,17 @@ import java.util.List;
 import java.util.Optional;
 
 import org.entur.jwt.junit5.AuthorizationServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AuthorizationServerImplementationFactory {
+
+    private static Logger LOGGER = LoggerFactory.getLogger(AuthorizationServerImplementationFactory.class);
+
+    private List<AuthorizationServerImplementation> servers = new ArrayList<>();
+
+    public AuthorizationServerImplementationFactory() {
+    }
 
     public List<AuthorizationServerImplementation> create(Class<?> testClass) {
         List<AuthorizationServerImplementation> results = new ArrayList<>();
@@ -23,15 +32,28 @@ public class AuthorizationServerImplementationFactory {
         if (annotation instanceof AuthorizationServer) {
             AuthorizationServer authorizationServer = (AuthorizationServer) annotation;
 
-            results.add(new AuthorizationServerImplementation(authorizationServer, annotation));
+            results.add(add(annotation, authorizationServer));
         } else if (annotation instanceof AuthorizationServer.List) {
             AuthorizationServer.List l = (AuthorizationServer.List) annotation;
             for (AuthorizationServer authorizationServer : l.value()) {
-                results.add(new AuthorizationServerImplementation(authorizationServer, annotation));
+                results.add(add(annotation, authorizationServer));
             }
         } else {
             createFromMetaAnnotation(annotation, results);
         }
+    }
+
+    public synchronized AuthorizationServerImplementation add(Annotation annotation, AuthorizationServer authorizationServer) {
+        for (AuthorizationServerImplementation f : servers) {
+            if(f.matches(authorizationServer, annotation)) {
+                if(LOGGER.isTraceEnabled()) LOGGER.trace("Found existing authorization server " + f.getId() + " " + f.getJsonWebKeys().hashCode());
+                return f;
+            }
+        }
+        AuthorizationServerImplementation authorizationServerImplementation = new AuthorizationServerImplementation(authorizationServer, annotation);
+        if(LOGGER.isTraceEnabled()) LOGGER.trace("Create new authorization server " + authorizationServer.value() + " " + authorizationServerImplementation.getJsonWebKeys().hashCode());
+        servers.add(authorizationServerImplementation);
+        return authorizationServerImplementation;
     }
 
     private void createFromMetaAnnotation(Annotation annotation, List<AuthorizationServerImplementation> results) {
@@ -41,14 +63,17 @@ public class AuthorizationServerImplementationFactory {
         if (single.isPresent()) {
             AuthorizationServer authorizationServer = single.get();
 
-            results.add(new AuthorizationServerImplementation(authorizationServer, annotation));
+            results.add(add(annotation, authorizationServer));
         }
         Optional<AuthorizationServer.List> list = AnnotationUtils.findAnnotation(annotation.getClass(), AuthorizationServer.List.class);
         if (list.isPresent()) {
             for (AuthorizationServer authorizationServer : list.get().value()) {
-                results.add(new AuthorizationServerImplementation(authorizationServer, annotation));
+                results.add(add(annotation, authorizationServer));
             }
         }
     }
 
+    public List<AuthorizationServerImplementation> getServers() {
+        return servers;
+    }
 }

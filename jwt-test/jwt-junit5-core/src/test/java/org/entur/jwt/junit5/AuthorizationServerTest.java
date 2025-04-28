@@ -17,7 +17,7 @@ public class AuthorizationServerTest {
     @org.junit.jupiter.api.Test
     public void test(@AccessToken @IntegerClaim(name = "https://entur.io/organisationID", value = 1) @Subject("user1") String token) throws IOException {
 
-        Path path = Paths.get("jwt.junit5.properties");
+        Path path = Paths.get("target", "jwt.junit5.properties");
 
         Properties properties = new Properties();
         properties.load(Files.newInputStream(path));

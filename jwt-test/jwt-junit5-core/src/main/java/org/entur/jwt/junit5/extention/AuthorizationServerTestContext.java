@@ -40,7 +40,7 @@ public class AuthorizationServerTestContext {
             authorizationServers.put(impl.getAnnotation(), list);
         }
         
-        if(!list.contains(impl)) {
+        if(!list.contains(impl)) { // i.e. instance check, since keys are connected to instances
             list.add(impl);
         }
     }
