@@ -9,7 +9,6 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
