@@ -2,6 +2,7 @@ package org.entur.jwt.spring.grpc;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import net.devh.boot.grpc.server.serverfactory.GrpcServerFactory;
 import org.entur.jwt.spring.grpc.test.GreetingRequest;
 import org.entur.jwt.spring.grpc.test.GreetingServiceGrpc;
 import org.entur.jwt.spring.grpc.test.GreetingServiceGrpc.GreetingServiceBlockingStub;
@@ -9,6 +10,7 @@ import org.entur.jwt.spring.grpc.test.GreetingServiceGrpc.GreetingServiceFutureS
 import org.entur.jwt.spring.grpc.test.GreetingServiceGrpc.GreetingServiceStub;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.web.server.LocalServerPort;
 
@@ -34,8 +36,8 @@ public abstract class AbstractGrpcTest {
     @LocalServerPort
     protected int randomServerPort;
 
-    @Value("${grpc.server.port:9090}")
-    protected int randomGrpcServerPort;
+    @Autowired
+    protected GrpcServerFactory grpcServerFactory;
 
     protected GreetingRequest greetingRequest = GreetingRequest.newBuilder().build();
 
@@ -43,7 +45,7 @@ public abstract class AbstractGrpcTest {
 
     @BeforeEach
     public void initComm() {
-        managedChannel = ManagedChannelBuilder.forAddress("localhost", randomGrpcServerPort).usePlaintext().build();
+        managedChannel = ManagedChannelBuilder.forAddress("localhost", grpcServerFactory.getPort()).usePlaintext().build();
     }
 
     @AfterEach

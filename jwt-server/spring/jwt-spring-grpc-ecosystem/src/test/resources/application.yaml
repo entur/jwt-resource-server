@@ -29,9 +29,17 @@ entur:
           - /actuator/health
 
 grpc:
-  port: 0
+  server.port: 0
   security.auth.enabled: true
 
 logging:
   level:
     root: DEBUG
+    org:
+      apache:
+        tomcat:
+          util:
+            compat: INFO
+    io:
+      grpc:
+        internal: INFO
