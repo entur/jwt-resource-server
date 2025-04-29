@@ -75,7 +75,7 @@
 		<okhttp.version>4.12.0</okhttp.version>
 
 		<grpc.version>1.72.0</grpc.version>
-		<proto.version>3.25.5</proto.version>
+		<proto.version>4.30.2</proto.version>
 		<ecosystem.version>3.1.0.RELEASE</ecosystem.version>
 
 		<!-- transient dependencies added due to security patching -->
