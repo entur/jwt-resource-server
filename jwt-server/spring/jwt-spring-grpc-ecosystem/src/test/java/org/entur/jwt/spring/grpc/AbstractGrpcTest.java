@@ -34,7 +34,7 @@ public abstract class AbstractGrpcTest {
     @LocalServerPort
     protected int randomServerPort;
 
-    @Value("${grpc.server.port:19090}")
+    @Value("${grpc.server.port:9090}")
     protected int randomGrpcServerPort;
 
     protected GreetingRequest greetingRequest = GreetingRequest.newBuilder().build();

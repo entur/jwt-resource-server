@@ -44,7 +44,6 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
-
 		<!-- test -->
 		<dependency>
 			<groupId>org.entur.jwt-rs</groupId>
