@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfiguration;
@@ -34,10 +35,15 @@ public class PropertiesFileResourceServerConfigurationEnricher extends AbstractP
 
     @Override
     public void beforeAll(List<AuthorizationServerImplementation> authorizationServers, ExtensionContext context) throws IOException {
-        Properties properties = getProperties(authorizationServers);
+        Map<String, Object> properties = getProperties(authorizationServers);
+        Properties p = new Properties();
+
+        for (Map.Entry<String, Object> e : properties.entrySet()) {
+            p.put(e.getKey(), e.getValue());
+        }
 
         try (BufferedWriter writer = Files.newBufferedWriter(output, StandardCharsets.UTF_8)) {
-            properties.store(writer, null);
+            p.store(writer, null);
         }
     }
 

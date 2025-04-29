@@ -6,7 +6,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import org.entur.jwt.junit5.AuthorizationServer;
@@ -30,8 +32,8 @@ public abstract class AbstractPropertiesResourceServerConfigurationEnricher impl
         this.prefix = prefix;
     }
 
-    protected Properties getProperties(List<AuthorizationServerImplementation> implementations) throws IOException {
-        Properties properties = new Properties();
+    protected Map<String, Object> getProperties(List<AuthorizationServerImplementation> implementations) throws IOException {
+        Map<String, Object> properties = new HashMap<>();
         for (int i = 0; i < implementations.size(); i++) {
             AuthorizationServerImplementation implementation = implementations.get(i);
 

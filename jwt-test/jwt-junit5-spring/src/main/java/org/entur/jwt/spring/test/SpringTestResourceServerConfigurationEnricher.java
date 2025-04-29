@@ -5,6 +5,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import org.entur.jwt.junit5.configuration.enrich.PropertiesFileResourceServerConfigurationEnricher;
 import org.entur.jwt.junit5.extention.AuthorizationServerExtension;
@@ -21,8 +22,10 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.test.annotation.DirtiesContext.HierarchyMode;
 import org.springframework.test.context.TestContext;
 import org.springframework.test.context.TestContextManager;
+import org.springframework.test.context.TestExecutionListener;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener;
+import org.springframework.test.context.support.TestPropertySourceUtils;
 import org.springframework.util.Assert;
 
 // https://docs.spring.io/spring/docs/current/spring-framework-reference/testing.html#testcontext-ctx-management
@@ -37,6 +40,12 @@ public class SpringTestResourceServerConfigurationEnricher extends PropertiesFil
 
     private static Logger LOGGER = LoggerFactory.getLogger(SpringTestResourceServerConfigurationEnricher.class);
 
+    private static ThreadLocal<Map<String, Object>> jwksProperties = new ThreadLocal<>();
+
+    public static Map<String, Object> getProperties() throws IOException {
+        return jwksProperties.get();
+    }
+
     public SpringTestResourceServerConfigurationEnricher() throws IOException {
         super();
     }
@@ -44,7 +53,6 @@ public class SpringTestResourceServerConfigurationEnricher extends PropertiesFil
     @Override
     public void beforeAll(List<AuthorizationServerImplementation> authorizationServers, ExtensionContext context) throws IOException {
         TestContextManager testContextManager = getSpringTestContextManager(context);
-        
         TestContext testContext = testContextManager.getTestContext(); // note: loads test context, but not main context
         AuthorizationServerTestManager jwtTestContextManager = getJwtTestContextManager(context);
         AuthorizationServerTestContext jwtTestContext = jwtTestContextManager.getTestContext();
@@ -67,25 +75,20 @@ public class SpringTestResourceServerConfigurationEnricher extends PropertiesFil
                 if(!canReuse(authorizationServers, jwtTestContext, environment, config)) {
                     // see DirtiesContextBeforeModesTestExecutionListener and
                     // DirtiesContextTestExecutionListener
-                    if(LOGGER.isTraceEnabled()) LOGGER.trace("Mark context dirty");
-
                     testContext.markApplicationContextDirty(HierarchyMode.EXHAUSTIVE);
                     testContext.setAttribute(DependencyInjectionTestExecutionListener.REINJECT_DEPENDENCIES_ATTRIBUTE, Boolean.TRUE);
                 }
 
             }
-            super.beforeAll(authorizationServers, context);
 
             for (AuthorizationServerImplementation impl : authorizationServers) {
                 jwtTestContext.add(impl);
             }
         } else {
-            if(LOGGER.isTraceEnabled()) LOGGER.trace("Cannot reuse context, not present");
-
             jwtTestContextManager.setTestContext(new AuthorizationServerTestContext(authorizationServers));
 
-            super.beforeAll(authorizationServers, context);
         }
+        jwksProperties.set(getProperties(authorizationServers));
     }
 
     private boolean canReuse(List<AuthorizationServerImplementation> authorizationServers, AuthorizationServerTestContext jwtTestContext, ConfigurableEnvironment environment, JwtEnvironmentResourceServerConfiguration config) {
@@ -93,7 +96,6 @@ public class SpringTestResourceServerConfigurationEnricher extends PropertiesFil
         Map<String, String> desiredConfigured = getRequired(authorizationServers);
 
         if(!currentlyConfigured.keySet().containsAll(desiredConfigured.values())) {
-            if(LOGGER.isTraceEnabled()) LOGGER.trace("Cannot reuse context, wanted " + desiredConfigured + ", only had " + currentlyConfigured + " for " + currentlyConfigured.size());
             return false;
         }
 
@@ -117,17 +119,9 @@ public class SpringTestResourceServerConfigurationEnricher extends PropertiesFil
                 AuthorizationServerImplementation candidate = candidates.get(i);
                 // check for matches using filename convention; TODO improve matching by comparing content
                 if (propertyValue.contains(Integer.toString(candidate.getJsonWebKeys().hashCode())) && candidate == impl) {
-                    if (LOGGER.isTraceEnabled())
-                        LOGGER.trace("Found JWKs in candidate " +  (i + 1 ) + "/" + candidates.size() + " for " + id);
-
                     continue reconfigure;
-                } else {
-                    if (LOGGER.isTraceEnabled())
-                        LOGGER.trace("Could not match JWKs (" + Integer.toString(candidate.getJsonWebKeys().hashCode()) + ") in candidate " +  (i + 1 ) + "/" + candidates.size() + " for " + id);
                 }
             }
-
-            if(LOGGER.isTraceEnabled()) LOGGER.trace("Cannot reuse context, could not find JWKs for " + id + " at " + propertyValue + ", no matching JWKs in " + candidates.size() + " candidates.");
 
             return false;
         }
