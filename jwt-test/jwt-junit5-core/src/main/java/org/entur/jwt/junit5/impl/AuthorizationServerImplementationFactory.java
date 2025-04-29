@@ -11,8 +11,6 @@ import org.slf4j.LoggerFactory;
 
 public class AuthorizationServerImplementationFactory {
 
-    private static Logger LOGGER = LoggerFactory.getLogger(AuthorizationServerImplementationFactory.class);
-
     private List<AuthorizationServerImplementation> servers = new ArrayList<>();
 
     public AuthorizationServerImplementationFactory() {
@@ -46,12 +44,10 @@ public class AuthorizationServerImplementationFactory {
     public synchronized AuthorizationServerImplementation add(Annotation annotation, AuthorizationServer authorizationServer) {
         for (AuthorizationServerImplementation f : servers) {
             if(f.matches(authorizationServer, annotation)) {
-                if(LOGGER.isTraceEnabled()) LOGGER.trace("Found existing authorization server " + f.getId() + " " + f.getJsonWebKeys().hashCode());
                 return f;
             }
         }
         AuthorizationServerImplementation authorizationServerImplementation = new AuthorizationServerImplementation(authorizationServer, annotation);
-        if(LOGGER.isTraceEnabled()) LOGGER.trace("Create new authorization server " + authorizationServer.value() + " " + authorizationServerImplementation.getJsonWebKeys().hashCode());
         servers.add(authorizationServerImplementation);
         return authorizationServerImplementation;
     }
