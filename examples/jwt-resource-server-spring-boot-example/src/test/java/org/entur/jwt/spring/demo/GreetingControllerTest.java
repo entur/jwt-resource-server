@@ -19,7 +19,7 @@ import static io.restassured.RestAssured.given;
  *
  */
 
-@AuthorizationServer("entur")
+@AuthorizationServer
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {"entur.authorization.permit-all.matcher.method.get.patterns=/actuator/**,/unprotected"})

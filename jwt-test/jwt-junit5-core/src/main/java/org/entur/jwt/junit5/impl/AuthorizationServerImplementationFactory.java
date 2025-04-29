@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.Optional;
 
 import org.entur.jwt.junit5.AuthorizationServer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class AuthorizationServerImplementationFactory {
 
