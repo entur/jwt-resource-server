@@ -9,6 +9,11 @@ import org.entur.jwt.junit5.AuthorizationServer;
 
 public class AuthorizationServerImplementationFactory {
 
+    private List<AuthorizationServerImplementation> servers = new ArrayList<>();
+
+    public AuthorizationServerImplementationFactory() {
+    }
+
     public List<AuthorizationServerImplementation> create(Class<?> testClass) {
         List<AuthorizationServerImplementation> results = new ArrayList<>();
         Annotation[] annotations = testClass.getAnnotations();
@@ -23,15 +28,26 @@ public class AuthorizationServerImplementationFactory {
         if (annotation instanceof AuthorizationServer) {
             AuthorizationServer authorizationServer = (AuthorizationServer) annotation;
 
-            results.add(new AuthorizationServerImplementation(authorizationServer, annotation));
+            results.add(add(annotation, authorizationServer));
         } else if (annotation instanceof AuthorizationServer.List) {
             AuthorizationServer.List l = (AuthorizationServer.List) annotation;
             for (AuthorizationServer authorizationServer : l.value()) {
-                results.add(new AuthorizationServerImplementation(authorizationServer, annotation));
+                results.add(add(annotation, authorizationServer));
             }
         } else {
             createFromMetaAnnotation(annotation, results);
         }
+    }
+
+    public synchronized AuthorizationServerImplementation add(Annotation annotation, AuthorizationServer authorizationServer) {
+        for (AuthorizationServerImplementation f : servers) {
+            if(f.matches(authorizationServer, annotation)) {
+                return f;
+            }
+        }
+        AuthorizationServerImplementation authorizationServerImplementation = new AuthorizationServerImplementation(authorizationServer, annotation);
+        servers.add(authorizationServerImplementation);
+        return authorizationServerImplementation;
     }
 
     private void createFromMetaAnnotation(Annotation annotation, List<AuthorizationServerImplementation> results) {
@@ -41,14 +57,17 @@ public class AuthorizationServerImplementationFactory {
         if (single.isPresent()) {
             AuthorizationServer authorizationServer = single.get();
 
-            results.add(new AuthorizationServerImplementation(authorizationServer, annotation));
+            results.add(add(annotation, authorizationServer));
         }
         Optional<AuthorizationServer.List> list = AnnotationUtils.findAnnotation(annotation.getClass(), AuthorizationServer.List.class);
         if (list.isPresent()) {
             for (AuthorizationServer authorizationServer : list.get().value()) {
-                results.add(new AuthorizationServerImplementation(authorizationServer, annotation));
+                results.add(add(annotation, authorizationServer));
             }
         }
     }
 
+    public List<AuthorizationServerImplementation> getServers() {
+        return servers;
+    }
 }

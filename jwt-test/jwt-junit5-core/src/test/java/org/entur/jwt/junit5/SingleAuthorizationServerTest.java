@@ -15,7 +15,7 @@ public class SingleAuthorizationServerTest {
 
     @Test
     public void test(@AccessToken String token) throws IOException {
-        Path path = Paths.get("jwt.junit5.properties");
+        Path path = Paths.get("target", "jwt.junit5.properties");
 
         Properties properties = new Properties();
         properties.load(Files.newInputStream(path));

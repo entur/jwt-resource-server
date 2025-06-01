@@ -1,16 +1,16 @@
 package org.entur.jwt.junit5.configuration.enrich;
 
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfiguration;
+import org.entur.jwt.junit5.extention.AuthorizationServerExtension;
 import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
@@ -19,7 +19,7 @@ public class PropertiesFileResourceServerConfigurationEnricher extends AbstractP
     protected Path output;
 
     public PropertiesFileResourceServerConfigurationEnricher() throws IOException {
-        this("entur.jwt.tenants", Paths.get("jwt.junit5.properties"));
+        this("entur.jwt.tenants", AuthorizationServerExtension.detectParentPath());
     }
 
     public PropertiesFileResourceServerConfigurationEnricher(String prefix, Path output) {
@@ -33,10 +33,15 @@ public class PropertiesFileResourceServerConfigurationEnricher extends AbstractP
 
     @Override
     public void beforeAll(List<AuthorizationServerImplementation> authorizationServers, ExtensionContext context) throws IOException {
-        Properties properties = getProperties(authorizationServers);
+        Map<String, Object> properties = getProperties(authorizationServers);
+        Properties p = new Properties();
+
+        for (Map.Entry<String, Object> e : properties.entrySet()) {
+            p.put(e.getKey(), e.getValue());
+        }
 
         try (BufferedWriter writer = Files.newBufferedWriter(output, StandardCharsets.UTF_8)) {
-            properties.store(writer, null);
+            p.store(writer, null);
         }
     }
 
@@ -47,14 +52,7 @@ public class PropertiesFileResourceServerConfigurationEnricher extends AbstractP
 
     @Override
     public void afterAll(ExtensionContext context) throws IOException {
-        if (output != null) {
-            File file = output.toFile(); // using file because sonarqube says it has better performance
-            if (file.exists()) {
-                if (!file.delete()) {
-                    throw new IOException("Unable to delete " + output);
-                }
-            }
-        }
+        // do nothing
     }
 
 }

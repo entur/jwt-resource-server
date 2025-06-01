@@ -12,6 +12,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.annotation.DirtiesContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -24,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @AuthorizationServer
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_CLASS)
 public class ReadinessEndpointUpTest extends AbstractActuatorTest {
 
     @LocalServerPort
@@ -43,11 +45,14 @@ public class ReadinessEndpointUpTest extends AbstractActuatorTest {
         String url = "http://localhost:" + randomServerPort + "/actuator/health/readiness";
 
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
-        waitForHealth();
 
-        response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-        assertTrue(response.getStatusCode().is2xxSuccessful());
+        if(!response.getStatusCode().is2xxSuccessful()) {
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+            waitForHealth();
+
+            response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            assertTrue(response.getStatusCode().is2xxSuccessful());
+        }
     }
 
 }
