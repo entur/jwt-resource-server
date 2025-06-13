@@ -13,7 +13,7 @@ on:
 
 jobs:
   deploy-maven:
-    uses: entur/abt-gha-public/.github/workflows/maven-open-source-increment-version-and-release-to-maven-central.yml@v1.0.0
+    uses: entur/abt-gha-public/.github/workflows/maven-open-source-increment-version-and-release-to-maven-central.yml@main
     secrets: inherit
     with: 
       version-increment: ${{ inputs.version-increment }}
