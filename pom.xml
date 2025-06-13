@@ -527,25 +527,26 @@
 		<profile>
 			<!-- mvn -P release release:perform -->
 			<id>release</id>
-			<properties>
-				<!-- this is useful when the desired key is not the default (first) export
-					GPG_KEY_NAME=ABCDEF01 -->
-				<gpg.executable>gpg</gpg.executable>
-				<gpg.keyname>${env.GPG_KEY_NAME}</gpg.keyname>
-			</properties>
 			<build>
 				<plugins>
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-gpg-plugin</artifactId>
-						<version>${maven-gpg-plugin.version}</version>
+						<version>3.2.7</version>
 						<executions>
 							<execution>
 								<id>sign-artifacts</id>
-								<phase>verify</phase>
 								<goals>
 									<goal>sign</goal>
 								</goals>
+								<phase>verify</phase>
+								<configuration>
+									<passphrase>${env.SONATYPE_GPG_KEY_PASSWORD}</passphrase>
+									<gpgArguments>
+										<arg>--pinentry-mode</arg>
+										<arg>loopback</arg>
+									</gpgArguments>
+								</configuration>
 							</execution>
 						</executions>
 					</plugin>
