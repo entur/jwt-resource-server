@@ -518,10 +518,7 @@
 		<profile>
 			<id>examples</id>
 			<activation>
-				<property>
-					<!-- disable for release -->
-					<name>!publication</name>
-				</property>
+				<activeByDefault>true</activeByDefault>
 			</activation>
 			<modules>
 				<module>examples/jwt-resource-server-spring-boot-example</module>
@@ -533,11 +530,6 @@
 			<properties>
 				<altDeploymentRepository>local::file:./target/staging-deploy</altDeploymentRepository>
 			</properties>
-			<activation>
-				<property>
-					<name>publication</name>
-				</property>
-			</activation>
 			<build>
 				<plugins>
 					<plugin>
