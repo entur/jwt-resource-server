@@ -13,10 +13,12 @@ on:
 
 jobs:
   deploy-maven:
-    uses: entur/abt-gha-public/.github/workflows/maven-open-source-increment-version-and-release-to-maven-central.yml@main
+    uses: entur/gha-maven-central/.github/workflows/maven-publish.yml@main
     secrets: inherit
-    with: 
-      version-increment: ${{ inputs.version-increment }}
+    with:
+      next_version: ${{ inputs.version-increment }}
+      version_strategy: tag
+      version_tag_prefix: release-
 
   post-failure-to-slack:
     needs: deploy-maven
