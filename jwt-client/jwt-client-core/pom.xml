@@ -9,6 +9,7 @@
 	 </parent>
 	<artifactId>jwt-client-core</artifactId>
 	<description>Json Web Token client core</description>
+	<url>https://github.com/entur/jwt-resource-server</url>
 
 	<dependencies>
 		<dependency>
@@ -19,7 +20,6 @@
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
 		</dependency>
-	
 		<!-- test -->
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>

@@ -9,6 +9,7 @@
     </parent>
     <artifactId>jwt-client-spring-webflux</artifactId>
     <description>Json Web Token client Spring Webflux</description>
+    <url>https://github.com/entur/jwt-resource-server</url>
 
     <dependencies>
         <dependency>
@@ -35,7 +36,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
-
         <!-- test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

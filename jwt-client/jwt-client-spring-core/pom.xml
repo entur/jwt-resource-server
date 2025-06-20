@@ -9,6 +9,7 @@
     </parent>
     <artifactId>jwt-client-spring-core</artifactId>
     <description>Json Web Token client Spring core</description>
+    <url>https://github.com/entur/jwt-resource-server</url>
 
     <dependencies>
         <dependency>
@@ -27,7 +28,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
         </dependency>
-
         <!-- test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

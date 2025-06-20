@@ -9,6 +9,7 @@
 	</parent>	
 	<artifactId>jwt-junit5-spring</artifactId>
 	<description>Json Web Token Junit Spring</description>
+	<url>https://github.com/entur/jwt-resource-server</url>
 
 	<dependencies>
 		<dependency>
@@ -23,7 +24,6 @@
 		    <groupId>org.springframework.boot</groupId>
 		    <artifactId>spring-boot-starter-test</artifactId>
 		</dependency>
-		
 		<!-- test -->
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
@@ -50,6 +50,5 @@
 		    <artifactId>jackson-databind</artifactId>
 		    <scope>test</scope>
 		</dependency>
-		
 	</dependencies>
 </project>

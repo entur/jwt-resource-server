@@ -34,7 +34,6 @@
 		<connection>scm:git:git@github.com:entur/jwt-resource-server.git</connection>
 		<developerConnection>scm:git:git@github.com:entur/jwt-resource-server.git</developerConnection>
 		<url>git@github.com:entur/jwt-resource-server.git</url>
-		<tag>parent-5.0.3</tag>
 	</scm>
 
 	<issueManagement>
@@ -51,8 +50,8 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-		<maven.compiler.source>17</maven.compiler.source>
-		<maven.compiler.target>17</maven.compiler.target>
+		<maven.compiler.source>21</maven.compiler.source>
+		<maven.compiler.target>21</maven.compiler.target>
 
 		<!-- align dependencies to Spring as much as possible -->
 		<!-- https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-dependencies  -->

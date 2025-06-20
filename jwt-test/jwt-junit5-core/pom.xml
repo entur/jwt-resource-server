@@ -9,6 +9,7 @@
 	</parent>	
 	<artifactId>jwt-junit5-core</artifactId>
 	<description>Json Web Token Junit core</description>
+	<url>https://github.com/entur/jwt-resource-server</url>
 
 	<dependencies>
 		<dependency>

@@ -9,6 +9,7 @@
 	</parent>
 	<artifactId>jwt-spring-web</artifactId>
 	<description>Json Web Token server Spring web</description>
+	<url>https://github.com/entur/jwt-resource-server</url>
 
 	<dependencies>
 		<dependency>
@@ -44,7 +45,6 @@
 		    <groupId>org.springframework.boot</groupId>
 		    <artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
-
 		<!-- test -->
         <dependency>
             <groupId>org.entur.jwt-rs</groupId>
@@ -81,6 +81,5 @@
 		    <artifactId>rest-assured</artifactId>
 		    <scope>test</scope>
 		</dependency>
-
 	</dependencies>
 </project>

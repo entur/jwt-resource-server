@@ -9,6 +9,7 @@
 	 </parent>
 	<artifactId>jwt-client-spring</artifactId>
 	<description>Json Web Token client Spring</description>
+	<url>https://github.com/entur/jwt-resource-server</url>
 
 	<dependencies>
 		<dependency>
@@ -43,7 +44,6 @@
 			<groupId>org.apache.httpcomponents.client5</groupId>
 			<artifactId>httpclient5</artifactId>
 		</dependency>
-
 		<!-- test -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

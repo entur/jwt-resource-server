@@ -9,6 +9,7 @@
 	 </parent>
 	<artifactId>jwt-client-grpc</artifactId>
 	<description>Json Web Token client gRPC</description>
+	<url>https://github.com/entur/jwt-resource-server</url>
 
 	<dependencies>
 		<dependency>
@@ -31,7 +32,6 @@
 			<groupId>io.grpc</groupId>
 			<artifactId>grpc-stub</artifactId>
 		</dependency>
-
 		<!-- test -->
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
