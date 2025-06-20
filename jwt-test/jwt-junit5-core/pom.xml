@@ -8,7 +8,8 @@
 		<relativePath>../../pom.xml</relativePath>
 	</parent>	
 	<artifactId>jwt-junit5-core</artifactId>
-	
+	<description>Json Web Token Junit core</description>
+
 	<dependencies>
 		<dependency>
 		    <groupId>io.jsonwebtoken</groupId>

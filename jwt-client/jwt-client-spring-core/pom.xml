@@ -8,6 +8,7 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
     <artifactId>jwt-client-spring-core</artifactId>
+    <description>Json Web Token client Spring core</description>
 
     <dependencies>
         <dependency>

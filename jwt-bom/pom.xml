@@ -11,6 +11,7 @@
 	<packaging>pom</packaging>
 	<name>JWT Resource Server Bill-of-materials</name>
 	<description>JWT Resource Server Bill-of-materials</description>
+	<url>https://github.com/entur/jwt-resource-server</url>
 
 	<dependencyManagement>
 		<dependencies>

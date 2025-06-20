@@ -8,7 +8,8 @@
 		<relativePath>../../pom.xml</relativePath>
 	</parent>	
 	<artifactId>jwt-junit5-spring</artifactId>
-	
+	<description>Json Web Token Junit Spring</description>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.entur.jwt-rs</groupId>

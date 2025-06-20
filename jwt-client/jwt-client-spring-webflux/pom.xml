@@ -8,6 +8,7 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
     <artifactId>jwt-client-spring-webflux</artifactId>
+    <description>Json Web Token client Spring Webflux</description>
 
     <dependencies>
         <dependency>

@@ -8,6 +8,7 @@
         <relativePath>../../../pom.xml</relativePath>
     </parent>
     <artifactId>jwt-spring-grpc-common</artifactId>
+    <description>Json Web Token server Spring gRPC common</description>
 
     <dependencies>
 

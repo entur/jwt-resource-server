@@ -20,6 +20,7 @@
 		<relativePath>../../../pom.xml</relativePath>
 	</parent>
 	<artifactId>jwt-spring-webflux</artifactId>
+	<description>Json Web Token server Spring Webflux</description>
 
 	<dependencies>
         <dependency>

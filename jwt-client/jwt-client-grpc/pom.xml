@@ -8,7 +8,8 @@
 		 <relativePath>../../pom.xml</relativePath>
 	 </parent>
 	<artifactId>jwt-client-grpc</artifactId>
-	
+	<description>Json Web Token client gRPC</description>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.slf4j</groupId>
