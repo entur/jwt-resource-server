@@ -11,7 +11,7 @@
 	<artifactId>jwt-resource-server-spring-boot-example</artifactId>
 	<name>jwt-resource-server-spring-boot-example</name>
 	<description>Demo project for Spring Boot</description>
-	<version>5.1.1-SNAPSHOT</version>
+	<version>0.0.0-SNAPSHOT</version>
 	<url>https://github.com/entur/jwt-resource-server</url>
 
 	<properties>
