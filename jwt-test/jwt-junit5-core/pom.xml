@@ -8,7 +8,8 @@
 		<relativePath>../../pom.xml</relativePath>
 	</parent>	
 	<artifactId>jwt-junit5-core</artifactId>
-	<description>Json Web Token Junit core</description>
+	<name>Json Web Token JUnit core</name>
+	<description>Json Web Token JUnit core</description>
 	<url>https://github.com/entur/jwt-resource-server</url>
 
 	<dependencies>

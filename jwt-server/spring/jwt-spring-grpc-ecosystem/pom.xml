@@ -8,6 +8,7 @@
         <relativePath>../../../pom.xml</relativePath>
     </parent>
     <artifactId>jwt-spring-grpc-ecosystem</artifactId>
+    <name>Json Web Token server Spring gRPC Ecosystem</name>
     <description>Json Web Token server Spring gRPC Ecosystem</description>
     <url>https://github.com/entur/jwt-resource-server</url>
 

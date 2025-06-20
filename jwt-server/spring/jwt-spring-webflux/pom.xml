@@ -8,6 +8,7 @@
 		<relativePath>../../../pom.xml</relativePath>
 	</parent>
 	<artifactId>jwt-spring-webflux</artifactId>
+	<name>Json Web Token server Spring Webflux</name>
 	<description>Json Web Token server Spring Webflux</description>
 	<url>https://github.com/entur/jwt-resource-server</url>
 

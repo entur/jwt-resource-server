@@ -8,6 +8,7 @@
 		<relativePath>../../pom.xml</relativePath>
 	</parent>	
 	<artifactId>jwt-junit5-entur</artifactId>
+	<name>Json Web Token JUnit Entur</name>
 	<description>Json Web Token Junit Entur</description>
 	<url>https://github.com/entur/jwt-resource-server</url>
 

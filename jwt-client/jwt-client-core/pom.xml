@@ -8,6 +8,7 @@
 		 <relativePath>../../pom.xml</relativePath>
 	 </parent>
 	<artifactId>jwt-client-core</artifactId>
+	<name>Json Web Token client core</name>
 	<description>Json Web Token client core</description>
 	<url>https://github.com/entur/jwt-resource-server</url>
 

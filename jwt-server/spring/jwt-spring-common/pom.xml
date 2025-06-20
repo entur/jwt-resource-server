@@ -8,6 +8,7 @@
 		<relativePath>../../../pom.xml</relativePath>
 	</parent>
 	<artifactId>jwt-spring-common</artifactId>
+	<name>Json Web Token server Spring common</name>
 	<description>Json Web Token server Spring common</description>
 	<url>https://github.com/entur/jwt-resource-server</url>
 

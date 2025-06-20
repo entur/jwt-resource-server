@@ -8,6 +8,7 @@
 		 <relativePath>../../pom.xml</relativePath>
 	 </parent>
 	<artifactId>jwt-client-grpc</artifactId>
+	<name>Json Web Token client gRPC</name>
 	<description>Json Web Token client gRPC</description>
 	<url>https://github.com/entur/jwt-resource-server</url>
 
