@@ -4,13 +4,15 @@
     <parent>
         <groupId>org.entur.jwt-rs</groupId>
         <artifactId>parent</artifactId>
-        <version>5.1.1-SNAPSHOT</version>
+        <version>0.0.0-SNAPSHOT</version>
         <relativePath>../../../pom.xml</relativePath>
     </parent>
     <artifactId>jwt-spring-grpc-ecosystem</artifactId>
+    <name>Json Web Token server Spring gRPC Ecosystem</name>
+    <description>Json Web Token server Spring gRPC Ecosystem</description>
+    <url>https://github.com/entur/jwt-resource-server</url>
 
     <dependencies>
-
         <dependency>
             <groupId>org.entur.jwt-rs</groupId>
             <artifactId>jwt-spring-common</artifactId>
@@ -111,7 +113,6 @@
             <version>1.3.2</version>
             <scope>test</scope>
         </dependency>
-
         <!-- test -->
         <dependency>
             <groupId>org.entur.jwt-rs</groupId>
@@ -154,7 +155,6 @@
             <artifactId>jackson-databind</artifactId>
             <scope>test</scope>
         </dependency>
-
     </dependencies>
 
     <build>

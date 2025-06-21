@@ -4,11 +4,14 @@
     <parent>
 		<groupId>org.entur.jwt-rs</groupId>
 		<artifactId>parent</artifactId>
-		<version>5.1.1-SNAPSHOT</version>
+		<version>0.0.0-SNAPSHOT</version>
 		<relativePath>../../pom.xml</relativePath>
 	</parent>	
 	<artifactId>jwt-junit5-entur</artifactId>
-	
+	<name>Json Web Token JUnit Entur</name>
+	<description>Json Web Token Junit Entur</description>
+	<url>https://github.com/entur/jwt-resource-server</url>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.entur.jwt-rs</groupId>

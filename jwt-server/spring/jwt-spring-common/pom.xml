@@ -4,10 +4,13 @@
     <parent>
 		<groupId>org.entur.jwt-rs</groupId>
 		<artifactId>parent</artifactId>
-		<version>5.1.1-SNAPSHOT</version>
+		<version>0.0.0-SNAPSHOT</version>
 		<relativePath>../../../pom.xml</relativePath>
 	</parent>
 	<artifactId>jwt-spring-common</artifactId>
+	<name>Json Web Token server Spring common</name>
+	<description>Json Web Token server Spring common</description>
+	<url>https://github.com/entur/jwt-resource-server</url>
 
 	<dependencies>
 		<dependency>
@@ -44,15 +47,7 @@
 		    <groupId>org.springframework.boot</groupId>
 		    <artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
-
 		<!-- test -->
-		<!--
-		<dependency>
-			<groupId>org.entur.jwt-rs</groupId>
-		    <artifactId>jwt-verifier-auth0</artifactId>
-			<scope>test</scope>
-		</dependency>
-		-->
         <dependency>
             <groupId>org.entur.jwt-rs</groupId>
             <artifactId>jwt-junit5-spring</artifactId>
