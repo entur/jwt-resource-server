@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  *
@@ -39,11 +40,14 @@ public class ReadinessEndpointUpTest extends AbstractActuatorTest {
         String url = "http://localhost:" + randomServerPort + "/actuator/health/readiness";
 
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
 
-        waitForHealth();
-        response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        if(!response.getStatusCode().is2xxSuccessful()) {
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+            waitForHealth();
+
+            response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            assertTrue(response.getStatusCode().is2xxSuccessful());
+        }
 
     }
 

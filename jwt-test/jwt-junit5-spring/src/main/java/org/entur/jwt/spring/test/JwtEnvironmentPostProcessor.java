@@ -1,9 +1,6 @@
 package org.entur.jwt.spring.test;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -21,7 +18,6 @@ import org.springframework.core.env.EnumerablePropertySource;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.MutablePropertySources;
 import org.springframework.core.env.PropertySource;
-import org.springframework.core.io.support.ResourcePropertySource;
 
 /**
  * 
@@ -44,11 +40,8 @@ public class JwtEnvironmentPostProcessor implements EnvironmentPostProcessor {
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
         try {
-            Path path = Paths.get("jwt.junit5.properties");
-            if (Files.exists(path)) {
-                ResourcePropertySource source = new ResourcePropertySource("file:jwt.junit5.properties");
-
-                Map<String, Object> junit5Properties = source.getSource();
+            Map<String, Object> junit5Properties = SpringTestResourceServerConfigurationEnricher.getProperties();
+            if (junit5Properties != null) {
                 // see whether issuer is populated, if not create a mock value
                 // background: JWTs need an issuer, so using a list would be the easy way.
                 // But configuration manipulation
