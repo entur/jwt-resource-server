@@ -45,8 +45,6 @@ public class JwtTestContextCustomizerFactory implements ContextCustomizerFactory
 	public static final String PROPERTY_PREFIX = "entur.jwt.tenants.";
 	public static final String PROPERTY_SOURCE_NAME = "jwtJunit5Properties";
 
-	public static final String ON_THE_FLY_PROPERTY = ".on-the-fly";
-
 	private static final Log logger = LogFactory.getLog(JwtTestContextCustomizerFactory.class);
 
 	private static final String prefix = "entur.jwt.tenants";
@@ -68,7 +66,7 @@ public class JwtTestContextCustomizerFactory implements ContextCustomizerFactory
 			ConfigurableEnvironment environment = context.getEnvironment();
 
             try {
-				Map<String, Object> junit5Properties = getProperties(authorizationServerImplementations);
+				Map<String, Object> junit5Properties = AuthorizationServerImplementationFactory.getProperties(prefix, authorizationServerImplementations);
 
 				// see whether issuer is populated, if not create a mock value
 				// background: JWTs need an issuer, so using a list would be the easy way.
@@ -84,7 +82,7 @@ public class JwtTestContextCustomizerFactory implements ContextCustomizerFactory
 					// and no name for the mocked tenant was specified (i.e. its key was created on the fly)
 					// then simplyify so that the configured tenant is mocked
 					String mocked = tenants.iterator().next();
-					String onTheFly = (String) junit5Properties.get(mocked + ON_THE_FLY_PROPERTY);
+					String onTheFly = (String) junit5Properties.get(mocked + AuthorizationServerImplementationFactory.ON_THE_FLY_PROPERTY);
 					if(onTheFly != null && Boolean.parseBoolean(onTheFly)) {
 						// mock the configured one instead
 						// TODO the mocked tenant will still have the on-the-fly name within the junit5 extension
@@ -102,7 +100,7 @@ public class JwtTestContextCustomizerFactory implements ContextCustomizerFactory
 				}
 
 				for (String string : new HashSet<>(junit5Properties.keySet())) {
-					if(string.endsWith(ON_THE_FLY_PROPERTY)) {
+					if(string.endsWith(AuthorizationServerImplementationFactory.ON_THE_FLY_PROPERTY)) {
 						junit5Properties.remove(string);
 					}
 				}
@@ -195,44 +193,6 @@ public class JwtTestContextCustomizerFactory implements ContextCustomizerFactory
 			}
 		}
 
-
-		protected Map<String, Object> getProperties(List<AuthorizationServerImplementation> implementations) throws IOException {
-			Map<String, Object> properties = new HashMap<>();
-			for (int i = 0; i < implementations.size(); i++) {
-				AuthorizationServerImplementation implementation = implementations.get(i);
-
-				AuthorizationServer authorizationServer = implementation.getAuthorizationServer();
-
-				// write certificates to temp file; get as an URI.
-				// TODO do this right before the test method is called, so that
-				// additional configuration parameters can be included
-
-				// also, delete on exit, do not delete after use.
-				// for certain frameworks (i.e. spring), context is reused and this
-				// file might come in handy later
-
-				String tempDir = System.getProperty("java.io.tmpdir");
-
-				String jsonWebKeys = implementation.getJsonWebKeys();
-
-				File tempFile = new File(tempDir, jsonWebKeys.hashCode() + ".jwk.json");
-				tempFile.deleteOnExit(); // https://stackoverflow.com/questions/28752006/alternative-to-file-deleteonexit-in-java-nio
-				Path path = tempFile.toPath();
-				try (BufferedWriter writer = Files.newBufferedWriter(tempFile.toPath(), StandardCharsets.UTF_8)) {
-					writer.write(implementation.getJsonWebKeys());
-				}
-				String key = authorizationServer.value();
-				if (key.isEmpty()) {
-					if (implementations.size() > 1) {
-						throw new IllegalArgumentException("Specify authorization server id in multi-tenant tests.");
-					}
-					key = "mock";
-					properties.put(prefix + "." + key + ON_THE_FLY_PROPERTY, "true");
-				}
-				properties.put(prefix + "." + key + ".jwk.location", path.toUri().toString());
-			}
-			return properties;
-		}
 	}
 
 }

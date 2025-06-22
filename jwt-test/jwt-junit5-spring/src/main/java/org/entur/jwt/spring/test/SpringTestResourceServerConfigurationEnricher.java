@@ -8,6 +8,7 @@ import java.util.Map;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.entur.jwt.junit5.configuration.enrich.AbstractPropertiesResourceServerConfigurationEnricher;
+import org.entur.jwt.junit5.configuration.enrich.ResourceServerConfigurationEnricher;
 import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfiguration;
 import org.entur.jwt.junit5.extention.AuthorizationServerExtension;
 import org.entur.jwt.junit5.extention.AuthorizationServerTestContext;
@@ -27,7 +28,7 @@ import org.springframework.util.Assert;
 
 // https://docs.spring.io/spring/docs/current/spring-framework-reference/testing.html#testcontext-ctx-management
 
-public class SpringTestResourceServerConfigurationEnricher extends AbstractPropertiesResourceServerConfigurationEnricher {
+public class SpringTestResourceServerConfigurationEnricher implements ResourceServerConfigurationEnricher {
 
     public SpringTestResourceServerConfigurationEnricher() throws IOException {
         super();
@@ -36,17 +37,6 @@ public class SpringTestResourceServerConfigurationEnricher extends AbstractPrope
     @Override
     public void beforeAll(List<AuthorizationServerImplementation> authorizationServers, ExtensionContext context) throws IOException {
         // do nothing
-    }
-
-    /**
-     * Get the {@link TestContextManager} associated with the supplied
-     * {@code ExtensionContext}.
-     * 
-     * @return the {@code TestContextManager} (never {@code null})
-     */
-    private static AuthorizationServerTestManager getJwtTestContextManager(ExtensionContext context) {
-        Store store = AuthorizationServerExtension.getStore(context);
-        return store.getOrComputeIfAbsent(AuthorizationServerTestManager.class);
     }
 
     @Override
