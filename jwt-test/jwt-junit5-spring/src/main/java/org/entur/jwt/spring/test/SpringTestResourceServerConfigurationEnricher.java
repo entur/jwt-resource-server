@@ -29,15 +29,13 @@ import org.springframework.util.Assert;
 
 public class SpringTestResourceServerConfigurationEnricher extends AbstractPropertiesResourceServerConfigurationEnricher {
 
-    private static final Log logger = LogFactory.getLog(SpringTestResourceServerConfigurationEnricher.class);
-
     public SpringTestResourceServerConfigurationEnricher() throws IOException {
         super();
     }
 
     @Override
     public void beforeAll(List<AuthorizationServerImplementation> authorizationServers, ExtensionContext context) throws IOException {
-        logger.info("beforeAll on thread    " + Thread.currentThread().getName());
+        // do nothing
     }
 
     /**
