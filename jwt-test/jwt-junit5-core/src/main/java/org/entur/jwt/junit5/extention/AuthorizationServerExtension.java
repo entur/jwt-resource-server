@@ -31,7 +31,11 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
     public static final Namespace NAMESPACE = Namespace.create(AuthorizationServerExtension.class);
 
     // in-memory cache for jwks
-    protected static AuthorizationServerImplementationFactory factory = new AuthorizationServerImplementationFactory();
+    protected static final AuthorizationServerImplementationFactory FACTORY = new AuthorizationServerImplementationFactory();
+
+    public static AuthorizationServerImplementationFactory getFactory() {
+        return FACTORY;
+    }
 
     protected List<AuthorizationServerImplementation> servers = new ArrayList<>();
     protected List<ResourceServerConfigurationEnricher> enrichers = new ArrayList<>();
@@ -47,7 +51,7 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
     public void beforeAll(ExtensionContext context) throws Exception {
         Class<?> testClass = context.getRequiredTestClass();
 
-        servers = factory.create(testClass);
+        servers = FACTORY.create(testClass);
 
         enrichers = ResourceServerConfigurationEnricherServiceLoader.load();
         if (enrichers.isEmpty()) {

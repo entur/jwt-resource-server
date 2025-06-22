@@ -51,7 +51,6 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
             provider.close();
         }
     }
-    
 
     @Test
     public void shouldUseFallbackWhenNotCached() throws Exception {
