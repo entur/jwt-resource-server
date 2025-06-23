@@ -49,4 +49,8 @@ public class AuthorizationServerImplementation {
     public String getId() {
         return authorizationServer.value();
     }
+
+    public boolean matches(AuthorizationServer server, Annotation source) {
+        return server.equals(this.authorizationServer) && source.equals(this.annotation);
+    }
 }

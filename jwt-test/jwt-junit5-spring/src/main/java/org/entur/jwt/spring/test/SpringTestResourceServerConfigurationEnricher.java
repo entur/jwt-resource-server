@@ -1,12 +1,15 @@
 package org.entur.jwt.spring.test;
 
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.entur.jwt.junit5.configuration.enrich.PropertiesFileResourceServerConfigurationEnricher;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.entur.jwt.junit5.configuration.enrich.AbstractPropertiesResourceServerConfigurationEnricher;
+import org.entur.jwt.junit5.configuration.enrich.ResourceServerConfigurationEnricher;
+import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfiguration;
 import org.entur.jwt.junit5.extention.AuthorizationServerExtension;
 import org.entur.jwt.junit5.extention.AuthorizationServerTestContext;
 import org.entur.jwt.junit5.extention.AuthorizationServerTestManager;
@@ -25,24 +28,7 @@ import org.springframework.util.Assert;
 
 // https://docs.spring.io/spring/docs/current/spring-framework-reference/testing.html#testcontext-ctx-management
 
-public class SpringTestResourceServerConfigurationEnricher extends PropertiesFileResourceServerConfigurationEnricher {
-
-    private static boolean canCheckForApplicationContext;
-    
-    static {
-        try {
-            Method method = TestContext.class.getMethod("hasApplicationContext");
-            canCheckForApplicationContext = method != null;
-        } catch (Exception e) {
-            canCheckForApplicationContext = false;
-        }
-    }
-    
-    /**
-     * {@link Namespace} in which {@code TestContextManagers} are stored, keyed by
-     * test class.
-     */
-    private static final Namespace SPRING_EXTENTION_NAMESPACE = Namespace.create(SpringExtension.class);
+public class SpringTestResourceServerConfigurationEnricher implements ResourceServerConfigurationEnricher {
 
     public SpringTestResourceServerConfigurationEnricher() throws IOException {
         super();
@@ -50,123 +36,16 @@ public class SpringTestResourceServerConfigurationEnricher extends PropertiesFil
 
     @Override
     public void beforeAll(List<AuthorizationServerImplementation> authorizationServers, ExtensionContext context) throws IOException {
-        TestContextManager testContextManager = getSpringTestContextManager(context);
-        
-        TestContext testContext = testContextManager.getTestContext(); // note: loads test context, but not main context
-        if(canCheckForApplicationContext) {
-            AuthorizationServerTestManager jwtTestContextManager = getJwtTestContextManager(context);
-            AuthorizationServerTestContext jwtTestContext = jwtTestContextManager.getTestContext();
-
-            if(jwtTestContext != null) {
-                if(testContext.hasApplicationContext()) { // Spring 2.2. method
-                    // try to reuse the spring context
-                    // note that the spring context caches multiple contexts
-                    // so the last authorization states are not necessarily the right ones
-                    // check if all our authorization servers were already loaded into the context
-        
-                    // compare the configured with the required mocks
-                    ApplicationContext applicationContext = testContext.getApplicationContext();
-                    
-                    ConfigurableEnvironment environment = (ConfigurableEnvironment) applicationContext.getEnvironment();
-                    
-                    JwtEnvironmentResourceServerConfiguration config = new JwtEnvironmentResourceServerConfiguration(environment, "entur.jwt.tenants", ".enabled");
-
-                    // note: the context might be marked dirty already 
-                    if(!canReuse(authorizationServers, jwtTestContext, environment, config)) {
-                        // see DirtiesContextBeforeModesTestExecutionListener and
-                        // DirtiesContextTestExecutionListener
-                        testContext.markApplicationContextDirty(HierarchyMode.EXHAUSTIVE);
-                        testContext.setAttribute(DependencyInjectionTestExecutionListener.REINJECT_DEPENDENCIES_ATTRIBUTE, Boolean.TRUE);
-                    }
-                    
-                }
-                super.beforeAll(authorizationServers, context);
-
-                for (AuthorizationServerImplementation impl : authorizationServers) {
-                    jwtTestContext.add(impl);
-                }
-            } else {
-                jwtTestContextManager.setTestContext(new AuthorizationServerTestContext(authorizationServers));
-    
-                super.beforeAll(authorizationServers, context);
-            }
-        } else {
-            super.beforeAll(authorizationServers, context);
-            
-            // see DirtiesContextBeforeModesTestExecutionListener and
-            // DirtiesContextTestExecutionListener
-            testContext.markApplicationContextDirty(HierarchyMode.EXHAUSTIVE);
-            testContext.setAttribute(DependencyInjectionTestExecutionListener.REINJECT_DEPENDENCIES_ATTRIBUTE, Boolean.TRUE);
-        }
+        // do nothing
     }
 
-    private boolean canReuse(List<AuthorizationServerImplementation> authorizationServers, AuthorizationServerTestContext jwtTestContext, ConfigurableEnvironment environment, JwtEnvironmentResourceServerConfiguration config) {
-        Map<String, String> currentlyConfigured = config.extractEnabledProperty(environment.getPropertySources(), ".jwk.location");
-        Map<String, String> desiredConfigured = getRequired(authorizationServers);
-        
-        boolean reuse;
-        if(currentlyConfigured.keySet().containsAll(desiredConfigured.keySet())) {
-            reuse = true;
-            
-            // reconfigure current mock servers to have the correct certificates
-            reconfigure: 
-            for (AuthorizationServerImplementation impl : authorizationServers) {
-                String configured = currentlyConfigured.get(impl.getId());
-                
-                for (AuthorizationServerImplementation candidate : jwtTestContext.getAuthorizationServers(impl)) {
-                    // check for matches using filename convention; TODO improve matching by comparing content
-                    if(configured.contains(Integer.toString(candidate.getJsonWebKeys().hashCode()))) {
-                        impl.setEncoder(candidate.getEncoder());
-                        
-                        continue reconfigure;
-                    }
-                }
-                reuse = false;
-                
-                break;
-            }
-            
-        } else {
-            reuse = false;
-        }
-        return reuse;
+    @Override
+    public void beforeEach(ResourceServerConfiguration configuration, ExtensionContext context) {
+        // do nothing
     }
 
-    private Map<String, String> getRequired(List<AuthorizationServerImplementation> authorizationServers) {
-        Map<String, String> props = new HashMap<>();
-        for (AuthorizationServerImplementation authorizationServerImplementation : authorizationServers) {
-            props.put(authorizationServerImplementation.getId(), "entur.jwt.tenants." + authorizationServerImplementation.getId() + ".jwk.location");
-        }
-        
-        return props;
-    }
-
-
-    /**
-     * Get the {@link TestContextManager} associated with the supplied
-     * {@code ExtensionContext}.
-     * 
-     * @return the {@code TestContextManager} (never {@code null})
-     */
-    private static TestContextManager getSpringTestContextManager(ExtensionContext context) {
-        Assert.notNull(context, "ExtensionContext must not be null");
-        Class<?> testClass = context.getRequiredTestClass();
-        Store store = getSpringStore(context);
-        return store.getOrComputeIfAbsent(testClass, TestContextManager::new, TestContextManager.class);
-    }
-
-    protected static Store getSpringStore(ExtensionContext context) {
-        return context.getRoot().getStore(SPRING_EXTENTION_NAMESPACE);
-    }
-
-    /**
-     * Get the {@link TestContextManager} associated with the supplied
-     * {@code ExtensionContext}.
-     * 
-     * @return the {@code TestContextManager} (never {@code null})
-     */
-    private static AuthorizationServerTestManager getJwtTestContextManager(ExtensionContext context) {
-        Store store = AuthorizationServerExtension.getStore(context);
-        return store.getOrComputeIfAbsent(AuthorizationServerTestManager.class);
+    @Override
+    public void afterAll(ExtensionContext context) throws IOException {
+        // do nothing
     }
 }

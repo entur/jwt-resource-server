@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Properties;
 
+import org.entur.jwt.junit5.extention.AuthorizationServerExtension;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 public class PropertiesFileAuthorizationServerConfigurationResolver implements ResourceServerConfigurationResolver {
@@ -15,7 +16,7 @@ public class PropertiesFileAuthorizationServerConfigurationResolver implements R
     private String prefix;
 
     public PropertiesFileAuthorizationServerConfigurationResolver() throws IOException {
-        this(Paths.get("jwt.junit5.properties"), "entur.jwt.tenants");
+        this(AuthorizationServerExtension.detectParentPath(), "entur.jwt.tenants");
     }
 
     public PropertiesFileAuthorizationServerConfigurationResolver(Path path, String prefix) {

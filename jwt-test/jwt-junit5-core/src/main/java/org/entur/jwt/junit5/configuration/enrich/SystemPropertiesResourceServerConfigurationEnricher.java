@@ -2,7 +2,7 @@ package org.entur.jwt.junit5.configuration.enrich;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Properties;
+import java.util.Map;
 import java.util.Set;
 
 import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfiguration;
@@ -19,11 +19,11 @@ public class SystemPropertiesResourceServerConfigurationEnricher extends Abstrac
 
     @Override
     public void beforeAll(List<AuthorizationServerImplementation> authorizationServers, ExtensionContext context) throws IOException {
-        Properties properties = super.getProperties(authorizationServers);
+        Map<String, Object> properties = super.getProperties(authorizationServers);
 
-        propertyNames = properties.stringPropertyNames();
+        propertyNames = properties.keySet();
         for (String string : propertyNames) {
-            System.setProperty(string, properties.getProperty(string));
+            System.setProperty(string, properties.get(string).toString());
         }
     }
 

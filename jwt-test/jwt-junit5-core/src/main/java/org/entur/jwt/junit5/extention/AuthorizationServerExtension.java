@@ -1,8 +1,13 @@
 package org.entur.jwt.junit5.extention;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
 
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
@@ -27,6 +32,13 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
 
     public static final Namespace NAMESPACE = Namespace.create(AuthorizationServerExtension.class);
 
+    // in-memory cache for jwks
+    protected static final AuthorizationServerImplementationFactory FACTORY = new AuthorizationServerImplementationFactory();
+
+    public static AuthorizationServerImplementationFactory getFactory() {
+        return FACTORY;
+    }
+
     protected List<AuthorizationServerImplementation> servers = new ArrayList<>();
     protected List<ResourceServerConfigurationEnricher> enrichers = new ArrayList<>();
     protected List<ResourceServerConfigurationResolver> resolvers = new ArrayList<>();
@@ -41,9 +53,7 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
     public void beforeAll(ExtensionContext context) throws Exception {
         Class<?> testClass = context.getRequiredTestClass();
 
-        AuthorizationServerImplementationFactory factory = new AuthorizationServerImplementationFactory();
-
-        servers = factory.create(testClass);
+        servers = FACTORY.create(testClass);
 
         enrichers = ResourceServerConfigurationEnricherServiceLoader.load();
         if (enrichers.isEmpty()) {
@@ -179,5 +189,30 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
         }
         return "https://mock.issuer." + tenant.substring(tenant.lastIndexOf('.') + 1) + ".xyz";
     }
+
+    public static Path detectParentPath() {
+        Path mavenPath =  Paths.get("target");
+        if (Files.exists(mavenPath)) {
+            return Paths.get("target","jwt.junit5.properties");
+        }
+        Path gradlePath =  Paths.get("build");
+        if (Files.exists(gradlePath)) {
+            return Paths.get("build","jwt.junit5.properties");
+        }
+        return Paths.get("jwt.junit5.properties");
+    }
+
+    public static Path detectPath() {
+        Path mavenPath =  Paths.get("target","jwt.junit5.properties");
+        if (Files.exists(mavenPath)) {
+            return mavenPath;
+        }
+        Path gradlePath =  Paths.get("build","jwt.junit5.properties");
+        if (Files.exists(gradlePath)) {
+            return gradlePath;
+        }
+        return Paths.get("jwt.junit5.properties");
+    }
+
 
 }

@@ -34,3 +34,8 @@ management:
       group:
         readiness:
           include: "readinessState,jwks"
+
+logging:
+  level:
+    root: DEBUG
+    org.entur: TRACE

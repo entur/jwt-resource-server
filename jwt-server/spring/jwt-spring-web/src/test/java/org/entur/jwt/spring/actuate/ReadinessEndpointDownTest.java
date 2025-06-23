@@ -13,6 +13,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 
 import java.io.File;
@@ -35,7 +36,7 @@ import static org.junit.Assert.assertTrue;
 @TestPropertySource(properties = {
         "entur.jwt.jwk.rateLimit.enabled=false",
 })
-
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_CLASS)
 public class ReadinessEndpointDownTest extends AbstractActuatorTest {
 
     @LocalServerPort
