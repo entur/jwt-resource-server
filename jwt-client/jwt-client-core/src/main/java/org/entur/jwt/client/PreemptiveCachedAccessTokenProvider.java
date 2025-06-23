@@ -157,7 +157,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
                 }
             }, delay, TimeUnit.MILLISECONDS);
             
-            logger.info("Scheduled next eager access-token refresh in " + getTime(delay));
+            if(logger.isDebugEnabled()) logger.debug("Scheduled next eager access-token refresh in " + getTime(delay));
         } else {
             logger.warn("Not scheduling eager access-token refresh");
         }
@@ -270,7 +270,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
         ScheduledFuture<?> eagerJwkListCacheItem = this.eagerScheduledFuture; // defensive copy
         if(eagerJwkListCacheItem != null) {
             eagerJwkListCacheItem.cancel(true);
-            logger.info("Cancelled scheduled access-token refresh");
+            if(logger.isDebugEnabled()) logger.debug("Cancelled scheduled access-token refresh");
         }
         super.close();
         
@@ -280,7 +280,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
 				executorService.awaitTermination(refreshTimeout, TimeUnit.MILLISECONDS);
 			} catch (InterruptedException e) {
 				// ignore
-				logger.info("Interrupted while waiting for executor shutdown", e);
+				if(logger.isDebugEnabled()) logger.debug("Interrupted while waiting for executor shutdown", e);
 				Thread.currentThread().interrupt();
 			}
         }
@@ -290,7 +290,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
 				scheduledExecutorService.awaitTermination(refreshTimeout, TimeUnit.MILLISECONDS);
 			} catch (InterruptedException e) {
 				// ignore
-				logger.info("Interrupted while waiting for scheduled executor shutdown", e);
+				if(logger.isDebugEnabled()) logger.debug("Interrupted while waiting for scheduled executor shutdown", e);
 				Thread.currentThread().interrupt();
 			}
         }

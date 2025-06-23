@@ -10,7 +10,7 @@ import java.util.List;
 
 public class JwtMappedDiagnosticContextMapperFactory {
 
-    private static final Logger LOG = LoggerFactory.getLogger(JwtMappedDiagnosticContextMapperFactory.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(JwtMappedDiagnosticContextMapperFactory.class);
 
     public JwtMappedDiagnosticContextMapper mapper(MdcProperties mdc) {
         List<MdcPair> items = mdc.getMappings();
@@ -22,7 +22,7 @@ public class JwtMappedDiagnosticContextMapperFactory {
             to.add(item.getTo());
             from.add(item.getFrom());
 
-            LOG.info("Map JWT claim '{}' to MDC key '{}'", item.getFrom(), item.getTo());
+            if(LOGGER.isDebugEnabled()) LOGGER.debug("Map JWT claim '{}' to MDC key '{}'", item.getFrom(), item.getTo());
         }
         return new DefaultJwtMappedDiagnosticContextMapper(from, to);
     }

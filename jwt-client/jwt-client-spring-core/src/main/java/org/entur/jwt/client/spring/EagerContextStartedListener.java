@@ -33,7 +33,7 @@ public class EagerContextStartedListener implements ApplicationListener<ContextS
 	@Override
 	public void onApplicationEvent(ContextStartedEvent cse) {
 		if(!providersById.isEmpty()) {
-			log.info("Eagerly refreshing {} providers", providersById.size());
+			if(log.isDebugEnabled()) log.debug("Eagerly refreshing {} providers", providersById.size());
 			for (Entry<String, AccessTokenProvider> entry : providersById.entrySet()) {
 				try {
 					entry.getValue().getAccessToken(false);

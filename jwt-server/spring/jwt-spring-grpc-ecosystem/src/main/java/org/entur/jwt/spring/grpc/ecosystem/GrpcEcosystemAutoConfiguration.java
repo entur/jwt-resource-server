@@ -152,7 +152,7 @@ public class GrpcEcosystemAutoConfiguration {
     @ConditionalOnMissingBean(AuthenticationManager.class)
     public AuthenticationManager authenticationManager(JwkSourceMap jwkSourceMap, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators, Flavours flavours) {
 
-        log.info("Configure GRPC security");
+        if(log.isDebugEnabled()) log.debug("Configure GRPC security");
 
         if (flavours.isEnabled()) {
             List<JwtAuthorityEnricher> enrichers = new ArrayList<>(jwtAuthorityEnrichers);

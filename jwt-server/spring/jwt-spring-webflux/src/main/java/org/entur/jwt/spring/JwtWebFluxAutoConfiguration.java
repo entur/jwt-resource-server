@@ -60,11 +60,13 @@ public class JwtWebFluxAutoConfiguration {
         List<String> defaultAllowedHeaders = Collections.singletonList("*");
 
         List<String> origins = properties.getOrigins();
-        log.info("Enable CORS request with origins {}, methods {} and headers {} for API mode",
-                properties.getOrigins(),
-                properties.hasMethods() ? properties.getMethods() : "default (" + defaultAllowedMethods + ")",
-                properties.hasHeaders() ? properties.getHeaders() : "default (" + defaultAllowedHeaders + ")"
-        );
+        if(!origins.isEmpty()) {
+            log.info("Enable CORS request with origins {}, methods {} and headers {} for API mode",
+                    properties.getOrigins(),
+                    properties.hasMethods() ? properties.getMethods() : "default (" + defaultAllowedMethods + ")",
+                    properties.hasHeaders() ? properties.getHeaders() : "default (" + defaultAllowedHeaders + ")"
+            );
+        }
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 
