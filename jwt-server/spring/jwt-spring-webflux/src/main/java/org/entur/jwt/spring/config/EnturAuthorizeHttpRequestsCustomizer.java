@@ -25,7 +25,7 @@ public class EnturAuthorizeHttpRequestsCustomizer implements Customizer<ServerHt
 
     @Override
     public void customize(ServerHttpSecurity.AuthorizeExchangeSpec authorizeExchangeSpec) {
-        log.info("Configure authorization filter");
+        if(log.isDebugEnabled()) log.debug("Configure authorization filter");
         if (authorizationProperties.isEnabled()) {
             PermitAll permitAll = authorizationProperties.getPermitAll();
             if (permitAll.isActive()) {

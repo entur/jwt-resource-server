@@ -26,7 +26,7 @@ import java.util.Map;
 
 public class JwkSourceMapFactory<C> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(JwtAutoConfiguration.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(JwkSourceMapFactory.class);
 
 
     public JwkSourceMap getJwkSourceMap(Map<String, JwtTenantProperties> tenants, JwkProperties jwkConfiguration, ListJwksHealthIndicator listJwksHealthIndicator) {
@@ -109,7 +109,7 @@ public class JwkSourceMapFactory<C> {
                 healthIndicator = new DefaultJwksHealthIndicator(entry.getKey());
                 builder.healthReporting(healthIndicator);
 
-                LOGGER.info("Add health indicator for " + entry.getKey());
+                if(LOGGER.isDebugEnabled()) LOGGER.debug("Add health indicator for " + entry.getKey());
 
                 listJwksHealthIndicator.addHealthIndicators(healthIndicator);
             }

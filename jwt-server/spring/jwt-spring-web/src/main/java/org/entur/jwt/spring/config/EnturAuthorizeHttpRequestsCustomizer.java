@@ -19,7 +19,7 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 public class EnturAuthorizeHttpRequestsCustomizer implements Customizer<AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry> {
 
-    private static Logger log = LoggerFactory.getLogger(EnturAuthorizeHttpRequestsCustomizer.class);
+    private static Logger LOGGER = LoggerFactory.getLogger(EnturAuthorizeHttpRequestsCustomizer.class);
 
     private final AuthorizationProperties authorizationProperties;
 
@@ -29,7 +29,7 @@ public class EnturAuthorizeHttpRequestsCustomizer implements Customizer<Authoriz
 
     @Override
     public void customize(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry registry) {
-        log.info("Configure authorization filter");
+        if(LOGGER.isDebugEnabled()) LOGGER.debug("Configure authorization filter");
         if (authorizationProperties.isEnabled()) {
             PermitAll permitAll = authorizationProperties.getPermitAll();
             if (permitAll.isActive()) {
@@ -84,7 +84,7 @@ public class EnturAuthorizeHttpRequestsCustomizer implements Customizer<Authoriz
             default:
                 throw new IllegalArgumentException("Unknown matcher type '" + type + "'.");
         }
-        log.info("Permit all for " + pattern + " " + verb);
+        LOGGER.debug("Permit all for " + pattern + " " + verb);
     }
 
 }

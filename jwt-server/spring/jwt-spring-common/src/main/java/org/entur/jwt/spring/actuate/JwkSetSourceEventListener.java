@@ -25,7 +25,7 @@ public class JwkSetSourceEventListener implements EventListener {
         } else if(event instanceof RefreshAheadCachingJWKSetSource.UnableToRefreshAheadOfExpirationEvent unableToRefreshAheadOfExpirationEvent) {
             LOGGER.warn(name + ": " + RefreshAheadCachingJWKSetSource.UnableToRefreshAheadOfExpirationEvent.class.getSimpleName());
         } else {
-            LOGGER.info(name + ": " + event.getClass().getSimpleName());
+            if(LOGGER.isDebugEnabled()) LOGGER.debug(name + ": " + event.getClass().getSimpleName());
         }
     }
 }
