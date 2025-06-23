@@ -13,7 +13,7 @@ on:
 
 jobs:
   deploy-maven:
-    uses: entur/gha-maven-central/.github/workflows/maven-publish.yml@adjustMavenPublishing
+    uses: entur/gha-maven-central/.github/workflows/maven-publish.yml@main
     secrets: inherit
     with:
       next_version: ${{ inputs.version-increment }}
