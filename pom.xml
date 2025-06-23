@@ -74,7 +74,7 @@
 		<okhttp.version>4.12.0</okhttp.version>
 
 		<grpc.version>1.73.0</grpc.version>
-		<proto.version>3.25.8</proto.version>
+		<proto.version>4.31.1</proto.version>
 		<ecosystem.version>3.1.0.RELEASE</ecosystem.version>
 		<jreleaser-maven-plugin.version>1.18.0</jreleaser-maven-plugin.version>
 
