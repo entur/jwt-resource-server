@@ -1,5 +1,5 @@
 # CHANGELOG
-
+ - 5.2.0: Improve Spring unit testing.
  - 5.1.3-5: Spring Boot 3.5.x and updated publishing. 
  - 5.1.0: Spring Boot 3.4.x + remove Lognet gRPC.
  - 5.0.4: Adjust gRPC anonymous access so that PERMISSION_DENIED is converted to UNAUTHENTICATED in more cases. Reject non-whitelisted anonymous access earlier. 

@@ -75,7 +75,7 @@ Maven coordinates:
 ```xml
 <dependency>
     <groupId>org.entur.jwt-rs</groupId>
-    <artifactId>jwt-verifier-auth0</artifactId>
+    <artifactId>jwt-junit5-entur</artifactId>
     <version>${jwt-junit5-entur}</version>
     <scope>test</scope>
 </dependency>
