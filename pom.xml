@@ -69,7 +69,7 @@
 		<httpclient.version>5.4.4</httpclient.version>
 		<!-- added due to security issue -->
 		<spring-security.version>6.5.0</spring-security.version>
-		<spring.version>6.2.7</spring.version>
+		<spring.version>6.2.9</spring.version>
 		<rest-assured.version>5.5.5</rest-assured.version>
 		<okhttp.version>4.12.0</okhttp.version>
 
