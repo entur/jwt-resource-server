@@ -52,7 +52,8 @@
 
 		<maven.compiler.source>21</maven.compiler.source>
 		<maven.compiler.target>21</maven.compiler.target>
-
+		<!-- for CodeQL -->
+		<java.version>21</java.version>
 		<!-- align dependencies to Spring as much as possible -->
 		<!-- https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-dependencies  -->
 
