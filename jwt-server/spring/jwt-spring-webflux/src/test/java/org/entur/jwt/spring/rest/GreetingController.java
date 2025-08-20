@@ -46,9 +46,9 @@ public class GreetingController {
 
     @GetMapping("/unprotected/path/{pathVariable}")
     public Mono<Greeting> unprotectedWithPathVariable(@PathVariable("pathVariable") String value) {
-        // Sanitize user input to prevent log injection
-        String sanitizedValue = value.replaceAll("[\\r\\n]", "");
-        log.info("Get unprotected method with path variable {}", sanitizedValue);
+        // Sanitize user input to prevent log injection by removing all control characters
+        String sanitizedValue = value.replaceAll("[\\p{Cntrl}]", "");
+        log.info("Get unprotected method with path variable [user input: '{}']", sanitizedValue);
 
         return Mono.just(new Greeting(counter.incrementAndGet(), "Hello unprotected with path variable " + sanitizedValue));
     }
