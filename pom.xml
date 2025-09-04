@@ -78,7 +78,7 @@
 		<jreleaser-maven-plugin.version>1.19.0</jreleaser-maven-plugin.version>
 
 		<!-- transient dependencies added due to security patching -->
-		<tomcat.version>10.1.44</tomcat.version>
+		<tomcat.version>11.0.10</tomcat.version>
 		<netty.version>4.1.124.Final</netty.version>
 
 		<json-smart.version>2.5.1</json-smart.version>
