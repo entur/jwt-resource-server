@@ -19,4 +19,5 @@ jobs:
     secrets: inherit
     with:
       use_setup_java: true
+      use_maven_cache: true
       java_version: "21"
