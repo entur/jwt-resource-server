@@ -79,7 +79,7 @@
 
 		<!-- transient dependencies added due to security patching -->
 		<tomcat.version>10.1.44</tomcat.version>
-		<netty.version>4.1.126.Final</netty.version>
+		<netty.version>4.2.6.Final</netty.version>
 
 		<json-smart.version>2.6.0</json-smart.version>
 
