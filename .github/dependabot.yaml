@@ -1,15 +1,14 @@
 version: 2
 updates:
-  - package-ecosystem: "maven"
+  - package-ecosystem: "gradle"
     directories:
       - "/"
     schedule:
       interval: "daily"
-    minimum-package-age:
-      default-days: 5      
+    cooldown:
+      default-days: 5
   - package-ecosystem: "github-actions"
     directory: ".github/workflows"
     schedule:
       interval: "daily"
-    minimum-package-age:
-      default-days: 5
+
