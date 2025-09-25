@@ -27,6 +27,17 @@ public class AuthorizationServerImplementationFactory {
         for (Annotation annotation : annotations) {
             createFromAnnotation(annotation, results);
         }
+
+        // check for @Nested unit tests
+        Class<?> enclosingClass = testClass.getEnclosingClass();
+        while(enclosingClass != null) {
+            Annotation[] enclosingClassAnnotations = enclosingClass.getAnnotations();
+            for (Annotation annotation : enclosingClassAnnotations) {
+                createFromAnnotation(annotation, results);
+            }
+            enclosingClass = enclosingClass.getEnclosingClass();
+        }
+
         return results;
     }
 
