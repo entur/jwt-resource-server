@@ -57,7 +57,7 @@
 
 		<commons-io.version>2.20.0</commons-io.version>
 		<google-truth.version>1.4.5</google-truth.version>
-		<junit.version>5.12.2</junit.version>
+		<junit.version>5.13.4</junit.version>
 		<mockito.version>5.20.0</mockito.version>
 		<slf4j.version>2.0.17</slf4j.version>
 		<jjwt.version>0.13.0</jjwt.version>
