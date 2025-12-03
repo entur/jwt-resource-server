@@ -11,7 +11,7 @@ jobs:
   post-failure-to-slack:
     needs: verify-main
     if: failure()
-    uses: entur/gha-slack/.github/workflows/post.yml@v2
+    uses: entur/gha-slack/.github/workflows/post.yml@v3
     with:
       channel_id: ${{ vars.CHANNEL_ID }}
       message: "🔴 Maven build failed for ${{ github.repository }}\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
@@ -20,7 +20,7 @@ jobs:
   post-success-to-slack:
     needs: verify-main
     if: success()
-    uses: entur/gha-slack/.github/workflows/post.yml@v2
+    uses: entur/gha-slack/.github/workflows/post.yml@v3
     with:
       channel_id: ${{ vars.CHANNEL_ID}}
       message: "🟢 Maven build success for ${{ github.repository }}\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
