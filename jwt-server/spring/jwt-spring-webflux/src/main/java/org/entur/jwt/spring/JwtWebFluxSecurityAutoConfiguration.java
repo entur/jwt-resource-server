@@ -154,14 +154,20 @@ public class JwtWebFluxSecurityAutoConfiguration {
 
         private static SecurityWebFilterChain getSecurityWebFilterChain(ServerHttpSecurity http) {
             // https://www.baeldung.com/spring-prevent-xss
-            http.headers().xssProtection().headerValue(XXssProtectionServerHttpHeadersWriter.HeaderValue.ENABLED_MODE_BLOCK);
+            http.headers( c -> {
+               c.xssProtection(x -> {
+                 x.headerValue(XXssProtectionServerHttpHeadersWriter.HeaderValue.ENABLED_MODE_BLOCK);
+               });
+            } );
 
             return http
-                    .requestCache().requestCache(NoOpServerRequestCache.getInstance()).and()  // Disable WebSession read on every request
-                    .csrf().disable()
-                    .formLogin().disable()
-                    .httpBasic().disable()
-                    .logout().disable()
+                    .requestCache( c -> {
+                       c.requestCache(NoOpServerRequestCache.getInstance());
+                    })  // Disable WebSession read on every request
+                    .csrf(c -> c.disable())
+                    .formLogin( c -> c.disable())
+                    .httpBasic( c -> c.disable())
+                    .logout( c -> c.disable())
                     .cors(Customizer.withDefaults())
                     .build();
         }

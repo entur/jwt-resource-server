@@ -47,13 +47,5 @@ public class GreetingController {
 
         return new Greeting(counter.incrementAndGet(), "Hello protected tenant.");
     }
-    
-    
-    @PreAuthorize("hasPermission('Testing', 'READ')")
-    @GetMapping("/protected/permission/read")
-    public Greeting protectedWithPermissionRead() {
-        log.info("Get method protected by partner tenant and read permission");
-        return new Greeting(counter.incrementAndGet(), "Hello protected partner tenant with permission read ");
-    }       
 
 }

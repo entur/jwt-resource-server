@@ -7,8 +7,6 @@ public enum CustomHttpMethod {
         switch (type.toLowerCase()) {
             case "default":
                 return DEFAULT;
-            case "ant":
-                return ANT;
             default:
                 throw new IllegalArgumentException("Unknown matcher type '" + type + "'.");
         }
