@@ -80,7 +80,7 @@ public class RestTemplateUrlAccessTokenProvider extends AbstractUrlAccessTokenPr
 
     @Override
     protected int getResponseStatusCode(ResponseEntity<Resource> response) throws IOException {
-        return response.getStatusCodeValue();
+        return response.getStatusCode().value();
     }
 
     @Override

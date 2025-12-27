@@ -38,8 +38,7 @@ import org.entur.jwt.junit5.sabotage.Signature;
 
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
-
-import com.fasterxml.jackson.databind.util.RawValue;
+import tools.jackson.databind.util.RawValue;
 
 public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 

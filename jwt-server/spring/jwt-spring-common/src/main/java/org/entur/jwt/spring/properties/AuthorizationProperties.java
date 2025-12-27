@@ -1,6 +1,6 @@
 package org.entur.jwt.spring.properties;
 /**
- * Basic configuration for spring security authorization filter ({@linkplain org.springframework.security.web.access.intercept.FilterSecurityInterceptor}).
+ * Basic configuration for spring security authorization filter.
  * <br><br>
  * By default all calls must be fully authenticated. Exceptions must be explicitly specified, included for the actuator.
  *

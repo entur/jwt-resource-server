@@ -9,12 +9,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.annotation.DirtiesContext.ClassMode;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import static com.google.common.truth.Truth.assertThat;
 import static io.restassured.RestAssured.given;
@@ -29,10 +29,10 @@ public class Auth0MockBeanTest {
     @LocalServerPort
     private int randomServerPort;
 
-    @MockBean
+    @MockitoBean
     private AccessTokenProvider accessTokenProvider;
 
-    @MockBean
+    @MockitoBean
     private AccessTokenProviderHealthIndicator healthIndicator;
 
     @BeforeEach

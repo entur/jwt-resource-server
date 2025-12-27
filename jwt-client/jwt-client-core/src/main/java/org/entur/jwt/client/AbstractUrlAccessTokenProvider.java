@@ -12,8 +12,11 @@ import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.exc.StreamReadException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectReader;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Abstract provider using URL. This simple abstraction exists so that the
@@ -46,7 +49,7 @@ public abstract class AbstractUrlAccessTokenProvider<T> implements AccessTokenPr
         this.issueBody = createBody(parameters);
         this.issueHeaders = headers;
 
-        ObjectMapper mapper = new ObjectMapper();
+        JsonMapper mapper = JsonMapper.builder().build();
         reader = mapper.readerFor(ClientCredentialsResponse.class);
     }
 
@@ -99,7 +102,7 @@ public abstract class AbstractUrlAccessTokenProvider<T> implements AccessTokenPr
                 validate(clientCredentialsResponse);
                 return clientCredentialsResponse;
             }
-        } catch (IOException e) {
+        } catch (IOException | JacksonException e) {
             throw new AccessTokenUnavailableException(e);
         }
     }

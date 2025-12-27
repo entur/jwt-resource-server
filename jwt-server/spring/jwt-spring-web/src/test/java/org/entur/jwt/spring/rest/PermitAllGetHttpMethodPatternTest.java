@@ -4,9 +4,10 @@ import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.spring.actuate.ListJwksHealthIndicator;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.resttestclient.TestRestTemplate;
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -19,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @AuthorizationServer
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
+@AutoConfigureTestRestTemplate
 @TestPropertySource(properties = {"entur.authorization.permit-all.matcher.method.get.patterns=/actuator/**,/unprotected/path/{pathVariable}"})
 public class PermitAllGetHttpMethodPatternTest {
 
@@ -46,7 +48,7 @@ public class PermitAllGetHttpMethodPatternTest {
     @Test
     public void testActuatorOnWhitelist() throws Exception {
         // make sure health is ready before visiting
-        healthIndicator.getHealth(false);
+        healthIndicator.health(false);
 
         long deadline = System.currentTimeMillis() + 1000;
         while(System.currentTimeMillis() < deadline && !healthIndicator.isIdle()) {
