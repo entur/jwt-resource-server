@@ -18,12 +18,20 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.ExpectedCount;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.util.FileCopyUtils;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.io.UncheckedIOException;
 import java.net.URI;
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
 
 import static com.google.common.truth.Truth.assertThat;
 import static io.restassured.RestAssured.given;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -36,14 +44,8 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 public class Auth0MockRestTemplateTest {
 
-    private MockRestServiceServer mockServer;
-
     @LocalServerPort
     private int randomServerPort;
-    
-    @Autowired
-    @Qualifier("jwtRestTemplate")
-    private RestTemplate restTemplate;
 
     @Autowired
     private AccessTokenProvider accessTokenProvider;
@@ -54,14 +56,18 @@ public class Auth0MockRestTemplateTest {
     @Value("classpath:auth0ClientCredentialsResponse1.json")
     private Resource resource;
 
+    private MockWebServer mockWebServer;
+
     @BeforeEach
-    public void beforeEach() {
-        mockServer = MockRestServiceServer.bindTo(restTemplate).build();
+    void setUp() throws IOException {
+        mockWebServer = new MockWebServer();
+        mockWebServer.start(8000);
+        mockWebServer.url("/oauth/token");
     }
 
     @AfterEach
-    public void afterEach() {
-        mockServer.verify();
+    void tearDown() throws IOException {
+        mockWebServer.shutdown();
     }
 
     @Test
@@ -72,8 +78,8 @@ public class Auth0MockRestTemplateTest {
 
     @Test
     public void testAccessToken() throws Exception {
-        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://my.entur.org/oauth/token"))).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).body(resource));
-        
+        mockWebServer.enqueue(mockResponse(resource));
+
         // get token
         AccessToken accessToken = accessTokenProvider.getAccessToken(false);
 
@@ -83,5 +89,21 @@ public class Auth0MockRestTemplateTest {
         
         given().port(randomServerPort).log().all().when().get("/actuator/health/readiness").then().log().all().assertThat().statusCode(HttpStatus.OK.value());
     }
-    
+
+
+    public static MockResponse mockResponse(Resource resource) {
+        MockResponse mockResponse = new MockResponse();
+        mockResponse.setBody(asString(resource));
+        mockResponse.setHeader("Content-Type", "application/json");
+
+        return mockResponse;
+    }
+
+    public static String asString(Resource resource) {
+        try (Reader reader = new InputStreamReader(resource.getInputStream(), UTF_8)) {
+            return FileCopyUtils.copyToString(reader);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
 }

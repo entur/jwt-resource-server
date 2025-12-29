@@ -220,8 +220,9 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         
         // sleep and check that keys were actually updated
         Thread.sleep(left + Math.min(25, 4 * skew));
-        
-        provider.getExecutorService().awaitTermination(Math.min(25, 4 * skew), TimeUnit.MILLISECONDS);
+
+        // note: added 100 ms to stabilize tests
+        provider.getExecutorService().awaitTermination(100 + Math.min(25, 4 * skew), TimeUnit.MILLISECONDS);
         verify(fallback, times(2)).getAccessToken(false);
 
         // second access-token

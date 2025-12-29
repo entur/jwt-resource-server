@@ -1,5 +1,7 @@
 package org.entur.jwt.client.spring;
 
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
 import org.entur.jwt.client.AccessToken;
 import org.entur.jwt.client.AccessTokenProvider;
 import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
@@ -21,8 +23,10 @@ import org.springframework.test.annotation.DirtiesContext.ClassMode;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.client.ExpectedCount;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.*;
 
@@ -38,14 +42,12 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 @DirtiesContext(classMode = ClassMode.BEFORE_EACH_TEST_METHOD)
 public class Auth0MultipleClientsTest extends AbstractActuatorTest {
 
-    private MockRestServiceServer mockServer;
-
     @LocalServerPort
     private int randomServerPort;
-    
+
     @Autowired
-    @Qualifier("jwtRestTemplate")
-    private RestTemplate restTemplate;
+    @Qualifier("jwtRestClient")
+    private RestClient restClient;
 
     @Autowired
     @Qualifier("firstClient")
@@ -64,14 +66,18 @@ public class Auth0MultipleClientsTest extends AbstractActuatorTest {
     @Value("classpath:auth0ClientCredentialsResponse2.json")
     private Resource resource2;
 
+    private MockWebServer mockWebServer;
+
     @BeforeEach
-    public void beforeEach() {
-        mockServer = MockRestServiceServer.bindTo(restTemplate).build();
+    void setUp() throws IOException {
+        mockWebServer = new MockWebServer();
+        mockWebServer.start(8000);
+        mockWebServer.url("/oauth/token");
     }
 
     @AfterEach
-    public void afterEach() {
-        mockServer.verify();
+    void tearDown() throws IOException {
+        mockWebServer.shutdown();
     }
 
     @Test
@@ -83,8 +89,8 @@ public class Auth0MultipleClientsTest extends AbstractActuatorTest {
     
     @Test
     public void testAccessToken() throws Exception {
-        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://second.entur.org/oauth/token"))).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).body(resource1));
-        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://first.entur.org/oauth/token"))).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).body(resource2));
+        mockWebServer.enqueue(mockResponse(resource1));
+        mockWebServer.enqueue(mockResponse(resource2));
 
         AccessToken accessToken1 = secondAccessTokenProvider.getAccessToken(false);
 
@@ -104,13 +110,13 @@ public class Auth0MultipleClientsTest extends AbstractActuatorTest {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         healthIndicator.setExecutor(executor);
 
-        // down (twice for retry)
-        mockServer.expect(ExpectedCount.twice(), requestTo(new URI("https://first.entur.org/oauth/token"))).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.NOT_FOUND));
-        mockServer.expect(ExpectedCount.twice(), requestTo(new URI("https://second.entur.org/oauth/token"))).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.NOT_FOUND));
+        // down
+        mockWebServer.enqueue(new MockResponse().setResponseCode(HttpStatus.NOT_FOUND.value()));
+        mockWebServer.enqueue(new MockResponse().setResponseCode(HttpStatus.NOT_FOUND.value()));
 
         // up
-        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://first.entur.org/oauth/token"))).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).body(resource2));
-        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://second.entur.org/oauth/token"))).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).body(resource1));
+        mockWebServer.enqueue(mockResponse(resource1));
+        mockWebServer.enqueue(mockResponse(resource2));
 
         given().port(randomServerPort).log().all().when().get("/actuator/health/readiness").then().log().all().assertThat().statusCode(HttpStatus.SERVICE_UNAVAILABLE.value());
         waitForHealth();

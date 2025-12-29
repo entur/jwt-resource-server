@@ -1,4 +1,4 @@
-package org.entur.jwt.client.spring.classic;
+package org.entur.jwt.client.spring.resttemplate;
 
 import org.apache.hc.client5.http.classic.HttpClient;
 import org.apache.hc.client5.http.config.RequestConfig;

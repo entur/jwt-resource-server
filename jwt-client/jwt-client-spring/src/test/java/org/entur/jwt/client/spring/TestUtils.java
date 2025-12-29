@@ -1,4 +1,4 @@
-package org.entur.jwt.client.spring.webflux;
+package org.entur.jwt.client.spring;
 
 import org.springframework.core.io.Resource;
 import org.springframework.util.FileCopyUtils;

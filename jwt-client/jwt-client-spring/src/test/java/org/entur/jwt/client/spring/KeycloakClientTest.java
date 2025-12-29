@@ -1,5 +1,6 @@
 package org.entur.jwt.client.spring;
 
+import okhttp3.mockwebserver.MockWebServer;
 import org.entur.jwt.client.AccessToken;
 import org.entur.jwt.client.AccessTokenProvider;
 import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
@@ -18,11 +19,14 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.client.ExpectedCount;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.net.URI;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.entur.jwt.client.spring.AbstractActuatorTest.mockResponse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -32,11 +36,9 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 @TestPropertySource(locations = "/application-keycloak.properties")
 public class KeycloakClientTest {
 
-    private MockRestServiceServer mockServer;
-
     @Autowired
-    @Qualifier("jwtRestTemplate")
-    private RestTemplate restTemplate;
+    @Qualifier("jwtRestClient")
+    private RestClient restClient;
 
     @Autowired
     private AccessTokenProvider accessTokenProvider;
@@ -47,14 +49,18 @@ public class KeycloakClientTest {
     @Value("classpath:keycloakClientCredentialsResponse.json")
     private Resource resource;
 
+    private MockWebServer mockWebServer;
+
     @BeforeEach
-    public void beforeEach() {
-        mockServer = MockRestServiceServer.bindTo(restTemplate).build();
+    void setUp() throws IOException {
+        mockWebServer = new MockWebServer();
+        mockWebServer.start(8000);
+        mockWebServer.url("/oauth/token");
     }
 
     @AfterEach
-    public void afterEach() {
-        mockServer.verify();
+    void tearDown() throws IOException {
+        mockWebServer.shutdown();
     }
 
     @Test
@@ -65,8 +71,8 @@ public class KeycloakClientTest {
 
     @Test
     public void testAccessToken() throws Exception {
-        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://entur.org/auth/realms/myTenant/protocol/openid-connect/token"))).andExpect(method(HttpMethod.POST))
-                .andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).body(resource));
+        mockWebServer.enqueue(mockResponse(resource));
+
         AccessToken accessToken = accessTokenProvider.getAccessToken(false);
 
         assertThat(accessToken.getType()).isEqualTo("Bearer");

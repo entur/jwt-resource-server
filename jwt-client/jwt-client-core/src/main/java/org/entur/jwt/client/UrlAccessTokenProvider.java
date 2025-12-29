@@ -10,8 +10,11 @@ import java.util.Map.Entry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectReader;
+import tools.jackson.databind.json.JsonMapper;
 
-public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider<HttpURLConnection> {
+public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
 
     protected static final Logger logger = LoggerFactory.getLogger(UrlAccessTokenProvider.class);
 
@@ -35,6 +38,8 @@ public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider<HttpU
     protected final int connectTimeout;
     protected final int readTimeout;
 
+    protected final ObjectReader reader;
+
     // https://www.oauth.com/oauth2-servers/access-tokens/client-credentials/
 
     public UrlAccessTokenProvider(URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers, long connectTimeout, long readTimeout) {
@@ -45,6 +50,9 @@ public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider<HttpU
 
         this.connectTimeout = (int)connectTimeout;
         this.readTimeout = (int)readTimeout;
+
+        JsonMapper mapper = JsonMapper.builder().build();
+        reader = mapper.readerFor(ClientCredentialsResponse.class);
     }
 
     protected HttpURLConnection request(URL url, byte[] body, Map<String, Object> headers) throws IOException {
@@ -67,14 +75,29 @@ public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider<HttpU
         return c;
     }
 
-    @Override
-    protected int getResponseStatusCode(HttpURLConnection response) throws IOException {
-        return response.getResponseCode();
-    }
+    protected ClientCredentialsResponse getToken() throws AccessTokenException {
+        try {
+            HttpURLConnection response = request(issueUrl, issueBody, issueHeaders);
 
-    @Override
-    protected InputStream getResponseContent(HttpURLConnection response) throws IOException {
-        return response.getInputStream();
+            int responseCode = response.getResponseCode();
+            if (responseCode != 200) {
+                logger.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
+                if (responseCode == 503) { // service unavailable
+                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(response, "Retry-After"));
+                } else if (responseCode == 429) { // too many calls
+                    // see for example https://auth0.com/docs/policies/rate-limits
+                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests. " + printHeadersIfPresent(response, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
+                }
+                throw new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
+            }
+            try (InputStream inputStream = response.getInputStream()) {
+                ClientCredentialsResponse clientCredentialsResponse = reader.readValue(inputStream);
+                validate(clientCredentialsResponse);
+                return clientCredentialsResponse;
+            }
+        } catch (IOException | JacksonException e) {
+            throw new AccessTokenUnavailableException(e);
+        }
     }
 
     protected StringBuilder printHeadersIfPresent(HttpURLConnection c, String... headerNames) {

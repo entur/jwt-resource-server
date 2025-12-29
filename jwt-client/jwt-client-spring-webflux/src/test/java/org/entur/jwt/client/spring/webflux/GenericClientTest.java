@@ -2,6 +2,7 @@ package org.entur.jwt.client.spring.webflux;
 
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
 import org.entur.jwt.client.AccessToken;
 import org.entur.jwt.client.AccessTokenProvider;
 import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
@@ -19,12 +21,20 @@ import java.io.IOException;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.entur.jwt.client.spring.webflux.AbstractActuatorTest.*;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @TestPropertySource(locations = "/application-generic-oauth2.properties")
 public class GenericClientTest {
+
     @Autowired
-    private AccessTokenProvider accessTokenProvider;
+    @Qualifier("firstClient")
+    private AccessTokenProvider firstAccessTokenProvider;
+
+    @Autowired
+    @Qualifier("secondClient")
+    private AccessTokenProvider secondAccessTokenProvider;
 
     @Autowired
     private AccessTokenProviderHealthIndicator healthIndicator;
@@ -48,18 +58,40 @@ public class GenericClientTest {
 
     @Test
     public void contextLoads() {
-        assertNotNull(accessTokenProvider);
+        assertNotNull(firstAccessTokenProvider);
         assertNotNull(healthIndicator);
     }
 
     @Test
-    public void testAccessToken() throws Exception {
-        mockWebServer.enqueue(new MockResponse().setBody(TestUtils.asString(resource)));
+    public void testAccessTokenWithClientSecretInRequestUrlParameters() throws Exception {
 
-        AccessToken accessToken = accessTokenProvider.getAccessToken(false);
+        MockResponse mockResponse = new MockResponse();
+        mockResponse.setBody(asString(resource));
+        mockResponse.setHeader("Content-Type", "application/json");
+
+        mockWebServer.enqueue(mockResponse(resource));
+
+        AccessToken accessToken = firstAccessTokenProvider.getAccessToken(false);
 
         assertThat(accessToken.getType()).isEqualTo("Bearer");
         assertThat(accessToken.getValue()).isEqualTo("x.y.z");
         assertThat(accessToken.getExpires()).isLessThan(System.currentTimeMillis() + 86400 * 1000 + 1);
+
+        RecordedRequest request1 = mockWebServer.takeRequest();
+        assertNull(request1.getHeaders().get("Authorization"));
+    }
+
+    @Test
+    public void testAccessTokenWithClientSecretInRequestAuthorizationHeader() throws Exception {
+
+        mockWebServer.enqueue(mockResponse(resource));
+        AccessToken accessToken = secondAccessTokenProvider.getAccessToken(false);
+
+        assertThat(accessToken.getType()).isEqualTo("Bearer");
+        assertThat(accessToken.getValue()).isEqualTo("x.y.z");
+        assertThat(accessToken.getExpires()).isLessThan(System.currentTimeMillis() + 86400 * 1000 + 1);
+
+        RecordedRequest request1 = mockWebServer.takeRequest();
+        assertNotNull(request1.getHeaders().get("Authorization"));
     }
 }

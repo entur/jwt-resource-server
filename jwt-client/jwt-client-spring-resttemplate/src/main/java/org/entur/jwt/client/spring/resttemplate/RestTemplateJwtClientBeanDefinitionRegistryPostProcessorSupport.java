@@ -1,4 +1,4 @@
-package org.entur.jwt.client.spring.classic;
+package org.entur.jwt.client.spring.resttemplate;
 
 import org.entur.jwt.client.AccessTokenProvider;
 import org.entur.jwt.client.ClientCredentials;

@@ -55,7 +55,7 @@ public class KeycloakClientTest {
 
     @Test
     public void testAccessToken() throws Exception {
-        mockWebServer.enqueue(new MockResponse().setBody(TestUtils.asString(resource)));
+        mockWebServer.enqueue(AbstractActuatorTest.mockResponse(resource));
 
         AccessToken accessToken = accessTokenProvider.getAccessToken(false);
 
