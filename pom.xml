@@ -324,11 +324,6 @@
             </dependency>
             <dependency>
                 <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-restclient</artifactId>
-                <version>${spring-boot.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-webtestclient</artifactId>
                 <version>${spring-boot.version}</version>
             </dependency>
@@ -607,10 +602,8 @@
 		<module>jwt-server/spring/jwt-spring-web</module>
 		<module>jwt-server/spring/jwt-spring-common</module>
 		<module>jwt-server/spring/jwt-spring-webflux</module>
-        <!--
 		<module>jwt-server/spring/jwt-spring-grpc-common</module>
-        <module>jwt-server/spring/jwt-spring-grpc</module>
-        -->
+        <module>jwt-server/spring/jwt-spring-grpc-native</module>
 		<module>jwt-bom</module>
 	</modules>
 

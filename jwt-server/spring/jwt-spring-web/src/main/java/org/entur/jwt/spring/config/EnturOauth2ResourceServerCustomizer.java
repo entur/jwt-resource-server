@@ -49,7 +49,6 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
 
         Map<String, AuthenticationManager> map = new HashMap<>(); // thread safe for reading
 
-
         for (Map.Entry<String, JWKSource> entry : jwkSources.entrySet()) {
             JWKSource jwkSource = entry.getValue();
 
