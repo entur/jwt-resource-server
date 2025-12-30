@@ -1,10 +1,10 @@
 package org.entur.jwt.junit5.configuration.resolve;
 
-import java.util.List;
-
 import org.junit.jupiter.api.Test;
 
-import static com.google.common.truth.Truth.*;
+import java.util.List;
+
+import static com.google.common.truth.Truth.assertThat;
 
 public class ResourceServerConfigurationResolverTest {
 

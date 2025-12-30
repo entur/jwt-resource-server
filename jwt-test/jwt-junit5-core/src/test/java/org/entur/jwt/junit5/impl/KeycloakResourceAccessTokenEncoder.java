@@ -1,11 +1,10 @@
 package org.entur.jwt.junit5.impl;
 
+import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfiguration;
+import org.junit.jupiter.api.extension.ParameterContext;
+
 import java.util.Map;
 import java.util.Optional;
-
-import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfiguration;
-import org.entur.jwt.junit5.impl.DefaultAccessTokenEncoder;
-import org.junit.jupiter.api.extension.ParameterContext;
 
 public class KeycloakResourceAccessTokenEncoder extends DefaultAccessTokenEncoder {
 

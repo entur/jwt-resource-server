@@ -1,14 +1,13 @@
 package org.entur.jwt.junit5.configuration.resolve;
 
+import org.entur.jwt.junit5.extention.AuthorizationServerExtension;
+import org.junit.jupiter.api.extension.ExtensionContext;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Properties;
-
-import org.entur.jwt.junit5.extention.AuthorizationServerExtension;
-import org.junit.jupiter.api.extension.ExtensionContext;
 
 public class PropertiesFileAuthorizationServerConfigurationResolver implements ResourceServerConfigurationResolver {
 

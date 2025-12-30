@@ -1,14 +1,14 @@
 package org.entur.jwt.spring.test;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfiguration;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.EnumerablePropertySource;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.MutablePropertySources;
 import org.springframework.core.env.PropertySource;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class JwtEnvironmentResourceServerConfiguration implements ResourceServerConfiguration {
 

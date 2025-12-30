@@ -1,5 +1,7 @@
 package org.entur.jwt.junit5.impl;
 
+import org.entur.jwt.junit5.AuthorizationServer;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
@@ -7,9 +9,11 @@ import java.lang.annotation.Annotation;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
-
-import org.entur.jwt.junit5.AuthorizationServer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 public class AuthorizationServerImplementationFactory {
 

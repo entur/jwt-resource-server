@@ -1,12 +1,12 @@
 package org.entur.jwt.junit5.entur.test;
 
-import java.util.Map;
-import java.util.Optional;
-
 import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfiguration;
 import org.entur.jwt.junit5.entur.test.auth0.PartnerAuth0Token;
 import org.entur.jwt.junit5.impl.DefaultAccessTokenEncoder;
 import org.junit.jupiter.api.extension.ParameterContext;
+
+import java.util.Map;
+import java.util.Optional;
 
 public class PartnerAuth0TokenEncoder extends DefaultAccessTokenEncoder {
 

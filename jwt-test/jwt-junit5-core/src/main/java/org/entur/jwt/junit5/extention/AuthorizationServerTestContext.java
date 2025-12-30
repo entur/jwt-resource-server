@@ -1,5 +1,7 @@
 package org.entur.jwt.junit5.extention;
 
+import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
+
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -8,8 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-
-import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
 
 public class AuthorizationServerTestContext {
 
