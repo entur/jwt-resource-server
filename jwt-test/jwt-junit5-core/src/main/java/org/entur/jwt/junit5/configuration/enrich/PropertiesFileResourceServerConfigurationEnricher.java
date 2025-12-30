@@ -1,5 +1,10 @@
 package org.entur.jwt.junit5.configuration.enrich;
 
+import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfiguration;
+import org.entur.jwt.junit5.extention.AuthorizationServerExtension;
+import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
+import org.junit.jupiter.api.extension.ExtensionContext;
+
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -8,11 +13,6 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-
-import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfiguration;
-import org.entur.jwt.junit5.extention.AuthorizationServerExtension;
-import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
-import org.junit.jupiter.api.extension.ExtensionContext;
 
 public class PropertiesFileResourceServerConfigurationEnricher extends AbstractPropertiesResourceServerConfigurationEnricher {
 

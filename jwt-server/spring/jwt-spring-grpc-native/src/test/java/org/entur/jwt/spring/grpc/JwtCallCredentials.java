@@ -1,9 +1,9 @@
 package org.entur.jwt.spring.grpc;
 
-import java.util.concurrent.Executor;
-
 import io.grpc.CallCredentials;
 import io.grpc.Metadata;
+
+import java.util.concurrent.Executor;
 
 public class JwtCallCredentials extends CallCredentials {
     

@@ -20,9 +20,10 @@ import org.springframework.test.context.TestPropertySource;
 import java.io.IOException;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.entur.jwt.client.spring.webflux.AbstractActuatorTest.asString;
+import static org.entur.jwt.client.spring.webflux.AbstractActuatorTest.mockResponse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.entur.jwt.client.spring.webflux.AbstractActuatorTest.*;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @TestPropertySource(locations = "/application-generic-oauth2.properties")

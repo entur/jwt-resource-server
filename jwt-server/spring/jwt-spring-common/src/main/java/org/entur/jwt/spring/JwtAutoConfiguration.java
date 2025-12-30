@@ -3,7 +3,6 @@ package org.entur.jwt.spring;
 import org.entur.jwt.spring.actuate.ListJwksHealthIndicator;
 import org.entur.jwt.spring.properties.JwtProperties;
 import org.entur.jwt.spring.properties.SecurityProperties;
-import org.entur.jwt.spring.properties.jwk.JwkProperties;
 import org.entur.jwt.spring.properties.jwk.JwtTenantProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.*;
+import java.util.concurrent.Executors;
 
 @Configuration
 @EnableConfigurationProperties({SecurityProperties.class})

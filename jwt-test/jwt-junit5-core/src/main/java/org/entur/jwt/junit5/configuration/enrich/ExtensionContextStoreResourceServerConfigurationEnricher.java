@@ -1,13 +1,13 @@
 package org.entur.jwt.junit5.configuration.enrich;
 
-import java.io.IOException;
-import java.util.List;
-
 import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfiguration;
 import org.entur.jwt.junit5.extention.AuthorizationServerExtension;
 import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ExtensionContext.Store;
+
+import java.io.IOException;
+import java.util.List;
 
 /**
  * 

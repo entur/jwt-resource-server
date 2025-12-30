@@ -45,7 +45,10 @@ public class KeycloakClientTest {
     private AccessTokenProviderHealthIndicator healthIndicator;
 
     @Value("classpath:keycloakClientCredentialsResponse.json")
-    private Resource resource;
+    private Resource resource1;
+
+    @Value("classpath:keycloakRefreshClientCredentialsResponse.json")
+    private Resource resource2;
 
     @BeforeEach
     public void beforeEach() {
@@ -65,12 +68,28 @@ public class KeycloakClientTest {
 
     @Test
     public void testAccessToken() throws Exception {
-        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://entur.org/auth/realms/myTenant/protocol/openid-connect/token"))).andExpect(method(HttpMethod.POST))
-                .andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).body(resource));
+        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://entur.org/auth/realms/myTenant/protocol/openid-connect/token")))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.OK)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(resource1));
+
+        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://entur.org/auth/realms/myTenant/protocol/openid-connect/token")))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.OK)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(resource2));
+
         AccessToken accessToken = accessTokenProvider.getAccessToken(false);
 
         assertThat(accessToken.getType()).isEqualTo("Bearer");
         assertThat(accessToken.getValue()).isEqualTo("x.y.z");
+        assertThat(accessToken.getExpires()).isLessThan(System.currentTimeMillis() + 86400 * 1000 + 1);
+
+        accessToken = accessTokenProvider.getAccessToken(true);
+
+        assertThat(accessToken.getType()).isEqualTo("Bearer");
+        assertThat(accessToken.getValue()).isEqualTo("a1.b1.c1");
         assertThat(accessToken.getExpires()).isLessThan(System.currentTimeMillis() + 86400 * 1000 + 1);
 
     }

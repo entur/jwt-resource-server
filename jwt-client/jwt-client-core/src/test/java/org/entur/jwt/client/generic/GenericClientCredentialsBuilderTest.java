@@ -1,9 +1,12 @@
 package org.entur.jwt.client.generic;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 import org.entur.jwt.client.ClientCredentials;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class GenericClientCredentialsBuilderTest {
     @Test

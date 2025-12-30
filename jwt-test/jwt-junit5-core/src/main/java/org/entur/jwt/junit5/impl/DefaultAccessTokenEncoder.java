@@ -1,12 +1,5 @@
 package org.entur.jwt.junit5.impl;
 
-import java.lang.annotation.Annotation;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AccessTokenEncoder;
 import org.entur.jwt.junit5.AuthorizationServerEncoder;
@@ -18,27 +11,33 @@ import org.entur.jwt.junit5.claim.DoubleArrayClaim;
 import org.entur.jwt.junit5.claim.DoubleClaim;
 import org.entur.jwt.junit5.claim.ExpiresAt;
 import org.entur.jwt.junit5.claim.IntegerArrayClaim;
+import org.entur.jwt.junit5.claim.IntegerClaim;
 import org.entur.jwt.junit5.claim.IssuedAt;
 import org.entur.jwt.junit5.claim.Issuer;
 import org.entur.jwt.junit5.claim.JsonClaim;
-import org.entur.jwt.junit5.claim.IntegerClaim;
+import org.entur.jwt.junit5.claim.MapClaim;
+import org.entur.jwt.junit5.claim.MapClaim.Entry;
+import org.entur.jwt.junit5.claim.MissingClaim;
+import org.entur.jwt.junit5.claim.NullClaim;
 import org.entur.jwt.junit5.claim.Scope;
 import org.entur.jwt.junit5.claim.StringArrayClaim;
 import org.entur.jwt.junit5.claim.StringClaim;
 import org.entur.jwt.junit5.claim.Subject;
-import org.entur.jwt.junit5.claim.MapClaim;
-import org.entur.jwt.junit5.claim.NullClaim;
-import org.entur.jwt.junit5.claim.MissingClaim;
-import org.entur.jwt.junit5.claim.MapClaim.Entry;
 import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfiguration;
 import org.entur.jwt.junit5.headers.AlgorithmHeader;
 import org.entur.jwt.junit5.headers.KeyIdHeader;
 import org.entur.jwt.junit5.headers.TypeHeader;
 import org.entur.jwt.junit5.sabotage.Signature;
-
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import tools.jackson.databind.util.RawValue;
+
+import java.lang.annotation.Annotation;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 

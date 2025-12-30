@@ -1,6 +1,6 @@
 package org.entur.jwt.junit5;
 
-import static org.junit.Assert.assertNotNull;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -8,7 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Properties;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.Assert.assertNotNull;
 
 @AuthorizationServer
 public class SingleAuthorizationServerTest {

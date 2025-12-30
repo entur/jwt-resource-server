@@ -1,12 +1,12 @@
 package org.entur.jwt.spring.test;
 
-import java.util.List;
-
 import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfigurationResolver;
 import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfigurationResolverServiceLoader;
 import org.junit.jupiter.api.Test;
 
-import static com.google.common.truth.Truth.*;
+import java.util.List;
+
+import static com.google.common.truth.Truth.assertThat;
 
 public class ResourceServerConfigurationResolverTest {
 

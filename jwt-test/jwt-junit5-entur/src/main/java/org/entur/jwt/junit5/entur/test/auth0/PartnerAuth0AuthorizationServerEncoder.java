@@ -1,11 +1,11 @@
 package org.entur.jwt.junit5.entur.test.auth0;
 
+import org.entur.jwt.junit5.impl.DefaultAuthorizationServerEncoder;
+
 import java.lang.annotation.Annotation;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-
-import org.entur.jwt.junit5.impl.DefaultAuthorizationServerEncoder;
 
 public class PartnerAuth0AuthorizationServerEncoder extends DefaultAuthorizationServerEncoder {
 

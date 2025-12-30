@@ -4,7 +4,6 @@ package org.entur.jwt.spring.grpc;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
-
 import org.entur.jwt.spring.grpc.test.GreetingRequest;
 import org.entur.jwt.spring.grpc.test.GreetingResponse;
 import org.entur.jwt.spring.grpc.test.GreetingServiceGrpc.GreetingServiceImplBase;

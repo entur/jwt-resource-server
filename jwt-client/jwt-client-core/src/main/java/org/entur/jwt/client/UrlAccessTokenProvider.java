@@ -1,5 +1,11 @@
 package org.entur.jwt.client;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectReader;
+import tools.jackson.databind.json.JsonMapper;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -7,12 +13,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Map;
 import java.util.Map.Entry;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectReader;
-import tools.jackson.databind.json.JsonMapper;
 
 public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
 
@@ -55,42 +55,36 @@ public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
         reader = mapper.readerFor(ClientCredentialsResponse.class);
     }
 
-    protected HttpURLConnection request(URL url, byte[] body, Map<String, Object> headers) throws IOException {
-        final HttpURLConnection c = (HttpURLConnection) url.openConnection();
-        c.setConnectTimeout(connectTimeout);
-        c.setReadTimeout(readTimeout);
-        c.setRequestProperty("Accept", "application/json");
-        c.setRequestProperty("Content-Type", CONTENT_TYPE);
-
-        for (Entry<String, Object> entry : headers.entrySet()) {
-            c.setRequestProperty(entry.getKey(), entry.getValue().toString());
-        }
-
-        c.setDoOutput(true);
-
-        try (OutputStream os = c.getOutputStream()) {
-            os.write(body);
-        }
-
-        return c;
-    }
-
     protected ClientCredentialsResponse getToken() throws AccessTokenException {
         try {
-            HttpURLConnection response = request(issueUrl, issueBody, issueHeaders);
+            HttpURLConnection connection = (HttpURLConnection) issueUrl.openConnection();
+            connection.setConnectTimeout(connectTimeout);
+            connection.setReadTimeout(readTimeout);
+            connection.setRequestProperty("Accept", "application/json");
+            connection.setRequestProperty("Content-Type", CONTENT_TYPE);
 
-            int responseCode = response.getResponseCode();
+            for (Entry<String, Object> entry : issueHeaders.entrySet()) {
+                connection.setRequestProperty(entry.getKey(), entry.getValue().toString());
+            }
+
+            connection.setDoOutput(true);
+
+            try (OutputStream os = connection.getOutputStream()) {
+                os.write(issueBody);
+            }
+
+            int responseCode = connection.getResponseCode();
             if (responseCode != 200) {
                 logger.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
                 if (responseCode == 503) { // service unavailable
-                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(response, "Retry-After"));
+                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(connection, "Retry-After"));
                 } else if (responseCode == 429) { // too many calls
                     // see for example https://auth0.com/docs/policies/rate-limits
-                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests. " + printHeadersIfPresent(response, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
+                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests. " + printHeadersIfPresent(connection, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
                 }
                 throw new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
             }
-            try (InputStream inputStream = response.getInputStream()) {
+            try (InputStream inputStream = connection.getInputStream()) {
                 ClientCredentialsResponse clientCredentialsResponse = reader.readValue(inputStream);
                 validate(clientCredentialsResponse);
                 return clientCredentialsResponse;

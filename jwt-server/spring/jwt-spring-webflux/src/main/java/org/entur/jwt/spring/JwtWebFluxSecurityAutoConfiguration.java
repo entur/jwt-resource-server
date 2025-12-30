@@ -1,5 +1,7 @@
 package org.entur.jwt.spring;
 
+import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
+import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
 import org.entur.jwt.spring.properties.Auth0Flavour;
 import org.entur.jwt.spring.properties.AuthorizationProperties;
 import org.entur.jwt.spring.properties.Flavours;
@@ -7,8 +9,6 @@ import org.entur.jwt.spring.properties.JwtProperties;
 import org.entur.jwt.spring.properties.KeycloakFlavour;
 import org.entur.jwt.spring.properties.MdcProperties;
 import org.entur.jwt.spring.properties.SecurityProperties;
-import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
-import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;

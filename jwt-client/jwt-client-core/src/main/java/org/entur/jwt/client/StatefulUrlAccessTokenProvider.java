@@ -1,5 +1,11 @@
 package org.entur.jwt.client;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectReader;
+import tools.jackson.databind.json.JsonMapper;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -8,12 +14,6 @@ import java.net.URL;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectReader;
-import tools.jackson.databind.json.JsonMapper;
 
 /**
  * {@linkplain AccessTokenProvider} which handles refresh tokens.
@@ -107,6 +107,15 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
                 int responseCode = request.getResponseCode();
                 if (responseCode != 200) {
                     logger.info("Unexpected response code {} when revoking refresh token", responseCode);
+
+                    if (responseCode == 503) { // service unavailable
+                        logger.info("Got unexpected response code {} when revoking refresh token at {}. {}", responseCode, revokeUrl, printHeadersIfPresent(request, "Retry-After"));
+                    } else if (responseCode == 429) { // too many calls
+                        // see for example https://auth0.com/docs/policies/rate-limits
+                        logger.info("Got unexpected response code {} when revoking refresh token at {}. {}", responseCode, revokeUrl, printHeadersIfPresent(request, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
+                    } else {
+                        logger.info("Got unexpected response code {} when revoking refresh token at {}. {}", responseCode, revokeUrl);
+                    }
                 }
             } catch (IOException e) {
                 logger.warn("Unable to revoke token", e);

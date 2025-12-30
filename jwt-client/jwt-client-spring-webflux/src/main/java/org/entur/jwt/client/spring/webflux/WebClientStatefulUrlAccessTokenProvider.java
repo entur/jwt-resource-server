@@ -5,26 +5,20 @@ import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.entur.jwt.client.ClientCredentialsResponse;
 import org.entur.jwt.client.RefreshToken;
-import org.entur.jwt.client.RefreshTokenException;
 import org.entur.jwt.client.UrlAccessTokenProvider;
 import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
@@ -50,7 +44,9 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
         try {
             Mono<ClientCredentialsResponse> response = request(issueUrl, issueBody, issueHeaders);
 
-            return response.toFuture().get();
+            ClientCredentialsResponse clientCredentialsResponse = response.toFuture().get();
+            validate(clientCredentialsResponse);
+            return clientCredentialsResponse;
         } catch (InterruptedException e) {
             throw new AccessTokenUnavailableException(e);
         } catch (ExecutionException e) {
@@ -130,7 +126,9 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
         try {
             Mono<ClientCredentialsResponse> response = request(refreshUrl, refreshBody, Collections.emptyMap());
 
-            return response.toFuture().get();
+            ClientCredentialsResponse clientCredentialsResponse = response.toFuture().get();
+            validate(clientCredentialsResponse);
+            return clientCredentialsResponse;
         } catch (InterruptedException e) {
             throw new AccessTokenUnavailableException(e);
         } catch (ExecutionException e) {

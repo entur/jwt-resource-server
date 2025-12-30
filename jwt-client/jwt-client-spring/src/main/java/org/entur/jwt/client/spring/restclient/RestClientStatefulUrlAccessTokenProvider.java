@@ -5,26 +5,20 @@ import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.entur.jwt.client.ClientCredentialsResponse;
 import org.entur.jwt.client.RefreshToken;
-import org.entur.jwt.client.RefreshTokenException;
 import org.entur.jwt.client.UrlAccessTokenProvider;
-import org.springframework.core.io.Resource;
-import org.springframework.http.*;
+import org.springframework.http.MediaType;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectReader;
-import tools.jackson.databind.json.JsonMapper;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
-import static org.entur.jwt.client.spring.restclient.RestClientUrlAccessTokenProvider.*;
+
+import static org.entur.jwt.client.spring.restclient.RestClientUrlAccessTokenProvider.printResponseEntityHeadersIfPresent;
 /**
  * 
  * RestTemplate access-token provider. Using {@linkplain UrlAccessTokenProvider}
@@ -36,55 +30,30 @@ import static org.entur.jwt.client.spring.restclient.RestClientUrlAccessTokenPro
 public class RestClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTokenProvider {
 
     protected final RestClient restClient;
-    protected final ObjectReader reader;
 
     public RestClientStatefulUrlAccessTokenProvider(RestClient restClient, URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers, URL refreshUrl, URL revokeUrl) {
         super(issueUrl, parameters, headers, refreshUrl, revokeUrl);
         this.restClient = restClient;
-
-        JsonMapper mapper = JsonMapper.builder().build();
-        reader = mapper.readerFor(ClientCredentialsResponse.class);
     }
 
-    protected ClientCredentialsResponse request(URL url, byte[] body, Map<String, Object> map) throws IOException {
-        try {
-            return restClient.post()
-                    .uri(url.toURI())
-                    .headers(headers -> {
-                        headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
-                        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+    protected ClientCredentialsResponse request(URL url, byte[] body, Map<String, Object> headersMap) throws URISyntaxException, AccessTokenUnavailableException {
+        ClientCredentialsResponse clientCredentialsResponse = restClient.post()
+                .uri(url.toURI())
+                .headers(headers -> {
+                    headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
+                    headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-                        for (Entry<String, Object> entry : map.entrySet()) {
-                            headers.set(entry.getKey(), entry.getValue().toString());
-                        }
-                    })
-                    .body(body)
-                    .contentLength(body.length)
-                    .retrieve()
-                    .onStatus(httpStatus -> httpStatus == HttpStatus.TOO_MANY_REQUESTS,
-                            (request, response) -> new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests. " + printResponseEntityHeadersIfPresent(response, "Retry-After") )
-                    )
-                    .onStatus(httpStatus -> httpStatus == HttpStatus.SERVICE_UNAVAILABLE,
-                            (request, response) -> new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printResponseEntityHeadersIfPresent(response, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"))
-                    )
-                    .onStatus(httpStatus -> !httpStatus.is2xxSuccessful(),
-                            (request, response) -> new AccessTokenException("Authorization server responded with HTTP unexpected response code " + response.getStatusCode())
-                    )
-                    .body(ClientCredentialsResponse.class);
-        } catch (URISyntaxException e) {
-            throw new IllegalArgumentException(e);
-        } catch(RestClientException e) {
-            throw new IOException(e);
-        }
-    }
+                    for (Entry<String, Object> entry : headersMap.entrySet()) {
+                        headers.set(entry.getKey(), entry.getValue().toString());
+                    }
+                })
+                .body(body)
+                .contentLength(body.length)
+                .retrieve()
+                .body(ClientCredentialsResponse.class);
 
-
-    protected InputStream getResponseContent(ResponseEntity<Resource> response) throws IOException {
-        Resource body = response.getBody();
-        if(body != null) {
-            return body.getInputStream();
-        }
-        throw new IOException("Empty body");
+        validate(clientCredentialsResponse);
+        return clientCredentialsResponse;
     }
 
     protected void close(long time) {
@@ -96,23 +65,27 @@ public class RestClientStatefulUrlAccessTokenProvider extends AbstractStatefulUr
 
             try {
                 restClient.post()
-                        .uri(revokeUrl.toURI())
-                        .headers(headers -> {
-                            headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
-                            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-                        })
-                        .body(revokeBody)
-                        .contentLength(revokeBody.length)
-                        .retrieve()
-                        .onStatus(httpStatus -> httpStatus == HttpStatus.TOO_MANY_REQUESTS,
-                                (request, response) -> new RefreshTokenException("Authorization server responded with HTTP code 429 - too many requests. " + printResponseEntityHeadersIfPresent(response, "Retry-After") )
-                        )
-                        .onStatus(httpStatus -> httpStatus == HttpStatus.SERVICE_UNAVAILABLE,
-                                (request, response) -> new RefreshTokenException("Authorization server responded with HTTP code 503 - service unavailable. " + printResponseEntityHeadersIfPresent(response, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"))
-                        )
-                        .toBodilessEntity();
+                    .uri(revokeUrl.toURI())
+                    .headers(headers -> {
+                        headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
+                        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+                    })
+                    .body(revokeBody)
+                    .contentLength(revokeBody.length)
+                    .retrieve()
+                    .toBodilessEntity();
             } catch (URISyntaxException e) {
                 throw new IllegalArgumentException(e);
+            } catch (HttpStatusCodeException e) {
+                int responseCode = e.getStatusCode().value();
+                if (responseCode == 503) { // service unavailable
+                    logger.info("Got unexpected response code {} when trying to revoke refresh token at {}. {}", responseCode, revokeUrl, printResponseEntityHeadersIfPresent(e.getResponseHeaders(), "Retry-After"));
+                } else if (responseCode == 429) { // too many calls
+                    // see for example https://auth0.com/docs/policies/rate-limits
+                    logger.info("Got unexpected response code {} when trying to revoke refresh token at {}. {}", responseCode, revokeUrl, printResponseEntityHeadersIfPresent(e.getResponseHeaders(), "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
+                } else {
+                    logger.info("Unexpected exception when revoking refresh token", e);
+                }
             } catch(Exception e) {
                 logger.info("Unexpected exception when revoking refresh token", e);
             }
@@ -124,7 +97,19 @@ public class RestClientStatefulUrlAccessTokenProvider extends AbstractStatefulUr
 
         try {
             return request(refreshUrl, refreshBody, Collections.emptyMap());
-        } catch (IOException | JacksonException e) {
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException(e);
+        } catch (HttpStatusCodeException e) {
+            int responseCode = e.getStatusCode().value();
+            logger.info("Got unexpected response code {} when trying to refresh token at {}", responseCode, refreshUrl);
+            if (responseCode == 503) { // service unavailable
+                throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable when refreshing token. " + printResponseEntityHeadersIfPresent(e.getResponseHeaders(), "Retry-After"));
+            } else if (responseCode == 429) { // too many calls
+                // see for example https://auth0.com/docs/policies/rate-limits
+                throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests when refreshing token. " + printResponseEntityHeadersIfPresent(e.getResponseHeaders(), "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
+            }
+            throw new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode + " when refreshing token");
+        } catch(RestClientException e) {
             throw new AccessTokenUnavailableException(e);
         }
     }
@@ -132,10 +117,21 @@ public class RestClientStatefulUrlAccessTokenProvider extends AbstractStatefulUr
     protected ClientCredentialsResponse getToken() throws AccessTokenException {
         try {
             return request(issueUrl, issueBody, issueHeaders);
-        } catch (IOException | JacksonException e) {
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException(e);
+        } catch (HttpStatusCodeException e) {
+            int responseCode = e.getStatusCode().value();
+            logger.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
+            if (responseCode == 503) { // service unavailable
+                throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printResponseEntityHeadersIfPresent(e.getResponseHeaders(), "Retry-After"));
+            } else if (responseCode == 429) { // too many calls
+                // see for example https://auth0.com/docs/policies/rate-limits
+                throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests. " + printResponseEntityHeadersIfPresent(e.getResponseHeaders(), "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
+            }
+            throw new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
+        } catch(RestClientException e) {
             throw new AccessTokenUnavailableException(e);
         }
     }
-
 
 }

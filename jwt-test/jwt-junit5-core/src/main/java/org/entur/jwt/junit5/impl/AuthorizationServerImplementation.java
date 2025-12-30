@@ -1,9 +1,9 @@
 package org.entur.jwt.junit5.impl;
 
-import java.lang.annotation.Annotation;
-
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.junit5.AuthorizationServerEncoder;
+
+import java.lang.annotation.Annotation;
 
 public class AuthorizationServerImplementation {
 

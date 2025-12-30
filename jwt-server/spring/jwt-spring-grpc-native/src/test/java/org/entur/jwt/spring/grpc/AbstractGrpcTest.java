@@ -2,7 +2,6 @@ package org.entur.jwt.spring.grpc;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-import io.grpc.Server;
 import org.entur.jwt.spring.grpc.test.GreetingRequest;
 import org.entur.jwt.spring.grpc.test.GreetingServiceGrpc;
 import org.entur.jwt.spring.grpc.test.GreetingServiceGrpc.GreetingServiceBlockingStub;
@@ -10,10 +9,7 @@ import org.entur.jwt.spring.grpc.test.GreetingServiceGrpc.GreetingServiceFutureS
 import org.entur.jwt.spring.grpc.test.GreetingServiceGrpc.GreetingServiceStub;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.grpc.server.GrpcServerFactory;
 
 import java.util.concurrent.TimeUnit;
 

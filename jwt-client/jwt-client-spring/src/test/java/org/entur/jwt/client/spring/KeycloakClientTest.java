@@ -1,6 +1,7 @@
 package org.entur.jwt.client.spring;
 
 import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
 import org.entur.jwt.client.AccessToken;
 import org.entur.jwt.client.AccessTokenProvider;
 import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
@@ -13,24 +14,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.core.io.Resource;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.web.client.ExpectedCount;
-import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
-import java.net.URI;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.entur.jwt.client.spring.AbstractActuatorTest.mockResponse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @TestPropertySource(locations = "/application-keycloak.properties")
@@ -47,7 +39,11 @@ public class KeycloakClientTest {
     private AccessTokenProviderHealthIndicator healthIndicator;
 
     @Value("classpath:keycloakClientCredentialsResponse.json")
-    private Resource resource;
+    private Resource resource1;
+
+    @Value("classpath:keycloakRefreshClientCredentialsResponse.json")
+    private Resource resource2;
+
 
     private MockWebServer mockWebServer;
 
@@ -71,7 +67,8 @@ public class KeycloakClientTest {
 
     @Test
     public void testAccessToken() throws Exception {
-        mockWebServer.enqueue(mockResponse(resource));
+        mockWebServer.enqueue(mockResponse(resource1));
+        mockWebServer.enqueue(mockResponse(resource2));
 
         AccessToken accessToken = accessTokenProvider.getAccessToken(false);
 
@@ -79,5 +76,17 @@ public class KeycloakClientTest {
         assertThat(accessToken.getValue()).isEqualTo("x.y.z");
         assertThat(accessToken.getExpires()).isLessThan(System.currentTimeMillis() + 86400 * 1000 + 1);
 
+        accessToken = accessTokenProvider.getAccessToken(true);
+
+        assertThat(accessToken.getType()).isEqualTo("Bearer");
+        assertThat(accessToken.getValue()).isEqualTo("a1.b1.c1");
+        assertThat(accessToken.getExpires()).isLessThan(System.currentTimeMillis() + 86400 * 1000 + 1);
+
+        RecordedRequest request1 = mockWebServer.takeRequest();
+        assertTrue(request1.getPath().endsWith("/token"), request1.getPath());
+
+        RecordedRequest request2 = mockWebServer.takeRequest();
+        assertTrue(request2.getPath().endsWith("/token"), request2.getPath());
+        assertTrue(request2.getBody().toString().contains("a.b.c"));
     }
 }

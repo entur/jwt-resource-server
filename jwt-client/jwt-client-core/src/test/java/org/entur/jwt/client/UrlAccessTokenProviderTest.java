@@ -1,11 +1,7 @@
 package org.entur.jwt.client;
 
-import static com.google.common.truth.Truth.assertThat;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.io.ByteArrayInputStream;
 import java.net.MalformedURLException;
@@ -13,8 +9,12 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class UrlAccessTokenProviderTest extends AbstractUrlAccessTokenProviderTest {
 

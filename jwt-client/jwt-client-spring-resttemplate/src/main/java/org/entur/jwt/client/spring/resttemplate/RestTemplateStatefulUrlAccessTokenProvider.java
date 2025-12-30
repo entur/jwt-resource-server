@@ -7,16 +7,15 @@ import org.entur.jwt.client.ClientCredentialsResponse;
 import org.entur.jwt.client.RefreshToken;
 import org.entur.jwt.client.RefreshTokenException;
 import org.entur.jwt.client.UrlAccessTokenProvider;
-import org.springframework.core.io.Resource;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectReader;
-import tools.jackson.databind.json.JsonMapper;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -37,17 +36,12 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
 
     protected final RestTemplate restTemplate;
 
-    protected final ObjectReader reader;
-
     public RestTemplateStatefulUrlAccessTokenProvider(RestTemplate restTemplate, URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers, URL refreshUrl, URL revokeUrl) {
         super(issueUrl, parameters, headers, refreshUrl, revokeUrl);
         this.restTemplate = restTemplate;
-
-        JsonMapper mapper = JsonMapper.builder().build();
-        reader = mapper.readerFor(ClientCredentialsResponse.class);
     }
 
-    protected ResponseEntity<Resource> request(URL url, byte[] body, Map<String, Object> map) throws IOException {
+    protected ResponseEntity<ClientCredentialsResponse> request(URL url, byte[] body, Map<String, Object> map) throws URISyntaxException {
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -58,25 +52,11 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
 
         HttpEntity<byte[]> request = new HttpEntity<>(body, headers);
 
-        try {
-            URI uri = url.toURI();
-            return restTemplate.exchange(uri, HttpMethod.POST, request, Resource.class);
-        } catch (URISyntaxException e) {
-            throw new IllegalArgumentException(e);
-        } catch(RestClientException e) {
-            throw new IOException(e);
-        }
+        URI uri = url.toURI();
+        return restTemplate.exchange(uri, HttpMethod.POST, request, ClientCredentialsResponse.class);
     }
 
-    protected InputStream getResponseContent(ResponseEntity<Resource> response) throws IOException {
-        Resource body = response.getBody();
-        if(body != null) {
-            return body.getInputStream();
-        }
-        throw new IOException("Empty body");
-    }
-
-    protected StringBuilder printHeadersIfPresent(ResponseEntity<Resource> c, String... headerNames) {
+    protected StringBuilder printHeadersIfPresent(ResponseEntity<?> c, String... headerNames) {
         return RestTemplateUrlAccessTokenProvider.printResponseEntityHeadersIfPresent(c, headerNames);
     }
 
@@ -88,48 +68,67 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
             byte[] revokeBody = createRevokeBody(threadSafeRefreshToken);
 
             try {
-                ResponseEntity<Resource> request = request(revokeUrl, revokeBody, Collections.emptyMap());
-                int responseStatusCode = request.getStatusCode().value();
-                if (responseStatusCode != 200) {
-                    logger.info("Unexpected response code {} when revoking refresh token", responseStatusCode);
+                HttpHeaders headers = new HttpHeaders();
+                headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
+                headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+                HttpEntity<byte[]> request = new HttpEntity<>(revokeBody, headers);
+
+                URI uri = revokeUrl.toURI();
+                ResponseEntity<Void> response = restTemplate.exchange(uri, HttpMethod.POST, request, Void.class);
+
+                int responseCode = response.getStatusCode().value();
+                if (responseCode != 200) {
+                    logger.info("Unexpected response code {} when revoking refresh token", responseCode);
+
+                    if (responseCode == 503) { // service unavailable
+                        logger.info("Got unexpected response code {} when revoking refresh token at {}. {}", responseCode, revokeUrl, printHeadersIfPresent(response, "Retry-After"));
+                    } else if (responseCode == 429) { // too many calls
+                        // see for example https://auth0.com/docs/policies/rate-limits
+                        logger.info("Got unexpected response code {} when revoking refresh token at {}. {}", responseCode, revokeUrl, printHeadersIfPresent(response, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
+                    } else {
+                        logger.info("Got unexpected response code {} when revoking refresh token at {}. {}", responseCode, revokeUrl);
+                    }
                 }
-            } catch (IOException e) {
-                logger.warn("Unable to revoke token", e);
+            } catch (URISyntaxException e) {
+                throw new IllegalArgumentException(e);
+            } catch (Exception e) {
+                logger.info("Unexpected exception when revoking refresh token", e);
             }
         }
     }
 
-    protected ClientCredentialsResponse getToken(RefreshToken response) throws AccessTokenException {
-        byte[] refreshBody = createRefreshBody(response);
+    protected ClientCredentialsResponse getToken(RefreshToken refreshToken) throws AccessTokenException {
+        byte[] refreshBody = createRefreshBody(refreshToken);
 
         try {
-            ResponseEntity<Resource> request = request(refreshUrl, refreshBody, Collections.emptyMap());
+            ResponseEntity<ClientCredentialsResponse> response = request(refreshUrl, refreshBody, Collections.emptyMap());
 
-            int responseCode = request.getStatusCode().value();
+            int responseCode = response.getStatusCode().value();
             if (responseCode != 200) {
                 logger.info("Got unexpected response code {} when trying to refresh token at {}", responseCode, refreshUrl);
                 if (responseCode == 503) { // service unavailable
-                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(request, "Retry-After"));
+                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(response, "Retry-After"));
                 } else if (responseCode == 429) { // too many calls
                     // see for example https://auth0.com/docs/policies/rate-limits
-                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests. " + printHeadersIfPresent(request, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
+                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests. " + printHeadersIfPresent(response, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
                 }
 
                 throw new RefreshTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
             }
-            try (InputStream inputStream = getResponseContent(request)) {
-                ClientCredentialsResponse clientCredentialsResponse = reader.readValue(inputStream);
-                validate(clientCredentialsResponse);
-                return clientCredentialsResponse;
-            }
-        } catch (IOException e) {
+            ClientCredentialsResponse clientCredentialsResponse = response.getBody();
+            validate(clientCredentialsResponse);
+            return clientCredentialsResponse;
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException(e);
+        } catch (RestClientException | JacksonException e) {
             throw new AccessTokenUnavailableException(e);
         }
     }
 
     protected ClientCredentialsResponse getToken() throws AccessTokenException {
         try {
-            ResponseEntity<Resource> response = request(issueUrl, issueBody, issueHeaders);
+            ResponseEntity<ClientCredentialsResponse> response = request(issueUrl, issueBody, issueHeaders);
 
             int responseCode = response.getStatusCode().value();
             if (responseCode != 200) {
@@ -142,13 +141,12 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
                 }
                 throw new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
             }
-            try (InputStream inputStream = getResponseContent(response)) {
-                ClientCredentialsResponse clientCredentialsResponse = reader.readValue(inputStream);
-                validate(clientCredentialsResponse);
-                return clientCredentialsResponse;
-            }
-        } catch (IOException | JacksonException e) {
-            throw new AccessTokenUnavailableException(e);
+
+            ClientCredentialsResponse clientCredentialsResponse = response.getBody();
+            validate(clientCredentialsResponse);
+            return clientCredentialsResponse;
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException(e);
         }
     }
 

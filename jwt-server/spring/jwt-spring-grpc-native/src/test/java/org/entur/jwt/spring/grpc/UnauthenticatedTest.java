@@ -1,17 +1,16 @@
 package org.entur.jwt.spring.grpc;
-import static com.google.common.truth.Truth.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.spring.grpc.test.GreetingResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.annotation.DirtiesContext;
 
-import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
+import static com.google.common.truth.Truth.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * Test accessing methods without a token.
  * 

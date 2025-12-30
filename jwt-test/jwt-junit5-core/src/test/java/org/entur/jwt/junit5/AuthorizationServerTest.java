@@ -1,6 +1,7 @@
 package org.entur.jwt.junit5;
 
-import static org.junit.Assert.assertNotNull;
+import org.entur.jwt.junit5.claim.IntegerClaim;
+import org.entur.jwt.junit5.claim.Subject;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -8,8 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Properties;
 
-import org.entur.jwt.junit5.claim.IntegerClaim;
-import org.entur.jwt.junit5.claim.Subject;
+import static org.junit.Assert.assertNotNull;
 
 @AuthorizationServer("partner-auth0")
 public class AuthorizationServerTest {

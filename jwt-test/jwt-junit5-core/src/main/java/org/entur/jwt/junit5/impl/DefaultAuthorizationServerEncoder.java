@@ -1,5 +1,10 @@
 package org.entur.jwt.junit5.impl;
 
+import io.jsonwebtoken.JwtBuilder;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import org.entur.jwt.junit5.AuthorizationServerEncoder;
+
 import java.lang.annotation.Annotation;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -9,12 +14,6 @@ import java.util.Base64;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
-import org.entur.jwt.junit5.AuthorizationServerEncoder;
-
-import io.jsonwebtoken.JwtBuilder;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 
 public class DefaultAuthorizationServerEncoder implements AuthorizationServerEncoder {
 

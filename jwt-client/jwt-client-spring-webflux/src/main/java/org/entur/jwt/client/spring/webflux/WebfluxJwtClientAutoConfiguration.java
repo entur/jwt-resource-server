@@ -2,7 +2,6 @@ package org.entur.jwt.client.spring.webflux;
 
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
-
 import org.entur.jwt.client.properties.JwtClientProperties;
 import org.entur.jwt.client.spring.JwtClientAutoConfiguration;
 import org.slf4j.Logger;

@@ -1,15 +1,13 @@
 package org.entur.jwt.spring.grpc.netty;
 
 import com.nimbusds.jose.KeySourceException;
+import io.grpc.Status;
+import io.grpc.StatusException;
 import org.jspecify.annotations.Nullable;
-
 import org.springframework.core.Ordered;
 import org.springframework.grpc.server.exception.GrpcExceptionHandler;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.core.AuthenticationException;
-
-import io.grpc.Status;
-import io.grpc.StatusException;
 import org.springframework.security.oauth2.jwt.JwtException;
 
 public class JwtOutageGrpcExceptionHandler implements GrpcExceptionHandler, Ordered {

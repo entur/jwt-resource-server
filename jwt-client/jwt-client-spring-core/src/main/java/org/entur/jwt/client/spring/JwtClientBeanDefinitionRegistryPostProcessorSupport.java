@@ -6,7 +6,13 @@ import org.entur.jwt.client.ClientCredentials;
 import org.entur.jwt.client.auth0.Auth0ClientCredentialsBuilder;
 import org.entur.jwt.client.generic.GenericClientCredentialsBuilder;
 import org.entur.jwt.client.keycloak.KeycloakClientCredentialsBuilder;
-import org.entur.jwt.client.properties.*;
+import org.entur.jwt.client.properties.AbstractJwtClientProperties;
+import org.entur.jwt.client.properties.Auth0JwtClientProperties;
+import org.entur.jwt.client.properties.GenericJwtClientProperties;
+import org.entur.jwt.client.properties.JwtClientCache;
+import org.entur.jwt.client.properties.JwtClientProperties;
+import org.entur.jwt.client.properties.JwtPreemptiveRefresh;
+import org.entur.jwt.client.properties.KeycloakJwtClientProperties;
 
 import java.net.URL;
 import java.util.Map;
