@@ -23,7 +23,7 @@ public class GrpcMdcAutoConfiguration {
     @Bean
     @ConditionalOnBean(GrpcMdcAdapter.class)
     @ConditionalOnExpression("${entur.jwt.mdc.enabled:true}")
-    public GrpcMdcAuthorizationServerInterceptor mdcAuthorizationInterceptor(GrpcMdcAdapter adapter, MdcProperties mdcProperties, GrpcMdcProperties properties) throws Exception {
+    public GrpcMdcAuthorizationServerInterceptor mdcAuthorizationInterceptor(GrpcMdcAdapter adapter, MdcProperties mdcProperties, GrpcMdcProperties properties) {
         int order = properties.getInterceptorOrder();
 
         JwtMappedDiagnosticContextMapperFactory factory = new JwtMappedDiagnosticContextMapperFactory();
