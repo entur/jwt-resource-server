@@ -131,7 +131,7 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
             validate(clientCredentialsResponse);
             return clientCredentialsResponse;
         } catch (InterruptedException e) {
-            Thread.interrupted();
+            Thread.currentThread().interrupt();
             throw new AccessTokenUnavailableException(e);
         } catch (ExecutionException e) {
             Throwable cause = e.getCause();

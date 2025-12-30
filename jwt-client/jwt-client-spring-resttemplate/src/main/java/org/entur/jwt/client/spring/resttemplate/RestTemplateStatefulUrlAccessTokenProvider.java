@@ -121,7 +121,7 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
             return clientCredentialsResponse;
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException(e);
-        } catch (RestClientException | JacksonException e) {
+        } catch (RestClientException e) {
             throw new AccessTokenUnavailableException(e);
         }
     }
