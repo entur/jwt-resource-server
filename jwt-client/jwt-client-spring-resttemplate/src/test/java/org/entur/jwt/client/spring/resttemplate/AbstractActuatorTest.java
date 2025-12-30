@@ -3,7 +3,7 @@ package org.entur.jwt.client.spring.resttemplate;
 import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
 import org.springframework.beans.factory.annotation.Autowired;
 
-public class AbstractActuatorTest {
+public abstract class AbstractActuatorTest {
 
     @Autowired
     private AccessTokenProviderHealthIndicator healthIndicator;

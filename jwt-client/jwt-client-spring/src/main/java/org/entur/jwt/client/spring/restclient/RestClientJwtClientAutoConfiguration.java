@@ -24,7 +24,6 @@ public class RestClientJwtClientAutoConfiguration extends JwtClientAutoConfigura
     private static final Logger log = LoggerFactory.getLogger(RestClientJwtClientAutoConfiguration.class);
 
     @Bean
-    @Qualifier("jwtRestClient")
     public RestClient jwtRestClient(JwtClientProperties properties) {
         // use custom HTTP-client so that we do not get a cookie parse warning
         int connectTimeout = properties.getConnectTimeout();

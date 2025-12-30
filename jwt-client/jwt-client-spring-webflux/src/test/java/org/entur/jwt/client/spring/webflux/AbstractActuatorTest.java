@@ -13,7 +13,7 @@ import java.io.UncheckedIOException;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public class AbstractActuatorTest {
+public abstract class AbstractActuatorTest {
 
     @Autowired
     private AccessTokenProviderHealthIndicator healthIndicator;

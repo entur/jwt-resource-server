@@ -23,7 +23,6 @@ public class WebfluxJwtClientAutoConfiguration extends JwtClientAutoConfiguratio
     }
 
     @Bean
-    @Qualifier("jwtWebClient")
     public WebClient jwtWebClient(WebClient.Builder webClientBuilder, JwtClientProperties properties) {
 
         long connectTimeout = properties.getConnectTimeout();

@@ -114,7 +114,7 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
                         // see for example https://auth0.com/docs/policies/rate-limits
                         logger.info("Got unexpected response code {} when revoking refresh token at {}. {}", responseCode, revokeUrl, printHeadersIfPresent(request, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
                     } else {
-                        logger.info("Got unexpected response code {} when revoking refresh token at {}. {}", responseCode, revokeUrl);
+                        logger.info("Got unexpected response code {} when revoking refresh token at {}.", responseCode, revokeUrl);
                     }
                 }
             } catch (IOException e) {
