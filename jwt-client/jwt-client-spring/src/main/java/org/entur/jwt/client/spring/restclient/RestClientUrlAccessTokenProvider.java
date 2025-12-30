@@ -22,9 +22,7 @@ import java.util.Map.Entry;
 
 /**
  * 
- * RestTemplate access-token provider. Using {@linkplain UrlAccessTokenProvider}
- * would strictly be sufficient, but using RestTemplate is more convenient for
- * mocking.
+ * {@link RestClient} access-token provider.
  *
  */
 

@@ -23,9 +23,7 @@ import java.util.Map.Entry;
 import static org.entur.jwt.client.spring.restclient.RestClientUrlAccessTokenProvider.printResponseEntityHeadersIfPresent;
 /**
  * 
- * RestTemplate access-token provider. Using {@linkplain UrlAccessTokenProvider}
- * would strictly be sufficient, but using RestTemplate is more convenient for
- * mocking.
+ * {@link RestClient} access-token provider.
  *
  */
 
@@ -42,19 +40,19 @@ public class RestClientStatefulUrlAccessTokenProvider extends AbstractStatefulUr
 
     protected ClientCredentialsResponse request(URL url, byte[] body, Map<String, Object> headersMap) throws URISyntaxException, AccessTokenUnavailableException {
         ClientCredentialsResponse clientCredentialsResponse = restClient.post()
-                .uri(url.toURI())
-                .headers(headers -> {
-                    headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
-                    headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            .uri(url.toURI())
+            .headers(headers -> {
+                headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
+                headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-                    for (Entry<String, Object> entry : headersMap.entrySet()) {
-                        headers.set(entry.getKey(), entry.getValue().toString());
-                    }
-                })
-                .body(body)
-                .contentLength(body.length)
-                .retrieve()
-                .body(ClientCredentialsResponse.class);
+                for (Entry<String, Object> entry : headersMap.entrySet()) {
+                    headers.set(entry.getKey(), entry.getValue().toString());
+                }
+            })
+            .body(body)
+            .contentLength(body.length)
+            .retrieve()
+            .body(ClientCredentialsResponse.class);
 
         validate(clientCredentialsResponse);
         return clientCredentialsResponse;

@@ -31,7 +31,7 @@ import java.util.concurrent.ExecutionException;
 
 public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTokenProvider {
 
-    protected static final Logger LOGGER = LoggerFactory.getLogger(AccessTokenProviderHealthIndicator.class);
+    protected static final Logger LOGGER = LoggerFactory.getLogger(WebClientStatefulUrlAccessTokenProvider.class);
 
     protected final WebClient webClient;
 
