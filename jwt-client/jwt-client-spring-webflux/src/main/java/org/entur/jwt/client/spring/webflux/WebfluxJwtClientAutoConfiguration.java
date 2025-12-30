@@ -17,7 +17,6 @@ import reactor.netty.http.client.HttpClient;
 @EnableConfigurationProperties(JwtClientProperties.class)
 public class WebfluxJwtClientAutoConfiguration extends JwtClientAutoConfiguration {
 
-
     private static Logger log = LoggerFactory.getLogger(WebfluxJwtClientAutoConfiguration.class);
 
     public WebfluxJwtClientAutoConfiguration() {
