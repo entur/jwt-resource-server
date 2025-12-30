@@ -8,7 +8,11 @@ import org.mockito.stubbing.Answer;
 
 import java.util.concurrent.ThreadPoolExecutor;
 
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class DefaultRatelimitedUnauthenticatedAccessTokenRecoveryHandlerTest {
 

@@ -1,10 +1,10 @@
 # jwt-client
 
-Client for obtaining Json Web Token (JWT) using so-called [client credentials]. 
+Client for obtaining JSON Web Token (JWT) using so-called [client credentials]. 
 
 Features:
 
- * caching with pro-active refreshes 
+ * caching with proactive refreshes 
     * minimizes thread congestion
     * reduces spikes in processing time
     * minimizes number of calls to authorization servers
@@ -14,10 +14,20 @@ Features:
 
 Essentially this allows a single JWT to be shared within a single JVM, drastically reducing the load on Authorization Servers, and reducing the server response time.
 
-Supported servers:
+Supported server flavours:
 
  * Auth0
  * Keycloak
+
+For other servers, use the generic `Generic` flavour. 
+
+Supported clients:
+
+ * HttpUrlConnection
+ * Spring
+   * RestClient
+   * WebClient (but not in a reactive way)
+   * RestTemplate (legacy)
 
 See submodules for Maven / Gradle coordinates.
 

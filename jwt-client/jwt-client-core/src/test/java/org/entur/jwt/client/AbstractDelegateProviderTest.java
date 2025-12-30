@@ -1,9 +1,9 @@
 package org.entur.jwt.client;
 
+import org.junit.jupiter.api.BeforeEach;
+
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-
-import org.junit.jupiter.api.BeforeEach;
 
 public abstract class AbstractDelegateProviderTest {
 

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -27,6 +28,7 @@ import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 @AuthorizationServer
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
+@AutoConfigureWebTestClient
 public class GreetingControllerAuthenticatedTest {
 
     @Autowired
@@ -42,7 +44,6 @@ public class GreetingControllerAuthenticatedTest {
             .expectStatus().is2xxSuccessful()
             .returnResult(Greeting.class)
             .getResponseBody().blockLast();
-
 
         assertThat(greeting.getContent()).isEqualTo("Hello unprotected");
     }
@@ -91,7 +92,7 @@ public class GreetingControllerAuthenticatedTest {
             .returnResult(Greeting.class)
             .getResponseHeaders();
 
-        for (Entry<String, List<String>> entry : responseHeaders.entrySet()) {
+        for (Entry<String, List<String>> entry : responseHeaders.headerSet()) {
             assertThat(entry.getKey().toLowerCase()).isNotEqualTo("set-cookie");
         }
     }
@@ -108,7 +109,7 @@ public class GreetingControllerAuthenticatedTest {
             .getResponseBody().blockLast();
 
         assertThat(greeting.getContent()).isEqualTo("Hello protected with authority");
-        assertThat(greeting.getAuthorities()).containsExactly("SCOPE_configure");
+        assertThat(greeting.getAuthorities()).containsExactly("FACTOR_BEARER", "SCOPE_configure");
     }
 
     @Test

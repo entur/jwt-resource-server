@@ -1,7 +1,5 @@
 package org.entur.jwt.client;
 
-import java.nio.charset.StandardCharsets;
-
 /**
  * Client Credentials builder scaffold
  *

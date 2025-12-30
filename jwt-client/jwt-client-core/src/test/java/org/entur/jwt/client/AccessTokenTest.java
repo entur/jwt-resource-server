@@ -1,7 +1,8 @@
 package org.entur.jwt.client;
 
 import org.junit.jupiter.api.Test;
-import static com.google.common.truth.Truth.*;
+
+import static com.google.common.truth.Truth.assertThat;
 
 public class AccessTokenTest {
 

@@ -1,8 +1,8 @@
 package org.entur.jwt.spring.filter.log;
 
-import java.util.Map;
-
 import org.springframework.security.oauth2.jwt.Jwt;
+
+import java.util.Map;
 
 public interface JwtMappedDiagnosticContextMapper {
 

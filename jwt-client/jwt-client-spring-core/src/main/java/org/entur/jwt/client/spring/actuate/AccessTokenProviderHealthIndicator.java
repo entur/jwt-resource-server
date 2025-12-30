@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * 
@@ -108,7 +107,7 @@ public class AccessTokenProviderHealthIndicator extends AbstractJwtHealthIndicat
             if(isIdle()) {
                 refreshHealth(healthy, unhealthy, time);
             } else {
-                LOGGER.info("Previous JWT health refresh is still in progress ({} outstanding)", countDownLatch.getCount());
+                if(LOGGER.isInfoEnabled()) LOGGER.info("Previous JWT health refresh is still in progress ({} outstanding)", countDownLatch.getCount());
             }
         }
 
@@ -158,15 +157,15 @@ public class AccessTokenProviderHealthIndicator extends AbstractJwtHealthIndicat
     private static boolean refresh(JwtHealthIndicator indicator, long time) {
         // so either no status or bad status
         // attempt to refresh the cache
-        LOGGER.info("Refresh {} JWT health", indicator.getName());
+        if(LOGGER.isInfoEnabled()) LOGGER.info("Refresh {} JWT health", indicator.getName());
 
         AccessTokenHealth health = indicator.refreshHealth();
         if(health != null && health.isSuccess()) {
-            LOGGER.info("{} JWT is now healthy (in {}ms)", indicator.getName(), System.currentTimeMillis() - time);
+            if(LOGGER.isInfoEnabled()) LOGGER.info("{} JWT is now healthy (in {}ms)", indicator.getName(), System.currentTimeMillis() - time);
 
             return true;
         } else {
-            LOGGER.info("{} JWT remains unhealthy (in {}ms)", indicator.getName(), System.currentTimeMillis() - time);
+            if(LOGGER.isInfoEnabled()) LOGGER.info("{} JWT remains unhealthy (in {}ms)", indicator.getName(), System.currentTimeMillis() - time);
 
             return false;
         }

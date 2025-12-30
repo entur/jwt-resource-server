@@ -1,11 +1,11 @@
 package org.entur.jwt.spring.rest.token;
 
-import java.util.Map;
-import java.util.Optional;
-
 import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfiguration;
 import org.entur.jwt.junit5.impl.DefaultAccessTokenEncoder;
 import org.junit.jupiter.api.extension.ParameterContext;
+
+import java.util.Map;
+import java.util.Optional;
 
 public class MyAccessTokenEncoder extends DefaultAccessTokenEncoder {
 

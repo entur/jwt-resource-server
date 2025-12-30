@@ -23,7 +23,6 @@ import java.io.IOException;
 
 import static com.google.common.truth.Truth.assertThat;
 import static io.restassured.RestAssured.given;
-import static org.entur.jwt.client.spring.webflux.TestUtils.asString;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
@@ -65,7 +64,7 @@ public class Auth0SingleClientTest extends AbstractActuatorTest {
 
     @Test
     public void testAccessToken() throws Exception {
-        mockWebServer.enqueue(new MockResponse().setBody(asString(resource)));
+        mockWebServer.enqueue(mockResponse(resource));
 
         // get token
         AccessToken accessToken = accessTokenProvider.getAccessToken(false);
@@ -81,10 +80,11 @@ public class Auth0SingleClientTest extends AbstractActuatorTest {
         mockWebServer.enqueue(new MockResponse().setResponseCode(HttpStatus.NOT_FOUND.value()));
 
         // up
-        mockWebServer.enqueue(new MockResponse().setBody(asString(resource)));
+        mockWebServer.enqueue(mockResponse(resource));
 
         given().port(randomServerPort).log().all().when().get("/actuator/health/readiness").then().log().all().assertThat().statusCode(HttpStatus.SERVICE_UNAVAILABLE.value());
         waitForHealth();
+
         given().port(randomServerPort).log().all().when().get("/actuator/health/readiness").then().log().all().assertThat().statusCode(HttpStatus.SERVICE_UNAVAILABLE.value());
         waitForHealth();
 

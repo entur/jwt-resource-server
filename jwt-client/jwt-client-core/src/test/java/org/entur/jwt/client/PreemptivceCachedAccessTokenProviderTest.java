@@ -1,5 +1,14 @@
 package org.entur.jwt.client;
 
+import com.google.common.truth.Truth;
+import org.entur.jwt.client.AbstractCachedAccessTokenProvider.AccessTokenCacheItem;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -8,16 +17,6 @@ import static org.mockito.Mockito.only;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-
-import org.entur.jwt.client.AbstractCachedAccessTokenProvider.AccessTokenCacheItem;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import com.google.common.truth.Truth;
 
 public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegateProviderTest {
 
@@ -220,8 +219,9 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         
         // sleep and check that keys were actually updated
         Thread.sleep(left + Math.min(25, 4 * skew));
-        
-        provider.getExecutorService().awaitTermination(Math.min(25, 4 * skew), TimeUnit.MILLISECONDS);
+
+        // note: added 100 ms to stabilize tests
+        provider.getExecutorService().awaitTermination(100 + Math.min(25, 4 * skew), TimeUnit.MILLISECONDS);
         verify(fallback, times(2)).getAccessToken(false);
 
         // second access-token

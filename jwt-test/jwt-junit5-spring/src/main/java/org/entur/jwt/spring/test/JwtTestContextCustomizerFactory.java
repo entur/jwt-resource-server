@@ -46,7 +46,7 @@ public class JwtTestContextCustomizerFactory implements ContextCustomizerFactory
 	public static final String PROPERTY_PREFIX = "entur.jwt.tenants.";
 	public static final String PROPERTY_SOURCE_NAME = "jwtJunit5Properties";
 
-	private static final Log logger = LogFactory.getLog(JwtTestContextCustomizerFactory.class);
+	private static final Log LOGGER = LogFactory.getLog(JwtTestContextCustomizerFactory.class);
 
 	private static final String prefix = "entur.jwt.tenants";
 
@@ -109,7 +109,7 @@ public class JwtTestContextCustomizerFactory implements ContextCustomizerFactory
 				if(!tenants.containsAll(configuredTentants)) {
 					configuredTentants.removeAll(tenants);
 
-					logger.info("Disabling non-mocked tenants " + configuredTentants);
+                    if(LOGGER.isInfoEnabled()) LOGGER.info("Disabling non-mocked tenants " + configuredTentants);
 
 					// disable non-mocked tenants
 					for (String tenant : configuredTentants) {

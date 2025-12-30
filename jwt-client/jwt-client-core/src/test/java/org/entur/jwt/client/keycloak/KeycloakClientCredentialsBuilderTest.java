@@ -1,9 +1,9 @@
 package org.entur.jwt.client.keycloak;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 import org.entur.jwt.client.ClientCredentials;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class KeycloakClientCredentialsBuilderTest {
 

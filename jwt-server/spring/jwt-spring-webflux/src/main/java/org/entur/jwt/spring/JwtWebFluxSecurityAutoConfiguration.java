@@ -1,5 +1,7 @@
 package org.entur.jwt.spring;
 
+import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
+import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
 import org.entur.jwt.spring.properties.Auth0Flavour;
 import org.entur.jwt.spring.properties.AuthorizationProperties;
 import org.entur.jwt.spring.properties.Flavours;
@@ -7,8 +9,6 @@ import org.entur.jwt.spring.properties.JwtProperties;
 import org.entur.jwt.spring.properties.KeycloakFlavour;
 import org.entur.jwt.spring.properties.MdcProperties;
 import org.entur.jwt.spring.properties.SecurityProperties;
-import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
-import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
@@ -154,14 +154,20 @@ public class JwtWebFluxSecurityAutoConfiguration {
 
         private static SecurityWebFilterChain getSecurityWebFilterChain(ServerHttpSecurity http) {
             // https://www.baeldung.com/spring-prevent-xss
-            http.headers().xssProtection().headerValue(XXssProtectionServerHttpHeadersWriter.HeaderValue.ENABLED_MODE_BLOCK);
+            http.headers( c -> {
+               c.xssProtection(x -> {
+                 x.headerValue(XXssProtectionServerHttpHeadersWriter.HeaderValue.ENABLED_MODE_BLOCK);
+               });
+            } );
 
             return http
-                    .requestCache().requestCache(NoOpServerRequestCache.getInstance()).and()  // Disable WebSession read on every request
-                    .csrf().disable()
-                    .formLogin().disable()
-                    .httpBasic().disable()
-                    .logout().disable()
+                    .requestCache( c -> {
+                       c.requestCache(NoOpServerRequestCache.getInstance());
+                    })  // Disable WebSession read on every request
+                    .csrf(c -> c.disable())
+                    .formLogin( c -> c.disable())
+                    .httpBasic( c -> c.disable())
+                    .logout( c -> c.disable())
                     .cors(Customizer.withDefaults())
                     .build();
         }

@@ -1,12 +1,11 @@
 package org.entur.jwt.spring.filter.log;
 
+import org.slf4j.MDC;
+import org.springframework.security.oauth2.jwt.Jwt;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.slf4j.MDC;
-
-import org.springframework.security.oauth2.jwt.Jwt;
 
 
 public class DefaultJwtMappedDiagnosticContextMapper implements JwtMappedDiagnosticContextMapper {

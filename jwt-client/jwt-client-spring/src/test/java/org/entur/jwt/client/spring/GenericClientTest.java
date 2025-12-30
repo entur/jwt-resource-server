@@ -1,5 +1,8 @@
 package org.entur.jwt.client.spring;
 
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
 import org.entur.jwt.client.AccessToken;
 import org.entur.jwt.client.AccessTokenProvider;
 import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
@@ -12,33 +15,24 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.core.io.Resource;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.web.client.ExpectedCount;
-import org.springframework.test.web.client.MockRestServiceServer;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
-import java.net.URI;
+import java.io.IOException;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.hamcrest.Matchers.any;
+import static org.entur.jwt.client.spring.AbstractActuatorTest.asString;
+import static org.entur.jwt.client.spring.AbstractActuatorTest.mockResponse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.headerDoesNotExist;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @TestPropertySource(locations = "/application-generic-oauth2.properties")
 public class GenericClientTest {
-    private MockRestServiceServer mockServer;
 
     @Autowired
-    @Qualifier("jwtRestTemplate")
-    private RestTemplate restTemplate;
+    @Qualifier("jwtRestClient")
+    private RestClient restClient;
 
     @Autowired
     @Qualifier("firstClient")
@@ -54,14 +48,18 @@ public class GenericClientTest {
     @Value("classpath:genericOAuth2ClientCredentialsResponse.json")
     private Resource resource;
 
+    private MockWebServer mockWebServer;
+
     @BeforeEach
-    public void beforeEach() {
-        mockServer = MockRestServiceServer.bindTo(restTemplate).build();
+    void setUp() throws IOException {
+        mockWebServer = new MockWebServer();
+        mockWebServer.start(8000);
+        mockWebServer.url("/oauth/token");
     }
 
     @AfterEach
-    public void afterEach() {
-        mockServer.verify();
+    void tearDown() throws IOException {
+        mockWebServer.shutdown();
     }
 
     @Test
@@ -73,31 +71,34 @@ public class GenericClientTest {
 
     @Test
     public void testAccessTokenWithClientSecretInRequestUrlParameters() throws Exception {
-        mockServer
-                .expect(ExpectedCount.once(), requestTo(new URI("http://localhost:8000/v1/oauth/token")))
-                .andExpect(method(HttpMethod.POST))
-                .andExpect(headerDoesNotExist("Authorization"))
-                .andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).body(resource));
+
+        MockResponse mockResponse = new MockResponse();
+        mockResponse.setBody(asString(resource));
+        mockResponse.setHeader("Content-Type", "application/json");
+
+        mockWebServer.enqueue(mockResponse(resource));
 
         AccessToken accessToken = firstAccessTokenProvider.getAccessToken(false);
 
         assertThat(accessToken.getType()).isEqualTo("Bearer");
         assertThat(accessToken.getValue()).isEqualTo("x.y.z");
         assertThat(accessToken.getExpires()).isLessThan(System.currentTimeMillis() + 86400 * 1000 + 1);
+
+        RecordedRequest request1 = mockWebServer.takeRequest();
+        assertNull(request1.getHeaders().get("Authorization"));
     }
 
     @Test
     public void testAccessTokenWithClientSecretInRequestAuthorizationHeader() throws Exception {
-        mockServer
-                .expect(ExpectedCount.once(), requestTo(new URI("http://localhost:8001/v1/oauth/token")))
-                .andExpect(method(HttpMethod.POST))
-                .andExpect(header("Authorization", any(String.class)))
-                .andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).body(resource));
 
+        mockWebServer.enqueue(mockResponse(resource));
         AccessToken accessToken = secondAccessTokenProvider.getAccessToken(false);
 
         assertThat(accessToken.getType()).isEqualTo("Bearer");
         assertThat(accessToken.getValue()).isEqualTo("x.y.z");
         assertThat(accessToken.getExpires()).isLessThan(System.currentTimeMillis() + 86400 * 1000 + 1);
+
+        RecordedRequest request1 = mockWebServer.takeRequest();
+        assertNotNull(request1.getHeaders().get("Authorization"));
     }
 }

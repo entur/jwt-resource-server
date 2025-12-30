@@ -9,7 +9,7 @@ import org.springframework.test.context.TestPropertySource;
  */
 
 @TestPropertySource(properties = {"entur.authorization.permit-all.matcher.patterns=/actuator/health,/unprotected"})
-public class GreetingControllerAuthenticatedWhitelistTest extends GreetingControllerAuthenticatedTest{
+public class GreetingControllerAuthenticatedWhitelistTest extends GreetingControllerAuthenticatedTest {
 
 
 }
