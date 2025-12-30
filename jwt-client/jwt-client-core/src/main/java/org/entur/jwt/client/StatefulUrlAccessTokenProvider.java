@@ -22,7 +22,7 @@ import java.util.Map.Entry;
 
 public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTokenProvider {
 
-    protected static final Logger logger = LoggerFactory.getLogger(StatefulUrlAccessTokenProvider.class);
+    protected static final Logger LOGGER = LoggerFactory.getLogger(StatefulUrlAccessTokenProvider.class);
 
     protected final int connectTimeout;
     protected final int readTimeout;
@@ -56,7 +56,7 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
 
             int responseCode = response.getResponseCode();
             if (responseCode != 200) {
-                logger.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
+                if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
                 if (responseCode == 503) { // service unavailable
                     throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(response, "Retry-After"));
                 } else if (responseCode == 429) { // too many calls
@@ -106,19 +106,17 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
                 HttpURLConnection request = request(revokeUrl, revokeBody, Collections.emptyMap());
                 int responseCode = request.getResponseCode();
                 if (responseCode != 200) {
-                    logger.info("Unexpected response code {} when revoking refresh token", responseCode);
-
                     if (responseCode == 503) { // service unavailable
-                        logger.info("Got unexpected response code {} when revoking refresh token at {}. {}", responseCode, revokeUrl, printHeadersIfPresent(request, "Retry-After"));
+                        if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when revoking refresh token at {}. {}", responseCode, revokeUrl, printHeadersIfPresent(request, "Retry-After"));
                     } else if (responseCode == 429) { // too many calls
                         // see for example https://auth0.com/docs/policies/rate-limits
-                        logger.info("Got unexpected response code {} when revoking refresh token at {}. {}", responseCode, revokeUrl, printHeadersIfPresent(request, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
+                        if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when revoking refresh token at {}. {}", responseCode, revokeUrl, printHeadersIfPresent(request, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
                     } else {
-                        logger.info("Got unexpected response code {} when revoking refresh token at {}.", responseCode, revokeUrl);
+                        if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when revoking refresh token at {}.", responseCode, revokeUrl);
                     }
                 }
             } catch (IOException e) {
-                logger.warn("Unable to revoke token", e);
+                LOGGER.warn("Unable to revoke token", e);
             }
         }
     }
@@ -131,7 +129,7 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
 
             int responseCode = request.getResponseCode();
             if (responseCode != 200) {
-                logger.info("Got unexpected response code {} when trying to refresh token at {}", responseCode, refreshUrl);
+                if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to refresh token at {}", responseCode, refreshUrl);
                 if (responseCode == 503) { // service unavailable
                     throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(request, "Retry-After"));
                 } else if (responseCode == 429) { // too many calls

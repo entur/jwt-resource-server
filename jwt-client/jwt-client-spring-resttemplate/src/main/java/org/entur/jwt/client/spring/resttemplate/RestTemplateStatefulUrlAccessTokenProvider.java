@@ -7,6 +7,8 @@ import org.entur.jwt.client.ClientCredentialsResponse;
 import org.entur.jwt.client.RefreshToken;
 import org.entur.jwt.client.RefreshTokenException;
 import org.entur.jwt.client.UrlAccessTokenProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -14,7 +16,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
-import tools.jackson.core.JacksonException;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -33,6 +34,8 @@ import java.util.Map.Entry;
  */
 
 public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTokenProvider {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(RestTemplateStatefulUrlAccessTokenProvider.class);
 
     protected final RestTemplate restTemplate;
 
@@ -79,21 +82,19 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
 
                 int responseCode = response.getStatusCode().value();
                 if (responseCode != 200) {
-                    logger.info("Unexpected response code {} when revoking refresh token", responseCode);
-
                     if (responseCode == 503) { // service unavailable
-                        logger.info("Got unexpected response code {} when revoking refresh token at {}. {}", responseCode, revokeUrl, printHeadersIfPresent(response, "Retry-After"));
+                        if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when revoking refresh token at {}. {}", responseCode, revokeUrl, printHeadersIfPresent(response, "Retry-After"));
                     } else if (responseCode == 429) { // too many calls
                         // see for example https://auth0.com/docs/policies/rate-limits
-                        logger.info("Got unexpected response code {} when revoking refresh token at {}. {}", responseCode, revokeUrl, printHeadersIfPresent(response, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
+                        if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when revoking refresh token at {}. {}", responseCode, revokeUrl, printHeadersIfPresent(response, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
                     } else {
-                        logger.info("Got unexpected response code {} when revoking refresh token at {}.", responseCode, revokeUrl);
+                        if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when revoking refresh token at {}.", responseCode, revokeUrl);
                     }
                 }
             } catch (URISyntaxException e) {
                 throw new IllegalArgumentException(e);
             } catch (Exception e) {
-                logger.info("Unexpected exception when revoking refresh token", e);
+                if(LOGGER.isInfoEnabled()) LOGGER.info("Unexpected exception when revoking refresh token", e);
             }
         }
     }
@@ -106,7 +107,7 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
 
             int responseCode = response.getStatusCode().value();
             if (responseCode != 200) {
-                logger.info("Got unexpected response code {} when trying to refresh token at {}", responseCode, refreshUrl);
+                if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to refresh token at {}", responseCode, refreshUrl);
                 if (responseCode == 503) { // service unavailable
                     throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(response, "Retry-After"));
                 } else if (responseCode == 429) { // too many calls
@@ -132,7 +133,7 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
 
             int responseCode = response.getStatusCode().value();
             if (responseCode != 200) {
-                logger.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
+                if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
                 if (responseCode == 503) { // service unavailable
                     throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(response, "Retry-After"));
                 } else if (responseCode == 429) { // too many calls

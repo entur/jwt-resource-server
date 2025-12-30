@@ -5,6 +5,8 @@ import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.entur.jwt.client.ClientCredentialsResponse;
 import org.entur.jwt.client.UrlAccessTokenProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.HttpStatusCodeException;
@@ -27,6 +29,8 @@ import java.util.Map.Entry;
  */
 
 public class RestClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
+
+    protected static final Logger LOGGER = LoggerFactory.getLogger(RestClientUrlAccessTokenProvider.class);
 
     protected static StringBuilder printResponseEntityHeadersIfPresent(HttpHeaders headers, String... headerNames) {
         StringBuilder builder = new StringBuilder();
@@ -85,7 +89,7 @@ public class RestClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProv
             throw new IllegalArgumentException(e);
         } catch (HttpStatusCodeException e) {
             int responseCode = e.getStatusCode().value();
-            logger.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
+            if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
             if (responseCode == 503) { // service unavailable
                 throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printResponseEntityHeadersIfPresent(e.getResponseHeaders(), "Retry-After"));
             } else if (responseCode == 429) { // too many calls

@@ -16,7 +16,7 @@ import java.util.Map.Entry;
 
 public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
 
-    protected static final Logger logger = LoggerFactory.getLogger(UrlAccessTokenProvider.class);
+    protected static final Logger LOGGER = LoggerFactory.getLogger(UrlAccessTokenProvider.class);
 
     protected static StringBuilder printHttpURLConnectionHeadersIfPresent(HttpURLConnection c, String... headerNames) {
         StringBuilder builder = new StringBuilder();
@@ -75,7 +75,7 @@ public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
 
             int responseCode = connection.getResponseCode();
             if (responseCode != 200) {
-                logger.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
+                if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
                 if (responseCode == 503) { // service unavailable
                     throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(connection, "Retry-After"));
                 } else if (responseCode == 429) { // too many calls

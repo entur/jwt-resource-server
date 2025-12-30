@@ -31,7 +31,7 @@ import java.util.concurrent.ExecutionException;
 
 public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTokenProvider {
 
-    protected static final Logger logger = LoggerFactory.getLogger(AccessTokenProviderHealthIndicator.class);
+    protected static final Logger LOGGER = LoggerFactory.getLogger(AccessTokenProviderHealthIndicator.class);
 
     protected final WebClient webClient;
 
@@ -111,12 +111,12 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
 
                 int responseStatusCode = response.getStatusCode().value();
                 if (responseStatusCode != 200) {
-                    logger.info("Unexpected response code {} when revoking refresh token", responseStatusCode);
+                    if(LOGGER.isInfoEnabled()) LOGGER.info("Unexpected response code {} when revoking refresh token", responseStatusCode);
                 }
             } catch (URISyntaxException e) {
                 throw new IllegalArgumentException(e);
             } catch (Exception e) {
-                logger.info("Unable to revoke token", e);
+                if(LOGGER.isInfoEnabled()) LOGGER.info("Unable to revoke token", e);
             }
         }
     }

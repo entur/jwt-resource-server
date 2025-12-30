@@ -80,7 +80,7 @@ public class EnturAuthorizeHttpRequestsCustomizer implements Customizer<Authoriz
             default:
                 throw new IllegalArgumentException("Unknown matcher type '" + type + "'.");
         }
-        LOGGER.debug("Permit all for " + pattern + " " + verb);
+        LOGGER.debug("Permit all for {} {}", pattern, verb);
     }
 
 }

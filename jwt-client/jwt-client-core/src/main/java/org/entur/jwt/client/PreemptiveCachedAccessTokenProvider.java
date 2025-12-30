@@ -29,7 +29,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessTokenProvider {
 
-    protected static final Logger logger = LoggerFactory.getLogger(PreemptiveCachedAccessTokenProvider.class);
+    protected static final Logger LOGGER = LoggerFactory.getLogger(PreemptiveCachedAccessTokenProvider.class);
 
     // preemptive update should execute when
     // expire - preemptiveRefresh < current time < expire.
@@ -153,13 +153,13 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
                     // so will only refresh if this specific cache entry still is the current one
                     preemptiveRefresh(System.currentTimeMillis(), cache, true);
                 } catch (Exception e) {
-                    logger.warn("Scheduled eager access-token refresh failed", e);
+                    LOGGER.warn("Scheduled eager access-token refresh failed", e);
                 }
             }, delay, TimeUnit.MILLISECONDS);
             
-            if(logger.isDebugEnabled()) logger.debug("Scheduled next eager access-token refresh in " + getTime(delay));
+            if(LOGGER.isDebugEnabled()) LOGGER.debug("Scheduled next eager access-token refresh in " + getTime(delay));
         } else {
-            logger.warn("Not scheduling eager access-token refresh");
+            LOGGER.warn("Not scheduling eager access-token refresh");
         }
     }    
     
@@ -213,7 +213,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
                          cacheExpires = -1L;
                          // ignore, unable to update
                          // another thread will attempt the same
-                         logger.warn("Preemptive access-token refresh failed", e);
+                         LOGGER.warn("Preemptive access-token refresh failed", e);
                      }
                  });
             } finally {
@@ -231,7 +231,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
         
         long refreshable = accessToken.getExpires() - preemptiveRefresh;
         if(refreshable < earliestRefresh) { // i.e. too early
-            logger.warn("Token time-to-live of " + (timeToLive/1000) + "s (at " + refreshConstraintInPercent + "%) does not support desired preemptive refresh of " + (preemptiveRefresh/1000) + "s");
+            LOGGER.warn("Token time-to-live of " + (timeToLive/1000) + "s (at " + refreshConstraintInPercent + "%) does not support desired preemptive refresh of " + (preemptiveRefresh/1000) + "s");
             refreshable = earliestRefresh;
         }
         
@@ -270,7 +270,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
         ScheduledFuture<?> eagerJwkListCacheItem = this.eagerScheduledFuture; // defensive copy
         if(eagerJwkListCacheItem != null) {
             eagerJwkListCacheItem.cancel(true);
-            if(logger.isDebugEnabled()) logger.debug("Cancelled scheduled access-token refresh");
+            if(LOGGER.isDebugEnabled()) LOGGER.debug("Cancelled scheduled access-token refresh");
         }
         super.close();
         
@@ -280,7 +280,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
 				executorService.awaitTermination(refreshTimeout, TimeUnit.MILLISECONDS);
 			} catch (InterruptedException e) {
 				// ignore
-				if(logger.isDebugEnabled()) logger.debug("Interrupted while waiting for executor shutdown", e);
+				if(LOGGER.isDebugEnabled()) LOGGER.debug("Interrupted while waiting for executor shutdown", e);
 				Thread.currentThread().interrupt();
 			}
         }
@@ -290,7 +290,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
 				scheduledExecutorService.awaitTermination(refreshTimeout, TimeUnit.MILLISECONDS);
 			} catch (InterruptedException e) {
 				// ignore
-				if(logger.isDebugEnabled()) logger.debug("Interrupted while waiting for scheduled executor shutdown", e);
+				if(LOGGER.isDebugEnabled()) LOGGER.debug("Interrupted while waiting for scheduled executor shutdown", e);
 				Thread.currentThread().interrupt();
 			}
         }

@@ -58,7 +58,7 @@ public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator impleme
             if(isIdle()) {
                 refreshHealth(healthy, unhealthy, time);
             } else {
-                LOGGER.info("Previous JWK health refresh is still in progress ({} outstanding)", countDownLatch.getCount());
+                if(LOGGER.isInfoEnabled()) LOGGER.info("Previous JWK health refresh is still in progress ({} outstanding)", countDownLatch.getCount());
             }
         }
 
@@ -108,11 +108,11 @@ public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator impleme
     private static boolean refresh(DefaultJwksHealthIndicator indicator, long time) {
         // attempt to refresh the cache
         if(indicator.refreshJwksHealth(time)) {
-            LOGGER.info("{} JWKs is now healthy (in {}ms)", indicator.getName(), System.currentTimeMillis() - time);
+            if(LOGGER.isInfoEnabled()) LOGGER.info("{} JWKs is now healthy (in {}ms)", indicator.getName(), System.currentTimeMillis() - time);
 
             return true;
         } else {
-            LOGGER.info("{} JWKs remains unhealthy (in {}ms)", indicator.getName(), System.currentTimeMillis() - time);
+            if(LOGGER.isInfoEnabled()) LOGGER.info("{} JWKs remains unhealthy (in {}ms)", indicator.getName(), System.currentTimeMillis() - time);
 
             return false;
         }

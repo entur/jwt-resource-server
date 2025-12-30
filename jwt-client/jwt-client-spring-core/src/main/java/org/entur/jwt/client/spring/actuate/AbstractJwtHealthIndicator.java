@@ -14,7 +14,7 @@ import org.springframework.boot.health.contributor.Health;
 
 public abstract class AbstractJwtHealthIndicator extends AbstractHealthIndicator {
 
-    private static final Logger logger = LoggerFactory.getLogger(AbstractJwtHealthIndicator.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractJwtHealthIndicator.class);
 
     private AccessTokenHealth previousHealth;
 
@@ -48,15 +48,15 @@ public abstract class AbstractJwtHealthIndicator extends AbstractHealthIndicator
         AccessTokenHealth previousHealth = this.previousHealth; // defensive copy
         if (previousHealth != null) {
             if (!previousHealth.isSuccess() && health.isSuccess()) {
-                logger.info("{} JWT health transitioned to UP", name);
+                if(LOGGER.isInfoEnabled()) LOGGER.info("{} JWT health transitioned to UP", name);
             } else if (previousHealth.isSuccess() && !health.isSuccess()) {
-                logger.warn("{} JWT health transitioned to DOWN", name);
+                if(LOGGER.isInfoEnabled()) LOGGER.warn("{} JWT health transitioned to DOWN", name);
             }
         } else {
             if (!health.isSuccess()) {
-                logger.info("{} JWT health initialized to DOWN", name);
+                if(LOGGER.isInfoEnabled()) LOGGER.info("{} JWT health initialized to DOWN", name);
             } else {
-                logger.info("{} JWT health initialized to UP", name);
+                if(LOGGER.isInfoEnabled()) LOGGER.info("{} JWT health initialized to UP", name);
             }
         }
         this.previousHealth = health;

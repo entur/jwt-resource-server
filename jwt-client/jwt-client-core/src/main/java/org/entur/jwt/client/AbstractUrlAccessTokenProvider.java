@@ -19,7 +19,7 @@ import java.util.Map.Entry;
 
 public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvider {
 
-    protected static final Logger logger = LoggerFactory.getLogger(AbstractUrlAccessTokenProvider.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractUrlAccessTokenProvider.class);
 
     protected static final String CONTENT_TYPE = "application/x-www-form-urlencoded";
     protected static final String KEY_GRANT_TYPE = "grant_type";

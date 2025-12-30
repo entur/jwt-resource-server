@@ -14,7 +14,7 @@ import java.util.Map;
 
 public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
 
-    protected static final Logger logger = LoggerFactory.getLogger(AbstractStatefulUrlAccessTokenProvider.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractStatefulUrlAccessTokenProvider.class);
 
     protected static final String KEY_REFRESH_TOKEN = "refresh_token";
 

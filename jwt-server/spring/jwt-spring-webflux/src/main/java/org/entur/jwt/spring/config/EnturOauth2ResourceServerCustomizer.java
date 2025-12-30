@@ -52,7 +52,7 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHtt
     @Override
     public void customize(ServerHttpSecurity.OAuth2ResourceServerSpec configurer) {
 
-        LOGGER.info("Customize " + jwkSources.size() + " issuers");
+        if(LOGGER.isInfoEnabled()) LOGGER.info("Customize {} issuers", jwkSources.size());
 
         Map<String, ReactiveAuthenticationManager> map = new HashMap<>(); // thread safe for reading
 

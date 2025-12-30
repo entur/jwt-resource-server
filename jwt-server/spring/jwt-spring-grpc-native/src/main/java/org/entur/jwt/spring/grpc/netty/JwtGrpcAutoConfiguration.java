@@ -108,7 +108,7 @@ public class JwtGrpcAutoConfiguration {
                     for (int i = 0; i < methods.size(); i++) {
                         patterns[i] = service + '/' + methods.get(i);
                     }
-                    LOGGER.info(Arrays.toString(patterns));
+                    if(LOGGER.isInfoEnabled()) LOGGER.info(Arrays.toString(patterns));
                     requests.methods(patterns).permitAll();
                 }
 
@@ -169,9 +169,9 @@ public class JwtGrpcAutoConfiguration {
             }
 
             if (methods.contains("*")) {
-                LOGGER.info("Allow anonymous access to all methods of GRPC service " + configuration.getName());
+                if(LOGGER.isInfoEnabled()) LOGGER.info("Allow anonymous access to all methods of GRPC service {}", configuration.getName());
             } else {
-                LOGGER.info("Allow anonymous access to methods " + configuration.getMethods() + " of GRPC service " + configuration.getName());
+                if(LOGGER.isInfoEnabled()) LOGGER.info("Allow anonymous access to methods {} of GRPC service {}", configuration.getMethods(), configuration.getName());
             }
 
             serviceNameMethodName.put(configuration.getName(), methods);

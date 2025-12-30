@@ -6,6 +6,8 @@ import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.entur.jwt.client.ClientCredentialsResponse;
 import org.entur.jwt.client.RefreshToken;
 import org.entur.jwt.client.UrlAccessTokenProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
@@ -28,6 +30,8 @@ import static org.entur.jwt.client.spring.restclient.RestClientUrlAccessTokenPro
  */
 
 public class RestClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTokenProvider {
+
+    protected static final Logger LOGGER = LoggerFactory.getLogger(RestClientStatefulUrlAccessTokenProvider.class);
 
     protected final RestClient restClient;
 
@@ -79,15 +83,15 @@ public class RestClientStatefulUrlAccessTokenProvider extends AbstractStatefulUr
             } catch (HttpStatusCodeException e) {
                 int responseCode = e.getStatusCode().value();
                 if (responseCode == 503) { // service unavailable
-                    logger.info("Got unexpected response code {} when trying to revoke refresh token at {}. {}", responseCode, revokeUrl, printResponseEntityHeadersIfPresent(e.getResponseHeaders(), "Retry-After"));
+                    if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to revoke refresh token at {}. {}", responseCode, revokeUrl, printResponseEntityHeadersIfPresent(e.getResponseHeaders(), "Retry-After"));
                 } else if (responseCode == 429) { // too many calls
                     // see for example https://auth0.com/docs/policies/rate-limits
-                    logger.info("Got unexpected response code {} when trying to revoke refresh token at {}. {}", responseCode, revokeUrl, printResponseEntityHeadersIfPresent(e.getResponseHeaders(), "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
+                    if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to revoke refresh token at {}. {}", responseCode, revokeUrl, printResponseEntityHeadersIfPresent(e.getResponseHeaders(), "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
                 } else {
-                    logger.info("Unexpected exception when revoking refresh token", e);
+                    if(LOGGER.isInfoEnabled()) LOGGER.info("Unexpected exception when revoking refresh token", e);
                 }
             } catch(Exception e) {
-                logger.info("Unexpected exception when revoking refresh token", e);
+                if(LOGGER.isInfoEnabled()) LOGGER.info("Unexpected exception when revoking refresh token", e);
             }
         }
     }
@@ -101,7 +105,7 @@ public class RestClientStatefulUrlAccessTokenProvider extends AbstractStatefulUr
             throw new IllegalArgumentException(e);
         } catch (HttpStatusCodeException e) {
             int responseCode = e.getStatusCode().value();
-            logger.info("Got unexpected response code {} when trying to refresh token at {}", responseCode, refreshUrl);
+            if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to refresh token at {}", responseCode, refreshUrl);
             if (responseCode == 503) { // service unavailable
                 throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable when refreshing token. " + printResponseEntityHeadersIfPresent(e.getResponseHeaders(), "Retry-After"));
             } else if (responseCode == 429) { // too many calls
@@ -121,7 +125,7 @@ public class RestClientStatefulUrlAccessTokenProvider extends AbstractStatefulUr
             throw new IllegalArgumentException(e);
         } catch (HttpStatusCodeException e) {
             int responseCode = e.getStatusCode().value();
-            logger.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
+            if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
             if (responseCode == 503) { // service unavailable
                 throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printResponseEntityHeadersIfPresent(e.getResponseHeaders(), "Retry-After"));
             } else if (responseCode == 429) { // too many calls
