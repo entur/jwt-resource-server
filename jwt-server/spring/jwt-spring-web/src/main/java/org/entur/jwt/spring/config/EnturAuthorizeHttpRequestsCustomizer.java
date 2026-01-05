@@ -18,7 +18,7 @@ import org.springframework.security.config.annotation.web.configurers.AuthorizeH
 
 public class EnturAuthorizeHttpRequestsCustomizer implements Customizer<AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry> {
 
-    private static Logger LOGGER = LoggerFactory.getLogger(EnturAuthorizeHttpRequestsCustomizer.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(EnturAuthorizeHttpRequestsCustomizer.class);
 
     private final AuthorizationProperties authorizationProperties;
 
@@ -80,7 +80,7 @@ public class EnturAuthorizeHttpRequestsCustomizer implements Customizer<Authoriz
             default:
                 throw new IllegalArgumentException("Unknown matcher type '" + type + "'.");
         }
-        LOGGER.debug("Permit all for {} {}", pattern, verb);
+        if(LOGGER.isDebugEnabled()) LOGGER.debug("Permit all for {} {}", pattern, verb);
     }
 
 }
