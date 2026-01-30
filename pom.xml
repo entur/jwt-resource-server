@@ -574,7 +574,7 @@
 										(http://maven.apache.org/plugins/maven-invoker-plugin/)!</message>
 								</bannedPlugins>
 								<requireMavenVersion>
-									<version>3.6.3</version>
+									<version>3.9.6</version>
 								</requireMavenVersion>
 								<requireJavaVersion>
 									<version>25</version>
