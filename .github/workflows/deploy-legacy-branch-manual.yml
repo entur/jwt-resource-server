@@ -18,6 +18,7 @@ jobs:
       next_version: ${{ inputs.version-increment }}
       version_strategy: tag
       version_tag_prefix: legacy-v
+      java_version: 25
 
   post-failure-to-slack:
     needs: deploy-maven
