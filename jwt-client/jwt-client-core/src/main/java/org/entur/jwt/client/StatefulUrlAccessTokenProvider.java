@@ -50,6 +50,7 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
         return false;
     }
 
+    @Override
     protected ClientCredentialsResponse getToken() throws AccessTokenException {
         try {
             HttpURLConnection response = request(issueUrl, issueBody, issueHeaders);
@@ -95,6 +96,7 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
         return c;
     }
 
+    @Override
     protected void close(long time) {
         RefreshToken threadSafeRefreshToken = this.refreshToken; // defensive copy
         if (threadSafeRefreshToken != null && threadSafeRefreshToken.isValid(time)) {
@@ -121,6 +123,7 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
         }
     }
 
+    @Override
     protected ClientCredentialsResponse getToken(RefreshToken response) throws AccessTokenException {
         byte[] refreshBody = createRefreshBody(response);
 

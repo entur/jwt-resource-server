@@ -55,6 +55,7 @@ public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
         reader = mapper.readerFor(ClientCredentialsResponse.class);
     }
 
+    @Override
     protected ClientCredentialsResponse getToken() throws AccessTokenException {
         try {
             HttpURLConnection connection = (HttpURLConnection) issueUrl.openConnection();
