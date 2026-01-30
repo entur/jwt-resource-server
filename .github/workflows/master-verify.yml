@@ -7,6 +7,8 @@ on:
 jobs:
   verify-main:
     uses: entur/abt-gha-public/.github/workflows/maven-open-source-verify.yml@main
+    with:
+      java-version: 25
 
   post-failure-to-slack:
     needs: verify-main

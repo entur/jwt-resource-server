@@ -8,3 +8,5 @@ on:
 jobs:
   verify-pr:
     uses: entur/abt-gha-public/.github/workflows/maven-open-source-verify.yml@main
+    with:
+      java-version: 25
