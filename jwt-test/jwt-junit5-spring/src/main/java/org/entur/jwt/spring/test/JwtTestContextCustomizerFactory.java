@@ -46,7 +46,7 @@ public class JwtTestContextCustomizerFactory implements ContextCustomizerFactory
 	public static final String PROPERTY_PREFIX = "entur.jwt.tenants.";
 	public static final String PROPERTY_SOURCE_NAME = "jwtJunit5Properties";
 
-	private static Logger LOGGER = LoggerFactory.getLogger(JwtTestContextCustomizerFactory.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(JwtTestContextCustomizerFactory.class);
 
 	private static final String prefix = "entur.jwt.tenants";
 
