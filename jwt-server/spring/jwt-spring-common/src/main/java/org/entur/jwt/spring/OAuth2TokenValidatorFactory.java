@@ -111,7 +111,7 @@ public class OAuth2TokenValidatorFactory {
         List<JwtClaimConstraintProperties> dataValueConstraints = new ArrayList<>();
         for (JwtClaimConstraintProperties r : claims.getRequire()) {
             if (r.getValue() != null) {
-                LOGGER.info("Require claim {} of type {}", r.getName(), r.getType());
+                if(LOGGER.isInfoEnabled()) LOGGER.info("Require claim {} of type {}", r.getName(), r.getType());
 
                 dataValueConstraints.add(r);
             }
@@ -123,7 +123,7 @@ public class OAuth2TokenValidatorFactory {
         List<JwtClaimConstraintProperties> dataTypeConstraints = new ArrayList<>();
         for (JwtClaimConstraintProperties r : claims.getRequire()) {
             if (r.getValue() == null) {
-                LOGGER.info("Require claim {} value {} of type {}", r.getName(), r.getValue(), r.getType());
+                if(LOGGER.isInfoEnabled()) LOGGER.info("Require claim {} value {} of type {}", r.getName(), r.getValue(), r.getType());
 
                 dataTypeConstraints.add(r);
             }

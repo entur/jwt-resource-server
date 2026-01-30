@@ -58,7 +58,7 @@ public class DefaultJwksHealthIndicator extends AbstractJwksHealthIndicator impl
             return true;
         } catch (RateLimitReachedException e) {
             // log using a lower level
-            logger.info("Unable to refresh {} JWKs health status, rate limit reached.", name);
+            if(logger.isInfoEnabled()) logger.info("Unable to refresh {} JWKs health status, rate limit reached.", name);
             return false;
         } catch (Exception e) {
             logger.warn("Unable to refresh " + name + " JWKs health status", e);

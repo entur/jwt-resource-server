@@ -17,7 +17,6 @@ import org.entur.jwt.spring.JwtAutoConfiguration;
 import org.entur.jwt.spring.KeycloakJwtAuthorityEnricher;
 import org.entur.jwt.spring.NoUserDetailsService;
 import org.entur.jwt.spring.grpc.IssuerAuthenticationProvider;
-import org.entur.jwt.spring.grpc.properties.GrpcExceptionHandlers;
 import org.entur.jwt.spring.grpc.properties.GrpcPermitAll;
 import org.entur.jwt.spring.grpc.properties.GrpcServicesConfiguration;
 import org.entur.jwt.spring.grpc.properties.ServiceMatcherConfiguration;
@@ -50,7 +49,7 @@ import org.springframework.security.oauth2.server.resource.authentication.Bearer
 import java.util.*;
 
 @Configuration
-@EnableConfigurationProperties({GrpcPermitAll.class, Flavours.class, GrpcExceptionHandlers.class})
+@EnableConfigurationProperties({GrpcPermitAll.class, Flavours.class})
 @AutoConfigureAfter(value = {JwtAutoConfiguration.class})
 @AutoConfigureBefore(value = {GrpcServerSecurityAutoConfiguration.class, SecurityAutoConfiguration.class})
 @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)

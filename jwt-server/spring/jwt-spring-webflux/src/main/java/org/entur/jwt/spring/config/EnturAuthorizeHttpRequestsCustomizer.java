@@ -15,7 +15,7 @@ import org.springframework.security.config.web.server.ServerHttpSecurity;
 
 public class EnturAuthorizeHttpRequestsCustomizer implements Customizer<ServerHttpSecurity.AuthorizeExchangeSpec> {
 
-    private static Logger log = LoggerFactory.getLogger(EnturAuthorizeHttpRequestsCustomizer.class);
+    private static final Logger log = LoggerFactory.getLogger(EnturAuthorizeHttpRequestsCustomizer.class);
 
     private final AuthorizationProperties authorizationProperties;
 
@@ -48,7 +48,7 @@ public class EnturAuthorizeHttpRequestsCustomizer implements Customizer<ServerHt
             String[] patternsAsArray = matchers.getPatternsAsArray();
 
             for (String pattern : patternsAsArray) {
-                log.info("Permit all for " + pattern);
+                if(log.isInfoEnabled()) log.info("Permit all for {}", pattern);
             }
 
             registry.pathMatchers(patternsAsArray).permitAll();
@@ -60,7 +60,7 @@ public class EnturAuthorizeHttpRequestsCustomizer implements Customizer<ServerHt
             if (httpMethodMatcher.isActive()) {
                 String[] patternsAsArray = httpMethodMatcher.getPatternsAsArray();
                 for (String pattern : patternsAsArray) {
-                    log.info("Permit all " + httpMethodMatcher.getVerb() + " for " + pattern);
+                    if(log.isInfoEnabled()) log.info("Permit all {} for {}", httpMethodMatcher.getVerb(),  pattern);
                 }
 
                 registry.pathMatchers(httpMethodMatcher.getVerb(), httpMethodMatcher.getPatternsAsArray()).permitAll();

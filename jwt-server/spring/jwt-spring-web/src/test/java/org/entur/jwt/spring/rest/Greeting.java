@@ -1,11 +1,11 @@
 package org.entur.jwt.spring.rest;
 
+import org.springframework.security.core.GrantedAuthority;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import org.springframework.security.core.GrantedAuthority;
 
 public class Greeting {
 
