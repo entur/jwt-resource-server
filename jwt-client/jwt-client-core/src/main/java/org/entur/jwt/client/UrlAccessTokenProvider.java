@@ -1,5 +1,8 @@
 package org.entur.jwt.client;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -8,12 +11,9 @@ import java.net.URL;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider<HttpURLConnection> {
 
-    protected static final Logger logger = LoggerFactory.getLogger(UrlAccessTokenProvider.class);
+    protected static final Logger LOGGER = LoggerFactory.getLogger(UrlAccessTokenProvider.class);
 
     protected static StringBuilder printHttpURLConnectionHeadersIfPresent(HttpURLConnection c, String... headerNames) {
         StringBuilder builder = new StringBuilder();

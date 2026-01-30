@@ -21,14 +21,21 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import org.springframework.lang.Nullable;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.*;
+import java.util.Set;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 public class JwtClientAutoConfiguration {
 
-    private static Logger log = LoggerFactory.getLogger(JwtClientAutoConfiguration.class);
+    private static Logger LOGGER = LoggerFactory.getLogger(JwtClientAutoConfiguration.class);
 
     protected Long getTimeout(JwtClientProperties properties) {
         return getTimeout(properties.getAuth0(), getTimeout(properties.getKeycloak(), null));
@@ -142,9 +149,9 @@ public class JwtClientAutoConfiguration {
         Collections.sort(statusProviders);
 
         if (statusProviders.isEmpty()) {
-            log.warn("Health-indicator is active, but none of the {} access-token provider(s) supports health", providers.size());
+            if(LOGGER.isWarnEnabled()) LOGGER.warn("Health-indicator is active, but none of the {} access-token provider(s) supports health", providers.size());
         } else {
-            log.info("Add health-indicator for {}/{} access-token provider(s) {}", statusProviders.size(), providers.size(), statusProviders.stream().collect(Collectors.joining("', '", "'", "'")));
+            if(LOGGER.isInfoEnabled()) LOGGER.info("Add health-indicator for {}/{} access-token provider(s) {}", statusProviders.size(), providers.size(), statusProviders.stream().collect(Collectors.joining("', '", "'", "'")));
         }
 
         AccessTokenProviderHealthIndicator list = new AccessTokenProviderHealthIndicator(Executors.newCachedThreadPool(), "List");

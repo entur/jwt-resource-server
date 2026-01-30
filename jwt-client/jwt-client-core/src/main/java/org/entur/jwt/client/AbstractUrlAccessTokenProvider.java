@@ -1,5 +1,8 @@
 package org.entur.jwt.client;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
@@ -8,9 +11,6 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Map.Entry;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
@@ -24,7 +24,7 @@ import com.fasterxml.jackson.databind.ObjectReader;
 
 public abstract class AbstractUrlAccessTokenProvider<T> implements AccessTokenProvider {
 
-    protected static final Logger logger = LoggerFactory.getLogger(AbstractUrlAccessTokenProvider.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractUrlAccessTokenProvider.class);
 
     protected static final String CONTENT_TYPE = "application/x-www-form-urlencoded";
     protected static final String KEY_GRANT_TYPE = "grant_type";
@@ -85,7 +85,7 @@ public abstract class AbstractUrlAccessTokenProvider<T> implements AccessTokenPr
 
             int responseCode = getResponseStatusCode(request);
             if (responseCode != 200) {
-                logger.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
+                if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
                 if (responseCode == 503) { // service unavailable
                     throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(request, "Retry-After"));
                 } else if (responseCode == 429) { // too many calls
