@@ -16,8 +16,8 @@
 
 package org.entur.jwt.spring.test;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.entur.jwt.junit5.extention.AuthorizationServerExtension;
 import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
 import org.entur.jwt.junit5.impl.AuthorizationServerImplementationFactory;
@@ -46,7 +46,7 @@ public class JwtTestContextCustomizerFactory implements ContextCustomizerFactory
 	public static final String PROPERTY_PREFIX = "entur.jwt.tenants.";
 	public static final String PROPERTY_SOURCE_NAME = "jwtJunit5Properties";
 
-	private static final Log LOGGER = LogFactory.getLog(JwtTestContextCustomizerFactory.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(JwtTestContextCustomizerFactory.class);
 
 	private static final String prefix = "entur.jwt.tenants";
 
@@ -109,7 +109,9 @@ public class JwtTestContextCustomizerFactory implements ContextCustomizerFactory
 				if(!tenants.containsAll(configuredTentants)) {
 					configuredTentants.removeAll(tenants);
 
-                    if(LOGGER.isInfoEnabled()) LOGGER.info("Disabling non-mocked tenants " + configuredTentants);
+                    if(LOGGER.isInfoEnabled()) {
+                        LOGGER.info("Disabling non-mocked tenants {}", configuredTentants);
+                    }
 
 					// disable non-mocked tenants
 					for (String tenant : configuredTentants) {
