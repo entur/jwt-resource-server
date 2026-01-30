@@ -36,6 +36,7 @@ public class WebClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProvi
         this.webClient = webClient;
     }
 
+    @Override
     protected ClientCredentialsResponse getToken() throws AccessTokenException {
         try {
             Mono<ClientCredentialsResponse> mono = webClient

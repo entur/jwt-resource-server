@@ -90,6 +90,7 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
         }
     }
 
+    @Override
     protected void close(long time) {
         RefreshToken threadSafeRefreshToken = this.refreshToken; // defensive copy
         if (threadSafeRefreshToken != null && threadSafeRefreshToken.isValid(time)) {

@@ -64,6 +64,7 @@ public class RestClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProv
         return false;
     }
 
+    @Override
     protected ClientCredentialsResponse getToken() throws AccessTokenException {
         try {
             ClientCredentialsResponse clientCredentialsResponse = restClient.post()
