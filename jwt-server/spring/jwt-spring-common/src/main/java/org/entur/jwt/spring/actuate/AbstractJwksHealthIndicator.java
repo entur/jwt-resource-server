@@ -53,7 +53,7 @@ public abstract class AbstractJwksHealthIndicator extends AbstractHealthIndicato
                 if (!previousHealth.isSuccess() && health.isSuccess()) {
                     if(LOGGER.isInfoEnabled()) LOGGER.info("{} JWKs health transitioned to UP", name);
                 } else if (previousHealth.isSuccess() && !health.isSuccess()) {
-                    if(LOGGER.isInfoEnabled()) LOGGER.warn("{} JWKs health transitioned to DOWN", name);
+                    if(LOGGER.isWarnEnabled()) LOGGER.warn("{} JWKs health transitioned to DOWN", name);
                 }
             } else {
                 if (!health.isSuccess()) {
