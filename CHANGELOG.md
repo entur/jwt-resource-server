@@ -1,4 +1,5 @@
 # CHANGELOG
+ - 6.0.0: Spring Boot 4 and Spring gRPC
  - 5.2.1: Adjust logging; less info more debug.
  - 5.2.0: Improve Spring unit testing.
  - 5.1.3-5: Spring Boot 3.5.x and updated publishing. 
