@@ -13,7 +13,7 @@ import org.springframework.boot.actuate.health.Health;
 
 public abstract class AbstractJwksHealthIndicator extends AbstractHealthIndicator {
 
-    private static final Logger logger = LoggerFactory.getLogger(AbstractJwksHealthIndicator.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractJwksHealthIndicator.class);
 
     private JwksHealth previousHealth;
 
@@ -51,15 +51,15 @@ public abstract class AbstractJwksHealthIndicator extends AbstractHealthIndicato
         if(!silent) {
             if (previousHealth != null) {
                 if (!previousHealth.isSuccess() && health.isSuccess()) {
-                    logger.info("{} JWKs health transitioned to UP", name);
+                    if(LOGGER.isInfoEnabled()) LOGGER.info("{} JWKs health transitioned to UP", name);
                 } else if (previousHealth.isSuccess() && !health.isSuccess()) {
-                    logger.warn("{} JWKs health transitioned to DOWN", name);
+                    if(LOGGER.isInfoEnabled()) LOGGER.warn("{} JWKs health transitioned to DOWN", name);
                 }
             } else {
                 if (!health.isSuccess()) {
-                    logger.info("{} JWKs health initialized to DOWN", name);
+                    if(LOGGER.isInfoEnabled()) LOGGER.info("{} JWKs health initialized to DOWN", name);
                 } else {
-                    logger.info("{} JWKs health initialized to UP", name);
+                    if(LOGGER.isInfoEnabled()) LOGGER.info("{} JWKs health initialized to UP", name);
                 }
             }
         }

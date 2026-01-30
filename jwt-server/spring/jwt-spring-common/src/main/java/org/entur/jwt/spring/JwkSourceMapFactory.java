@@ -41,7 +41,7 @@ public class JwkSourceMapFactory<C> {
             if (tenantJwkConfiguration == null) {
                 throw new IllegalStateException("Missing JWK location for " + entry.getKey());
             }
-            LOGGER.info("Configure tenant '{}' with issuer '{}' and JWK location {}", entry.getKey(), tenantConfiguration.getIssuer(), tenantConfiguration.getJwk().getLocation());
+            if(LOGGER.isInfoEnabled()) LOGGER.info("Configure tenant '{}' with issuer '{}' and JWK location {}", entry.getKey(), tenantConfiguration.getIssuer(), tenantConfiguration.getJwk().getLocation());
 
             String location = tenantJwkConfiguration.getLocation();
             if (location == null) {
@@ -109,7 +109,7 @@ public class JwkSourceMapFactory<C> {
                 healthIndicator = new DefaultJwksHealthIndicator(entry.getKey());
                 builder.healthReporting(healthIndicator);
 
-                if(LOGGER.isDebugEnabled()) LOGGER.debug("Add health indicator for " + entry.getKey());
+                if(LOGGER.isDebugEnabled()) LOGGER.debug("Add health indicator for {}", entry.getKey());
 
                 listJwksHealthIndicator.addHealthIndicators(healthIndicator);
             }

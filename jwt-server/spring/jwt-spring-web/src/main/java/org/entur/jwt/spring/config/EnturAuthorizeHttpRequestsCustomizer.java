@@ -11,7 +11,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 /**
  * Default authorization. Extracted into its own class to allow for customization / override.
@@ -19,7 +18,7 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 public class EnturAuthorizeHttpRequestsCustomizer implements Customizer<AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry> {
 
-    private static Logger LOGGER = LoggerFactory.getLogger(EnturAuthorizeHttpRequestsCustomizer.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(EnturAuthorizeHttpRequestsCustomizer.class);
 
     private final AuthorizationProperties authorizationProperties;
 
@@ -78,13 +77,10 @@ public class EnturAuthorizeHttpRequestsCustomizer implements Customizer<Authoriz
             case DEFAULT:
                 registry.requestMatchers(verb, pattern).permitAll();
                 break;
-            case ANT:
-                registry.requestMatchers(AntPathRequestMatcher.antMatcher(verb, pattern)).permitAll();
-                break;
             default:
                 throw new IllegalArgumentException("Unknown matcher type '" + type + "'.");
         }
-        LOGGER.debug("Permit all for " + pattern + " " + verb);
+        if(LOGGER.isDebugEnabled()) LOGGER.debug("Permit all for {} {}", pattern, verb);
     }
 
 }
