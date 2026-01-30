@@ -109,9 +109,7 @@ public class JwtTestContextCustomizerFactory implements ContextCustomizerFactory
 				if(!tenants.containsAll(configuredTentants)) {
 					configuredTentants.removeAll(tenants);
 
-                    if(LOGGER.isInfoEnabled()) {
-                        LOGGER.info("Disabling non-mocked tenants {}", configuredTentants);
-                    }
+                    if(LOGGER.isInfoEnabled()) LOGGER.info("Disabling non-mocked tenants {}", configuredTentants);
 
 					// disable non-mocked tenants
 					for (String tenant : configuredTentants) {
