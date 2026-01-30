@@ -1,8 +1,5 @@
 package org.entur.jwt.client;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -13,8 +10,6 @@ import java.util.Map;
  */
 
 public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractStatefulUrlAccessTokenProvider.class);
 
     protected static final String KEY_REFRESH_TOKEN = "refresh_token";
 

@@ -50,7 +50,7 @@ public abstract class AbstractJwtHealthIndicator extends AbstractHealthIndicator
             if (!previousHealth.isSuccess() && health.isSuccess()) {
                 if(LOGGER.isInfoEnabled()) LOGGER.info("{} JWT health transitioned to UP", name);
             } else if (previousHealth.isSuccess() && !health.isSuccess()) {
-                if(LOGGER.isInfoEnabled()) LOGGER.warn("{} JWT health transitioned to DOWN", name);
+                if(LOGGER.isWarnEnabled()) LOGGER.warn("{} JWT health transitioned to DOWN", name);
             }
         } else {
             if (!health.isSuccess()) {
