@@ -1,6 +1,14 @@
 package org.entur.jwt.client.grpc;
 
-import io.grpc.*;
+import io.grpc.CallCredentials;
+import io.grpc.CallOptions;
+import io.grpc.Channel;
+import io.grpc.ClientCall;
+import io.grpc.ClientInterceptor;
+import io.grpc.ForwardingClientCall;
+import io.grpc.Metadata;
+import io.grpc.MethodDescriptor;
+import io.grpc.Status;
 import org.entur.jwt.client.recovery.UnauthenticatedAccessTokenRecoveryHandler;
 
 /**

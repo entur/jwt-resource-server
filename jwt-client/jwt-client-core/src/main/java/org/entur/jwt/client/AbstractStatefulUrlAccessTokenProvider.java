@@ -1,13 +1,14 @@
 package org.entur.jwt.client;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * {@linkplain AccessTokenProvider} which handles refresh tokens.
@@ -16,7 +17,7 @@ import org.slf4j.LoggerFactory;
 
 public abstract class AbstractStatefulUrlAccessTokenProvider<T> extends AbstractUrlAccessTokenProvider<T> {
 
-    protected static final Logger logger = LoggerFactory.getLogger(AbstractStatefulUrlAccessTokenProvider.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractStatefulUrlAccessTokenProvider.class);
 
     protected static final String KEY_REFRESH_TOKEN = "refresh_token";
 
@@ -53,10 +54,10 @@ public abstract class AbstractStatefulUrlAccessTokenProvider<T> extends Abstract
                 T request = request(revokeUrl, revokeBody, Collections.emptyMap());
                 int responseStatusCode = getResponseStatusCode(request);
                 if (getResponseStatusCode(request) != 200) {
-                    logger.info("Unexpected response code {} when revoking refresh token", responseStatusCode);
+                    if(LOGGER.isInfoEnabled()) LOGGER.info("Unexpected response code {} when revoking refresh token", responseStatusCode);
                 }
             } catch (IOException e) {
-                logger.warn("Unable to revoke token", e);
+                if(LOGGER.isWarnEnabled()) LOGGER.warn("Unable to revoke token", e);
             }
         }
     }
@@ -79,7 +80,7 @@ public abstract class AbstractStatefulUrlAccessTokenProvider<T> extends Abstract
 
             int responseCode = getResponseStatusCode(request);
             if (responseCode != 200) {
-                logger.info("Got unexpected response code {} when trying to refresh token at {}", responseCode, refreshUrl);
+                if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to refresh token at {}", responseCode, refreshUrl);
                 if (responseCode == 503) { // service unavailable
                     throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(request, "Retry-After"));
                 } else if (responseCode == 429) { // too many calls

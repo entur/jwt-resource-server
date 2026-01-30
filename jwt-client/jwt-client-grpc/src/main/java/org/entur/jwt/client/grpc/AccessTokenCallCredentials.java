@@ -1,15 +1,14 @@
 package org.entur.jwt.client.grpc;
 
-import java.util.concurrent.Executor;
-
+import io.grpc.CallCredentials;
+import io.grpc.Metadata;
+import io.grpc.Status;
 import org.entur.jwt.client.AccessToken;
 import org.entur.jwt.client.AccessTokenProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.grpc.CallCredentials;
-import io.grpc.Metadata;
-import io.grpc.Status;
+import java.util.concurrent.Executor;
 
 public class AccessTokenCallCredentials extends CallCredentials {
 

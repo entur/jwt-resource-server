@@ -1,5 +1,8 @@
 package org.entur.jwt.client;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -8,9 +11,6 @@ import java.net.URL;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * {@linkplain AccessTokenProvider} which handles refresh tokens.
  *
@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
 
 public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTokenProvider<HttpURLConnection> {
 
-    protected static final Logger logger = LoggerFactory.getLogger(StatefulUrlAccessTokenProvider.class);
+    protected static final Logger LOGGER = LoggerFactory.getLogger(StatefulUrlAccessTokenProvider.class);
 
     protected final int connectTimeout;
     protected final int readTimeout;
@@ -66,7 +66,7 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
 
         return c;
     }
-    
+
     @Override
     public boolean supportsHealth() {
         return false;

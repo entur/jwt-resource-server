@@ -1,6 +1,6 @@
 package org.entur.jwt.client;
 
-class RefreshTokenException extends AccessTokenException {
+public class RefreshTokenException extends AccessTokenException {
 
     private static final long serialVersionUID = 1L;
 
