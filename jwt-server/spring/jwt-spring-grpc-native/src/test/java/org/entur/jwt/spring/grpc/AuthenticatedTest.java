@@ -47,5 +47,13 @@ public class AuthenticatedTest extends AbstractGrpcTest {
         assertThat(exception.getStatus().getCode()).isEqualTo(Status.Code.UNAUTHENTICATED);
     }
 
+    @Test
+    public void testProtectedResourceWrongAudience(@AccessToken(audience = "https://wrong.audience") String header) {
+        StatusRuntimeException exception = assertThrows(StatusRuntimeException.class, () -> {
+            stub(header).protectedWithPartnerTenant(greetingRequest);
+        });
+        assertThat(exception.getStatus().getCode()).isEqualTo(Status.Code.UNAUTHENTICATED);
+    }
+
 
 }
