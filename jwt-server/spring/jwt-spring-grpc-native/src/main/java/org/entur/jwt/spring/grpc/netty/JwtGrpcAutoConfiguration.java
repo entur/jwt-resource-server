@@ -107,7 +107,7 @@ public class JwtGrpcAutoConfiguration {
                     for (int i = 0; i < methods.size(); i++) {
                         patterns[i] = service + '/' + methods.get(i);
                     }
-                    if(LOGGER.isInfoEnabled()) LOGGER.info(Arrays.toString(patterns));
+
                     requests.methods(patterns).permitAll();
                 }
 
