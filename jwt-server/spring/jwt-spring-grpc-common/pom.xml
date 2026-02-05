@@ -93,12 +93,6 @@
             <groupId>io.grpc</groupId>
             <artifactId>grpc-context</artifactId>
         </dependency>
-        <dependency>
-            <groupId>javax.annotation</groupId>
-            <artifactId>javax.annotation-api</artifactId>
-            <version>1.3.2</version>
-            <scope>test</scope>
-        </dependency>
         <!-- test -->
         <dependency>
             <groupId>org.entur.jwt-rs</groupId>
