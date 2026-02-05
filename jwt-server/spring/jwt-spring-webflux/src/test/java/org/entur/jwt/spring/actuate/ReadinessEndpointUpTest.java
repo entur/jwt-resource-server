@@ -37,12 +37,9 @@ public class ReadinessEndpointUpTest extends AbstractActuatorTest {
         String url = "http://localhost:" + randomServerPort + "/actuator/health/readiness";
 
         HttpClient client = HttpClient.newHttpClient();
-        // For custom configurations (e.g., proxy, timeout), use HttpClient.newBuilder()
-
-        // 2. Create an HttpRequest
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url)) // Set the target URI
-                .GET() // Specify the HTTP method (GET is default)
+                .uri(URI.create(url))
+                .GET()
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());

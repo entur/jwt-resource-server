@@ -52,12 +52,9 @@ public class ReadinessEndpointDownTest extends AbstractActuatorTest {
         assertTrue(jwkFile.renameTo(jwkRenameFile));
 
         HttpClient client = HttpClient.newHttpClient();
-        // For custom configurations (e.g., proxy, timeout), use HttpClient.newBuilder()
-
-        // 2. Create an HttpRequest
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url)) // Set the target URI
-                .GET() // Specify the HTTP method (GET is default)
+                .uri(URI.create(url))
+                .GET()
                 .build();
 
         HttpResponse<String> down = client.send(request, HttpResponse.BodyHandlers.ofString());

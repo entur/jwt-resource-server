@@ -51,9 +51,6 @@ public class RestClientJwtClientAutoConfiguration extends JwtClientAutoConfigura
     private static HttpComponentsClientHttpRequestFactory getHttpComponentsClientHttpRequestFactory(int connectTimeout, int readTimeout) {
         HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
 
-        // https://stackoverflow.com/questions/7459279/httpclient-warning-cookie-rejected-illegal-domain-attribute
-        //RequestConfig customizedRequestConfig = RequestConfig.custom().setCookieSpec(CookieSpecSupport.createDefaultBuilder().IGNORE_COOKIES).build();
-
         RequestConfig requestConfig = RequestConfig.custom().setConnectTimeout(connectTimeout, TimeUnit.SECONDS).setResponseTimeout(readTimeout, TimeUnit.SECONDS).build();
 
         HttpClient httpClient = HttpClientBuilder.create()
