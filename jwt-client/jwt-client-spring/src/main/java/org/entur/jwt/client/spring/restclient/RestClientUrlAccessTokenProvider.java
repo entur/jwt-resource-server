@@ -54,7 +54,7 @@ public class RestClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProv
     protected final RestClient restClient;
 
     public RestClientUrlAccessTokenProvider(RestClient restClient, URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers) {
-        super(issueUrl, parameters, headers); // timeouts are baked into the resttemplate
+        super(issueUrl, parameters, headers); // timeouts are baked into the RestClient
 
         this.restClient = restClient;
     }
