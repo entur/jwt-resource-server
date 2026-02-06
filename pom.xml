@@ -73,7 +73,7 @@
 		<okhttp.version>4.12.0</okhttp.version>
 
 		<grpc.version>1.78.0</grpc.version>
-		<proto.version>4.33.4</proto.version>
+		<proto.version>4.33.5</proto.version>
 		<spring-grpc.version>1.0.2</spring-grpc.version>
 		<jreleaser-maven-plugin.version>1.22.0</jreleaser-maven-plugin.version>
 
