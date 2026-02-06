@@ -14,8 +14,8 @@ import org.springframework.beans.factory.config.ConstructorArgumentValues;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
-import org.springframework.boot.actuate.autoconfigure.health.ConditionalOnEnabledHealthIndicator;
 import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.health.autoconfigure.contributor.ConditionalOnEnabledHealthIndicator;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 
 public class JwtClientAutoConfiguration {
 
-    private static Logger LOGGER = LoggerFactory.getLogger(JwtClientAutoConfiguration.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(JwtClientAutoConfiguration.class);
 
     protected Long getTimeout(JwtClientProperties properties) {
         return getTimeout(properties.getAuth0(), getTimeout(properties.getKeycloak(), null));

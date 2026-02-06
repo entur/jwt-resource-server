@@ -1,5 +1,10 @@
 package org.entur.jwt.spring;
 
+import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
+import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
+import org.entur.jwt.spring.config.JwtMappedDiagnosticContextFilter;
+import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
+import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapperFactory;
 import org.entur.jwt.spring.properties.Auth0Flavour;
 import org.entur.jwt.spring.properties.AuthorizationProperties;
 import org.entur.jwt.spring.properties.Flavours;
@@ -7,15 +12,8 @@ import org.entur.jwt.spring.properties.JwtProperties;
 import org.entur.jwt.spring.properties.KeycloakFlavour;
 import org.entur.jwt.spring.properties.MdcProperties;
 import org.entur.jwt.spring.properties.SecurityProperties;
-import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
-import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
-import org.entur.jwt.spring.config.JwtMappedDiagnosticContextFilter;
-import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
-import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapperFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -23,11 +21,12 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.BeanIds;
 import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
@@ -46,7 +45,7 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
 @ConditionalOnExpression("${entur.authorization.enabled:true} || ${entur.jwt.enabled:true}")
 @EnableConfigurationProperties({SecurityProperties.class})
 @AutoConfigureAfter(JwtWebAutoConfiguration.class)
-@AutoConfigureBefore(org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration.class)
+@AutoConfigureBefore(SecurityAutoConfiguration.class)
 public class JwtWebSecurityChainAutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(JwtWebSecurityChainAutoConfiguration.class);
@@ -88,7 +87,7 @@ public class JwtWebSecurityChainAutoConfiguration {
     @Configuration
     @ConditionalOnMissingBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
     @ConditionalOnExpression("${entur.authorization.enabled:true} || ${entur.jwt.enabled:true}")
-    @EnableGlobalMethodSecurity(prePostEnabled = true, securedEnabled = true)
+    @EnableMethodSecurity(prePostEnabled = true, securedEnabled = true)
     public static class CompositeWebSecurityConfigurerAdapter {
 
         private SecurityProperties securityProperties;
@@ -163,17 +162,19 @@ public class JwtWebSecurityChainAutoConfiguration {
 
         private static DefaultSecurityFilterChain getSecurityFilterChain(HttpSecurity http) throws Exception {
             // https://www.baeldung.com/spring-prevent-xss
-            http.headers()
-                    .xssProtection().headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK)
-                    .and()
-                    .contentSecurityPolicy("script-src 'self'");
+            http.headers( c -> c.xssProtection(x -> {
+                        x.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK);
+                    })
+                    .contentSecurityPolicy(contentSecurityPolicyConfig -> contentSecurityPolicyConfig.policyDirectives("script-src 'self'")));
 
             return http
-                    .sessionManagement().sessionCreationPolicy(STATELESS).and()
-                    .csrf().disable()
-                    .formLogin().disable()
-                    .httpBasic().disable()
-                    .logout().disable()
+                    .sessionManagement( c -> {
+                        c.sessionCreationPolicy(STATELESS);
+                    })
+                    .csrf(c -> c.disable())
+                    .formLogin( c -> c.disable())
+                    .httpBasic( c -> c.disable())
+                    .logout( c -> c.disable())
                     .cors(Customizer.withDefaults())
                     .build();
         }

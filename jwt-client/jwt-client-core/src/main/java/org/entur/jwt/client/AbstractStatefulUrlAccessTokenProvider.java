@@ -1,13 +1,7 @@
 package org.entur.jwt.client;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.Map;
 
 /**
@@ -15,9 +9,7 @@ import java.util.Map;
  *
  */
 
-public abstract class AbstractStatefulUrlAccessTokenProvider<T> extends AbstractUrlAccessTokenProvider<T> {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractStatefulUrlAccessTokenProvider.class);
+public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
 
     protected static final String KEY_REFRESH_TOKEN = "refresh_token";
 
@@ -37,32 +29,19 @@ public abstract class AbstractStatefulUrlAccessTokenProvider<T> extends Abstract
         close(System.currentTimeMillis());
     }
 
-    protected void close(long time) {
-        RefreshToken threadSafeRefreshToken = this.refreshToken; // defensive copy
-        if (threadSafeRefreshToken != null && threadSafeRefreshToken.isValid(time)) {
-            this.refreshToken = null;
+    protected abstract void close(long time);
 
-            StringBuilder builder = new StringBuilder();
+    protected byte[] createRevokeBody(RefreshToken threadSafeRefreshToken) {
+        StringBuilder builder = new StringBuilder();
 
-            builder.append(KEY_REFRESH_TOKEN);
-            builder.append('=');
-            builder.append(encode(threadSafeRefreshToken.getValue()));
+        builder.append(KEY_REFRESH_TOKEN);
+        builder.append('=');
+        builder.append(encode(threadSafeRefreshToken.getValue()));
 
-            byte[] revokeBody = builder.toString().getBytes(StandardCharsets.UTF_8);
-
-            try {
-                T request = request(revokeUrl, revokeBody, Collections.emptyMap());
-                int responseStatusCode = getResponseStatusCode(request);
-                if (getResponseStatusCode(request) != 200) {
-                    if(LOGGER.isInfoEnabled()) LOGGER.info("Unexpected response code {} when revoking refresh token", responseStatusCode);
-                }
-            } catch (IOException e) {
-                if(LOGGER.isWarnEnabled()) LOGGER.warn("Unable to revoke token", e);
-            }
-        }
+        return builder.toString().getBytes(StandardCharsets.UTF_8);
     }
 
-    protected ClientCredentialsResponse getToken(RefreshToken response) throws AccessTokenException {
+    protected byte[] createRefreshBody(RefreshToken response) {
         StringBuilder builder = new StringBuilder();
 
         builder.append(KEY_GRANT_TYPE);
@@ -73,32 +52,10 @@ public abstract class AbstractStatefulUrlAccessTokenProvider<T> extends Abstract
         builder.append('=');
         builder.append(encode(response.getValue()));
 
-        byte[] refreshBody = builder.toString().getBytes(StandardCharsets.UTF_8);
-
-        try {
-            T request = request(refreshUrl, refreshBody, Collections.emptyMap());
-
-            int responseCode = getResponseStatusCode(request);
-            if (responseCode != 200) {
-                if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to refresh token at {}", responseCode, refreshUrl);
-                if (responseCode == 503) { // service unavailable
-                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(request, "Retry-After"));
-                } else if (responseCode == 429) { // too many calls
-                    // see for example https://auth0.com/docs/policies/rate-limits
-                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests. " + printHeadersIfPresent(request, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
-                }
-
-                throw new RefreshTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
-            }
-            try (InputStream inputStream = getResponseContent(request)) {
-                ClientCredentialsResponse clientCredentialsResponse = reader.readValue(inputStream);
-                validate(clientCredentialsResponse);
-                return clientCredentialsResponse;
-            }
-        } catch (IOException e) {
-            throw new AccessTokenUnavailableException(e);
-        }
+        return builder.toString().getBytes(StandardCharsets.UTF_8);
     }
+
+    protected abstract ClientCredentialsResponse getToken(RefreshToken response) throws AccessTokenException;
 
     @Override
     public AccessToken getAccessToken(boolean forceRefresh) throws AccessTokenException {

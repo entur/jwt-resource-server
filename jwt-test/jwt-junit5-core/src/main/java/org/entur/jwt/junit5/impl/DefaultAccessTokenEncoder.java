@@ -1,6 +1,5 @@
 package org.entur.jwt.junit5.impl;
 
-import com.fasterxml.jackson.databind.util.RawValue;
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AccessTokenEncoder;
 import org.entur.jwt.junit5.AuthorizationServerEncoder;
@@ -31,6 +30,7 @@ import org.entur.jwt.junit5.headers.TypeHeader;
 import org.entur.jwt.junit5.sabotage.Signature;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
+import tools.jackson.databind.util.RawValue;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;

@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLEncoder;
@@ -12,17 +11,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
-
 /**
  * Abstract provider using URL. This simple abstraction exists so that the
  * underlying HTTP client can be swapped.
  *
- * @param <T> HTTP Response type
  */
 
-public abstract class AbstractUrlAccessTokenProvider<T> implements AccessTokenProvider {
+public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvider {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractUrlAccessTokenProvider.class);
 
@@ -32,8 +27,6 @@ public abstract class AbstractUrlAccessTokenProvider<T> implements AccessTokenPr
     protected final URL issueUrl;
     protected final byte[] issueBody;
     protected final Map<String, Object> issueHeaders;
-
-    protected final ObjectReader reader;
 
     public AbstractUrlAccessTokenProvider(URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers) {
         super();
@@ -45,9 +38,6 @@ public abstract class AbstractUrlAccessTokenProvider<T> implements AccessTokenPr
         this.issueUrl = issueUrl;
         this.issueBody = createBody(parameters);
         this.issueHeaders = headers;
-
-        ObjectMapper mapper = new ObjectMapper();
-        reader = mapper.readerFor(ClientCredentialsResponse.class);
     }
 
     protected void checkArgument(boolean valid, String message) {
@@ -79,38 +69,7 @@ public abstract class AbstractUrlAccessTokenProvider<T> implements AccessTokenPr
         }
     }
 
-    protected ClientCredentialsResponse getToken() throws AccessTokenException {
-        try {
-            T request = request(issueUrl, issueBody, issueHeaders);
-
-            int responseCode = getResponseStatusCode(request);
-            if (responseCode != 200) {
-                if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
-                if (responseCode == 503) { // service unavailable
-                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(request, "Retry-After"));
-                } else if (responseCode == 429) { // too many calls
-                    // see for example https://auth0.com/docs/policies/rate-limits
-                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests. " + printHeadersIfPresent(request, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
-                }
-                throw new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
-            }
-            try (InputStream inputStream = getResponseContent(request)) {
-                ClientCredentialsResponse clientCredentialsResponse = reader.readValue(inputStream);
-                validate(clientCredentialsResponse);
-                return clientCredentialsResponse;
-            }
-        } catch (IOException e) {
-            throw new AccessTokenUnavailableException(e);
-        }
-    }
-
-    protected abstract int getResponseStatusCode(T response) throws IOException;
-
-    protected abstract InputStream getResponseContent(T response) throws IOException;
-
-    protected abstract StringBuilder printHeadersIfPresent(T c, String... headerNames);
-
-    protected abstract T request(URL url, byte[] body, Map<String, Object> headers) throws IOException;
+    protected abstract ClientCredentialsResponse getToken() throws AccessTokenException;
 
     @Override
     public AccessToken getAccessToken(boolean forceRefresh) throws AccessTokenException {

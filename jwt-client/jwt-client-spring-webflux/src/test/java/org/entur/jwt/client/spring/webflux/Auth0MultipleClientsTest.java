@@ -26,7 +26,6 @@ import java.util.concurrent.Executors;
 
 import static com.google.common.truth.Truth.assertThat;
 import static io.restassured.RestAssured.given;
-import static org.entur.jwt.client.spring.webflux.TestUtils.asString;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
@@ -78,8 +77,8 @@ public class Auth0MultipleClientsTest extends AbstractActuatorTest {
     @Test
     public void testAccessToken() throws Exception {
 
-        mockWebServer.enqueue(new MockResponse().setBody(asString(resource1)));
-        mockWebServer.enqueue(new MockResponse().setBody(asString(resource2)));
+        mockWebServer.enqueue(mockResponse(resource1));
+        mockWebServer.enqueue(mockResponse(resource2));
 
         AccessToken accessToken1 = secondAccessTokenProvider.getAccessToken(false);
 
@@ -103,8 +102,8 @@ public class Auth0MultipleClientsTest extends AbstractActuatorTest {
         mockWebServer.enqueue(new MockResponse().setResponseCode(HttpStatus.NOT_FOUND.value()));
 
         // up
-        mockWebServer.enqueue(new MockResponse().setBody(asString(resource1)));
-        mockWebServer.enqueue(new MockResponse().setBody(asString(resource2)));
+        mockWebServer.enqueue(mockResponse(resource1));
+        mockWebServer.enqueue(mockResponse(resource2));
 
         given().port(randomServerPort).log().all().when().get("/actuator/health/readiness").then().log().all().assertThat().statusCode(HttpStatus.SERVICE_UNAVAILABLE.value());
         waitForHealth();

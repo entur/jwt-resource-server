@@ -2,19 +2,19 @@ package org.entur.jwt.spring.actuate;
 
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  *
@@ -29,9 +29,6 @@ public class ReadinessEndpointUpTest extends AbstractActuatorTest {
     @LocalServerPort
     private int randomServerPort;
 
-    @Autowired
-    private TestRestTemplate restTemplate;
-
     @Test
     public void testReadiness() throws Exception {
         HttpHeaders headers = new HttpHeaders();
@@ -39,14 +36,20 @@ public class ReadinessEndpointUpTest extends AbstractActuatorTest {
 
         String url = "http://localhost:" + randomServerPort + "/actuator/health/readiness";
 
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .build();
 
-        if(!response.getStatusCode().is2xxSuccessful()) {
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if(response.statusCode() != 200) {
+            assertThat(response.statusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE.value());
             waitForHealth();
 
-            response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-            assertTrue(response.getStatusCode().is2xxSuccessful());
+            response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            assertThat(response.statusCode()).isEqualTo(HttpStatus.OK.value());
         }
 
     }

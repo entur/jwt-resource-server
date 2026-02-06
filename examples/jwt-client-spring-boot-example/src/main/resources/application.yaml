@@ -3,10 +3,12 @@ entur:
     clients:
       auth0:
         myClient:
-          host: "my.entur.org"
+          host: "localhost"
           clientId: "myClient"
           secret: "mySecret"
           audience: "myAudience"
+          protocol: "http"
+          port: 8000
 management:
   endpoint:
     health:

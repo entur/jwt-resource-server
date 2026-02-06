@@ -2,7 +2,6 @@ package org.entur.jwt.client.spring.webflux;
 
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
-
 import org.entur.jwt.client.properties.JwtClientProperties;
 import org.entur.jwt.client.spring.JwtClientAutoConfiguration;
 import org.slf4j.Logger;
@@ -17,7 +16,6 @@ import reactor.netty.http.client.HttpClient;
 @EnableConfigurationProperties(JwtClientProperties.class)
 public class WebfluxJwtClientAutoConfiguration extends JwtClientAutoConfiguration {
 
-
     private static Logger log = LoggerFactory.getLogger(WebfluxJwtClientAutoConfiguration.class);
 
     public WebfluxJwtClientAutoConfiguration() {
@@ -25,7 +23,6 @@ public class WebfluxJwtClientAutoConfiguration extends JwtClientAutoConfiguratio
     }
 
     @Bean
-    @Qualifier("jwtWebClient")
     public WebClient jwtWebClient(WebClient.Builder webClientBuilder, JwtClientProperties properties) {
 
         long connectTimeout = properties.getConnectTimeout();

@@ -2,20 +2,18 @@ package org.entur.jwt.spring.actuate;
 
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.TestPropertySource;
 
 import java.io.File;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertTrue;
@@ -40,19 +38,12 @@ public class ReadinessEndpointDownTest extends AbstractActuatorTest {
 
     @LocalServerPort
     private int randomServerPort;
-    
-    @Autowired
-    private TestRestTemplate restTemplate;
-    
+
     @Value("${entur.jwt.tenants.unreliable.jwk.location}")
     private String jwkLocation;
 
-
     @Test 
     public void testReadinessDownWithTransistionToUp() throws Exception {
-        HttpHeaders headers = new HttpHeaders();
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-
         String url = "http://localhost:" + randomServerPort + "/actuator/health/readiness";
         
         File jwkFile = new File(jwkLocation.substring(7));
@@ -60,19 +51,26 @@ public class ReadinessEndpointDownTest extends AbstractActuatorTest {
         
         assertTrue(jwkFile.renameTo(jwkRenameFile));
 
-        ResponseEntity<String> down = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-        assertThat(down.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .build();
+
+        HttpResponse<String> down = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        assertThat(down.statusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE.value());
         waitForHealth();
 
         assertTrue(jwkRenameFile.renameTo(jwkFile));
 
-        down = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-        assertThat(down.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        down = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertThat(down.statusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE.value());
 
         waitForHealth();
 
-        ResponseEntity<String> up = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-        assertThat(up.getStatusCode()).isEqualTo(HttpStatus.OK);
+        HttpResponse<String> up = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertThat(up.statusCode()).isEqualTo(HttpStatus.OK.value());
     }
 
 }

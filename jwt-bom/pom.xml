@@ -37,7 +37,7 @@
 			</dependency>
 			<dependency>
 				<groupId>org.entur.jwt-rs</groupId>
-				<artifactId>jwt-client-spring-core</artifactId>
+				<artifactId>jwt-client-grpc</artifactId>
 				<version>0.0.0-SNAPSHOT</version>
 			</dependency>
 			<dependency>
@@ -47,13 +47,18 @@
 			</dependency>
 			<dependency>
 				<groupId>org.entur.jwt-rs</groupId>
-				<artifactId>jwt-client-spring-webflux</artifactId>
+				<artifactId>jwt-client-spring-core</artifactId>
 				<version>0.0.0-SNAPSHOT</version>
 			</dependency>
 			<dependency>
 				<groupId>org.entur.jwt-rs</groupId>
-				<artifactId>jwt-core</artifactId>
-				<version>4.1.3-SNAPSHOT</version>
+				<artifactId>jwt-client-spring-resttemplate</artifactId>
+				<version>0.0.0-SNAPSHOT</version>
+			</dependency>
+			<dependency>
+				<groupId>org.entur.jwt-rs</groupId>
+				<artifactId>jwt-client-spring-webflux</artifactId>
+				<version>0.0.0-SNAPSHOT</version>
 			</dependency>
 			<dependency>
 				<groupId>org.entur.jwt-rs</groupId>
@@ -77,12 +82,7 @@
 			</dependency>
 			<dependency>
 				<groupId>org.entur.jwt-rs</groupId>
-				<artifactId>jwt-spring-grpc-ecosystem</artifactId>
-				<version>0.0.0-SNAPSHOT</version>
-			</dependency>
-			<dependency>
-				<groupId>org.entur.jwt-rs</groupId>
-				<artifactId>jwt-client-grpc</artifactId>
+				<artifactId>jwt-spring-grpc-native</artifactId>
 				<version>0.0.0-SNAPSHOT</version>
 			</dependency>
 		</dependencies>
