@@ -14,12 +14,11 @@ on:
 
 jobs:
   code-scan:
+    if: github.event.pull_request.author_association == 'MEMBER' || github.event.pull_request.author_association == 'OWNER' # TODO remove me when less default permissions
     name: CodeQL Scan
     uses: entur/gha-security/.github/workflows/code-scan.yml@v2
     permissions:
-      contents:
-        - read
-        - write
+      contents: write
       security-events: write
       actions: read
       pull-requests: read
