@@ -67,4 +67,3 @@ See documentation contained in each folder to get started. Or skip right to the 
 [java-jwt]:               https://github.com/auth0/java-jwt
 [examples]:               examples
 
-
