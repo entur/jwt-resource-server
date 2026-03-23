@@ -1,5 +1,12 @@
 [![Maven Central](https://img.shields.io/maven-central/v/org.entur.jwt-rs/parent.svg)](https://mvnrepository.com/artifact/org.entur.jwt-rs)
 
+# This is the 5.x legacy branch
+For the latest version, see the master branch.
+
+This branch vs later versions:
+ * Spring Boot 3.5.x support
+ * Uses [Ecosystem gRPC](https://github.com/grpc-ecosystem/grpc-spring)
+
 # jwt-resource-server
 
 Tools for synchronous (servlet-based) __OpenID resource servers__ relying on use of [Access Tokens]([https://auth0.com/docs/tokens/access-tokens](https://auth0.com/docs/tokens/access-tokens)) for authorization. These come in the form of JSON Web Tokens (JWT) issued by Authorization Servers like Auth0 and Keycloak. Authorization Servers __sign JWTs__ with private keys, resource servers then download the corresponding public keys from the Authorization Servers and __validate the JWTs__ by verifying the signature.
