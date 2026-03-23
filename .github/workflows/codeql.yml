@@ -6,9 +6,11 @@ on:
   pull_request:
     branches:
       - "master"
+      - "5.x"
   push:
     branches:
       - "master"
+      - "5.x"
   schedule:
     - cron: "0 3 * * MON" # Run Monday at 3AM UTC
 
