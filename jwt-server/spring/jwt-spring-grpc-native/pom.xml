@@ -162,15 +162,14 @@
                 <version>${protobuf-maven-plugin.version}</version>
                 <configuration>
                     <protoc>${proto.version}</protoc>
-                    <binaryMavenPlugins>
-                        <binaryMavenPlugin>
+                    <plugins>
+                        <plugin kind="binary-maven">
                             <groupId>io.grpc</groupId>
                             <artifactId>protoc-gen-grpc-java</artifactId>
                             <version>${grpc.version}</version>
                             <options>@generated=omit</options>
-                        </binaryMavenPlugin>
-                    </binaryMavenPlugins>
-                    <importPaths><path>src/test/proto</path></importPaths>
+                        </plugin>
+                    </plugins>
                 </configuration>
                 <executions>
                     <execution>

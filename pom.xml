@@ -73,8 +73,8 @@
 		<rest-assured.version>6.0.0</rest-assured.version>
 		<okhttp.version>4.12.0</okhttp.version>
 
-		<grpc.version>1.79.0</grpc.version>
-		<proto.version>4.33.4</proto.version>
+		<grpc.version>1.80.0</grpc.version>
+		<proto.version>4.34.1</proto.version>
 		<spring-grpc.version>1.0.2</spring-grpc.version>
 		<jreleaser-maven-plugin.version>1.22.0</jreleaser-maven-plugin.version>
 
@@ -85,7 +85,6 @@
 		<json-smart.version>2.6.0</json-smart.version>
 
 		<!-- plugins -->
-		<build-helper-maven-plugin.version>1.9.1</build-helper-maven-plugin.version>
 		<jacoco-maven-plugin.version>0.8.14</jacoco-maven-plugin.version>
 		<nexus-staging-maven-plugin.version>1.6.13</nexus-staging-maven-plugin.version>
 		<maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
@@ -101,11 +100,18 @@
 		<distribution-respository-id>ossrh</distribution-respository-id>
 
 		<os-maven-plugin.version>1.7.1</os-maven-plugin.version>
-		<protobuf-maven-plugin.version>4.1.3</protobuf-maven-plugin.version>
+		<protobuf-maven-plugin.version>5.0.2</protobuf-maven-plugin.version>
 	</properties>
 
 	<dependencyManagement>
 		<dependencies>
+			<dependency>
+				<groupId>com.google.protobuf</groupId>
+				<artifactId>protobuf-bom</artifactId>
+				<version>${proto.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
 			<dependency>
 				<groupId>${project.groupId}</groupId>
 				<artifactId>jwt-junit5-core</artifactId>
