@@ -6,9 +6,11 @@ on:
   pull_request:
     branches:
       - "master"
+      - "5.x"
   push:
     branches:
       - "master"
+      - "5.x"
   schedule:
     - cron: "0 3 * * MON" # Run Monday at 3AM UTC
 
@@ -20,4 +22,4 @@ jobs:
     with:
       use_setup_java: true
       use_maven_cache: true
-      java_version: "21"
+      java_version: "25"
