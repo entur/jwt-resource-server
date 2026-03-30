@@ -14,6 +14,8 @@ jobs:
   deploy-maven:
     uses: entur/gha-maven-central/.github/workflows/maven-publish.yml@main
     secrets: inherit
+    permissions:
+      contents: write
     with:
       next_version: ${{ inputs.version-increment }}
       version_strategy: tag
@@ -24,6 +26,8 @@ jobs:
     needs: deploy-maven
     if: failure()
     uses: entur/gha-slack/.github/workflows/post.yml@v2
+    permissions:
+      contents: read
     with:
       channel_id: ${{ vars.CHANNEL_ID }}
       message: "🔴 Maven artifact deploy failed for ${{ github.repository }}\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
@@ -33,6 +37,8 @@ jobs:
     needs: deploy-maven
     if: success()
     uses: entur/gha-slack/.github/workflows/post.yml@v2
+    permissions:
+      contents: read
     with:
       channel_id: ${{ vars.CHANNEL_ID}}
       message: "🟢 Maven artifact deploy success for ${{ github.repository }}\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
