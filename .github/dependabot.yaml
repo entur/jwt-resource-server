@@ -6,9 +6,11 @@ updates:
     schedule:
       interval: "daily"
     cooldown:
-      default-days: 5
+      default-days: 7
   - package-ecosystem: "github-actions"
     directory: ".github/workflows"
     schedule:
       interval: "daily"
+    cooldown:
+      default-days: 7
 
