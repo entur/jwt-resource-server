@@ -10,5 +10,6 @@ jobs:
     uses: entur/abt-gha-public/.github/workflows/maven-open-source-verify.yml@main
     permissions:
       contents: read
+    # no secrets necessary
     with:
       java-version: 25
