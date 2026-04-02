@@ -100,7 +100,7 @@
 		<distribution-respository-id>ossrh</distribution-respository-id>
 
 		<os-maven-plugin.version>1.7.1</os-maven-plugin.version>
-		<protobuf-maven-plugin.version>5.0.2</protobuf-maven-plugin.version>
+		<protobuf-maven-plugin.version>5.1.0</protobuf-maven-plugin.version>
 	</properties>
 
 	<dependencyManagement>
