@@ -61,7 +61,7 @@
 		<slf4j.version>2.0.17</slf4j.version>
 		<jjwt.version>0.13.0</jjwt.version>
 		<nimbus-jose-jwt.version>10.8</nimbus-jose-jwt.version>
-		<jackson.version>3.1.0</jackson.version>
+		<jackson.version>3.1.1</jackson.version>
         <jackson-2-bom.version>2.21.2</jackson-2-bom.version>
 		<jackson-annotations.version>2.21</jackson-annotations.version>
 		<jadler.version>1.3.1</jadler.version>
