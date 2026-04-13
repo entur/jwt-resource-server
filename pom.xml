@@ -55,7 +55,7 @@
 		<!-- align dependencies to Spring as much as possible -->
 		<!-- https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-dependencies  -->
 
-		<commons-io.version>2.20.0</commons-io.version>
+		<commons-io.version>2.21.0</commons-io.version>
 		<google-truth.version>1.4.5</google-truth.version>
 		<junit.version>5.12.2</junit.version>
 		<mockito.version>5.20.0</mockito.version>
@@ -64,11 +64,11 @@
 		<nimbus-jose-jwt.version>10.5</nimbus-jose-jwt.version>
 		<jackson.version>2.20.0</jackson.version>
 		<jadler.version>1.3.1</jadler.version>
-		<spring-boot.version>3.5.12</spring-boot.version>
+		<spring-boot.version>3.5.13</spring-boot.version>
 		<httpclient.version>5.5</httpclient.version>
 		<!-- added due to security issue -->
 		<spring-security.version>6.5.9</spring-security.version>
-		<spring.version>6.2.16</spring.version>
+		<spring.version>6.2.17</spring.version>
 		<rest-assured.version>5.5.6</rest-assured.version>
 		<okhttp.version>4.12.0</okhttp.version>
 
@@ -78,8 +78,8 @@
 		<jreleaser-maven-plugin.version>1.23.0</jreleaser-maven-plugin.version>
 
 		<!-- transient dependencies added due to security patching -->
-		<tomcat.version>10.1.52</tomcat.version>
-		<netty.version>4.1.131.Final</netty.version>
+		<tomcat.version>10.1.54</tomcat.version>
+		<netty.version>4.1.132.Final</netty.version>
 
 		<json-smart.version>2.6.0</json-smart.version>
 
