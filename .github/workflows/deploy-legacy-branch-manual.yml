@@ -16,6 +16,7 @@ jobs:
     secrets: inherit
     permissions:
       contents: write
+      issues: write
     with:
       next_version: ${{ inputs.version-increment }}
       version_strategy: tag
