@@ -54,7 +54,7 @@
 		<!-- align dependencies to Spring as much as possible -->
 		<!-- https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-dependencies  -->
 
-		<commons-io.version>2.21.0</commons-io.version>
+		<commons-io.version>2.22.0</commons-io.version>
 		<google-truth.version>1.4.5</google-truth.version>
 		<junit.version>6.0.3</junit.version>
 		<mockito.version>5.23.0</mockito.version>
