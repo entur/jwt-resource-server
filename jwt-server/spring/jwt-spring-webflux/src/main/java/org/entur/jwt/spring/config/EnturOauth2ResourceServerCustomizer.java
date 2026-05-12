@@ -85,7 +85,8 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHtt
 
         if(map.size() == 1) {
             ReactiveAuthenticationManager next = map.values().iterator().next();
-            configurer.authenticationManagerResolver(request -> Mono.just(next));
+            Mono<ReactiveAuthenticationManager> authenticationManager = Mono.just(next);
+            configurer.authenticationManagerResolver(request -> authenticationManager);
         } else {
             IssuerAuthenticationManagerResolver issuer = new IssuerAuthenticationManagerResolver(map);
 
