@@ -2,7 +2,9 @@ package org.entur.jwt.spring.cache;
 
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.source.AbstractJWKSetSourceEvent;
 import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
+import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jose.util.events.Event;
 import com.nimbusds.jose.util.events.EventListener;
 import org.springframework.security.oauth2.core.OAuth2Error;
@@ -21,7 +23,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Caching of JWTs.
+ * Caching of validated JWTs.
  *
  * If used, make sure to proactively update JWKs somehow.
  *
@@ -46,10 +48,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener {
 
         Jwt cachedJwt = cache.get(token);
         if(cachedJwt != null) {
-            String issuer = (String) cachedJwt.getClaims().get("iss");
-            if(issuer != null) {
-                return validateJwt(cachedJwt);
-            }
+            return validateJwt(cachedJwt);
         }
         Jwt jwt = delegate.decode(token);
 
@@ -58,7 +57,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener {
         return jwt;
     }
 
-    private Jwt validateJwt(Jwt jwt) {
+    protected Jwt validateJwt(Jwt jwt) {
         OAuth2TokenValidatorResult result = jwtValidator.validate(jwt);
         if (result.hasErrors()) {
             cache.remove(jwt.getTokenValue());
@@ -70,7 +69,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener {
         return jwt;
     }
 
-    private String getJwtValidationExceptionMessage(Collection<OAuth2Error> errors) {
+    protected String getJwtValidationExceptionMessage(Collection<OAuth2Error> errors) {
         for (OAuth2Error oAuth2Error : errors) {
             if (StringUtils.hasLength(oAuth2Error.getDescription())) {
                 return String.format(DECODING_ERROR_MESSAGE_TEMPLATE, oAuth2Error.getDescription());
@@ -109,6 +108,10 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener {
         if(event instanceof CachingJWKSetSource.RefreshCompletedEvent<?>) {
             CachingJWKSetSource.RefreshCompletedEvent refreshCompletedEvent = (CachingJWKSetSource.RefreshCompletedEvent) event;
             refresh(refreshCompletedEvent.getJWKSet());
+        } else if(event instanceof CachingJWKSetSource.UnableToRefreshEvent<?>) {
+            cache.clear();
+        } else if(event instanceof CachingJWKSetSource.RefreshTimedOutEvent<?>) {
+            cache.clear();
         }
     }
 }
