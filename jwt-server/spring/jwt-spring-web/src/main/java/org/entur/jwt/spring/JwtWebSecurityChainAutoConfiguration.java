@@ -12,6 +12,8 @@ import org.entur.jwt.spring.properties.JwtProperties;
 import org.entur.jwt.spring.properties.KeycloakFlavour;
 import org.entur.jwt.spring.properties.MdcProperties;
 import org.entur.jwt.spring.properties.SecurityProperties;
+import org.entur.jwt.spring.properties.jwk.JwkCacheProperties;
+import org.entur.jwt.spring.properties.jwk.JwtTenantProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
@@ -36,8 +38,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
@@ -127,7 +128,6 @@ public class JwtWebSecurityChainAutoConfiguration {
 
             JwtProperties jwt = securityProperties.getJwt();
             if (jwt.isEnabled()) {
-
                 Flavours flavours = jwt.getFlavours();
                 if (flavours.isEnabled()) {
                     List<JwtAuthorityEnricher> enrichers = new ArrayList<>(jwtAuthorityEnrichers);
@@ -145,7 +145,30 @@ public class JwtWebSecurityChainAutoConfiguration {
                     jwtAuthorityEnrichers = enrichers;
                 }
 
-                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers, jwtValidators));
+                JwkCacheProperties cache = jwt.getJwk().getCache();
+                boolean decodedJwtCache = cache.isEnabled() && cache.getPreemptive().isEnabled() && cache.getPreemptive().getEager().isEnabled();
+
+                Set<String> decodedJwtCacheIssuers;
+                if(decodedJwtCache) {
+                    decodedJwtCacheIssuers = new HashSet<>();
+                    for (Map.Entry<String, JwtTenantProperties> entry : jwt.getTenants().entrySet()) {
+                        JwtTenantProperties value = entry.getValue();
+                        if(value.isEnabled() && value.getDecoderCache().isEnabled()) {
+                            decodedJwtCacheIssuers.add(entry.getKey());
+                        }
+                    }
+                } else {
+                    decodedJwtCacheIssuers = Collections.emptySet();
+                }
+
+                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(
+                        jwkSourceMap.getJwkSources(),
+                        jwkSourceMap.getJwkEventListeners(),
+                        jwtAuthorityEnrichers,
+                        jwtValidators,
+                        decodedJwtCacheIssuers
+                    )
+                );
             }
 
             MdcProperties mdc = jwt.getMdc();
