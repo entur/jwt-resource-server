@@ -2,9 +2,8 @@ package org.entur.jwt.spring.cache;
 
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jose.jwk.source.AbstractJWKSetSourceEvent;
 import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
-import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jose.jwk.source.JWKSetSource;
 import com.nimbusds.jose.util.events.Event;
 import com.nimbusds.jose.util.events.EventListener;
 import org.springframework.security.oauth2.core.OAuth2Error;
@@ -38,7 +37,10 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener {
 
     protected Map<String, Jwt> cache = new ConcurrentHashMap<>();
 
-    public DecodedJwtCacheJwtDecoder(JwtDecoder delegate, OAuth2TokenValidator<Jwt> jwtValidators) {
+    protected volatile boolean writeEnabled = false;
+    protected volatile boolean readEnabled = false;
+
+    public  DecodedJwtCacheJwtDecoder(JwtDecoder delegate, OAuth2TokenValidator<Jwt> jwtValidators) {
         this.delegate = delegate;
         this.jwtValidator = jwtValidators;
     }
@@ -46,13 +48,18 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener {
     @Override
     public Jwt decode(String token) throws JwtException {
 
-        Jwt cachedJwt = cache.get(token);
-        if(cachedJwt != null) {
-            return validateJwt(cachedJwt);
+        if(readEnabled) {
+            Jwt cachedJwt = cache.get(token);
+            if (cachedJwt != null) {
+                return validateJwt(cachedJwt);
+            }
         }
+
         Jwt jwt = delegate.decode(token);
 
-        cache.put(token, jwt);
+        if(writeEnabled) {
+            cache.put(token, jwt);
+        }
 
         return jwt;
     }
@@ -88,16 +95,23 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener {
             keyIds.add(key.getKeyID());
         }
 
+        // remove unknown keys
         for (Map.Entry<String, Jwt> entry : cache.entrySet()) {
             Jwt value = entry.getValue();
             if(value != null) {
                 if (!keyIds.contains(value.getHeaders().get("kid"))) {
                     cache.remove(entry.getKey());
-                } else {
-                    OAuth2TokenValidatorResult result = jwtValidator.validate(value);
-                    if (result.hasErrors()) {
-                        cache.remove(entry.getKey());
-                    }
+                }
+            }
+        }
+
+        // remove no longer valid jwts
+        for (Map.Entry<String, Jwt> entry : cache.entrySet()) {
+            Jwt value = entry.getValue();
+            if(value != null) {
+                OAuth2TokenValidatorResult result = jwtValidator.validate(value);
+                if (result.hasErrors()) {
+                    cache.remove(entry.getKey());
                 }
             }
         }
@@ -105,13 +119,23 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener {
 
     @Override
     public void notify(Event event) {
-        if(event instanceof CachingJWKSetSource.RefreshCompletedEvent<?>) {
+        if(event instanceof CachingJWKSetSource.RefreshInitiatedEvent<?>) {
+            writeEnabled = false;
+        } else if(event instanceof CachingJWKSetSource.RefreshCompletedEvent<?>) {
             CachingJWKSetSource.RefreshCompletedEvent refreshCompletedEvent = (CachingJWKSetSource.RefreshCompletedEvent) event;
             refresh(refreshCompletedEvent.getJWKSet());
+
+            CachingJWKSetSource source = (CachingJWKSetSource) refreshCompletedEvent.getSource();
+            source.getCacheRefreshTimeout()
+
+            writeEnabled = true;
+            readEnabled = true;
         } else if(event instanceof CachingJWKSetSource.UnableToRefreshEvent<?>) {
-            cache.clear();
+            readEnabled = false;
+            // write only happens if approved by regular flow
         } else if(event instanceof CachingJWKSetSource.RefreshTimedOutEvent<?>) {
-            cache.clear();
+            readEnabled = false;
+            // write only happens if approved by regular flow
         }
     }
 }
