@@ -68,16 +68,21 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
             map.put(entry.getKey(), authenticationProvider::authenticate);
         }
 
-        AuthenticationManagerResolver<String> issuer = new IssuerAuthenticationManagerResolver(map);
+        if(map.size() == 1) {
+            AuthenticationManager next = map.values().iterator().next();
+            configurer.authenticationManagerResolver(issuer -> next);
+        } else {
+            AuthenticationManagerResolver<String> issuer = new IssuerAuthenticationManagerResolver(map);
 
-        JwtIssuerAuthenticationManagerResolver jwtIssuerAuthenticationManagerResolver = new JwtIssuerAuthenticationManagerResolver(issuer);
+            JwtIssuerAuthenticationManagerResolver jwtIssuerAuthenticationManagerResolver = new JwtIssuerAuthenticationManagerResolver(issuer);
 
-        configurer.authenticationManagerResolver(jwtIssuerAuthenticationManagerResolver);
+            configurer.authenticationManagerResolver(jwtIssuerAuthenticationManagerResolver);
+        }
     }
 
     private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(String issuer) {
         List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();
-        validators.add(new JwtIssuerValidator(issuer)); // this check is implicit, but lets add it regardless
+        validators.add(new JwtIssuerValidator(issuer));
         validators.addAll(jwtValidators);
         DelegatingOAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(validators);
         return validator;

@@ -33,6 +33,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 
 import java.util.ArrayList;
@@ -114,7 +115,7 @@ public class JwtGrpcAutoConfiguration {
                 requests.allRequests().fullyAuthenticated();
             });
 
-            IssuerJwtDecoder decoder = IssuerJwtDecoder.newBuilder()
+            JwtDecoder decoder = IssuerJwtDecoder.newBuilder()
                     .withJwkSourceMap(jwkSourceMap)
                     .withJwtValidators(jwtValidators)
                     .build();
