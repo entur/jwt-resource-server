@@ -1,5 +1,6 @@
 package org.entur.jwt.spring;
 
+import org.entur.jwt.spring.cache.DecodedJwtCacheConfigurationReader;
 import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
 import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
 import org.entur.jwt.spring.config.JwtMappedDiagnosticContextFilter;
@@ -12,8 +13,6 @@ import org.entur.jwt.spring.properties.JwtProperties;
 import org.entur.jwt.spring.properties.KeycloakFlavour;
 import org.entur.jwt.spring.properties.MdcProperties;
 import org.entur.jwt.spring.properties.SecurityProperties;
-import org.entur.jwt.spring.properties.jwk.JwkCacheProperties;
-import org.entur.jwt.spring.properties.jwk.JwtTenantProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
@@ -145,28 +144,12 @@ public class JwtWebSecurityChainAutoConfiguration {
                     jwtAuthorityEnrichers = enrichers;
                 }
 
-                JwkCacheProperties cache = jwt.getJwk().getCache();
-                boolean decodedJwtCache = cache.isEnabled() && cache.getPreemptive().isEnabled() && cache.getPreemptive().getEager().isEnabled();
-
-                Set<String> decodedJwtCacheIssuers;
-                if(decodedJwtCache) {
-                    decodedJwtCacheIssuers = new HashSet<>();
-                    for (Map.Entry<String, JwtTenantProperties> entry : jwt.getTenants().entrySet()) {
-                        JwtTenantProperties value = entry.getValue();
-                        if(value.isEnabled() && value.getDecoderCache().isEnabled()) {
-                            decodedJwtCacheIssuers.add(entry.getKey());
-                        }
-                    }
-                } else {
-                    decodedJwtCacheIssuers = Collections.emptySet();
-                }
-
                 http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(
                         jwkSourceMap.getJwkSources(),
                         jwkSourceMap.getJwkEventListeners(),
                         jwtAuthorityEnrichers,
                         jwtValidators,
-                        decodedJwtCacheIssuers
+                        DecodedJwtCacheConfigurationReader.convert(jwt)
                     )
                 );
             }

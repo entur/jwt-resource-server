@@ -8,12 +8,15 @@ import org.entur.jwt.spring.JwtAuthorityEnricher;
 import org.entur.jwt.spring.JwtAutoConfiguration;
 import org.entur.jwt.spring.KeycloakJwtAuthorityEnricher;
 import org.entur.jwt.spring.NoUserDetailsService;
+import org.entur.jwt.spring.cache.DecodedJwtCacheConfigurationReader;
 import org.entur.jwt.spring.grpc.properties.GrpcPermitAll;
 import org.entur.jwt.spring.grpc.properties.GrpcServicesConfiguration;
 import org.entur.jwt.spring.grpc.properties.ServiceMatcherConfiguration;
 import org.entur.jwt.spring.properties.Auth0Flavour;
 import org.entur.jwt.spring.properties.Flavours;
+import org.entur.jwt.spring.properties.JwtProperties;
 import org.entur.jwt.spring.properties.KeycloakFlavour;
+import org.entur.jwt.spring.properties.SecurityProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
@@ -33,6 +36,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 
 import java.util.ArrayList;
@@ -41,9 +45,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Configuration
-@EnableConfigurationProperties({GrpcPermitAll.class, Flavours.class})
+@EnableConfigurationProperties({GrpcPermitAll.class, SecurityProperties.class})
 @AutoConfigureAfter(value = {JwtAutoConfiguration.class})
 @AutoConfigureBefore(value = {OAuth2ResourceServerAutoConfiguration.class})
 @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
@@ -55,14 +60,14 @@ public class JwtGrpcAutoConfiguration {
 
     private List<OAuth2TokenValidator<Jwt>> jwtValidators;
 
-    private Flavours flavours;
+    private SecurityProperties securityProperties;
 
     private final Map<String, List<String>> permitAllMappings;
 
-    public JwtGrpcAutoConfiguration(JwkSourceMap jwkSourceMap, List<OAuth2TokenValidator<Jwt>> jwtValidators, GrpcPermitAll permitAll, Flavours flavours) {
+    public JwtGrpcAutoConfiguration(JwkSourceMap jwkSourceMap, List<OAuth2TokenValidator<Jwt>> jwtValidators, GrpcPermitAll permitAll, SecurityProperties securityProperties) {
         this.jwkSourceMap = jwkSourceMap;
         this.jwtValidators = jwtValidators;
-        this.flavours = flavours;
+        this.securityProperties = securityProperties;
 
         if(permitAll.isEnabled()) {
             permitAllMappings = getPermitAllMappings(permitAll.getGrpc());
@@ -114,8 +119,10 @@ public class JwtGrpcAutoConfiguration {
                 requests.allRequests().fullyAuthenticated();
             });
 
-            IssuerJwtDecoder decoder = IssuerJwtDecoder.newBuilder()
-                    .withJwkSourceMap(jwkSourceMap)
+            JwtDecoder decoder = IssuerJwtDecoder.newBuilder()
+                    .withJwkSources(jwkSourceMap.getJwkSources())
+                    .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
+                    .withDecodedJwtCacheIssuers(DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt()))
                     .withJwtValidators(jwtValidators)
                     .build();
 
@@ -137,6 +144,7 @@ public class JwtGrpcAutoConfiguration {
     }
 
     private List<JwtAuthorityEnricher> getJwtAuthorityEnrichers(List<JwtAuthorityEnricher> jwtAuthorityEnrichers) {
+        Flavours flavours = securityProperties.getJwt().getFlavours();
         if (flavours.isEnabled()) {
             List<JwtAuthorityEnricher> enrichers = new ArrayList<>(jwtAuthorityEnrichers);
 

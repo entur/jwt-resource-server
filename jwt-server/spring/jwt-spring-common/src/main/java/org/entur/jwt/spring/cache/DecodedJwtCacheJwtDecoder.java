@@ -5,6 +5,7 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
 import com.nimbusds.jose.util.events.Event;
 import com.nimbusds.jose.util.events.EventListener;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.oauth2.core.OAuth2Error;
@@ -58,7 +59,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
 
     protected long cleanupInterval;
 
-    public  DecodedJwtCacheJwtDecoder(JwtDecoder delegate, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupInterval) {
+    public DecodedJwtCacheJwtDecoder(JwtDecoder delegate, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupInterval) {
         this.delegate = delegate;
         this.jwtValidator = jwtValidators;
         this.cleanupInterval = cleanupInterval;
@@ -68,9 +69,10 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         scheduledExecutorService.scheduleWithFixedDelay(() -> {
             if(LOGGER.isDebugEnabled()) LOGGER.debug("Cleaning cache");
             try {
-                // should not be any, but a catch all mechanism
+                // should not be any, but a catch-all mechanism
                 cleanCacheForJwtsWithUnknownKeyIds();
 
+                // avoid memory leaks
                 cleanCacheForInvalidJwts();
             } catch (Throwable e) {
                 // ignore, will be handled by regular flow
@@ -126,11 +128,16 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
     }
 
     public void setKeyIds(JWKSet jwtSet) {
+        Set<String> keyIds = convert(jwtSet);
+        this.keyIds = keyIds;
+    }
+
+    private static @NonNull Set<String> convert(JWKSet jwtSet) {
         Set<String> keyIds = new HashSet<>(jwtSet.getKeys().size());
         for (JWK key : jwtSet.getKeys()) {
             keyIds.add(key.getKeyID());
         }
-        this.keyIds = keyIds;
+        return keyIds;
     }
 
     public void cleanCacheForJwtsWithUnknownKeyIds() {
@@ -165,10 +172,13 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
             writeEnabled = false;
         } else if(event instanceof CachingJWKSetSource.RefreshCompletedEvent<?>) {
             CachingJWKSetSource.RefreshCompletedEvent refreshCompletedEvent = (CachingJWKSetSource.RefreshCompletedEvent) event;
-            setKeyIds(refreshCompletedEvent.getJWKSet());
 
-            cleanCacheForJwtsWithUnknownKeyIds();
-            cleanCacheForInvalidJwts();
+            Set<String> keyIds = convert(refreshCompletedEvent.getJWKSet());
+            boolean removed = !keyIds.containsAll(this.keyIds);
+            this.keyIds = keyIds;
+            if(removed) {
+                cleanCacheForJwtsWithUnknownKeyIds();
+            }
 
             readEnabled = true;
             writeEnabled = true;
