@@ -70,7 +70,7 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
 
         if(map.size() == 1) {
             AuthenticationManager next = map.values().iterator().next();
-            configurer.authenticationManagerResolver(issuer -> next);
+            configurer.authenticationManagerResolver(request -> next);
         } else {
             AuthenticationManagerResolver<String> issuer = new IssuerAuthenticationManagerResolver(map);
 
