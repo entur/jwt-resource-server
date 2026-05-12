@@ -29,6 +29,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtIssuerReactiveAuthenticationManagerResolver;
 import org.springframework.security.oauth2.server.resource.authentication.JwtReactiveAuthenticationManager;
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
+import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -82,11 +83,16 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHtt
             map.put(entry.getKey(), jwtReactiveAuthenticationManager);
         }
 
-        IssuerAuthenticationManagerResolver issuer = new IssuerAuthenticationManagerResolver(map);
+        if(map.size() == 1) {
+            ReactiveAuthenticationManager next = map.values().iterator().next();
+            configurer.authenticationManagerResolver(request -> Mono.just(next));
+        } else {
+            IssuerAuthenticationManagerResolver issuer = new IssuerAuthenticationManagerResolver(map);
 
-        JwtIssuerReactiveAuthenticationManagerResolver jwtIssuerAuthenticationManagerResolver = new JwtIssuerReactiveAuthenticationManagerResolver(issuer);
+            JwtIssuerReactiveAuthenticationManagerResolver jwtIssuerAuthenticationManagerResolver = new JwtIssuerReactiveAuthenticationManagerResolver(issuer);
 
-        configurer.authenticationManagerResolver(jwtIssuerAuthenticationManagerResolver);
+            configurer.authenticationManagerResolver(jwtIssuerAuthenticationManagerResolver);
+        }
     }
 
     private static <C extends SecurityContext> JWTClaimsSet createClaimsSet(JWTProcessor<C> jwtProcessor,
