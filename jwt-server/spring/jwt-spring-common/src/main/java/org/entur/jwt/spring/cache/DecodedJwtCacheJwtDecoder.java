@@ -3,9 +3,10 @@ package org.entur.jwt.spring.cache;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
-import com.nimbusds.jose.jwk.source.JWKSetSource;
 import com.nimbusds.jose.util.events.Event;
 import com.nimbusds.jose.util.events.EventListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
@@ -15,11 +16,16 @@ import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.JwtValidationException;
 import org.springframework.util.StringUtils;
 
+import java.io.Closeable;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Caching of validated JWTs.
@@ -28,21 +34,49 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  */
 
-public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener {
+public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Closeable {
 
     private static final String DECODING_ERROR_MESSAGE_TEMPLATE = "An error occurred while attempting to decode the Jwt: %s";
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DecodedJwtCacheJwtDecoder.class);
+
+    public static ScheduledExecutorService createDefaultScheduledExecutorService() {
+        return Executors.newSingleThreadScheduledExecutor();
+    }
+
+    protected ScheduledExecutorService scheduledExecutorService = createDefaultScheduledExecutorService();
 
     protected final JwtDecoder delegate;
     protected final OAuth2TokenValidator<Jwt> jwtValidator;
 
-    protected Map<String, Jwt> cache = new ConcurrentHashMap<>();
+    protected ConcurrentHashMap<String, Jwt> cache = new ConcurrentHashMap<>();
+
+    protected Set<String> keyIds = Collections.emptySet();
 
     protected volatile boolean writeEnabled = false;
     protected volatile boolean readEnabled = false;
 
-    public  DecodedJwtCacheJwtDecoder(JwtDecoder delegate, OAuth2TokenValidator<Jwt> jwtValidators) {
+    protected long cleanupInterval;
+
+    public  DecodedJwtCacheJwtDecoder(JwtDecoder delegate, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupInterval) {
         this.delegate = delegate;
         this.jwtValidator = jwtValidators;
+        this.cleanupInterval = cleanupInterval;
+    }
+
+    public void scheduleCleanup() {
+        scheduledExecutorService.scheduleWithFixedDelay(() -> {
+            if(LOGGER.isDebugEnabled()) LOGGER.debug("Cleaning cache");
+            try {
+                // should not be any, but a catch all mechanism
+                cleanCacheForJwtsWithUnknownKeyIds();
+
+                cleanCacheForInvalidJwts();
+            } catch (Throwable e) {
+                // ignore, will be handled by regular flow
+                LOGGER.warn("Problem cleaning cache", e);
+            }
+        }, cleanupInterval, cleanupInterval, TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -51,7 +85,9 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener {
         if(readEnabled) {
             Jwt cachedJwt = cache.get(token);
             if (cachedJwt != null) {
-                return validateJwt(cachedJwt);
+                if(keyIds.contains(cachedJwt.getHeaders().get("kid"))) {
+                    return validateJwt(cachedJwt);
+                }
             }
         }
 
@@ -89,12 +125,15 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener {
         cache.clear();
     }
 
-    public void refresh(JWKSet jwtSet) {
+    public void setKeyIds(JWKSet jwtSet) {
         Set<String> keyIds = new HashSet<>(jwtSet.getKeys().size());
         for (JWK key : jwtSet.getKeys()) {
             keyIds.add(key.getKeyID());
         }
+        this.keyIds = keyIds;
+    }
 
+    public void cleanCacheForJwtsWithUnknownKeyIds() {
         // remove unknown keys
         for (Map.Entry<String, Jwt> entry : cache.entrySet()) {
             Jwt value = entry.getValue();
@@ -105,7 +144,10 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener {
             }
         }
 
-        // remove no longer valid jwts
+    }
+
+    protected void cleanCacheForInvalidJwts() {
+        // remove no longer valid JWTs. Typically they expire by time.
         for (Map.Entry<String, Jwt> entry : cache.entrySet()) {
             Jwt value = entry.getValue();
             if(value != null) {
@@ -123,19 +165,23 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener {
             writeEnabled = false;
         } else if(event instanceof CachingJWKSetSource.RefreshCompletedEvent<?>) {
             CachingJWKSetSource.RefreshCompletedEvent refreshCompletedEvent = (CachingJWKSetSource.RefreshCompletedEvent) event;
-            refresh(refreshCompletedEvent.getJWKSet());
+            setKeyIds(refreshCompletedEvent.getJWKSet());
 
-            CachingJWKSetSource source = (CachingJWKSetSource) refreshCompletedEvent.getSource();
-            source.getCacheRefreshTimeout()
+            cleanCacheForJwtsWithUnknownKeyIds();
+            cleanCacheForInvalidJwts();
 
-            writeEnabled = true;
             readEnabled = true;
+            writeEnabled = true;
         } else if(event instanceof CachingJWKSetSource.UnableToRefreshEvent<?>) {
             readEnabled = false;
-            // write only happens if approved by regular flow
+            // there might still some time left until no JWKs are cached anymore
         } else if(event instanceof CachingJWKSetSource.RefreshTimedOutEvent<?>) {
             readEnabled = false;
-            // write only happens if approved by regular flow
+            // there might still some time left until no JWKs are cached anymore
         }
+    }
+
+    public void close() {
+        scheduledExecutorService.shutdownNow();
     }
 }

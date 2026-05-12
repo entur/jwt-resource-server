@@ -72,7 +72,7 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
 
             JwtDecoder jwtDecoder;
             if(decodedJwtCacheIssuers.contains(entry.getKey())) {
-                DecodedJwtCacheJwtDecoder decodedJwtCacheJwtDecoder = new DecodedJwtCacheJwtDecoder(nimbusJwtDecoder, jwtValidators);
+                DecodedJwtCacheJwtDecoder decodedJwtCacheJwtDecoder = new DecodedJwtCacheJwtDecoder(nimbusJwtDecoder, jwtValidators, 60_000);
                 listEventListener.addEventListener(decodedJwtCacheJwtDecoder);
                 jwtDecoder = decodedJwtCacheJwtDecoder;
             } else {
