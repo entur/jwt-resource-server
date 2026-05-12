@@ -50,6 +50,7 @@ public class ListJwksHealthIndicator extends AbstractJwksHealthIndicator impleme
         }
 
         if(unhealthy.isEmpty()) {
+            if(LOGGER.isInfoEnabled()) LOGGER.info("Unhealthy JWKS");
             return new JwksHealth(time, true);
         }
 

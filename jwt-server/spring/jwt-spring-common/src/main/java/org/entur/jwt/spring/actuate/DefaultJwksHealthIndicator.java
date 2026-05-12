@@ -84,6 +84,12 @@ public class DefaultJwksHealthIndicator extends AbstractJwksHealthIndicator impl
 
     @Override
     public void notify(HealthReport healthReport) {
+        logger.info("Notified JWKs health report " + healthReport);
+        try {
+            throw new RuntimeException();
+        }catch (Exception e) {
+            logger.warn("Unable to process JWKs health report", e);
+        }
         this.healthReport = healthReport;
     }
 
