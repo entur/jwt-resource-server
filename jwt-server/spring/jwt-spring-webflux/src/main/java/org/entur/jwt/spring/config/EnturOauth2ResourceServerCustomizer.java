@@ -109,7 +109,7 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHtt
 
     private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(Map.Entry<String, JWKSource> entry) {
         List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();
-        validators.add(new JwtIssuerValidator(entry.getKey())); // this check is implicit, but lets add it regardless
+        validators.add(new JwtIssuerValidator(entry.getKey()));
         validators.addAll(jwtValidators);
         DelegatingOAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(validators);
         return validator;
