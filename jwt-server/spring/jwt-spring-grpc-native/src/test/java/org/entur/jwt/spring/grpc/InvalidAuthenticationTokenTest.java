@@ -60,7 +60,7 @@ public class InvalidAuthenticationTokenTest extends AbstractGrpcTest {
     }
 
     @Test
-    public void testProtectedResourceWithInvalidIssuer(@AccessToken @Issuer("not.the.right.one") String header) {
+    public void testProtectedResourceWithInvalidIssuer(@AccessToken(audience = "https://my.audience") @Issuer("not.the.right.one") String header) {
         StatusRuntimeException exception = assertThrows(StatusRuntimeException.class, () -> {
             stub(header).protectedWithPartnerTenant(greetingRequest);
         });

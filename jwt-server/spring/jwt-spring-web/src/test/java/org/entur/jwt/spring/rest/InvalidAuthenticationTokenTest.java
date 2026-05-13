@@ -19,7 +19,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * 
@@ -89,7 +88,7 @@ public class InvalidAuthenticationTokenTest {
     }
 
     @Test
-    public void testProtectedResourceWithInvalidIssuer(@AccessToken @Issuer("not.the.right.one") String header) {
+    public void testProtectedResourceWithInvalidIssuer(@AccessToken(audience = "https://my.audience") @Issuer("not.the.right.one") String header) {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", header);
         HttpEntity<String> entity = new HttpEntity<String>(headers);

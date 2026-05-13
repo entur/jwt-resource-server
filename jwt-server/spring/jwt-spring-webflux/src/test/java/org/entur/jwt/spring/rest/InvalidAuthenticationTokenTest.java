@@ -82,7 +82,7 @@ public class InvalidAuthenticationTokenTest {
     }
 
     @Test
-    public void testProtectedResourceWithInvalidIssuer(@AccessToken @Issuer("not.the.right.one") String header) {
+    public void testProtectedResourceWithInvalidIssuer(@AccessToken(audience = "https://my.audience") @Issuer("not.the.right.one") String header) {
         HttpHeaders responseHeaders = webTestClient
                 .get()
                 .uri("/protected")
