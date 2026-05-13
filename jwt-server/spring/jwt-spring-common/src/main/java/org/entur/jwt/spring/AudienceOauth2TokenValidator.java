@@ -25,10 +25,10 @@ public class AudienceOauth2TokenValidator implements OAuth2TokenValidator<Jwt> {
 
     @Override
     public OAuth2TokenValidatorResult validate(Jwt token) {
-        List<String> audiences = token.getAudience();
-        if(audiences != null) {
-            for (String audience : audiences) {
-                if (this.audiences.contains(audience)) {
+        List<String> tokenAudiences = token.getAudience();
+        if(tokenAudiences != null) {
+            for (String tokenAudience : tokenAudiences) {
+                if (this.audiences.contains(tokenAudience)) {
                     return OAuth2TokenValidatorResult.success();
                 }
             }
