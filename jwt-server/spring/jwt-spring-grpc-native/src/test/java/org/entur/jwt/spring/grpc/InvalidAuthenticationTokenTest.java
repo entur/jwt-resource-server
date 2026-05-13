@@ -4,6 +4,7 @@ import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
+import org.entur.jwt.junit5.claim.Issuer;
 import org.entur.jwt.junit5.headers.KeyIdHeader;
 import org.entur.jwt.junit5.sabotage.Signature;
 import org.junit.jupiter.api.Test;
@@ -52,6 +53,14 @@ public class InvalidAuthenticationTokenTest extends AbstractGrpcTest {
     
     @Test 
     public void testProtectedResourceWithInvalidKeyId(@AccessToken @KeyIdHeader("abc") String header) {
+        StatusRuntimeException exception = assertThrows(StatusRuntimeException.class, () -> {
+            stub(header).protectedWithPartnerTenant(greetingRequest);
+        });
+        assertThat(exception.getStatus().getCode()).isEqualTo(Status.Code.UNAUTHENTICATED);
+    }
+
+    @Test
+    public void testProtectedResourceWithInvalidIssuer(@AccessToken(audience = "https://my.audience") @Issuer("not.the.right.one") String header) {
         StatusRuntimeException exception = assertThrows(StatusRuntimeException.class, () -> {
             stub(header).protectedWithPartnerTenant(greetingRequest);
         });
