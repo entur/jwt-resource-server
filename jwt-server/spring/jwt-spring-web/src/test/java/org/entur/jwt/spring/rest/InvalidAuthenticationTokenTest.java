@@ -2,6 +2,7 @@ package org.entur.jwt.spring.rest;
 
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
+import org.entur.jwt.junit5.claim.Issuer;
 import org.entur.jwt.junit5.headers.KeyIdHeader;
 import org.entur.jwt.junit5.sabotage.Signature;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
 /**
  * 
  * Test accessing methods without an unknown token token.
@@ -63,7 +65,7 @@ public class InvalidAuthenticationTokenTest {
     @Test 
     public void testProtectedResourceWithInvalidSignature(@AccessToken(audience = "https://my.audience") @Signature("cheat") String header) {
         HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer hvaomshelst");
+        headers.add("Authorization", header);
         HttpEntity<String> entity = new HttpEntity<String>(headers);
         
         String url = "http://localhost:" + randomServerPort + "/protected";
@@ -75,7 +77,7 @@ public class InvalidAuthenticationTokenTest {
     @Test 
     public void testProtectedResourceWithInvalidKeyId(@AccessToken(audience = "https://my.audience") @KeyIdHeader("abc") String header) {
         HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer hvaomshelst");
+        headers.add("Authorization", header);
         HttpEntity<String> entity = new HttpEntity<String>(headers);
         
         String url = "http://localhost:" + randomServerPort + "/protected";
@@ -84,6 +86,17 @@ public class InvalidAuthenticationTokenTest {
         System.out.println(response.getHeaders().get("Location"));
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
-    
-    
+
+    @Test
+    public void testProtectedResourceWithInvalidIssuer(@AccessToken(audience = "https://my.audience") @Issuer("not.the.right.one") String header) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", header);
+        HttpEntity<String> entity = new HttpEntity<String>(headers);
+
+        String url = "http://localhost:" + randomServerPort + "/protected";
+
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        System.out.println(response.getHeaders().get("Location"));
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
 }

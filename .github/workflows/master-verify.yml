@@ -16,7 +16,7 @@ jobs:
   post-failure-to-slack:
     needs: verify-main
     if: failure()
-    uses: entur/gha-slack/.github/workflows/post.yml@v2
+    uses: entur/gha-slack/.github/workflows/post.yml@v3
     permissions:
       contents: read
     with:
@@ -27,7 +27,7 @@ jobs:
   post-success-to-slack:
     needs: verify-main
     if: success()
-    uses: entur/gha-slack/.github/workflows/post.yml@v2
+    uses: entur/gha-slack/.github/workflows/post.yml@v3
     permissions:
       contents: read
     with:

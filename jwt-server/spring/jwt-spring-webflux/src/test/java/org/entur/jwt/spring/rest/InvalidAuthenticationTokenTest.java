@@ -2,6 +2,7 @@ package org.entur.jwt.spring.rest;
 
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
+import org.entur.jwt.junit5.claim.Issuer;
 import org.entur.jwt.junit5.headers.KeyIdHeader;
 import org.entur.jwt.junit5.sabotage.Signature;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,7 +63,7 @@ public class InvalidAuthenticationTokenTest {
         webTestClient
                 .get()
                 .uri("/protected")
-                .header("Authorization", "Bearer hvaomshelst")
+                .header("Authorization", header)
                 .exchange()
                 .expectStatus().isUnauthorized();
 
@@ -73,14 +74,23 @@ public class InvalidAuthenticationTokenTest {
         HttpHeaders responseHeaders = webTestClient
                 .get()
                 .uri("/protected")
-                .header("Authorization", "Bearer hvaomshelst")
+                .header("Authorization", header)
                 .exchange()
                 .expectStatus().isUnauthorized()
             .returnResult(String.class)
             .getResponseHeaders();
-
-        System.out.println(responseHeaders.get("Location"));
     }
 
+    @Test
+    public void testProtectedResourceWithInvalidIssuer(@AccessToken(audience = "https://my.audience") @Issuer("not.the.right.one") String header) {
+        HttpHeaders responseHeaders = webTestClient
+                .get()
+                .uri("/protected")
+                .header("Authorization", header)
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .returnResult(String.class)
+                .getResponseHeaders();
+    }
 
 }
