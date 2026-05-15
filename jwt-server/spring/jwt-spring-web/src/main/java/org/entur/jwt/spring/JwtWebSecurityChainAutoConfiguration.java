@@ -1,5 +1,6 @@
 package org.entur.jwt.spring;
 
+import org.entur.jwt.spring.cache.DecodedJwtCacheConfigurationReader;
 import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
 import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
 import org.entur.jwt.spring.config.JwtMappedDiagnosticContextFilter;
@@ -36,8 +37,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
@@ -127,7 +127,6 @@ public class JwtWebSecurityChainAutoConfiguration {
 
             JwtProperties jwt = securityProperties.getJwt();
             if (jwt.isEnabled()) {
-
                 Flavours flavours = jwt.getFlavours();
                 if (flavours.isEnabled()) {
                     List<JwtAuthorityEnricher> enrichers = new ArrayList<>(jwtAuthorityEnrichers);
@@ -145,7 +144,14 @@ public class JwtWebSecurityChainAutoConfiguration {
                     jwtAuthorityEnrichers = enrichers;
                 }
 
-                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers, jwtValidators));
+                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(
+                        jwkSourceMap.getJwkSources(),
+                        jwkSourceMap.getJwkEventListeners(),
+                        jwtAuthorityEnrichers,
+                        jwtValidators,
+                        DecodedJwtCacheConfigurationReader.convert(jwt)
+                    )
+                );
             }
 
             MdcProperties mdc = jwt.getMdc();
