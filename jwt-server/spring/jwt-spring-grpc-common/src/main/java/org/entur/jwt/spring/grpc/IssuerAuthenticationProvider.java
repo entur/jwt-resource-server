@@ -84,7 +84,7 @@ public class IssuerAuthenticationProvider implements AuthenticationProvider {
                 map.put(entry.getKey(), authenticationProvider);
             }
 
-            if(map.size() == 0) {
+            if(map.size() == 1) {
                 return map.values().iterator().next();
             }
 
