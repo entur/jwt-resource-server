@@ -53,7 +53,7 @@ public class IssuerJwtDecoder implements JwtDecoder {
             return this;
         }
 
-        public IssuerJwtDecoder build() {
+        public JwtDecoder build() {
             Map<String, JWKSource> jwkSources = jwkSourceMap.getJwkSources();
 
             Map<String, JwtDecoder> map = new HashMap<>(jwkSources.size() * 4);
@@ -71,12 +71,16 @@ public class IssuerJwtDecoder implements JwtDecoder {
                 map.put(entry.getKey(), nimbusJwtDecoder);
             }
 
+            if(map.size() == 1) {
+                return map.values().iterator().next();
+            }
+
             return new IssuerJwtDecoder(map);
         }
 
         private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(String issuer) {
             List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();
-            validators.add(new JwtIssuerValidator(issuer)); // this check is implicit, but lets add it regardless
+            validators.add(new JwtIssuerValidator(issuer));
             validators.addAll(jwtValidators);
             DelegatingOAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(validators);
             return validator;

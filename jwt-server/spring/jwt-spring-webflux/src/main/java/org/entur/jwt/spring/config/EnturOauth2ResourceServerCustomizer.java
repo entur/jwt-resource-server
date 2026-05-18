@@ -29,6 +29,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtIssuerReactiveAuthenticationManagerResolver;
 import org.springframework.security.oauth2.server.resource.authentication.JwtReactiveAuthenticationManager;
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
+import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -82,11 +83,17 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHtt
             map.put(entry.getKey(), jwtReactiveAuthenticationManager);
         }
 
-        IssuerAuthenticationManagerResolver issuer = new IssuerAuthenticationManagerResolver(map);
+        if(map.size() == 1) {
+            ReactiveAuthenticationManager next = map.values().iterator().next();
+            Mono<ReactiveAuthenticationManager> authenticationManager = Mono.just(next);
+            configurer.authenticationManagerResolver(request -> authenticationManager);
+        } else {
+            IssuerAuthenticationManagerResolver issuer = new IssuerAuthenticationManagerResolver(map);
 
-        JwtIssuerReactiveAuthenticationManagerResolver jwtIssuerAuthenticationManagerResolver = new JwtIssuerReactiveAuthenticationManagerResolver(issuer);
+            JwtIssuerReactiveAuthenticationManagerResolver jwtIssuerAuthenticationManagerResolver = new JwtIssuerReactiveAuthenticationManagerResolver(issuer);
 
-        configurer.authenticationManagerResolver(jwtIssuerAuthenticationManagerResolver);
+            configurer.authenticationManagerResolver(jwtIssuerAuthenticationManagerResolver);
+        }
     }
 
     private static <C extends SecurityContext> JWTClaimsSet createClaimsSet(JWTProcessor<C> jwtProcessor,
@@ -103,7 +110,7 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHtt
 
     private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(Map.Entry<String, JWKSource> entry) {
         List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();
-        validators.add(new JwtIssuerValidator(entry.getKey())); // this check is implicit, but lets add it regardless
+        validators.add(new JwtIssuerValidator(entry.getKey()));
         validators.addAll(jwtValidators);
         DelegatingOAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(validators);
         return validator;
