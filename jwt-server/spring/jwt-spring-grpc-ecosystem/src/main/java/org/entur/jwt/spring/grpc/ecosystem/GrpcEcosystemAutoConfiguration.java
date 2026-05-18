@@ -170,7 +170,7 @@ public class GrpcEcosystemAutoConfiguration {
             jwtAuthorityEnrichers = enrichers;
         }
 
-        IssuerAuthenticationProvider provider = IssuerAuthenticationProvider.newBuilder()
+        AuthenticationProvider provider = IssuerAuthenticationProvider.newBuilder()
                 .withJwkSourceMap(jwkSourceMap)
                 .withJwtValidators(jwtValidators)
                 .withJwtAuthorityEnrichers(jwtAuthorityEnrichers)

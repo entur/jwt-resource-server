@@ -59,7 +59,7 @@ public class IssuerAuthenticationProvider implements AuthenticationProvider {
             return this;
         }
 
-        public IssuerAuthenticationProvider build() {
+        public AuthenticationProvider build() {
             Map<String, JWKSource> jwkSources = jwkSourceMap.getJwkSources();
 
             Map<String, AuthenticationProvider> map = new HashMap<>(jwkSources.size() * 4);
@@ -84,12 +84,16 @@ public class IssuerAuthenticationProvider implements AuthenticationProvider {
                 map.put(entry.getKey(), authenticationProvider);
             }
 
+            if(map.size() == 1) {
+                return map.values().iterator().next();
+            }
+
            return new IssuerAuthenticationProvider(map);
         }
 
         private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(String issuer) {
             List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();
-            validators.add(new JwtIssuerValidator(issuer)); // this check is implicit, but lets add it regardless
+            validators.add(new JwtIssuerValidator(issuer));
             validators.addAll(jwtValidators);
             DelegatingOAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(validators);
             return validator;
