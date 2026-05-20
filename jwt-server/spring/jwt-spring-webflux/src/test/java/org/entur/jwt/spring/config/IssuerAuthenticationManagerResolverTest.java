@@ -102,7 +102,7 @@ class IssuerAuthenticationManagerResolverTest {
     }
 
     private static String token(String payloadJson) {
-        return token(payloadJson, "{\"alg\":\"none\"}");
+        return token(payloadJson, "{\"alg\":\"RS256\"}");
     }
 
     private static String token(String payloadJson, String headerJson) {

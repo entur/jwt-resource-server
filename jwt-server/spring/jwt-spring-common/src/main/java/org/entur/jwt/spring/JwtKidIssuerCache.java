@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,11 +20,12 @@ import java.util.concurrent.atomic.AtomicReference;
  * Maintains a live mapping from JWT {@code kid} header values to issuer URLs.
  *
  * <p>For each configured issuer a {@link EventListener} (obtained via {@link #listenerFor(String)})
- * must be registered with that issuer's {@link com.nimbusds.jose.jwk.source.JWKSource} event bus.
- * Whenever any issuer's JWK set is (re-)loaded the cache recomputes the {@code kid} → issuer
- * mapping.  The fast path is only active once every issuer has reported at least one JWK set
- * <em>and</em> no {@code kid} value is shared between issuers; otherwise {@link #lookupIssuer}
- * returns {@code null} so callers fall back to the regular body-parsing approach.
+ * must be registered with that issuer's JWK event bus. Whenever any issuer's JWK set is
+ * (re-)loaded the cache recomputes the {@code kid} → issuer mapping.
+ *
+ * <p>If two issuers share a {@code kid}, that specific kid is excluded from the cache so that
+ * lookups for it fall back to full JWT parsing.  Unaffected kids (unique to a single issuer)
+ * remain in the cache.
  */
 public class JwtKidIssuerCache {
 
@@ -35,11 +37,11 @@ public class JwtKidIssuerCache {
     private final ConcurrentHashMap<String, JWKSet> jwkSetByIssuer = new ConcurrentHashMap<>();
 
     /**
-     * Atomic snapshot of the current kid → issuer map.
-     * {@code null} means the fast path is not yet available (not all issuers loaded, or
-     * duplicate kids detected).
+     * Atomic snapshot of the current kid → issuer map.  Contains only kids that are unique to a
+     * single issuer.  Kids shared by two or more issuers are absent so callers fall back to full
+     * JWT claim parsing.  Empty map until all issuers have reported at least one JWK set.
      */
-    private final AtomicReference<Map<String, String>> kidToIssuer = new AtomicReference<>(null);
+    private final AtomicReference<Map<String, String>> kidToIssuer = new AtomicReference<>(Map.of());
 
     public JwtKidIssuerCache(Set<String> issuers) {
         this.issuers = Set.copyOf(issuers);
@@ -57,15 +59,11 @@ public class JwtKidIssuerCache {
     /**
      * Look up the issuer for a given JWT {@code kid} value.
      *
-     * @return the issuer URL, or {@code null} if the fast-path cache is not yet available or the
-     *         kid is unknown.
+     * @return the issuer URL if the kid is uniquely owned by one issuer, or {@code null} if the
+     *         kid is unknown, shared between issuers, or not all issuers have loaded yet.
      */
     public String lookupIssuer(String kid) {
-        Map<String, String> snapshot = kidToIssuer.get();
-        if (snapshot == null) {
-            return null;
-        }
-        return snapshot.get(kid);
+        return kidToIssuer.get().get(kid);
     }
 
     // ---- internal ----------------------------------------------------------
@@ -77,32 +75,35 @@ public class JwtKidIssuerCache {
 
     private void recompute() {
         if (!jwkSetByIssuer.keySet().containsAll(issuers)) {
-            // Not all issuers have loaded yet; keep the cache inactive.
+            // Not all issuers have loaded yet; keep the cache empty.
+            kidToIssuer.set(Map.of());
             return;
         }
 
         Map<String, String> newMap = new HashMap<>();
+        Set<String> conflictingKids = new HashSet<>();
+
         for (Map.Entry<String, JWKSet> entry : jwkSetByIssuer.entrySet()) {
             String issuer = entry.getKey();
             for (JWK key : entry.getValue().getKeys()) {
                 String kid = key.getKeyID();
-                if (kid == null || kid.isBlank()) {
+                if (kid == null || kid.isBlank() || conflictingKids.contains(kid)) {
                     continue;
                 }
-                String existing = newMap.putIfAbsent(kid, issuer);
+                String existing = newMap.put(kid, issuer);
                 if (existing != null && !existing.equals(issuer)) {
-                    // Duplicate kid across issuers – disable the fast path.
+                    // Conflict: remove this kid so both issuers fall back to claim parsing.
+                    newMap.remove(kid);
+                    conflictingKids.add(kid);
                     if (LOGGER.isDebugEnabled()) {
-                        LOGGER.debug("kid '{}' is shared between issuers '{}' and '{}'; disabling kid-based issuer lookup", kid, existing, issuer);
+                        LOGGER.debug("kid '{}' is shared between issuers '{}' and '{}'; disabling kid-based lookup for this kid", kid, existing, issuer);
                     }
-                    kidToIssuer.set(null);
-                    return;
                 }
             }
         }
 
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("kid-to-issuer cache updated with {} entries", newMap.size());
+            LOGGER.debug("kid-to-issuer cache updated with {} entries ({} conflicting kids excluded)", newMap.size(), conflictingKids.size());
         }
         kidToIssuer.set(Map.copyOf(newMap));
     }

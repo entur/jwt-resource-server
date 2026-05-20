@@ -1,8 +1,8 @@
 package org.entur.jwt.spring.config;
 
-import org.entur.jwt.spring.JwtHeaderKidExtractor;
-import org.entur.jwt.spring.JwtIssuerBase64Matcher;
-import org.entur.jwt.spring.JwtIssuerClaimExtractor;
+import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTParser;
+import com.nimbusds.jwt.SignedJWT;
 import org.entur.jwt.spring.JwtKidIssuerCache;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.authentication.ReactiveAuthenticationManagerResolver;
@@ -10,13 +10,13 @@ import org.springframework.security.oauth2.server.resource.InvalidBearerTokenExc
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import java.text.ParseException;
 import java.util.Map;
 
 public class IssuerAuthenticationManagerResolver implements ReactiveAuthenticationManagerResolver<ServerWebExchange> {
 
     private final Map<String, ReactiveAuthenticationManager> map;
     private final JwtKidIssuerCache kidIssuerCache;
-    private final JwtIssuerBase64Matcher matcher;
 
     public IssuerAuthenticationManagerResolver(Map<String, ReactiveAuthenticationManager> map) {
         this(map, new JwtKidIssuerCache(map.keySet()));
@@ -25,7 +25,6 @@ public class IssuerAuthenticationManagerResolver implements ReactiveAuthenticati
     public IssuerAuthenticationManagerResolver(Map<String, ReactiveAuthenticationManager> map, JwtKidIssuerCache kidIssuerCache) {
         this.map = map;
         this.kidIssuerCache = kidIssuerCache;
-        this.matcher = new JwtIssuerBase64Matcher(map.keySet());
     }
 
     @Override
@@ -39,13 +38,29 @@ public class IssuerAuthenticationManagerResolver implements ReactiveAuthenticati
             return Mono.empty();
         }
 
-        String issuer = resolveIssuerByKid(token);
-        if (issuer == null) {
-            issuer = matcher.matchIssuerFromToken(token);
+        JWT jwt;
+        try {
+            jwt = JWTParser.parse(token);
+        } catch (ParseException e) {
+            return Mono.error(new InvalidBearerTokenException("Invalid JWT token", e));
         }
-        if (issuer == null) {
-            issuer = JwtIssuerClaimExtractor.extractIssuer(token);
+
+        // Fast path: look up issuer by kid from the header (signed JWTs only).
+        String kid = jwt instanceof SignedJWT signedJWT ? signedJWT.getHeader().getKeyID() : null;
+        String issuer = null;
+        if (kid != null) {
+            issuer = kidIssuerCache.lookupIssuer(kid);
         }
+
+        // Fallback: extract issuer from the claims set.
+        if (issuer == null) {
+            try {
+                issuer = jwt.getJWTClaimsSet().getIssuer();
+            } catch (ParseException e) {
+                return Mono.error(new InvalidBearerTokenException("Invalid JWT claims", e));
+            }
+        }
+
         if (issuer == null) {
             return Mono.error(new InvalidBearerTokenException("Invalid JWT issuer claim"));
         }
@@ -56,13 +71,5 @@ public class IssuerAuthenticationManagerResolver implements ReactiveAuthenticati
         }
 
         return Mono.just(reactiveAuthenticationManager);
-    }
-
-    private String resolveIssuerByKid(String token) {
-        String keyId = JwtHeaderKidExtractor.extractKid(token);
-        if (keyId == null) {
-            return null;
-        }
-        return kidIssuerCache.lookupIssuer(keyId);
     }
 }
