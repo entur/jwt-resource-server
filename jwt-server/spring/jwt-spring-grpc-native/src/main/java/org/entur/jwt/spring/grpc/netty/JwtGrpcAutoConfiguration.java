@@ -60,6 +60,9 @@ public class JwtGrpcAutoConfiguration {
 
     private final Map<String, List<String>> permitAllMappings;
 
+    /** Holds the {@link JwtDecoder} built during {@link #jwtSecurityFilterChain}. */
+    private JwtDecoder jwtDecoder;
+
     public JwtGrpcAutoConfiguration(JwkSourceMap jwkSourceMap, List<OAuth2TokenValidator<Jwt>> jwtValidators, GrpcPermitAll permitAll, Flavours flavours) {
         this.jwkSourceMap = jwkSourceMap;
         this.jwtValidators = jwtValidators;
@@ -119,6 +122,7 @@ public class JwtGrpcAutoConfiguration {
                     .withJwkSourceMap(jwkSourceMap)
                     .withJwtValidators(jwtValidators)
                     .build();
+            this.jwtDecoder = decoder;
 
             Customizer<OAuth2ResourceServerConfigurer.JwtConfigurer> configurer = new Customizer<OAuth2ResourceServerConfigurer.JwtConfigurer>() {
                 @Override
@@ -135,6 +139,15 @@ public class JwtGrpcAutoConfiguration {
         } catch(Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Returns the {@link JwtDecoder} built during security chain initialization.
+     * When configured with multiple issuers this will be an {@link IssuerJwtDecoder};
+     * for a single issuer it will be a {@code NimbusJwtDecoder}.
+     */
+    public JwtDecoder getJwtDecoder() {
+        return jwtDecoder;
     }
 
     private List<JwtAuthorityEnricher> getJwtAuthorityEnrichers(List<JwtAuthorityEnricher> jwtAuthorityEnrichers) {

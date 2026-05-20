@@ -52,6 +52,10 @@ public class FastIssuerResolvingAuthenticationManager implements AuthenticationM
         }
     }
 
+    public JwtHeaderToIssuerMapper getMapper() {
+        return jwtHeaderToIssuerMapper;
+    }
+
     // from JwtIssuerAuthenticationManagerResolver
     private static @org.jspecify.annotations.NonNull Authentication getAuthentication(Authentication authentication, AuthenticationManager authenticationManager) {
         if (authenticationManager == null) {

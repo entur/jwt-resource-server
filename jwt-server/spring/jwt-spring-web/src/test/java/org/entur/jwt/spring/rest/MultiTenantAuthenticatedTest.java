@@ -4,6 +4,9 @@ import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.junit5.claim.Issuer;
 import org.entur.jwt.junit5.sabotage.Signature;
+import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
+import org.entur.jwt.spring.config.FastIssuerResolvingAuthenticationManager;
+import org.entur.jwt.spring.issuer.JwtHeaderToIssuerMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -27,6 +30,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>Verifies that:
  * <ul>
  *   <li>Tokens from either configured issuer are accepted (slow path and fast path).</li>
+ *   <li>Internal mapper state is verified via
+ *       {@link FastIssuerResolvingAuthenticationManager#getMapper()}.</li>
  *   <li>Tokens with an invalid signature are rejected.</li>
  *   <li>Tokens whose issuer does not match any configured tenant are rejected.</li>
  * </ul>
@@ -43,6 +48,9 @@ public class MultiTenantAuthenticatedTest {
 
     @Autowired
     private TestRestTemplate restTemplate;
+
+    @Autowired
+    private EnturOauth2ResourceServerCustomizer resourceServerCustomizer;
 
     // ------------------------------------------------------------------ slow path (first request per issuer)
 
@@ -71,9 +79,20 @@ public class MultiTenantAuthenticatedTest {
         assertThat(exchange(partnerToken, "/protected").getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(exchange(internalToken, "/protected").getStatusCode().is2xxSuccessful()).isTrue();
 
+        // After both issuers have fetched JWKs the mapper should be enabled
+        FastIssuerResolvingAuthenticationManager authManager = resourceServerCustomizer.getAuthenticationManager();
+        JwtHeaderToIssuerMapper mapper = authManager.getMapper();
+        assertThat(mapper.isEnabled()).isTrue();
+
         // Subsequent requests from the same issuers should succeed via the fast path
         assertThat(exchange(partnerToken, "/protected").getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(exchange(internalToken, "/protected").getStatusCode().is2xxSuccessful()).isTrue();
+
+        // After the second round of requests the token headers should be cached
+        String rawPartnerToken = partnerToken.substring("Bearer ".length());
+        String rawInternalToken = internalToken.substring("Bearer ".length());
+        assertThat(mapper.get(rawPartnerToken)).isNotNull();
+        assertThat(mapper.get(rawInternalToken)).isNotNull();
     }
 
     // ------------------------------------------------------------------ negative cases

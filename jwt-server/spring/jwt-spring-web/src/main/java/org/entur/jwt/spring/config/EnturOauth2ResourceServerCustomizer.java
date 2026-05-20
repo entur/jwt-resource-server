@@ -44,6 +44,8 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
     private final List<OAuth2TokenValidator<Jwt>> jwtValidators;
     private final Map<String, ListEventListener> jwkEventListeners;
 
+    private FastIssuerResolvingAuthenticationManager authenticationManager;
+
     public EnturOauth2ResourceServerCustomizer(Map<String, JWKSource> jwkSources, Map<String, ListEventListener> jwkEventListeners, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators) {
         this.jwkSources = jwkSources;
         this.jwkEventListeners = jwkEventListeners;
@@ -90,9 +92,20 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
             AuthenticationManagerResolver<String> issuer = new IssuerAuthenticationManagerResolver(map);
 
             FastIssuerResolvingAuthenticationManager jwtIssuerAuthenticationManagerResolver = new FastIssuerResolvingAuthenticationManager(issuer, mapper);
+            this.authenticationManager = jwtIssuerAuthenticationManagerResolver;
 
             configurer.authenticationManagerResolver(request -> jwtIssuerAuthenticationManagerResolver);
         }
+    }
+
+    /**
+     * Returns the {@link FastIssuerResolvingAuthenticationManager} used for multi-tenant
+     * JWT resolution, or {@code null} when there is only a single issuer configured.
+     * Available after {@link #customize} has been called (i.e. after the security filter
+     * chain is built).
+     */
+    public FastIssuerResolvingAuthenticationManager getAuthenticationManager() {
+        return authenticationManager;
     }
 
     private @NonNull JwtAuthenticationProvider getJwtAuthenticationProvider(String issuer, JWKSource jwkSource) {

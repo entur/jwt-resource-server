@@ -11,6 +11,7 @@ import org.entur.jwt.spring.properties.Flavours;
 import org.entur.jwt.spring.properties.JwtProperties;
 import org.entur.jwt.spring.properties.KeycloakFlavour;
 import org.entur.jwt.spring.properties.MdcProperties;
+import org.entur.jwt.spring.JwkSourceMap;
 import org.entur.jwt.spring.properties.SecurityProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,6 +98,34 @@ public class JwtWebSecurityChainAutoConfiguration {
         }
 
         @Bean
+        @ConditionalOnExpression("${entur.jwt.enabled:true}")
+        public EnturOauth2ResourceServerCustomizer enturOauth2ResourceServerCustomizer(
+                JwkSourceMap jwkSourceMap,
+                List<JwtAuthorityEnricher> jwtAuthorityEnrichers,
+                List<OAuth2TokenValidator<Jwt>> jwtValidators) {
+
+            JwtProperties jwt = securityProperties.getJwt();
+
+            List<JwtAuthorityEnricher> enrichers = jwtAuthorityEnrichers;
+            Flavours flavours = jwt.getFlavours();
+            if (flavours.isEnabled()) {
+                enrichers = new ArrayList<>(jwtAuthorityEnrichers);
+
+                Auth0Flavour auth0 = flavours.getAuth0();
+                if (auth0.isEnabled()) {
+                    enrichers.add(new Auth0JwtAuthorityEnricher());
+                }
+
+                KeycloakFlavour keycloak = flavours.getKeycloak();
+                if (keycloak.isEnabled()) {
+                    enrichers.add(new KeycloakJwtAuthorityEnricher());
+                }
+            }
+
+            return new EnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources(), jwkSourceMap.getJwkEventListeners(), enrichers, jwtValidators);
+        }
+
+        @Bean
         @ConditionalOnExpression("${entur.authorization.enabled:true} && !${entur.jwt.enabled:true}")
         public SecurityFilterChain securityWebFilterChain(
                 HttpSecurity http
@@ -115,9 +144,7 @@ public class JwtWebSecurityChainAutoConfiguration {
         @ConditionalOnExpression("${entur.jwt.enabled:true}")
         public SecurityFilterChain filterChain(
                 HttpSecurity http,
-                JwkSourceMap jwkSourceMap,
-                List<JwtAuthorityEnricher> jwtAuthorityEnrichers,
-                List<OAuth2TokenValidator<Jwt>> jwtValidators
+                EnturOauth2ResourceServerCustomizer resourceServerCustomizer
         ) throws Exception {
 
             AuthorizationProperties authorization = securityProperties.getAuthorization();
@@ -126,27 +153,7 @@ public class JwtWebSecurityChainAutoConfiguration {
             }
 
             JwtProperties jwt = securityProperties.getJwt();
-            if (jwt.isEnabled()) {
-
-                Flavours flavours = jwt.getFlavours();
-                if (flavours.isEnabled()) {
-                    List<JwtAuthorityEnricher> enrichers = new ArrayList<>(jwtAuthorityEnrichers);
-
-                    Auth0Flavour auth0 = flavours.getAuth0();
-                    if (auth0.isEnabled()) {
-                        enrichers.add(new Auth0JwtAuthorityEnricher());
-                    }
-
-                    KeycloakFlavour keycloak = flavours.getKeycloak();
-                    if (keycloak.isEnabled()) {
-                        enrichers.add(new KeycloakJwtAuthorityEnricher());
-                    }
-
-                    jwtAuthorityEnrichers = enrichers;
-                }
-
-                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources(), jwkSourceMap.getJwkEventListeners(), jwtAuthorityEnrichers, jwtValidators));
-            }
+            http.oauth2ResourceServer(resourceServerCustomizer);
 
             MdcProperties mdc = jwt.getMdc();
             if (mdc.isEnabled()) {

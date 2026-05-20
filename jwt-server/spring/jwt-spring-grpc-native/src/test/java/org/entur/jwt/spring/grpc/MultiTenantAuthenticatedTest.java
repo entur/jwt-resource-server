@@ -6,8 +6,12 @@ import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.junit5.claim.Issuer;
 import org.entur.jwt.junit5.sabotage.Signature;
+import org.entur.jwt.spring.grpc.netty.IssuerJwtDecoder;
+import org.entur.jwt.spring.grpc.netty.JwtGrpcAutoConfiguration;
 import org.entur.jwt.spring.grpc.test.GreetingResponse;
+import org.entur.jwt.spring.issuer.JwtHeaderToIssuerMapper;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.test.annotation.DirtiesContext;
@@ -24,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * <ul>
  *   <li>Tokens from either configured issuer are accepted (slow path and
  *       subsequent fast path).</li>
+ *   <li>Internal mapper state is verified via {@link IssuerJwtDecoder#getMapper()}.</li>
  *   <li>Tokens with an invalid signature are rejected.</li>
  *   <li>Tokens whose issuer does not match any configured tenant are rejected.</li>
  * </ul>
@@ -33,6 +38,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @DirtiesContext
 public class MultiTenantAuthenticatedTest extends AbstractGrpcTest {
+
+    @Autowired
+    private JwtGrpcAutoConfiguration jwtGrpcAutoConfiguration;
 
     // ------------------------------------------------------------------ slow path (first request per issuer)
 
@@ -61,11 +69,22 @@ public class MultiTenantAuthenticatedTest extends AbstractGrpcTest {
         assertThat(stub(internalToken).protectedWithPartnerTenant(greetingRequest).getMessage())
                 .isEqualTo("Hello protected tenant");
 
+        // After both issuers have fetched JWKs the mapper should be enabled
+        IssuerJwtDecoder issuerJwtDecoder = (IssuerJwtDecoder) jwtGrpcAutoConfiguration.getJwtDecoder();
+        JwtHeaderToIssuerMapper mapper = issuerJwtDecoder.getMapper();
+        assertThat(mapper.isEnabled()).isTrue();
+
         // Subsequent requests from the same issuers should succeed via the fast path
         assertThat(stub(partnerToken).protectedWithPartnerTenant(greetingRequest).getMessage())
                 .isEqualTo("Hello protected tenant");
         assertThat(stub(internalToken).protectedWithPartnerTenant(greetingRequest).getMessage())
                 .isEqualTo("Hello protected tenant");
+
+        // After the second round of requests the token headers should be cached
+        String rawPartnerToken = partnerToken.substring("Bearer ".length());
+        String rawInternalToken = internalToken.substring("Bearer ".length());
+        assertThat(mapper.get(rawPartnerToken)).isNotNull();
+        assertThat(mapper.get(rawInternalToken)).isNotNull();
     }
 
     // ------------------------------------------------------------------ negative cases
