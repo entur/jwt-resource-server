@@ -3,6 +3,7 @@ package org.entur.jwt.spring.benchmark;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jwt.SignedJWT;
+import org.entur.jwt.spring.JwtIssuerBase64Matcher;
 import org.entur.jwt.spring.JwtIssuerClaimExtractor;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -18,6 +19,7 @@ import org.openjdk.jmh.annotations.Warmup;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @State(Scope.Benchmark)
@@ -32,15 +34,14 @@ public class JwtIssuerExtractionBenchmark {
 
     private String token;
     private String payloadSegment;
-    private String encodedIssuerClaimSnippet;
+    private JwtIssuerBase64Matcher matcher;
 
     @Setup(Level.Trial)
     public void setup() {
         String payload = "{\"sub\":\"abc\",\"aud\":\"x\",\"iss\":\"https://issuer-2.example\",\"scope\":\"read\"}";
         token = token(payload);
         payloadSegment = token.split("\\.")[1];
-        encodedIssuerClaimSnippet = Base64.getUrlEncoder().withoutPadding()
-                .encodeToString("\"iss\":\"https://issuer-2.example\"".getBytes(StandardCharsets.UTF_8));
+        matcher = new JwtIssuerBase64Matcher(List.of("https://issuer-1.example", "https://issuer-2.example"));
     }
 
     @Benchmark
@@ -62,8 +63,8 @@ public class JwtIssuerExtractionBenchmark {
     }
 
     @Benchmark
-    public boolean encodedPayloadStringSearch() {
-        return payloadSegment.contains(encodedIssuerClaimSnippet);
+    public String base64BodyThreeEncodingSearch() {
+        return matcher.matchIssuerFromToken(token);
     }
 
     private static String token(String payloadJson) {

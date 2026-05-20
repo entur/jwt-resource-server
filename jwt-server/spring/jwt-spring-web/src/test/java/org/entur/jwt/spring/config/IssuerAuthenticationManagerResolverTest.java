@@ -40,6 +40,17 @@ class IssuerAuthenticationManagerResolverTest {
         assertThatThrownBy(() -> resolver.resolve(request)).isInstanceOf(InvalidBearerTokenException.class);
     }
 
+    @Test
+    void shouldResolveWhenIssuerContainsEscapedSlashes() {
+        AuthenticationManager second = mock(AuthenticationManager.class);
+        IssuerAuthenticationManagerResolver resolver = new IssuerAuthenticationManagerResolver(Map.of(
+                "https://issuer-2.example", second));
+
+        HttpServletRequest request = requestWithToken(token("{\"iss\":\"https:\\/\\/issuer-2.example\",\"sub\":\"a\"}"));
+
+        assertThat(resolver.resolve(request)).isSameAs(second);
+    }
+
     private static HttpServletRequest requestWithToken(String token) {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer " + token);

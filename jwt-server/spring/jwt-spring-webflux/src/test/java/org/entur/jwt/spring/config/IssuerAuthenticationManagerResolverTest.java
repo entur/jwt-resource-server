@@ -42,6 +42,17 @@ class IssuerAuthenticationManagerResolverTest {
         assertThatThrownBy(() -> resolver.resolve(exchange).block()).isInstanceOf(InvalidBearerTokenException.class);
     }
 
+    @Test
+    void shouldResolveWhenIssuerContainsEscapedSlashes() {
+        ReactiveAuthenticationManager second = mock(ReactiveAuthenticationManager.class);
+        IssuerAuthenticationManagerResolver resolver = new IssuerAuthenticationManagerResolver(Map.of(
+                "https://issuer-2.example", second));
+
+        ServerWebExchange exchange = exchangeWithToken(token("{\"iss\":\"https:\\/\\/issuer-2.example\",\"sub\":\"a\"}"));
+
+        assertThat(resolver.resolve(exchange).block()).isSameAs(second);
+    }
+
     private static ServerWebExchange exchangeWithToken(String token) {
         return MockServerWebExchange.from(MockServerHttpRequest.get("http://localhost/protected")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)

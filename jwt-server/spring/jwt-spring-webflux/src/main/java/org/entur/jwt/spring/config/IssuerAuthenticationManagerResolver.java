@@ -1,5 +1,6 @@
 package org.entur.jwt.spring.config;
 
+import org.entur.jwt.spring.JwtIssuerBase64Matcher;
 import org.entur.jwt.spring.JwtIssuerClaimExtractor;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.authentication.ReactiveAuthenticationManagerResolver;
@@ -12,9 +13,11 @@ import java.util.Map;
 public class IssuerAuthenticationManagerResolver implements ReactiveAuthenticationManagerResolver<ServerWebExchange> {
 
     private final Map<String, ReactiveAuthenticationManager> map;
+    private final JwtIssuerBase64Matcher matcher;
 
     public IssuerAuthenticationManagerResolver(Map<String, ReactiveAuthenticationManager> map) {
         this.map = map;
+        this.matcher = new JwtIssuerBase64Matcher(map.keySet());
     }
 
     @Override
@@ -28,7 +31,10 @@ public class IssuerAuthenticationManagerResolver implements ReactiveAuthenticati
             return Mono.empty();
         }
 
-        String issuer = JwtIssuerClaimExtractor.extractIssuer(token);
+        String issuer = matcher.matchIssuerFromToken(token);
+        if (issuer == null) {
+            issuer = JwtIssuerClaimExtractor.extractIssuer(token);
+        }
         if (issuer == null) {
             return Mono.error(new InvalidBearerTokenException("Invalid JWT issuer claim"));
         }
