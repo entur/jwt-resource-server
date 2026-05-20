@@ -5,6 +5,8 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
+import io.micrometer.observation.Observation;
+import jakarta.servlet.http.HttpServletRequest;
 import org.entur.jwt.spring.EnrichedJwtGrantedAuthoritiesConverter;
 import org.entur.jwt.spring.JwtAuthorityEnricher;
 import org.entur.jwt.spring.actuate.ListEventListener;
@@ -19,6 +21,7 @@ import org.springframework.security.authentication.AuthenticationManagerResolver
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -59,7 +62,8 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
 
             JwtAuthenticationProvider authenticationProvider = getJwtAuthenticationProvider(issuer, jwkSource);
 
-            configurer.authenticationManagerResolver(request -> authenticationProvider::authenticate);
+            AuthenticationManagerResolver<HttpServletRequest> resolver = request -> authenticationProvider::authenticate;
+            configurer.authenticationManagerResolver(resolver);
         } else {
             // create multi-tenant decoder which attempts to avoid parsing the
             // JWT to map the JWT to the correct decoder
@@ -79,7 +83,8 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
 
                 JwtAuthenticationProvider authenticationProvider = getJwtAuthenticationProvider(issuer, jwkSource);
 
-                map.put(entry.getKey(), authenticationProvider::authenticate);
+                AuthenticationManager authenticationManager = authenticationProvider::authenticate;
+                map.put(entry.getKey(), authenticationManager);
             }
 
             AuthenticationManagerResolver<String> issuer = new IssuerAuthenticationManagerResolver(map);

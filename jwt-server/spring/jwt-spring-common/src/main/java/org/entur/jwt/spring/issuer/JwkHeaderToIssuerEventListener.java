@@ -24,6 +24,8 @@ public class JwkHeaderToIssuerEventListener implements EventListener {
             String kid = key.getKeyID();
             if (kid != null) {
                 kids.add(kid);
+            } else {
+                kids.add("null");
             }
         }
         return kids;
