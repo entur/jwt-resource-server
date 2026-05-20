@@ -12,6 +12,7 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import com.nimbusds.jwt.proc.JWTProcessor;
 import org.entur.jwt.spring.EnrichedJwtGrantedAuthoritiesConverter;
 import org.entur.jwt.spring.JwtAuthorityEnricher;
+import org.entur.jwt.spring.JwtIssuerKidMapFactory;
 import org.entur.jwt.spring.ReactiveJwtMonoConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,7 +88,8 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHtt
             Mono<ReactiveAuthenticationManager> authenticationManager = Mono.just(next);
             configurer.authenticationManagerResolver(request -> authenticationManager);
         } else {
-            configurer.authenticationManagerResolver(new IssuerAuthenticationManagerResolver(map));
+            Map<String, String> kidToIssuer = JwtIssuerKidMapFactory.createKidToIssuer(jwkSources);
+            configurer.authenticationManagerResolver(new IssuerAuthenticationManagerResolver(map, kidToIssuer));
         }
     }
 

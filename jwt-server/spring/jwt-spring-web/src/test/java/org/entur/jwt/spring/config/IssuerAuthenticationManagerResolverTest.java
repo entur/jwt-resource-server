@@ -51,6 +51,19 @@ class IssuerAuthenticationManagerResolverTest {
         assertThat(resolver.resolve(request)).isSameAs(second);
     }
 
+    @Test
+    void shouldResolveByHeaderKidWhenKidMappingIsUnique() {
+        AuthenticationManager first = mock(AuthenticationManager.class);
+        AuthenticationManager second = mock(AuthenticationManager.class);
+        IssuerAuthenticationManagerResolver resolver = new IssuerAuthenticationManagerResolver(
+                Map.of("https://issuer-1.example", first, "https://issuer-2.example", second),
+                Map.of("kid-1", "https://issuer-1.example", "kid-2", "https://issuer-2.example"));
+
+        HttpServletRequest request = requestWithToken(token("{\"sub\":\"a\"}", "{\"alg\":\"RS256\",\"kid\":\"kid-2\"}"));
+
+        assertThat(resolver.resolve(request)).isSameAs(second);
+    }
+
     private static HttpServletRequest requestWithToken(String token) {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer " + token);
@@ -58,7 +71,11 @@ class IssuerAuthenticationManagerResolverTest {
     }
 
     private static String token(String payloadJson) {
-        String header = Base64.getUrlEncoder().withoutPadding().encodeToString("{\"alg\":\"none\"}".getBytes(StandardCharsets.UTF_8));
+        return token(payloadJson, "{\"alg\":\"none\"}");
+    }
+
+    private static String token(String payloadJson, String headerJson) {
+        String header = Base64.getUrlEncoder().withoutPadding().encodeToString(headerJson.getBytes(StandardCharsets.UTF_8));
         String payload = Base64.getUrlEncoder().withoutPadding().encodeToString(payloadJson.getBytes(StandardCharsets.UTF_8));
         return header + "." + payload + ".sig";
     }

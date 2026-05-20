@@ -1,5 +1,6 @@
 package org.entur.jwt.spring.config;
 
+import org.entur.jwt.spring.JwtHeaderKidExtractor;
 import org.entur.jwt.spring.JwtIssuerBase64Matcher;
 import org.entur.jwt.spring.JwtIssuerClaimExtractor;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
@@ -13,10 +14,16 @@ import java.util.Map;
 public class IssuerAuthenticationManagerResolver implements ReactiveAuthenticationManagerResolver<ServerWebExchange> {
 
     private final Map<String, ReactiveAuthenticationManager> map;
+    private final Map<String, String> kidToIssuer;
     private final JwtIssuerBase64Matcher matcher;
 
     public IssuerAuthenticationManagerResolver(Map<String, ReactiveAuthenticationManager> map) {
+        this(map, Map.of());
+    }
+
+    public IssuerAuthenticationManagerResolver(Map<String, ReactiveAuthenticationManager> map, Map<String, String> kidToIssuer) {
         this.map = map;
+        this.kidToIssuer = kidToIssuer;
         this.matcher = new JwtIssuerBase64Matcher(map.keySet());
     }
 
@@ -31,7 +38,10 @@ public class IssuerAuthenticationManagerResolver implements ReactiveAuthenticati
             return Mono.empty();
         }
 
-        String issuer = matcher.matchIssuerFromToken(token);
+        String issuer = resolveIssuerByKid(token);
+        if (issuer == null) {
+            issuer = matcher.matchIssuerFromToken(token);
+        }
         if (issuer == null) {
             issuer = JwtIssuerClaimExtractor.extractIssuer(token);
         }
@@ -45,5 +55,16 @@ public class IssuerAuthenticationManagerResolver implements ReactiveAuthenticati
         }
 
         return Mono.just(reactiveAuthenticationManager);
+    }
+
+    private String resolveIssuerByKid(String token) {
+        if (kidToIssuer.isEmpty()) {
+            return null;
+        }
+        String keyId = JwtHeaderKidExtractor.extractKid(token);
+        if (keyId == null) {
+            return null;
+        }
+        return kidToIssuer.get(keyId);
     }
 }

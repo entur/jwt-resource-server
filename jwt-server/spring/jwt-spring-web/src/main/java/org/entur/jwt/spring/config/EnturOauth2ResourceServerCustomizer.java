@@ -7,6 +7,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import org.entur.jwt.spring.EnrichedJwtGrantedAuthoritiesConverter;
 import org.entur.jwt.spring.JwtAuthorityEnricher;
+import org.entur.jwt.spring.JwtIssuerKidMapFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -70,7 +71,8 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
             AuthenticationManager next = map.values().iterator().next();
             configurer.authenticationManagerResolver(request -> next);
         } else {
-            configurer.authenticationManagerResolver(new IssuerAuthenticationManagerResolver(map));
+            Map<String, String> kidToIssuer = JwtIssuerKidMapFactory.createKidToIssuer(jwkSources);
+            configurer.authenticationManagerResolver(new IssuerAuthenticationManagerResolver(map, kidToIssuer));
         }
     }
 
