@@ -140,7 +140,7 @@ public class IssuerJwtDecoder implements JwtDecoder {
                 if (decoder != null) {
                     Jwt decode = decoder.decode(token);
 
-                    if(mapper.isEnabled(issuer)) {
+                    if(mapper.isEnabled(issuer) && hasKid(decode)) {
                         // cache this jwt header
                         mapper.add(issuer, token);
                     }
@@ -153,6 +153,10 @@ public class IssuerJwtDecoder implements JwtDecoder {
         } catch (ParseException ex) {
             throw new InvalidBearerTokenException(String.format(DECODING_ERROR_MESSAGE_TEMPLATE, ex.getMessage()), ex);
         }
+    }
+
+    private static boolean hasKid(Jwt decode) {
+        return decode.getHeaders().get("kid") != null;
     }
 
     public JwtHeaderToIssuerMapper getMapper() {

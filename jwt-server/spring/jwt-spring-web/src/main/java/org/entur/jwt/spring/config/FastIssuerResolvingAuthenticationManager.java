@@ -10,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.util.Assert;
 
 public class FastIssuerResolvingAuthenticationManager implements AuthenticationManager {
@@ -44,12 +45,20 @@ public class FastIssuerResolvingAuthenticationManager implements AuthenticationM
             Authentication result = getAuthentication(authentication, authenticationManager);
 
             if(jwtHeaderToIssuerMapper.isEnabled(issuer)) {
-                // cache this jwt header to issuer mapping for future requests with the same token
-                jwtHeaderToIssuerMapper.add(issuer, token.getToken());
+                if(result instanceof JwtAuthenticationToken jwtAuthenticationToken) {
+                    if(isKid(jwtAuthenticationToken)) {
+                        // cache this jwt header to issuer mapping for future requests with the same token
+                        jwtHeaderToIssuerMapper.add(issuer, token.getToken());
+                    }
+                }
             }
 
             return result;
         }
+    }
+
+    private static boolean isKid(JwtAuthenticationToken jwtAuthenticationToken) {
+        return jwtAuthenticationToken.getToken().getHeaders().containsKey("kid");
     }
 
     // from JwtIssuerAuthenticationManagerResolver
