@@ -7,12 +7,18 @@ import org.springframework.beans.factory.DisposableBean;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Map;
 
 public class JwkSourceMap<C extends SecurityContext> implements Closeable, DisposableBean {
 
     private final Map<String, JWKSource<C>> jwkSources;
     private final Map<String, ListEventListener> jwkEventListeners;
+
+    @Deprecated
+    public JwkSourceMap(Map<String, JWKSource<C>> jwkSources) {
+        this(jwkSources, Collections.emptyMap());
+    }
 
     public JwkSourceMap(Map<String, JWKSource<C>> jwkSources, Map<String, ListEventListener> jwkEventListeners) {
         this.jwkSources = jwkSources;

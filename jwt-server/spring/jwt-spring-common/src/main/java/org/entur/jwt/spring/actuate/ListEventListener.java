@@ -6,15 +6,20 @@ import com.nimbusds.jose.util.events.EventListener;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+/**
+ *
+ * A simple event listener that collects events in a list.
+ *
+ */
 
 public class ListEventListener implements EventListener {
 
-    private List<EventListener> eventListeners = Collections.emptyList();
+    private List<EventListener> eventListeners = new CopyOnWriteArrayList<>();
 
     public void addEventListener(EventListener eventListener) {
-        List<EventListener> newEventListeners = new ArrayList<>(eventListeners);
-        newEventListeners.add(eventListener);
-        this.eventListeners = newEventListeners;
+        eventListeners.add(eventListener);
     }
 
     @Override
