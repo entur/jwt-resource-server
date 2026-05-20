@@ -22,7 +22,7 @@ public class JwkHeaderToIssuerEventListener implements EventListener {
         Set<String> kids = new HashSet<>();
         for (JWK key : jwkSet.getKeys()) {
             String kid = key.getKeyID();
-            if (kid != null && !kid.isBlank()) {
+            if (kid != null) {
                 kids.add(kid);
             }
         }
