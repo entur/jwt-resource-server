@@ -23,9 +23,12 @@ import java.util.concurrent.atomic.AtomicReference;
  * must be registered with that issuer's JWK event bus. Whenever any issuer's JWK set is
  * (re-)loaded the cache recomputes the {@code kid} → issuer mapping.
  *
- * <p>If two issuers share a {@code kid}, that specific kid is excluded from the cache so that
- * lookups for it fall back to full JWT parsing.  Unaffected kids (unique to a single issuer)
- * remain in the cache.
+ * <p>If two issuers share a {@code kid}, caching is disabled for <em>both</em> of those issuers:
+ * none of their kids appear in the cache and lookups for them fall back to full JWT claims
+ * parsing.  Unaffected issuers (whose kids are all unique) remain fully cached.
+ *
+ * <p>Recomputation is skipped when an updated JWK set contains the same set of key IDs as
+ * the previously recorded set for that issuer.
  */
 public class JwtKidIssuerCache {
 
@@ -37,9 +40,9 @@ public class JwtKidIssuerCache {
     private final ConcurrentHashMap<String, JWKSet> jwkSetByIssuer = new ConcurrentHashMap<>();
 
     /**
-     * Atomic snapshot of the current kid → issuer map.  Contains only kids that are unique to a
-     * single issuer.  Kids shared by two or more issuers are absent so callers fall back to full
-     * JWT claim parsing.  Empty map until all issuers have reported at least one JWK set.
+     * Atomic snapshot of the current kid → issuer map.  Contains only kids belonging to
+     * issuers that have no kid conflicts with any other issuer.  Empty map until all issuers
+     * have reported at least one JWK set.
      */
     private final AtomicReference<Map<String, String>> kidToIssuer = new AtomicReference<>(Map.of());
 
@@ -59,8 +62,9 @@ public class JwtKidIssuerCache {
     /**
      * Look up the issuer for a given JWT {@code kid} value.
      *
-     * @return the issuer URL if the kid is uniquely owned by one issuer, or {@code null} if the
-     *         kid is unknown, shared between issuers, or not all issuers have loaded yet.
+     * @return the issuer URL if the kid is uniquely owned by one issuer (and that issuer has no
+     *         other conflicting kids), or {@code null} if the kid is unknown, its issuer shares
+     *         any kid with another issuer, or not all issuers have loaded yet.
      */
     public String lookupIssuer(String kid) {
         return kidToIssuer.get().get(kid);
@@ -69,6 +73,14 @@ public class JwtKidIssuerCache {
     // ---- internal ----------------------------------------------------------
 
     private void onJwkSetUpdated(String issuer, JWKSet jwkSet) {
+        Set<String> newKids = extractKids(jwkSet);
+
+        // Skip recompute if the set of kids for this issuer has not changed.
+        JWKSet previous = jwkSetByIssuer.get(issuer);
+        if (previous != null && extractKids(previous).equals(newKids)) {
+            return;
+        }
+
         jwkSetByIssuer.put(issuer, jwkSet);
         recompute();
     }
@@ -80,32 +92,54 @@ public class JwtKidIssuerCache {
             return;
         }
 
-        Map<String, String> newMap = new HashMap<>();
-        Set<String> conflictingKids = new HashSet<>();
-
+        // Build kid → set-of-issuers index.
+        Map<String, Set<String>> kidToIssuers = new HashMap<>();
         for (Map.Entry<String, JWKSet> entry : jwkSetByIssuer.entrySet()) {
-            String issuer = entry.getKey();
-            for (JWK key : entry.getValue().getKeys()) {
-                String kid = key.getKeyID();
-                if (kid == null || kid.isBlank() || conflictingKids.contains(kid)) {
-                    continue;
-                }
-                String existing = newMap.put(kid, issuer);
-                if (existing != null && !existing.equals(issuer)) {
-                    // Conflict: remove this kid so both issuers fall back to claim parsing.
-                    newMap.remove(kid);
-                    conflictingKids.add(kid);
-                    if (LOGGER.isDebugEnabled()) {
-                        LOGGER.debug("kid '{}' is shared between issuers '{}' and '{}'; disabling kid-based lookup for this kid", kid, existing, issuer);
-                    }
+            for (String kid : extractKids(entry.getValue())) {
+                kidToIssuers.computeIfAbsent(kid, k -> new HashSet<>()).add(entry.getKey());
+            }
+        }
+
+        // Issuers that share at least one kid with another issuer are fully disabled.
+        Set<String> disabledIssuers = new HashSet<>();
+        for (Map.Entry<String, Set<String>> entry : kidToIssuers.entrySet()) {
+            if (entry.getValue().size() > 1) {
+                disabledIssuers.addAll(entry.getValue());
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("kid '{}' is shared between issuers {}; disabling kid-based lookup for all of them",
+                            entry.getKey(), entry.getValue());
                 }
             }
         }
 
+        // Build the final map, excluding every kid from disabled issuers.
+        Map<String, String> newMap = new HashMap<>();
+        for (Map.Entry<String, JWKSet> entry : jwkSetByIssuer.entrySet()) {
+            String issuer = entry.getKey();
+            if (disabledIssuers.contains(issuer)) {
+                continue;
+            }
+            for (String kid : extractKids(entry.getValue())) {
+                newMap.put(kid, issuer);
+            }
+        }
+
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("kid-to-issuer cache updated with {} entries ({} conflicting kids excluded)", newMap.size(), conflictingKids.size());
+            LOGGER.debug("kid-to-issuer cache updated with {} entries ({} issuers disabled due to shared kids)",
+                    newMap.size(), disabledIssuers.size());
         }
         kidToIssuer.set(Map.copyOf(newMap));
+    }
+
+    private static Set<String> extractKids(JWKSet jwkSet) {
+        Set<String> kids = new HashSet<>();
+        for (JWK key : jwkSet.getKeys()) {
+            String kid = key.getKeyID();
+            if (kid != null && !kid.isBlank()) {
+                kids.add(kid);
+            }
+        }
+        return kids;
     }
 
     private final class IssuerRefreshListener implements EventListener {

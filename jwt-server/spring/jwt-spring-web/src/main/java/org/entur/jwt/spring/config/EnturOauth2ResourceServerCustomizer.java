@@ -81,7 +81,8 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
             for (Map.Entry<String, ListEventListener> entry : eventListeners.entrySet()) {
                 entry.getValue().addEventListener(kidIssuerCache.listenerFor(entry.getKey()));
             }
-            configurer.authenticationManagerResolver(new IssuerAuthenticationManagerResolver(map, kidIssuerCache));
+            IssuerAuthenticationManagerResolver issuerResolver = new IssuerAuthenticationManagerResolver(map);
+            configurer.authenticationManagerResolver(new JwtKidCachingAuthenticationManagerResolver(issuerResolver, kidIssuerCache));
         }
     }
 

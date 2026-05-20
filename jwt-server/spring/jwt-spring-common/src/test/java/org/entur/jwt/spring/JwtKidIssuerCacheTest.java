@@ -8,6 +8,7 @@ import com.nimbusds.jose.jwk.source.RefreshAheadCachingJWKSetSource;
 import com.nimbusds.jose.util.Base64URL;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -49,29 +50,42 @@ class JwtKidIssuerCacheTest {
     }
 
     @Test
-    void shouldExcludeOnlyConflictingKidWhenTwoIssuersShareIt() {
+    void shouldDisableBothIssuersWhenTheyShareAKid() {
         JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2));
 
         sendRefreshEvent(cache, ISSUER_1, jwkSet("shared-kid"));
         sendRefreshEvent(cache, ISSUER_2, jwkSet("shared-kid"));
 
-        // The shared kid is excluded (returns null → fall back to claim parsing).
+        // Both issuers are disabled; no kid from either appears in the cache.
         assertThat(cache.lookupIssuer("shared-kid")).isNull();
     }
 
     @Test
-    void shouldKeepUniqueKidsWhenOnlyOneKidIsShared() {
+    void shouldDisableAllKidsOfBothIssuersWhenTheyShareAnyKid() {
         // ISSUER_1 has kid-1 (unique) and shared-kid
         // ISSUER_2 has kid-2 (unique) and shared-kid
-        // Expected: kid-1 → ISSUER_1, kid-2 → ISSUER_2, shared-kid → null
+        // Both issuers are fully disabled because they share at least one kid.
         JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2));
 
         sendRefreshEvent(cache, ISSUER_1, jwkSet("kid-1", "shared-kid"));
         sendRefreshEvent(cache, ISSUER_2, jwkSet("kid-2", "shared-kid"));
 
-        assertThat(cache.lookupIssuer("kid-1")).isEqualTo(ISSUER_1);
-        assertThat(cache.lookupIssuer("kid-2")).isEqualTo(ISSUER_2);
+        assertThat(cache.lookupIssuer("kid-1")).isNull();
+        assertThat(cache.lookupIssuer("kid-2")).isNull();
         assertThat(cache.lookupIssuer("shared-kid")).isNull();
+    }
+
+    @Test
+    void shouldKeepThirdIssuerCachedWhenTwoOtherIssuersShareAKid() {
+        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2, ISSUER_3));
+
+        sendRefreshEvent(cache, ISSUER_1, jwkSet("shared-kid"));
+        sendRefreshEvent(cache, ISSUER_2, jwkSet("shared-kid"));
+        sendRefreshEvent(cache, ISSUER_3, jwkSet("kid-3"));
+
+        // ISSUER_1 and ISSUER_2 are disabled; ISSUER_3 remains cached.
+        assertThat(cache.lookupIssuer("shared-kid")).isNull();
+        assertThat(cache.lookupIssuer("kid-3")).isEqualTo(ISSUER_3);
     }
 
     @Test
@@ -89,7 +103,7 @@ class JwtKidIssuerCacheTest {
     }
 
     @Test
-    void shouldReEnableKidAfterRotationRemovesConflict() {
+    void shouldReEnableIssuersAfterRotationRemovesConflict() {
         JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2));
 
         sendRefreshEvent(cache, ISSUER_1, jwkSet("shared-kid"));
@@ -103,26 +117,26 @@ class JwtKidIssuerCacheTest {
     }
 
     @Test
+    void shouldSkipRecomputeWhenKidsAreUnchanged() {
+        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2));
+
+        sendRefreshEvent(cache, ISSUER_1, jwkSet("kid-1"));
+        sendRefreshEvent(cache, ISSUER_2, jwkSet("kid-2"));
+        assertThat(cache.lookupIssuer("kid-1")).isEqualTo(ISSUER_1);
+
+        // Send same JWK set (same kid) again — cache should remain consistent.
+        sendRefreshEvent(cache, ISSUER_1, jwkSet("kid-1"));
+        assertThat(cache.lookupIssuer("kid-1")).isEqualTo(ISSUER_1);
+        assertThat(cache.lookupIssuer("kid-2")).isEqualTo(ISSUER_2);
+    }
+
+    @Test
     void shouldHandleScheduledRefreshCompletedEvent() {
         JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1));
 
         sendScheduledRefreshEvent(cache, ISSUER_1, jwkSet("kid-1"));
 
         assertThat(cache.lookupIssuer("kid-1")).isEqualTo(ISSUER_1);
-    }
-
-    @Test
-    void shouldCacheThirdIssuerKidEvenIfTwoOtherIssuersShareADifferentKid() {
-        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2, ISSUER_3));
-
-        sendRefreshEvent(cache, ISSUER_1, jwkSet("shared-kid"));
-        sendRefreshEvent(cache, ISSUER_2, jwkSet("shared-kid"));
-        sendRefreshEvent(cache, ISSUER_3, jwkSet("kid-3"));
-
-        // ISSUER_1 and ISSUER_2 share a kid so that kid is excluded.
-        assertThat(cache.lookupIssuer("shared-kid")).isNull();
-        // ISSUER_3's unique kid remains in the cache.
-        assertThat(cache.lookupIssuer("kid-3")).isEqualTo(ISSUER_3);
     }
 
     // ---- helpers -----------------------------------------------------------
@@ -144,7 +158,7 @@ class JwtKidIssuerCacheTest {
     }
 
     private static JWKSet jwkSet(String... kids) {
-        List<JWK> keys = new java.util.ArrayList<>();
+        List<JWK> keys = new ArrayList<>();
         for (String kid : kids) {
             keys.add(new OctetSequenceKey.Builder(new Base64URL("AQIDBAUGBwgJCgsMDQ4PEA")).keyID(kid).build());
         }
