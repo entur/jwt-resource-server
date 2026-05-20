@@ -140,7 +140,7 @@ public class JwtWebFluxSecurityAutoConfiguration {
                     jwtAuthorityEnrichers = enrichers;
                 }
 
-                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers, jwtValidators));
+                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwkSourceMap, jwtAuthorityEnrichers, jwtValidators));
             }
 
             MdcProperties mdc = jwt.getMdc();

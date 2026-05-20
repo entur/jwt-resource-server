@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.entur.jwt.spring.JwtHeaderKidExtractor;
 import org.entur.jwt.spring.JwtIssuerBase64Matcher;
 import org.entur.jwt.spring.JwtIssuerClaimExtractor;
+import org.entur.jwt.spring.JwtKidIssuerCache;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationManagerResolver;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
@@ -15,17 +16,17 @@ import java.util.Map;
 public class IssuerAuthenticationManagerResolver implements AuthenticationManagerResolver<HttpServletRequest> {
 
     private final Map<String, AuthenticationManager> map;
-    private final Map<String, String> kidToIssuer;
+    private final JwtKidIssuerCache kidIssuerCache;
     private final JwtIssuerBase64Matcher matcher;
     private final BearerTokenResolver bearerTokenResolver = new DefaultBearerTokenResolver();
 
     public IssuerAuthenticationManagerResolver(Map<String, AuthenticationManager> map) {
-        this(map, Map.of());
+        this(map, new JwtKidIssuerCache(map.keySet()));
     }
 
-    public IssuerAuthenticationManagerResolver(Map<String, AuthenticationManager> map, Map<String, String> kidToIssuer) {
+    public IssuerAuthenticationManagerResolver(Map<String, AuthenticationManager> map, JwtKidIssuerCache kidIssuerCache) {
         this.map = map;
-        this.kidToIssuer = kidToIssuer;
+        this.kidIssuerCache = kidIssuerCache;
         this.matcher = new JwtIssuerBase64Matcher(map.keySet());
     }
 
@@ -53,13 +54,10 @@ public class IssuerAuthenticationManagerResolver implements AuthenticationManage
     }
 
     private String resolveIssuerByKid(String token) {
-        if (kidToIssuer.isEmpty()) {
-            return null;
-        }
         String keyId = JwtHeaderKidExtractor.extractKid(token);
         if (keyId == null) {
             return null;
         }
-        return kidToIssuer.get(keyId);
+        return kidIssuerCache.lookupIssuer(keyId);
     }
 }

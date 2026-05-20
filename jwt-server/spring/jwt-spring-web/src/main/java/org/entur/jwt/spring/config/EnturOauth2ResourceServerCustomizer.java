@@ -7,7 +7,9 @@ import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import org.entur.jwt.spring.EnrichedJwtGrantedAuthoritiesConverter;
 import org.entur.jwt.spring.JwtAuthorityEnricher;
-import org.entur.jwt.spring.JwtIssuerKidMapFactory;
+import org.entur.jwt.spring.JwtKidIssuerCache;
+import org.entur.jwt.spring.JwkSourceMap;
+import org.entur.jwt.spring.actuate.ListEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -31,18 +33,20 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
 
     private static Logger LOGGER = LoggerFactory.getLogger(EnturOauth2ResourceServerCustomizer.class);
 
-    private final Map<String, JWKSource> jwkSources;
+    private final JwkSourceMap jwkSourceMap;
     private final List<JwtAuthorityEnricher> jwtAuthorityEnrichers;
     private final List<OAuth2TokenValidator<Jwt>> jwtValidators;
 
-    public EnturOauth2ResourceServerCustomizer(Map<String, JWKSource> jwkSources, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators) {
-        this.jwkSources = jwkSources;
+    public EnturOauth2ResourceServerCustomizer(JwkSourceMap jwkSourceMap, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators) {
+        this.jwkSourceMap = jwkSourceMap;
         this.jwtAuthorityEnrichers = jwtAuthorityEnrichers;
         this.jwtValidators = jwtValidators;
     }
 
     @Override
     public void customize(OAuth2ResourceServerConfigurer<HttpSecurity> configurer) {
+
+        Map<String, JWKSource> jwkSources = jwkSourceMap.getJwkSources();
 
         if(LOGGER.isDebugEnabled()) LOGGER.debug("Customize {} issuers", jwkSources.size());
 
@@ -71,8 +75,13 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
             AuthenticationManager next = map.values().iterator().next();
             configurer.authenticationManagerResolver(request -> next);
         } else {
-            Map<String, String> kidToIssuer = JwtIssuerKidMapFactory.createKidToIssuer(jwkSources);
-            configurer.authenticationManagerResolver(new IssuerAuthenticationManagerResolver(map, kidToIssuer));
+            JwtKidIssuerCache kidIssuerCache = new JwtKidIssuerCache(jwkSources.keySet());
+            @SuppressWarnings("unchecked")
+            Map<String, ListEventListener> eventListeners = jwkSourceMap.getJwkEventListeners();
+            for (Map.Entry<String, ListEventListener> entry : eventListeners.entrySet()) {
+                entry.getValue().addEventListener(kidIssuerCache.listenerFor(entry.getKey()));
+            }
+            configurer.authenticationManagerResolver(new IssuerAuthenticationManagerResolver(map, kidIssuerCache));
         }
     }
 
