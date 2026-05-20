@@ -7,6 +7,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jose.util.DefaultResourceRetriever;
 import org.entur.jwt.spring.actuate.DefaultJwksHealthIndicator;
 import org.entur.jwt.spring.actuate.JwkSetSourceEventListener;
+import org.entur.jwt.spring.actuate.ListEventListener;
 import org.entur.jwt.spring.actuate.ListJwksHealthIndicator;
 import org.entur.jwt.spring.properties.jwk.JwkCacheProperties;
 import org.entur.jwt.spring.properties.jwk.JwkLocationProperties;
@@ -28,9 +29,9 @@ public class JwkSourceMapFactory<C> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JwkSourceMapFactory.class);
 
-
     public JwkSourceMap getJwkSourceMap(Map<String, JwtTenantProperties> tenants, JwkProperties jwkConfiguration, ListJwksHealthIndicator listJwksHealthIndicator) {
         Map<String, JWKSource> jwkSources = new HashMap<>();
+        Map<String, ListEventListener> jwkEventListeners = new HashMap<>();
 
         for (Map.Entry<String, JwtTenantProperties> entry : tenants.entrySet()) {
             JwtTenantProperties tenantConfiguration = entry.getValue();
@@ -55,7 +56,8 @@ public class JwkSourceMapFactory<C> {
                 throw new IllegalArgumentException("Invalid location " + tenantJwkConfiguration.getLocation() + " for " + entry.getKey());
             }
 
-            JwkSetSourceEventListener eventListener = new JwkSetSourceEventListener(entry.getKey());
+            ListEventListener eventListener = new ListEventListener();
+            eventListener.addEventListener(new JwkSetSourceEventListener(entry.getKey()));
 
             int connectTimeout = jwkConfiguration.getConnectTimeout();
             int readTimeout = jwkConfiguration.getReadTimeout();
@@ -121,9 +123,10 @@ public class JwkSourceMapFactory<C> {
             }
 
             jwkSources.put(tenantConfiguration.getIssuer(), jwkSource);
+            jwkEventListeners.put(tenantConfiguration.getIssuer(), eventListener);
         }
 
-        return new JwkSourceMap(jwkSources);
+        return new JwkSourceMap(jwkSources, jwkEventListeners);
     }
 
 
