@@ -10,7 +10,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  *
- * A simple event listener that collects events in a list.
+ * A simple event listener that maintains a list of event listeners and
+ * delegates incoming events to each registered listener.
  *
  */
 
