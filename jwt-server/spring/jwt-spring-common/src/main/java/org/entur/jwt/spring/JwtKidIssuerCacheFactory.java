@@ -58,7 +58,7 @@ public class JwtKidIssuerCacheFactory {
 
     // ---- internal ----------------------------------------------------------
 
-    void onJwkSetUpdated(String issuer, JWKSet jwkSet) {
+    public void onJwkSetUpdated(String issuer, JWKSet jwkSet) {
         Set<String> newKids = extractKids(jwkSet);
 
         // Skip recompute if the set of kids for this issuer has not changed.

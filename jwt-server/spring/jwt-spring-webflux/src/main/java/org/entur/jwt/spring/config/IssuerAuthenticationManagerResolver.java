@@ -7,15 +7,21 @@ import org.springframework.security.authentication.ReactiveAuthenticationManager
 import reactor.core.publisher.Mono;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class IssuerAuthenticationManagerResolver implements ReactiveAuthenticationManagerResolver<String> {
 
     private static Logger LOGGER = LoggerFactory.getLogger(IssuerAuthenticationManagerResolver.class);
 
-    private final Map<String, ReactiveAuthenticationManager> map;
+    private final ConcurrentHashMap<String, ReactiveAuthenticationManager> map;
 
     public IssuerAuthenticationManagerResolver(Map<String, ReactiveAuthenticationManager> map) {
-        this.map = map;
+        this.map = new ConcurrentHashMap<>(map);
+    }
+
+    /** Replaces or adds the {@link ReactiveAuthenticationManager} for the given issuer. */
+    public void updateManager(String issuer, ReactiveAuthenticationManager manager) {
+        map.put(issuer, manager);
     }
 
     @Override

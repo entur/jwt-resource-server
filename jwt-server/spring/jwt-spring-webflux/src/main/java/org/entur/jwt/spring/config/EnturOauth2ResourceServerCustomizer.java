@@ -1,16 +1,14 @@
 package org.entur.jwt.spring.config;
 
-import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
-import com.nimbusds.jose.proc.BadJOSEException;
 import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
-import com.nimbusds.jwt.JWT;
-import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
-import com.nimbusds.jwt.proc.JWTProcessor;
 import org.entur.jwt.spring.EnrichedJwtGrantedAuthoritiesConverter;
+import org.entur.jwt.spring.IssuerJwkContext;
 import org.entur.jwt.spring.JwtAuthorityEnricher;
 import org.entur.jwt.spring.JwtKidIssuerCacheFactory;
 import org.entur.jwt.spring.JwkSourceMap;
@@ -23,9 +21,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
-import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
@@ -75,7 +71,7 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHtt
 
             NimbusReactiveJwtDecoder decoder = new NimbusReactiveJwtDecoder(reactiveConverter);
 
-            decoder.setJwtValidator(getJwtValidators(entry));
+            decoder.setJwtValidator(getJwtValidators(entry.getKey()));
 
             JwtReactiveAuthenticationManager jwtReactiveAuthenticationManager = new JwtReactiveAuthenticationManager(decoder);
 
@@ -93,31 +89,46 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHtt
             configurer.authenticationManagerResolver(request -> authenticationManager);
         } else {
             JwtKidIssuerCacheFactory kidIssuerCacheFactory = new JwtKidIssuerCacheFactory(jwkSources.keySet());
+            IssuerAuthenticationManagerResolver issuerResolver = new IssuerAuthenticationManagerResolver(map);
             @SuppressWarnings("unchecked")
             Map<String, ListEventListener> eventListeners = jwkSourceMap.getJwkEventListeners();
             for (Map.Entry<String, ListEventListener> entry : eventListeners.entrySet()) {
-                entry.getValue().addEventListener(kidIssuerCacheFactory.listenerFor(entry.getKey()));
+                String issuer = entry.getKey();
+                IssuerJwkContext context = new IssuerJwkContext(
+                        issuer,
+                        kidIssuerCacheFactory::onJwkSetUpdated,
+                        (iss, jwkSet) -> issuerResolver.updateManager(iss, buildManagerFromJwkSet(iss, jwkSet)));
+                entry.getValue().addEventListener(context.getEventListener());
             }
-            IssuerAuthenticationManagerResolver issuerResolver = new IssuerAuthenticationManagerResolver(map);
             configurer.authenticationManagerResolver(new JwtKidCachingReactiveAuthenticationManagerResolver(issuerResolver, kidIssuerCacheFactory.getCache()));
         }
     }
 
-    private static <C extends SecurityContext> JWTClaimsSet createClaimsSet(JWTProcessor<C> jwtProcessor,
-                                                                            JWT parsedToken, C context) {
-        try {
-            return jwtProcessor.process(parsedToken, context);
-        } catch (BadJOSEException ex) {
-            throw new BadJwtException("Failed to validate the token", ex);
-        } catch (JOSEException ex) {
-            throw new JwtException("Failed to validate the token", ex);
-        }
+    private ReactiveAuthenticationManager buildManagerFromJwkSet(String issuer, JWKSet jwkSet) {
+        ImmutableJWKSet<SecurityContext> immutableJwkSet = new ImmutableJWKSet<>(jwkSet);
+        JWSVerificationKeySelector verificationKeySelector = new JWSVerificationKeySelector(JWSAlgorithm.Family.SIGNATURE, immutableJwkSet);
+
+        DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
+        jwtProcessor.setJWSKeySelector(verificationKeySelector);
+        jwtProcessor.setJWTClaimsSetVerifier((claims, context) -> {});
+
+        ReactiveJwtMonoConverter reactiveConverter = new ReactiveJwtMonoConverter(jwtProcessor, verificationKeySelector);
+
+        NimbusReactiveJwtDecoder decoder = new NimbusReactiveJwtDecoder(reactiveConverter);
+        decoder.setJwtValidator(getJwtValidators(issuer));
+
+        JwtReactiveAuthenticationManager mgr = new JwtReactiveAuthenticationManager(decoder);
+
+        JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
+        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(new EnrichedJwtGrantedAuthoritiesConverter(jwtAuthorityEnrichers));
+        mgr.setJwtAuthenticationConverter(new ReactiveJwtAuthenticationConverterAdapter(jwtAuthenticationConverter));
+
+        return mgr;
     }
 
-
-    private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(Map.Entry<String, JWKSource> entry) {
+    private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(String issuer) {
         List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();
-        validators.add(new JwtIssuerValidator(entry.getKey()));
+        validators.add(new JwtIssuerValidator(issuer));
         validators.addAll(jwtValidators);
         DelegatingOAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(validators);
         return validator;
