@@ -56,7 +56,7 @@ public class JwkSourceMapFactory<C> {
                 throw new IllegalArgumentException("Invalid location " + tenantJwkConfiguration.getLocation() + " for " + entry.getKey());
             }
 
-            ListEventListener eventListener  = new ListEventListener();
+            ListEventListener eventListener = new ListEventListener();
             eventListener.addEventListener(new JwkSetSourceEventListener(entry.getKey()));
 
             int connectTimeout = jwkConfiguration.getConnectTimeout();
