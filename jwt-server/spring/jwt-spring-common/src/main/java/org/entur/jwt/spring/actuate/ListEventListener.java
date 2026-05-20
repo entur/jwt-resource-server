@@ -17,7 +17,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ListEventListener implements EventListener {
 
-    private List<EventListener> eventListeners = new CopyOnWriteArrayList<>();
+    private final List<EventListener> eventListeners = new CopyOnWriteArrayList<>();
 
     public void addEventListener(EventListener eventListener) {
         eventListeners.add(eventListener);
