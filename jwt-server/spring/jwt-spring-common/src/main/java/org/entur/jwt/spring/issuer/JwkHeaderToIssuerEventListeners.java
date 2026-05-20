@@ -15,13 +15,13 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  */
 
-public class JwkHeaderToIssuerContexts {
+public class JwkHeaderToIssuerEventListeners {
 
     protected final int requiredSize;
     protected final ConcurrentHashMap<String, Set<String>> issuerKids = new ConcurrentHashMap<>();
     protected final JwtHeaderToIssuerMapper mapper;
 
-    public JwkHeaderToIssuerContexts(int requiredSize, JwtHeaderToIssuerMapper mapper) {
+    public JwkHeaderToIssuerEventListeners(int requiredSize, JwtHeaderToIssuerMapper mapper) {
         this.requiredSize = requiredSize;
         this.mapper = mapper;
     }

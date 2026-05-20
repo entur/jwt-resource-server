@@ -8,8 +8,8 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import org.entur.jwt.spring.EnrichedJwtGrantedAuthoritiesConverter;
 import org.entur.jwt.spring.JwtAuthorityEnricher;
 import org.entur.jwt.spring.actuate.ListEventListener;
-import org.entur.jwt.spring.issuer.JwkHeaderToIssuerContext;
-import org.entur.jwt.spring.issuer.JwkHeaderToIssuerContexts;
+import org.entur.jwt.spring.issuer.JwkHeaderToIssuerEventListener;
+import org.entur.jwt.spring.issuer.JwkHeaderToIssuerEventListeners;
 import org.entur.jwt.spring.issuer.JwtHeaderToIssuerMapper;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
@@ -68,16 +68,14 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
 
             JwtHeaderToIssuerMapper mapper = new JwtHeaderToIssuerMapper();
 
-            JwkHeaderToIssuerContexts contexts = new JwkHeaderToIssuerContexts(jwkSources.size(), mapper);
+            JwkHeaderToIssuerEventListeners contexts = new JwkHeaderToIssuerEventListeners(jwkSources.size(), mapper);
 
             for (Map.Entry<String, JWKSource> entry : jwkSources.entrySet()) {
                 JWKSource jwkSource = entry.getValue();
                 String issuer = entry.getKey();
 
                 ListEventListener listEventListener = jwkEventListeners.get(issuer);
-
-                JwkHeaderToIssuerContext context = new JwkHeaderToIssuerContext(issuer, contexts);
-                listEventListener.addEventListener(context);
+                listEventListener.addEventListener(new JwkHeaderToIssuerEventListener(issuer, contexts));
 
                 JwtAuthenticationProvider authenticationProvider = getJwtAuthenticationProvider(issuer, jwkSource);
 

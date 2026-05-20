@@ -9,12 +9,10 @@ import com.nimbusds.jwt.JWTParser;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import org.entur.jwt.spring.JwkSourceMap;
 import org.entur.jwt.spring.actuate.ListEventListener;
-import org.entur.jwt.spring.issuer.JwkHeaderToIssuerContext;
-import org.entur.jwt.spring.issuer.JwkHeaderToIssuerContexts;
+import org.entur.jwt.spring.issuer.JwkHeaderToIssuerEventListener;
+import org.entur.jwt.spring.issuer.JwkHeaderToIssuerEventListeners;
 import org.entur.jwt.spring.issuer.JwtHeaderToIssuerMapper;
 import org.jspecify.annotations.NonNull;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.BadJwtException;
@@ -75,7 +73,7 @@ public class IssuerJwtDecoder implements JwtDecoder {
             Map<String, ListEventListener> jwkEventListeners = jwkSourceMap.getJwkEventListeners();
 
             JwtHeaderToIssuerMapper mapper =  new JwtHeaderToIssuerMapper();
-            JwkHeaderToIssuerContexts contexts = new JwkHeaderToIssuerContexts(jwkSources.size(), mapper);
+            JwkHeaderToIssuerEventListeners listeners = new JwkHeaderToIssuerEventListeners(jwkSources.size(), mapper);
 
             Map<String, JwtDecoder> map = new HashMap<>(jwkSources.size() * 4);
 
@@ -84,9 +82,7 @@ public class IssuerJwtDecoder implements JwtDecoder {
                 String issuer = entry.getKey();
 
                 ListEventListener listEventListener = jwkEventListeners.get(issuer);
-
-                JwkHeaderToIssuerContext context = new JwkHeaderToIssuerContext(issuer, contexts);
-                listEventListener.addEventListener(context);
+                listEventListener.addEventListener(new JwkHeaderToIssuerEventListener(issuer, listeners));
 
                 NimbusJwtDecoder nimbusJwtDecoder = getNimbusJwtDecoder(issuer, jwkSource);
 

@@ -16,7 +16,7 @@ import java.util.Set;
  * most-recently-seen {@link JWKSet} for its issuer.
  *
  */
-public class JwkHeaderToIssuerContext implements EventListener {
+public class JwkHeaderToIssuerEventListener implements EventListener {
 
     public static Set<String> extractKids(JWKSet jwkSet) {
         Set<String> kids = new HashSet<>();
@@ -30,12 +30,12 @@ public class JwkHeaderToIssuerContext implements EventListener {
     }
 
     protected final String issuer;
-    protected final JwkHeaderToIssuerContexts contexts;
+    protected final JwkHeaderToIssuerEventListeners listeners;
     protected volatile Set<String> lastKids = Collections.emptySet();
 
-    public JwkHeaderToIssuerContext(String issuer, JwkHeaderToIssuerContexts contexts) {
+    public JwkHeaderToIssuerEventListener(String issuer, JwkHeaderToIssuerEventListeners listeners) {
         this.issuer = issuer;
-        this.contexts  = contexts;
+        this.listeners = listeners;
     }
 
     /** Returns the issuer URL this context belongs to. */
@@ -62,7 +62,7 @@ public class JwkHeaderToIssuerContext implements EventListener {
             return;
         }
         lastKids = newKids;
-        contexts.setIssuerJwkKids(issuer, newKids);
+        listeners.setIssuerJwkKids(issuer, newKids);
     }
 
 }
