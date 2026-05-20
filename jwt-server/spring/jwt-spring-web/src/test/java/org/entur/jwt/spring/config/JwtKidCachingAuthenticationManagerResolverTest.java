@@ -128,17 +128,20 @@ class JwtKidCachingAuthenticationManagerResolverTest {
 
     /** Returns a cache backed by a factory with no events sent yet (empty kid map). */
     private static JwtKidIssuerCache emptyCache(Set<String> issuers) {
-        return new JwtKidIssuerCacheFactory(issuers).getCache();
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory();
+        issuers.forEach(factory::createContext);
+        return factory.getCache();
     }
 
     @SuppressWarnings("unchecked")
     private static JwtKidIssuerCache cacheWithKids(Set<String> issuers, Map<String, String> issuerToKid) {
-        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(issuers);
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory();
+        issuers.forEach(factory::createContext);
         for (Map.Entry<String, String> entry : issuerToKid.entrySet()) {
             CachingJWKSetSource.RefreshCompletedEvent<?> event =
                     mock(CachingJWKSetSource.RefreshCompletedEvent.class);
             when(event.getJWKSet()).thenReturn(jwkSet(entry.getValue()));
-            factory.listenerFor(entry.getKey()).notify(event);
+            factory.createContext(entry.getKey()).notify(event);
         }
         return factory.getCache();
     }

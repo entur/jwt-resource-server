@@ -1,46 +1,41 @@
 package org.entur.jwt.spring;
 
+import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
+import com.nimbusds.jose.jwk.source.RefreshAheadCachingJWKSetSource;
+import com.nimbusds.jose.util.events.Event;
 import com.nimbusds.jose.util.events.EventListener;
 
-import java.util.function.BiConsumer;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
- * Per-issuer context that binds an issuer string to an {@link IssuerRefreshListener} and
- * tracks the most-recently-seen {@link JWKSet} for that issuer.
+ * Per-issuer context that acts directly as a JWK-set {@link EventListener} and tracks the
+ * most-recently-seen {@link JWKSet} for its issuer.
  *
- * <p>When a JWK-set refresh event arrives via {@link #getEventListener()}:
+ * <p>When a JWK-set refresh event arrives:
  * <ol>
- *   <li>The {@link JWKSet} snapshot is stored in {@link #getCurrentJwkSet()}.</li>
- *   <li>The kid-cache callback ({@code kidCacheCallback}) is invoked, keeping the
- *       {@link JwtKidIssuerCache} up to date.</li>
- *   <li>The manager-update callback ({@code managerCallback}) is invoked, allowing callers
- *       to rebuild and replace the per-issuer authentication manager.</li>
+ *   <li>The new {@link JWKSet} is stored in {@link #getCurrentJwkSet()}.</li>
+ *   <li>If the set of key IDs has changed, the {@code onUpdate} callback supplied at
+ *       construction time is invoked so that the {@link JwtKidIssuerCache} can be
+ *       recomputed.</li>
  * </ol>
  *
- * <p>Register {@link #getEventListener()} with the issuer's JWK event bus (e.g. via
- * {@link org.entur.jwt.spring.actuate.ListEventListener#addEventListener}).
+ * <p>Instances are created by {@link JwtKidIssuerCacheFactory#createContext(String)}.
+ * Register the instance itself as an event listener via
+ * {@link org.entur.jwt.spring.actuate.ListEventListener#addEventListener}.
  */
-public class IssuerJwkContext {
+public class IssuerJwkContext implements EventListener {
 
     private final String issuer;
-    private final IssuerRefreshListener issuerRefreshListener;
+    private final Runnable onUpdate;
     private volatile JWKSet currentJwkSet;
+    private volatile Set<String> lastKids = Set.of();
 
-    /**
-     * @param issuer            the issuer URL this context belongs to
-     * @param kidCacheCallback  called with {@code (issuer, jwkSet)} to update the kid→issuer cache
-     * @param managerCallback   called with {@code (issuer, jwkSet)} to update the authentication manager
-     */
-    public IssuerJwkContext(String issuer,
-                            BiConsumer<String, JWKSet> kidCacheCallback,
-                            BiConsumer<String, JWKSet> managerCallback) {
+    IssuerJwkContext(String issuer, Runnable onUpdate) {
         this.issuer = issuer;
-        this.issuerRefreshListener = new IssuerRefreshListener(issuer, (iss, jwkSet) -> {
-            this.currentJwkSet = jwkSet;
-            kidCacheCallback.accept(iss, jwkSet);
-            managerCallback.accept(iss, jwkSet);
-        });
+        this.onUpdate = onUpdate;
     }
 
     /** Returns the issuer URL this context belongs to. */
@@ -49,18 +44,40 @@ public class IssuerJwkContext {
     }
 
     /**
-     * Returns the {@link EventListener} to register with the issuer's JWK event bus.
-     * This is the {@link IssuerRefreshListener} created at construction time.
-     */
-    public EventListener getEventListener() {
-        return issuerRefreshListener;
-    }
-
-    /**
-     * Returns the most-recently-received {@link JWKSet} for this issuer, or {@code null}
-     * if no JWK-set refresh event has been received yet.
+     * Returns the most-recently-received {@link JWKSet}, or {@code null} if no refresh
+     * event has been received yet.
      */
     public JWKSet getCurrentJwkSet() {
         return currentJwkSet;
+    }
+
+    @Override
+    public void notify(Event event) {
+        if (event instanceof CachingJWKSetSource.RefreshCompletedEvent<?> e) {
+            onJwkSetReceived(e.getJWKSet());
+        } else if (event instanceof RefreshAheadCachingJWKSetSource.ScheduledRefreshCompletedEvent<?> e) {
+            onJwkSetReceived(e.getJWKSet());
+        }
+    }
+
+    private void onJwkSetReceived(JWKSet jwkSet) {
+        Set<String> newKids = extractKids(jwkSet);
+        if (newKids.equals(lastKids)) {
+            return;
+        }
+        currentJwkSet = jwkSet;
+        lastKids = newKids;
+        onUpdate.run();
+    }
+
+    static Set<String> extractKids(JWKSet jwkSet) {
+        Set<String> kids = new HashSet<>();
+        for (JWK key : jwkSet.getKeys()) {
+            String kid = key.getKeyID();
+            if (kid != null && !kid.isBlank()) {
+                kids.add(kid);
+            }
+        }
+        return kids;
     }
 }

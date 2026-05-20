@@ -1,8 +1,6 @@
 package org.entur.jwt.spring.config;
 
 import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
@@ -88,42 +86,16 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHtt
             Mono<ReactiveAuthenticationManager> authenticationManager = Mono.just(next);
             configurer.authenticationManagerResolver(request -> authenticationManager);
         } else {
-            JwtKidIssuerCacheFactory kidIssuerCacheFactory = new JwtKidIssuerCacheFactory(jwkSources.keySet());
-            IssuerAuthenticationManagerResolver issuerResolver = new IssuerAuthenticationManagerResolver(map);
+            JwtKidIssuerCacheFactory kidIssuerCacheFactory = new JwtKidIssuerCacheFactory();
             @SuppressWarnings("unchecked")
             Map<String, ListEventListener> eventListeners = jwkSourceMap.getJwkEventListeners();
             for (Map.Entry<String, ListEventListener> entry : eventListeners.entrySet()) {
-                String issuer = entry.getKey();
-                IssuerJwkContext context = new IssuerJwkContext(
-                        issuer,
-                        kidIssuerCacheFactory::onJwkSetUpdated,
-                        (iss, jwkSet) -> issuerResolver.updateManager(iss, buildManagerFromJwkSet(iss, jwkSet)));
-                entry.getValue().addEventListener(context.getEventListener());
+                IssuerJwkContext context = kidIssuerCacheFactory.createContext(entry.getKey());
+                entry.getValue().addEventListener(context);
             }
+            IssuerAuthenticationManagerResolver issuerResolver = new IssuerAuthenticationManagerResolver(map);
             configurer.authenticationManagerResolver(new JwtKidCachingReactiveAuthenticationManagerResolver(issuerResolver, kidIssuerCacheFactory.getCache()));
         }
-    }
-
-    private ReactiveAuthenticationManager buildManagerFromJwkSet(String issuer, JWKSet jwkSet) {
-        ImmutableJWKSet<SecurityContext> immutableJwkSet = new ImmutableJWKSet<>(jwkSet);
-        JWSVerificationKeySelector verificationKeySelector = new JWSVerificationKeySelector(JWSAlgorithm.Family.SIGNATURE, immutableJwkSet);
-
-        DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
-        jwtProcessor.setJWSKeySelector(verificationKeySelector);
-        jwtProcessor.setJWTClaimsSetVerifier((claims, context) -> {});
-
-        ReactiveJwtMonoConverter reactiveConverter = new ReactiveJwtMonoConverter(jwtProcessor, verificationKeySelector);
-
-        NimbusReactiveJwtDecoder decoder = new NimbusReactiveJwtDecoder(reactiveConverter);
-        decoder.setJwtValidator(getJwtValidators(issuer));
-
-        JwtReactiveAuthenticationManager mgr = new JwtReactiveAuthenticationManager(decoder);
-
-        JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(new EnrichedJwtGrantedAuthoritiesConverter(jwtAuthorityEnrichers));
-        mgr.setJwtAuthenticationConverter(new ReactiveJwtAuthenticationConverterAdapter(jwtAuthenticationConverter));
-
-        return mgr;
     }
 
     private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(String issuer) {

@@ -15,7 +15,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -29,14 +28,17 @@ class JwtKidIssuerCacheTest {
 
     @Test
     void shouldReturnNullBeforeAnyJwkSetsAreLoaded() {
-        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory();
+        factory.createContext(ISSUER_1);
+        factory.createContext(ISSUER_2);
 
         assertThat(factory.getCache().lookupIssuer(tokenForKid("kid-1"))).isNull();
     }
 
     @Test
     void shouldReturnNullUntilAllIssuersHaveReported() {
-        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory();
+        factory.createContext(ISSUER_2); // pre-register so factory knows it hasn't loaded yet
 
         sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1"));
 
@@ -45,7 +47,7 @@ class JwtKidIssuerCacheTest {
 
     @Test
     void shouldActivateCacheOnceAllIssuersHaveReported() {
-        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory();
 
         sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1"));
         sendRefreshEvent(factory, ISSUER_2, jwkSet("kid-2"));
@@ -57,7 +59,7 @@ class JwtKidIssuerCacheTest {
 
     @Test
     void shouldDisableBothIssuersWhenTheyShareAKid() {
-        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory();
 
         sendRefreshEvent(factory, ISSUER_1, jwkSet("shared-kid"));
         sendRefreshEvent(factory, ISSUER_2, jwkSet("shared-kid"));
@@ -71,7 +73,7 @@ class JwtKidIssuerCacheTest {
         // ISSUER_1 has kid-1 (unique) and shared-kid
         // ISSUER_2 has kid-2 (unique) and shared-kid
         // Both issuers are fully disabled because they share at least one kid.
-        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory();
 
         sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1", "shared-kid"));
         sendRefreshEvent(factory, ISSUER_2, jwkSet("kid-2", "shared-kid"));
@@ -84,7 +86,7 @@ class JwtKidIssuerCacheTest {
 
     @Test
     void shouldKeepThirdIssuerCachedWhenTwoOtherIssuersShareAKid() {
-        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2, ISSUER_3));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory();
 
         sendRefreshEvent(factory, ISSUER_1, jwkSet("shared-kid"));
         sendRefreshEvent(factory, ISSUER_2, jwkSet("shared-kid"));
@@ -98,7 +100,7 @@ class JwtKidIssuerCacheTest {
 
     @Test
     void shouldUpdateCacheWhenJwkSetChanges() {
-        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory();
 
         sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1"));
         sendRefreshEvent(factory, ISSUER_2, jwkSet("kid-2"));
@@ -114,7 +116,7 @@ class JwtKidIssuerCacheTest {
 
     @Test
     void shouldReEnableIssuersAfterRotationRemovesConflict() {
-        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory();
 
         sendRefreshEvent(factory, ISSUER_1, jwkSet("shared-kid"));
         sendRefreshEvent(factory, ISSUER_2, jwkSet("shared-kid"));
@@ -130,7 +132,7 @@ class JwtKidIssuerCacheTest {
 
     @Test
     void shouldSkipRecomputeWhenKidsAreUnchanged() {
-        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory();
 
         sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1"));
         sendRefreshEvent(factory, ISSUER_2, jwkSet("kid-2"));
@@ -146,7 +148,7 @@ class JwtKidIssuerCacheTest {
 
     @Test
     void shouldHandleScheduledRefreshCompletedEvent() {
-        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory();
 
         sendScheduledRefreshEvent(factory, ISSUER_1, jwkSet("kid-1"));
 
@@ -155,7 +157,7 @@ class JwtKidIssuerCacheTest {
 
     @Test
     void shouldLookupIssuerByTokenOnFirstCall() {
-        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory();
         sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1"));
         sendRefreshEvent(factory, ISSUER_2, jwkSet("kid-2"));
 
@@ -164,7 +166,7 @@ class JwtKidIssuerCacheTest {
 
     @Test
     void shouldCacheRawHeaderOnFirstLookupAndReturnDirectlyOnSubsequentCall() {
-        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory();
         sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1"));
         sendRefreshEvent(factory, ISSUER_2, jwkSet("kid-2"));
 
@@ -178,7 +180,7 @@ class JwtKidIssuerCacheTest {
 
     @Test
     void shouldClearRawHeaderCacheOnKeyRotation() {
-        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory();
         sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1"));
         sendRefreshEvent(factory, ISSUER_2, jwkSet("kid-2"));
 
@@ -197,7 +199,7 @@ class JwtKidIssuerCacheTest {
 
     @Test
     void shouldReturnNullForTokenWithNoKidInHeader() {
-        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory();
         sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1"));
 
         // Token whose header has no kid field.
@@ -213,7 +215,7 @@ class JwtKidIssuerCacheTest {
         CachingJWKSetSource.RefreshCompletedEvent<?> event =
                 mock(CachingJWKSetSource.RefreshCompletedEvent.class);
         when(event.getJWKSet()).thenReturn(jwkSet);
-        factory.listenerFor(issuer).notify(event);
+        factory.createContext(issuer).notify(event);
     }
 
     @SuppressWarnings("unchecked")
@@ -221,7 +223,7 @@ class JwtKidIssuerCacheTest {
         RefreshAheadCachingJWKSetSource.ScheduledRefreshCompletedEvent<?> event =
                 mock(RefreshAheadCachingJWKSetSource.ScheduledRefreshCompletedEvent.class);
         when(event.getJWKSet()).thenReturn(jwkSet);
-        factory.listenerFor(issuer).notify(event);
+        factory.createContext(issuer).notify(event);
     }
 
     static JWKSet jwkSet(String... kids) {
