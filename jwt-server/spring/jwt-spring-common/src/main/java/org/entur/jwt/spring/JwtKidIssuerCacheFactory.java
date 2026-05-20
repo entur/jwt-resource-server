@@ -2,9 +2,6 @@ package org.entur.jwt.spring;
 
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
-import com.nimbusds.jose.jwk.source.RefreshAheadCachingJWKSetSource;
-import com.nimbusds.jose.util.events.Event;
 import com.nimbusds.jose.util.events.EventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,12 +53,12 @@ public class JwtKidIssuerCacheFactory {
      * into this factory, keeping the cache up to date.
      */
     public EventListener listenerFor(String issuer) {
-        return new IssuerRefreshListener(issuer);
+        return new IssuerRefreshListener(issuer, this::onJwkSetUpdated);
     }
 
     // ---- internal ----------------------------------------------------------
 
-    private void onJwkSetUpdated(String issuer, JWKSet jwkSet) {
+    void onJwkSetUpdated(String issuer, JWKSet jwkSet) {
         Set<String> newKids = extractKids(jwkSet);
 
         // Skip recompute if the set of kids for this issuer has not changed.
@@ -131,21 +128,4 @@ public class JwtKidIssuerCacheFactory {
         return kids;
     }
 
-    private final class IssuerRefreshListener implements EventListener {
-
-        private final String issuer;
-
-        IssuerRefreshListener(String issuer) {
-            this.issuer = issuer;
-        }
-
-        @Override
-        public void notify(Event event) {
-            if (event instanceof CachingJWKSetSource.RefreshCompletedEvent<?> refreshEvent) {
-                onJwkSetUpdated(issuer, refreshEvent.getJWKSet());
-            } else if (event instanceof RefreshAheadCachingJWKSetSource.ScheduledRefreshCompletedEvent<?> scheduledEvent) {
-                onJwkSetUpdated(issuer, scheduledEvent.getJWKSet());
-            }
-        }
-    }
 }
