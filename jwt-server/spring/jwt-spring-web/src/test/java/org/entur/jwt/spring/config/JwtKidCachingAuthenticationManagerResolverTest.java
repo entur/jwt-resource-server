@@ -92,6 +92,34 @@ class JwtKidCachingAuthenticationManagerResolverTest {
         org.mockito.Mockito.verify(second).authenticate(token);
     }
 
+    @Test
+    void shouldUseRawHeaderCacheOnSecondCallForSameToken() {
+        AuthenticationManager first = mock(AuthenticationManager.class);
+        AuthenticationManager second = mock(AuthenticationManager.class);
+        Map<String, AuthenticationManager> managers = Map.of(
+                "https://issuer-1.example", first,
+                "https://issuer-2.example", second);
+
+        JwtKidIssuerCache cache = cacheWithKids(managers.keySet(),
+                Map.of("https://issuer-1.example", "kid-1", "https://issuer-2.example", "kid-2"));
+
+        IssuerAuthenticationManagerResolver issuerResolver = new IssuerAuthenticationManagerResolver(managers);
+        JwtKidCachingAuthenticationManagerResolver resolver =
+                new JwtKidCachingAuthenticationManagerResolver(issuerResolver, cache);
+
+        // Token with kid=kid-1 and no iss claim.
+        BearerTokenAuthenticationToken token = new BearerTokenAuthenticationToken(
+                token("{}", "{\"alg\":\"RS256\",\"kid\":\"kid-1\"}"));
+        AuthenticationManager manager = resolver.resolve(mock(HttpServletRequest.class));
+
+        when(first.authenticate(token)).thenReturn(null);
+        // First call: tier-2 (kid extraction from raw header, populates tier-1).
+        manager.authenticate(token);
+        // Second call: tier-1 (raw header string lookup, no parsing needed).
+        manager.authenticate(token);
+        org.mockito.Mockito.verify(first, org.mockito.Mockito.times(2)).authenticate(token);
+    }
+
     // ---- helpers -----------------------------------------------------------
 
     @SuppressWarnings("unchecked")

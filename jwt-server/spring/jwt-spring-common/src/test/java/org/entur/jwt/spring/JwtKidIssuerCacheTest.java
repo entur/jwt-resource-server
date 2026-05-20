@@ -8,7 +8,9 @@ import com.nimbusds.jose.jwk.source.RefreshAheadCachingJWKSetSource;
 import com.nimbusds.jose.util.Base64URL;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Set;
 
@@ -139,6 +141,58 @@ class JwtKidIssuerCacheTest {
         assertThat(cache.lookupIssuer("kid-1")).isEqualTo(ISSUER_1);
     }
 
+    @Test
+    void shouldLookupIssuerByRawHeaderOnFirstCall() {
+        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2));
+        sendRefreshEvent(cache, ISSUER_1, jwkSet("kid-1"));
+        sendRefreshEvent(cache, ISSUER_2, jwkSet("kid-2"));
+
+        String rawHeader = rawHeaderForKid("kid-1");
+        assertThat(cache.lookupIssuerByRawHeader(rawHeader)).isEqualTo(ISSUER_1);
+    }
+
+    @Test
+    void shouldCacheRawHeaderOnFirstLookupAndReturnDirectlyOnSubsequentCall() {
+        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2));
+        sendRefreshEvent(cache, ISSUER_1, jwkSet("kid-1"));
+        sendRefreshEvent(cache, ISSUER_2, jwkSet("kid-2"));
+
+        String rawHeader = rawHeaderForKid("kid-1");
+        // First call: tier-2 (kid extraction)
+        assertThat(cache.lookupIssuerByRawHeader(rawHeader)).isEqualTo(ISSUER_1);
+        // Second call: tier-1 (raw header cache hit, no parsing)
+        assertThat(cache.lookupIssuerByRawHeader(rawHeader)).isEqualTo(ISSUER_1);
+    }
+
+    @Test
+    void shouldClearRawHeaderCacheOnKeyRotation() {
+        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2));
+        sendRefreshEvent(cache, ISSUER_1, jwkSet("kid-1"));
+        sendRefreshEvent(cache, ISSUER_2, jwkSet("kid-2"));
+
+        String rawHeader = rawHeaderForKid("kid-1");
+        assertThat(cache.lookupIssuerByRawHeader(rawHeader)).isEqualTo(ISSUER_1);
+
+        // Rotate kid for ISSUER_1; raw header cache must be cleared.
+        sendRefreshEvent(cache, ISSUER_1, jwkSet("kid-1-rotated"));
+
+        // Old raw header no longer resolves.
+        assertThat(cache.lookupIssuerByRawHeader(rawHeader)).isNull();
+        // New kid resolves (via tier-2 since tier-1 was cleared).
+        assertThat(cache.lookupIssuerByRawHeader(rawHeaderForKid("kid-1-rotated"))).isEqualTo(ISSUER_1);
+    }
+
+    @Test
+    void shouldReturnNullFromRawHeaderLookupWhenHeaderHasNoKid() {
+        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1));
+        sendRefreshEvent(cache, ISSUER_1, jwkSet("kid-1"));
+
+        // Header with no kid field.
+        String rawHeaderNoKid = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString("{\"alg\":\"RS256\"}".getBytes(StandardCharsets.UTF_8));
+        assertThat(cache.lookupIssuerByRawHeader(rawHeaderNoKid)).isNull();
+    }
+
     // ---- helpers -----------------------------------------------------------
 
     @SuppressWarnings("unchecked")
@@ -163,5 +217,11 @@ class JwtKidIssuerCacheTest {
             keys.add(new OctetSequenceKey.Builder(new Base64URL("AQIDBAUGBwgJCgsMDQ4PEA")).keyID(kid).build());
         }
         return new JWKSet(keys);
+    }
+
+    /** Returns the raw base64url-encoded JWS header string for {@code {"alg":"RS256","kid":"<kid>"}}.*/
+    private static String rawHeaderForKid(String kid) {
+        String json = "{\"alg\":\"RS256\",\"kid\":\"" + kid + "\"}";
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(json.getBytes(StandardCharsets.UTF_8));
     }
 }

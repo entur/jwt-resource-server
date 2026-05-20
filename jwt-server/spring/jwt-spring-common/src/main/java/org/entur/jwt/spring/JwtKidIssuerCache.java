@@ -1,9 +1,11 @@
 package org.entur.jwt.spring;
 
+import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
 import com.nimbusds.jose.jwk.source.RefreshAheadCachingJWKSetSource;
+import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jose.util.events.Event;
 import com.nimbusds.jose.util.events.EventListener;
 import org.slf4j.Logger;
@@ -17,15 +19,25 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Maintains a live mapping from JWT {@code kid} header values to issuer URLs.
+ * Maintains a two-tier mapping that routes a JWT token to the correct issuer without a full
+ * JWT parse on the hot path.
  *
- * <p>For each configured issuer a {@link EventListener} (obtained via {@link #listenerFor(String)})
- * must be registered with that issuer's JWK event bus. Whenever any issuer's JWK set is
- * (re-)loaded the cache recomputes the {@code kid} → issuer mapping.
+ * <p><strong>Tier 1 – raw header string → issuer</strong>: the base64url-encoded first segment
+ * of the JWT (everything before the first {@code .}) is used as a plain string key.  This map
+ * is populated lazily as traffic arrives; a hit requires zero parsing.
+ *
+ * <p><strong>Tier 2 – kid → issuer</strong>: built from the JWK sets of all configured issuers.
+ * When tier 1 misses, the raw header is decoded and the {@code kid} field is extracted (a
+ * header-only Nimbus parse, much cheaper than a full JWT parse). If the kid is found the result
+ * is promoted to tier 1 for subsequent requests.
+ *
+ * <p>For each configured issuer an {@link EventListener} (obtained via {@link #listenerFor(String)})
+ * must be registered with that issuer's JWK event bus.  Whenever any issuer's JWK set is
+ * (re-)loaded the tier-2 map is recomputed and the tier-1 map is cleared.
  *
  * <p>If two issuers share a {@code kid}, caching is disabled for <em>both</em> of those issuers:
- * none of their kids appear in the cache and lookups for them fall back to full JWT claims
- * parsing.  Unaffected issuers (whose kids are all unique) remain fully cached.
+ * none of their kids appear in either cache tier and lookups for them fall back to full JWT
+ * claims parsing.  Unaffected issuers (whose kids are all unique) remain fully cached.
  *
  * <p>Recomputation is skipped when an updated JWK set contains the same set of key IDs as
  * the previously recorded set for that issuer.
@@ -40,11 +52,17 @@ public class JwtKidIssuerCache {
     private final ConcurrentHashMap<String, JWKSet> jwkSetByIssuer = new ConcurrentHashMap<>();
 
     /**
-     * Atomic snapshot of the current kid → issuer map.  Contains only kids belonging to
-     * issuers that have no kid conflicts with any other issuer.  Empty map until all issuers
+     * Atomic snapshot of the current kid → issuer map (tier 2).  Contains only kids belonging
+     * to issuers that have no kid conflicts with any other issuer.  Empty map until all issuers
      * have reported at least one JWK set.
      */
     private final AtomicReference<Map<String, String>> kidToIssuer = new AtomicReference<>(Map.of());
+
+    /**
+     * Lazy per-request cache of raw base64url JWT header string → issuer (tier 1).
+     * Populated on demand from the kid map; cleared whenever the kid map is recomputed.
+     */
+    private final ConcurrentHashMap<String, String> rawHeaderToIssuer = new ConcurrentHashMap<>();
 
     public JwtKidIssuerCache(Set<String> issuers) {
         this.issuers = Set.copyOf(issuers);
@@ -57,6 +75,36 @@ public class JwtKidIssuerCache {
      */
     public EventListener listenerFor(String issuer) {
         return new IssuerRefreshListener(issuer);
+    }
+
+    /**
+     * Look up the issuer for the raw base64url-encoded JWT header segment (everything before
+     * the first {@code .} in the token string).
+     *
+     * <p>On the first call for a given header the header is decoded and the {@code kid} value
+     * is extracted (tier-2 lookup).  Subsequent calls for the same raw header string return
+     * the cached result without any parsing (tier-1 lookup).
+     *
+     * @return the issuer URL, or {@code null} if the header is unknown, has no {@code kid}, or
+     *         all issuers have not yet loaded their JWK sets.
+     */
+    public String lookupIssuerByRawHeader(String rawHeader) {
+        // Tier 1: direct raw header string lookup – no parsing at all.
+        String issuer = rawHeaderToIssuer.get(rawHeader);
+        if (issuer != null) {
+            return issuer;
+        }
+
+        // Tier 2: parse header only to extract kid, then look up in the kid map.
+        String kid = extractKidFromRawHeader(rawHeader);
+        if (kid != null) {
+            issuer = kidToIssuer.get().get(kid);
+            if (issuer != null) {
+                rawHeaderToIssuer.put(rawHeader, issuer);
+                return issuer;
+            }
+        }
+        return null;
     }
 
     /**
@@ -89,6 +137,7 @@ public class JwtKidIssuerCache {
         if (!jwkSetByIssuer.keySet().containsAll(issuers)) {
             // Not all issuers have loaded yet; keep the cache empty.
             kidToIssuer.set(Map.of());
+            rawHeaderToIssuer.clear();
             return;
         }
 
@@ -129,6 +178,16 @@ public class JwtKidIssuerCache {
                     newMap.size(), disabledIssuers.size());
         }
         kidToIssuer.set(Map.copyOf(newMap));
+        // Clear the raw-header tier so stale header→issuer entries are not served after rotation.
+        rawHeaderToIssuer.clear();
+    }
+
+    private static String extractKidFromRawHeader(String rawHeader) {
+        try {
+            return JWSHeader.parse(new Base64URL(rawHeader)).getKeyID();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static Set<String> extractKids(JWKSet jwkSet) {
