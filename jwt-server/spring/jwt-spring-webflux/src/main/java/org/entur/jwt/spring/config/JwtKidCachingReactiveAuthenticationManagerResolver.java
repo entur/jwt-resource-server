@@ -97,19 +97,14 @@ public class JwtKidCachingReactiveAuthenticationManagerResolver
         }
 
         private String resolveIssuer(String token) {
-            // Tier 1 + 2: extract the raw base64url header segment (before the first '.')
-            // and look it up in the header cache – avoids calling JWTParser.parse() when
-            // the header is already known.
-            int firstDot = token.indexOf('.');
-            if (firstDot > 0) {
-                String rawHeader = token.substring(0, firstDot);
-                String issuer = kidIssuerCache.lookupIssuerByRawHeader(rawHeader);
-                if (issuer != null) {
-                    return issuer;
-                }
+            // Tier 1 + 2: fast path via the kid/header cache – avoids calling JWTParser.parse()
+            // when the JWT header is already known.
+            String issuer = kidIssuerCache.lookupIssuer(token);
+            if (issuer != null) {
+                return issuer;
             }
 
-            // Fallback: full JWT parse to extract the iss claim.
+            // Tier 3: full JWT parse to extract the iss claim.
             JWT jwt;
             try {
                 jwt = JWTParser.parse(token);

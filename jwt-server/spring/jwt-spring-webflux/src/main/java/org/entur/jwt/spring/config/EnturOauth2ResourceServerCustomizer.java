@@ -12,7 +12,7 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import com.nimbusds.jwt.proc.JWTProcessor;
 import org.entur.jwt.spring.EnrichedJwtGrantedAuthoritiesConverter;
 import org.entur.jwt.spring.JwtAuthorityEnricher;
-import org.entur.jwt.spring.JwtKidIssuerCache;
+import org.entur.jwt.spring.JwtKidIssuerCacheFactory;
 import org.entur.jwt.spring.JwkSourceMap;
 import org.entur.jwt.spring.ReactiveJwtMonoConverter;
 import org.entur.jwt.spring.actuate.ListEventListener;
@@ -92,14 +92,14 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHtt
             Mono<ReactiveAuthenticationManager> authenticationManager = Mono.just(next);
             configurer.authenticationManagerResolver(request -> authenticationManager);
         } else {
-            JwtKidIssuerCache kidIssuerCache = new JwtKidIssuerCache(jwkSources.keySet());
+            JwtKidIssuerCacheFactory kidIssuerCacheFactory = new JwtKidIssuerCacheFactory(jwkSources.keySet());
             @SuppressWarnings("unchecked")
             Map<String, ListEventListener> eventListeners = jwkSourceMap.getJwkEventListeners();
             for (Map.Entry<String, ListEventListener> entry : eventListeners.entrySet()) {
-                entry.getValue().addEventListener(kidIssuerCache.listenerFor(entry.getKey()));
+                entry.getValue().addEventListener(kidIssuerCacheFactory.listenerFor(entry.getKey()));
             }
             IssuerAuthenticationManagerResolver issuerResolver = new IssuerAuthenticationManagerResolver(map);
-            configurer.authenticationManagerResolver(new JwtKidCachingReactiveAuthenticationManagerResolver(issuerResolver, kidIssuerCache));
+            configurer.authenticationManagerResolver(new JwtKidCachingReactiveAuthenticationManagerResolver(issuerResolver, kidIssuerCacheFactory.getCache()));
         }
     }
 

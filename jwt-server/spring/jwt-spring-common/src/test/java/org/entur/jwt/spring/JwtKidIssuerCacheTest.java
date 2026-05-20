@@ -1,5 +1,7 @@
 package org.entur.jwt.spring;
 
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.OctetSequenceKey;
@@ -9,8 +11,9 @@ import com.nimbusds.jose.util.Base64URL;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import java.util.Set;
 
@@ -26,40 +29,41 @@ class JwtKidIssuerCacheTest {
 
     @Test
     void shouldReturnNullBeforeAnyJwkSetsAreLoaded() {
-        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
 
-        assertThat(cache.lookupIssuer("kid-1")).isNull();
+        assertThat(factory.getCache().lookupIssuer(tokenForKid("kid-1"))).isNull();
     }
 
     @Test
     void shouldReturnNullUntilAllIssuersHaveReported() {
-        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
 
-        sendRefreshEvent(cache, ISSUER_1, jwkSet("kid-1"));
+        sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1"));
 
-        assertThat(cache.lookupIssuer("kid-1")).isNull();
+        assertThat(factory.getCache().lookupIssuer(tokenForKid("kid-1"))).isNull();
     }
 
     @Test
     void shouldActivateCacheOnceAllIssuersHaveReported() {
-        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
 
-        sendRefreshEvent(cache, ISSUER_1, jwkSet("kid-1"));
-        sendRefreshEvent(cache, ISSUER_2, jwkSet("kid-2"));
+        sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1"));
+        sendRefreshEvent(factory, ISSUER_2, jwkSet("kid-2"));
 
-        assertThat(cache.lookupIssuer("kid-1")).isEqualTo(ISSUER_1);
-        assertThat(cache.lookupIssuer("kid-2")).isEqualTo(ISSUER_2);
+        JwtKidIssuerCache cache = factory.getCache();
+        assertThat(cache.lookupIssuer(tokenForKid("kid-1"))).isEqualTo(ISSUER_1);
+        assertThat(cache.lookupIssuer(tokenForKid("kid-2"))).isEqualTo(ISSUER_2);
     }
 
     @Test
     void shouldDisableBothIssuersWhenTheyShareAKid() {
-        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
 
-        sendRefreshEvent(cache, ISSUER_1, jwkSet("shared-kid"));
-        sendRefreshEvent(cache, ISSUER_2, jwkSet("shared-kid"));
+        sendRefreshEvent(factory, ISSUER_1, jwkSet("shared-kid"));
+        sendRefreshEvent(factory, ISSUER_2, jwkSet("shared-kid"));
 
         // Both issuers are disabled; no kid from either appears in the cache.
-        assertThat(cache.lookupIssuer("shared-kid")).isNull();
+        assertThat(factory.getCache().lookupIssuer(tokenForKid("shared-kid"))).isNull();
     }
 
     @Test
@@ -67,161 +71,184 @@ class JwtKidIssuerCacheTest {
         // ISSUER_1 has kid-1 (unique) and shared-kid
         // ISSUER_2 has kid-2 (unique) and shared-kid
         // Both issuers are fully disabled because they share at least one kid.
-        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
 
-        sendRefreshEvent(cache, ISSUER_1, jwkSet("kid-1", "shared-kid"));
-        sendRefreshEvent(cache, ISSUER_2, jwkSet("kid-2", "shared-kid"));
+        sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1", "shared-kid"));
+        sendRefreshEvent(factory, ISSUER_2, jwkSet("kid-2", "shared-kid"));
 
-        assertThat(cache.lookupIssuer("kid-1")).isNull();
-        assertThat(cache.lookupIssuer("kid-2")).isNull();
-        assertThat(cache.lookupIssuer("shared-kid")).isNull();
+        JwtKidIssuerCache cache = factory.getCache();
+        assertThat(cache.lookupIssuer(tokenForKid("kid-1"))).isNull();
+        assertThat(cache.lookupIssuer(tokenForKid("kid-2"))).isNull();
+        assertThat(cache.lookupIssuer(tokenForKid("shared-kid"))).isNull();
     }
 
     @Test
     void shouldKeepThirdIssuerCachedWhenTwoOtherIssuersShareAKid() {
-        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2, ISSUER_3));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2, ISSUER_3));
 
-        sendRefreshEvent(cache, ISSUER_1, jwkSet("shared-kid"));
-        sendRefreshEvent(cache, ISSUER_2, jwkSet("shared-kid"));
-        sendRefreshEvent(cache, ISSUER_3, jwkSet("kid-3"));
+        sendRefreshEvent(factory, ISSUER_1, jwkSet("shared-kid"));
+        sendRefreshEvent(factory, ISSUER_2, jwkSet("shared-kid"));
+        sendRefreshEvent(factory, ISSUER_3, jwkSet("kid-3"));
 
         // ISSUER_1 and ISSUER_2 are disabled; ISSUER_3 remains cached.
-        assertThat(cache.lookupIssuer("shared-kid")).isNull();
-        assertThat(cache.lookupIssuer("kid-3")).isEqualTo(ISSUER_3);
+        JwtKidIssuerCache cache = factory.getCache();
+        assertThat(cache.lookupIssuer(tokenForKid("shared-kid"))).isNull();
+        assertThat(cache.lookupIssuer(tokenForKid("kid-3"))).isEqualTo(ISSUER_3);
     }
 
     @Test
     void shouldUpdateCacheWhenJwkSetChanges() {
-        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
 
-        sendRefreshEvent(cache, ISSUER_1, jwkSet("kid-1"));
-        sendRefreshEvent(cache, ISSUER_2, jwkSet("kid-2"));
-        assertThat(cache.lookupIssuer("kid-1")).isEqualTo(ISSUER_1);
+        sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1"));
+        sendRefreshEvent(factory, ISSUER_2, jwkSet("kid-2"));
+
+        JwtKidIssuerCache cache = factory.getCache();
+        assertThat(cache.lookupIssuer(tokenForKid("kid-1"))).isEqualTo(ISSUER_1);
 
         // Simulate key rotation for ISSUER_1.
-        sendRefreshEvent(cache, ISSUER_1, jwkSet("kid-1-rotated"));
-        assertThat(cache.lookupIssuer("kid-1")).isNull();
-        assertThat(cache.lookupIssuer("kid-1-rotated")).isEqualTo(ISSUER_1);
+        sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1-rotated"));
+        assertThat(cache.lookupIssuer(tokenForKid("kid-1"))).isNull();
+        assertThat(cache.lookupIssuer(tokenForKid("kid-1-rotated"))).isEqualTo(ISSUER_1);
     }
 
     @Test
     void shouldReEnableIssuersAfterRotationRemovesConflict() {
-        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
 
-        sendRefreshEvent(cache, ISSUER_1, jwkSet("shared-kid"));
-        sendRefreshEvent(cache, ISSUER_2, jwkSet("shared-kid"));
-        assertThat(cache.lookupIssuer("shared-kid")).isNull();
+        sendRefreshEvent(factory, ISSUER_1, jwkSet("shared-kid"));
+        sendRefreshEvent(factory, ISSUER_2, jwkSet("shared-kid"));
+
+        JwtKidIssuerCache cache = factory.getCache();
+        assertThat(cache.lookupIssuer(tokenForKid("shared-kid"))).isNull();
 
         // ISSUER_2 rotates to a unique kid; conflict is resolved.
-        sendRefreshEvent(cache, ISSUER_2, jwkSet("kid-2-unique"));
-        assertThat(cache.lookupIssuer("shared-kid")).isEqualTo(ISSUER_1);
-        assertThat(cache.lookupIssuer("kid-2-unique")).isEqualTo(ISSUER_2);
+        sendRefreshEvent(factory, ISSUER_2, jwkSet("kid-2-unique"));
+        assertThat(cache.lookupIssuer(tokenForKid("shared-kid"))).isEqualTo(ISSUER_1);
+        assertThat(cache.lookupIssuer(tokenForKid("kid-2-unique"))).isEqualTo(ISSUER_2);
     }
 
     @Test
     void shouldSkipRecomputeWhenKidsAreUnchanged() {
-        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
 
-        sendRefreshEvent(cache, ISSUER_1, jwkSet("kid-1"));
-        sendRefreshEvent(cache, ISSUER_2, jwkSet("kid-2"));
-        assertThat(cache.lookupIssuer("kid-1")).isEqualTo(ISSUER_1);
+        sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1"));
+        sendRefreshEvent(factory, ISSUER_2, jwkSet("kid-2"));
+
+        JwtKidIssuerCache cache = factory.getCache();
+        assertThat(cache.lookupIssuer(tokenForKid("kid-1"))).isEqualTo(ISSUER_1);
 
         // Send same JWK set (same kid) again — cache should remain consistent.
-        sendRefreshEvent(cache, ISSUER_1, jwkSet("kid-1"));
-        assertThat(cache.lookupIssuer("kid-1")).isEqualTo(ISSUER_1);
-        assertThat(cache.lookupIssuer("kid-2")).isEqualTo(ISSUER_2);
+        sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1"));
+        assertThat(cache.lookupIssuer(tokenForKid("kid-1"))).isEqualTo(ISSUER_1);
+        assertThat(cache.lookupIssuer(tokenForKid("kid-2"))).isEqualTo(ISSUER_2);
     }
 
     @Test
     void shouldHandleScheduledRefreshCompletedEvent() {
-        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1));
 
-        sendScheduledRefreshEvent(cache, ISSUER_1, jwkSet("kid-1"));
+        sendScheduledRefreshEvent(factory, ISSUER_1, jwkSet("kid-1"));
 
-        assertThat(cache.lookupIssuer("kid-1")).isEqualTo(ISSUER_1);
+        assertThat(factory.getCache().lookupIssuer(tokenForKid("kid-1"))).isEqualTo(ISSUER_1);
     }
 
     @Test
-    void shouldLookupIssuerByRawHeaderOnFirstCall() {
-        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2));
-        sendRefreshEvent(cache, ISSUER_1, jwkSet("kid-1"));
-        sendRefreshEvent(cache, ISSUER_2, jwkSet("kid-2"));
+    void shouldLookupIssuerByTokenOnFirstCall() {
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
+        sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1"));
+        sendRefreshEvent(factory, ISSUER_2, jwkSet("kid-2"));
 
-        String rawHeader = rawHeaderForKid("kid-1");
-        assertThat(cache.lookupIssuerByRawHeader(rawHeader)).isEqualTo(ISSUER_1);
+        assertThat(factory.getCache().lookupIssuer(tokenForKid("kid-1"))).isEqualTo(ISSUER_1);
     }
 
     @Test
     void shouldCacheRawHeaderOnFirstLookupAndReturnDirectlyOnSubsequentCall() {
-        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2));
-        sendRefreshEvent(cache, ISSUER_1, jwkSet("kid-1"));
-        sendRefreshEvent(cache, ISSUER_2, jwkSet("kid-2"));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
+        sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1"));
+        sendRefreshEvent(factory, ISSUER_2, jwkSet("kid-2"));
 
-        String rawHeader = rawHeaderForKid("kid-1");
+        JwtKidIssuerCache cache = factory.getCache();
+        String token = tokenForKid("kid-1");
         // First call: tier-2 (kid extraction)
-        assertThat(cache.lookupIssuerByRawHeader(rawHeader)).isEqualTo(ISSUER_1);
+        assertThat(cache.lookupIssuer(token)).isEqualTo(ISSUER_1);
         // Second call: tier-1 (raw header cache hit, no parsing)
-        assertThat(cache.lookupIssuerByRawHeader(rawHeader)).isEqualTo(ISSUER_1);
+        assertThat(cache.lookupIssuer(token)).isEqualTo(ISSUER_1);
     }
 
     @Test
     void shouldClearRawHeaderCacheOnKeyRotation() {
-        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1, ISSUER_2));
-        sendRefreshEvent(cache, ISSUER_1, jwkSet("kid-1"));
-        sendRefreshEvent(cache, ISSUER_2, jwkSet("kid-2"));
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1, ISSUER_2));
+        sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1"));
+        sendRefreshEvent(factory, ISSUER_2, jwkSet("kid-2"));
 
-        String rawHeader = rawHeaderForKid("kid-1");
-        assertThat(cache.lookupIssuerByRawHeader(rawHeader)).isEqualTo(ISSUER_1);
+        JwtKidIssuerCache cache = factory.getCache();
+        String token = tokenForKid("kid-1");
+        assertThat(cache.lookupIssuer(token)).isEqualTo(ISSUER_1);
 
         // Rotate kid for ISSUER_1; raw header cache must be cleared.
-        sendRefreshEvent(cache, ISSUER_1, jwkSet("kid-1-rotated"));
+        sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1-rotated"));
 
-        // Old raw header no longer resolves.
-        assertThat(cache.lookupIssuerByRawHeader(rawHeader)).isNull();
+        // Old token no longer resolves.
+        assertThat(cache.lookupIssuer(token)).isNull();
         // New kid resolves (via tier-2 since tier-1 was cleared).
-        assertThat(cache.lookupIssuerByRawHeader(rawHeaderForKid("kid-1-rotated"))).isEqualTo(ISSUER_1);
+        assertThat(cache.lookupIssuer(tokenForKid("kid-1-rotated"))).isEqualTo(ISSUER_1);
     }
 
     @Test
-    void shouldReturnNullFromRawHeaderLookupWhenHeaderHasNoKid() {
-        JwtKidIssuerCache cache = new JwtKidIssuerCache(Set.of(ISSUER_1));
-        sendRefreshEvent(cache, ISSUER_1, jwkSet("kid-1"));
+    void shouldReturnNullForTokenWithNoKidInHeader() {
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(Set.of(ISSUER_1));
+        sendRefreshEvent(factory, ISSUER_1, jwkSet("kid-1"));
 
-        // Header with no kid field.
-        String rawHeaderNoKid = Base64.getUrlEncoder().withoutPadding()
-                .encodeToString("{\"alg\":\"RS256\"}".getBytes(StandardCharsets.UTF_8));
-        assertThat(cache.lookupIssuerByRawHeader(rawHeaderNoKid)).isNull();
+        // Token whose header has no kid field.
+        String rawHeaderNoKid = new JWSHeader.Builder(JWSAlgorithm.RS256).build().toBase64URL().toString();
+        String tokenNoKid = rawHeaderNoKid + ".payload.sig";
+        assertThat(factory.getCache().lookupIssuer(tokenNoKid)).isNull();
     }
 
     // ---- helpers -----------------------------------------------------------
 
     @SuppressWarnings("unchecked")
-    private static void sendRefreshEvent(JwtKidIssuerCache cache, String issuer, JWKSet jwkSet) {
+    static void sendRefreshEvent(JwtKidIssuerCacheFactory factory, String issuer, JWKSet jwkSet) {
         CachingJWKSetSource.RefreshCompletedEvent<?> event =
                 mock(CachingJWKSetSource.RefreshCompletedEvent.class);
         when(event.getJWKSet()).thenReturn(jwkSet);
-        cache.listenerFor(issuer).notify(event);
+        factory.listenerFor(issuer).notify(event);
     }
 
     @SuppressWarnings("unchecked")
-    private static void sendScheduledRefreshEvent(JwtKidIssuerCache cache, String issuer, JWKSet jwkSet) {
+    private static void sendScheduledRefreshEvent(JwtKidIssuerCacheFactory factory, String issuer, JWKSet jwkSet) {
         RefreshAheadCachingJWKSetSource.ScheduledRefreshCompletedEvent<?> event =
                 mock(RefreshAheadCachingJWKSetSource.ScheduledRefreshCompletedEvent.class);
         when(event.getJWKSet()).thenReturn(jwkSet);
-        cache.listenerFor(issuer).notify(event);
+        factory.listenerFor(issuer).notify(event);
     }
 
-    private static JWKSet jwkSet(String... kids) {
+    static JWKSet jwkSet(String... kids) {
         List<JWK> keys = new ArrayList<>();
         for (String kid : kids) {
-            keys.add(new OctetSequenceKey.Builder(new Base64URL("AQIDBAUGBwgJCgsMDQ4PEA")).keyID(kid).build());
+            keys.add(new OctetSequenceKey.Builder(kidKeyContent(kid)).keyID(kid).build());
         }
         return new JWKSet(keys);
     }
 
-    /** Returns the raw base64url-encoded JWS header string for {@code {"alg":"RS256","kid":"<kid>"}}.*/
-    private static String rawHeaderForKid(String kid) {
-        String json = "{\"alg\":\"RS256\",\"kid\":\"" + kid + "\"}";
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+    /** Returns a deterministic 16-byte key derived from the kid via MD5. */
+    private static Base64URL kidKeyContent(String kid) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            return Base64URL.encode(md.digest(kid.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /** Returns a raw base64url-encoded JWS header for {@code {"alg":"RS256","kid":"<kid>"}}. */
+    static String rawHeaderForKid(String kid) {
+        return new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(kid).build().toBase64URL().toString();
+    }
+
+    /** Returns a fake JWT token whose header carries the given kid. */
+    static String tokenForKid(String kid) {
+        return rawHeaderForKid(kid) + ".payload.sig";
     }
 }

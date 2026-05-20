@@ -1,11 +1,14 @@
 package org.entur.jwt.spring.config;
 
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.OctetSequenceKey;
 import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
 import com.nimbusds.jose.util.Base64URL;
 import org.entur.jwt.spring.JwtKidIssuerCache;
+import org.entur.jwt.spring.JwtKidIssuerCacheFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
@@ -16,7 +19,8 @@ import org.springframework.security.oauth2.server.resource.authentication.Bearer
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.Set;
 
@@ -37,7 +41,7 @@ class JwtKidCachingReactiveAuthenticationManagerResolverTest {
 
         JwtKidCachingReactiveAuthenticationManagerResolver resolver =
                 new JwtKidCachingReactiveAuthenticationManagerResolver(issuerResolver,
-                        new JwtKidIssuerCache(Set.of("https://issuer-1.example", "https://issuer-2.example")));
+                        emptyCache(Set.of("https://issuer-1.example", "https://issuer-2.example")));
 
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/").header(HttpHeaders.AUTHORIZATION,
@@ -61,7 +65,7 @@ class JwtKidCachingReactiveAuthenticationManagerResolverTest {
 
         JwtKidCachingReactiveAuthenticationManagerResolver resolver =
                 new JwtKidCachingReactiveAuthenticationManagerResolver(issuerResolver,
-                        new JwtKidIssuerCache(Set.of("https://issuer-1.example")));
+                        emptyCache(Set.of("https://issuer-1.example")));
 
         ReactiveAuthenticationManager manager = resolver.resolve(
                 MockServerWebExchange.from(MockServerHttpRequest.get("/").build())).block();
@@ -90,8 +94,7 @@ class JwtKidCachingReactiveAuthenticationManagerResolverTest {
                 new JwtKidCachingReactiveAuthenticationManagerResolver(issuerResolver, cache);
 
         // Token with kid=kid-2 and no iss claim.
-        BearerTokenAuthenticationToken token = new BearerTokenAuthenticationToken(
-                token("{}", "{\"alg\":\"RS256\",\"kid\":\"kid-2\"}"));
+        BearerTokenAuthenticationToken token = new BearerTokenAuthenticationToken(tokenForKid("kid-2"));
 
         ReactiveAuthenticationManager manager = resolver.resolve(
                 MockServerWebExchange.from(MockServerHttpRequest.get("/").build())).block();
@@ -103,21 +106,41 @@ class JwtKidCachingReactiveAuthenticationManagerResolverTest {
 
     // ---- helpers -----------------------------------------------------------
 
+    /** Returns a cache backed by a factory with no events sent yet (empty kid map). */
+    private static JwtKidIssuerCache emptyCache(Set<String> issuers) {
+        return new JwtKidIssuerCacheFactory(issuers).getCache();
+    }
+
     @SuppressWarnings("unchecked")
     private static JwtKidIssuerCache cacheWithKids(Set<String> issuers, Map<String, String> issuerToKid) {
-        JwtKidIssuerCache cache = new JwtKidIssuerCache(issuers);
+        JwtKidIssuerCacheFactory factory = new JwtKidIssuerCacheFactory(issuers);
         for (Map.Entry<String, String> entry : issuerToKid.entrySet()) {
             CachingJWKSetSource.RefreshCompletedEvent<?> event =
                     mock(CachingJWKSetSource.RefreshCompletedEvent.class);
             when(event.getJWKSet()).thenReturn(jwkSet(entry.getValue()));
-            cache.listenerFor(entry.getKey()).notify(event);
+            factory.listenerFor(entry.getKey()).notify(event);
         }
-        return cache;
+        return factory.getCache();
     }
 
     private static JWKSet jwkSet(String kid) {
-        JWK key = new OctetSequenceKey.Builder(new Base64URL("AQIDBAUGBwgJCgsMDQ4PEA")).keyID(kid).build();
+        JWK key = new OctetSequenceKey.Builder(kidKeyContent(kid)).keyID(kid).build();
         return new JWKSet(key);
+    }
+
+    private static Base64URL kidKeyContent(String kid) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            return Base64URL.encode(md.digest(kid.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /** Returns a fake JWT token whose header carries the given kid. */
+    private static String tokenForKid(String kid) {
+        String rawHeader = new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(kid).build().toBase64URL().toString();
+        return rawHeader + ".payload.sig";
     }
 
     private static String token(String payloadJson) {
@@ -125,8 +148,10 @@ class JwtKidCachingReactiveAuthenticationManagerResolverTest {
     }
 
     private static String token(String payloadJson, String headerJson) {
-        String header = Base64.getUrlEncoder().withoutPadding().encodeToString(headerJson.getBytes(StandardCharsets.UTF_8));
-        String payload = Base64.getUrlEncoder().withoutPadding().encodeToString(payloadJson.getBytes(StandardCharsets.UTF_8));
+        String header = java.util.Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(headerJson.getBytes(StandardCharsets.UTF_8));
+        String payload = java.util.Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(payloadJson.getBytes(StandardCharsets.UTF_8));
         return header + "." + payload + ".sig";
     }
 }
