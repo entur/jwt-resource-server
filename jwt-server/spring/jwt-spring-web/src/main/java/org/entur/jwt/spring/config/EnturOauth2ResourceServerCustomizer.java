@@ -10,7 +10,6 @@ import org.entur.jwt.spring.JwtAuthorityEnricher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.AuthenticationManagerResolver;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
@@ -21,7 +20,6 @@ import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider;
-import org.springframework.security.oauth2.server.resource.authentication.JwtIssuerAuthenticationManagerResolver;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -72,11 +70,7 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
             AuthenticationManager next = map.values().iterator().next();
             configurer.authenticationManagerResolver(request -> next);
         } else {
-            AuthenticationManagerResolver<String> issuer = new IssuerAuthenticationManagerResolver(map);
-
-            JwtIssuerAuthenticationManagerResolver jwtIssuerAuthenticationManagerResolver = new JwtIssuerAuthenticationManagerResolver(issuer);
-
-            configurer.authenticationManagerResolver(jwtIssuerAuthenticationManagerResolver);
+            configurer.authenticationManagerResolver(new IssuerAuthenticationManagerResolver(map));
         }
     }
 

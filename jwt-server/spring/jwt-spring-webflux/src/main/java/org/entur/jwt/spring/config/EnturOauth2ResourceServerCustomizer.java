@@ -26,7 +26,6 @@ import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtIssuerReactiveAuthenticationManagerResolver;
 import org.springframework.security.oauth2.server.resource.authentication.JwtReactiveAuthenticationManager;
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import reactor.core.publisher.Mono;
@@ -88,11 +87,7 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHtt
             Mono<ReactiveAuthenticationManager> authenticationManager = Mono.just(next);
             configurer.authenticationManagerResolver(request -> authenticationManager);
         } else {
-            IssuerAuthenticationManagerResolver issuer = new IssuerAuthenticationManagerResolver(map);
-
-            JwtIssuerReactiveAuthenticationManagerResolver jwtIssuerAuthenticationManagerResolver = new JwtIssuerReactiveAuthenticationManagerResolver(issuer);
-
-            configurer.authenticationManagerResolver(jwtIssuerAuthenticationManagerResolver);
+            configurer.authenticationManagerResolver(new IssuerAuthenticationManagerResolver(map));
         }
     }
 
