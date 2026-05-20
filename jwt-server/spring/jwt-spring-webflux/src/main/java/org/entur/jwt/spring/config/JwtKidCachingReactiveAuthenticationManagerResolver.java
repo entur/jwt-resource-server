@@ -1,37 +1,30 @@
 package org.entur.jwt.spring.config;
 
-import com.nimbusds.jwt.JWT;
-import com.nimbusds.jwt.JWTParser;
 import org.entur.jwt.spring.JwtKidIssuerCache;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.authentication.ReactiveAuthenticationManagerResolver;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
+import org.springframework.security.oauth2.server.resource.authentication.JwtIssuerReactiveAuthenticationManagerResolver;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import java.text.ParseException;
-
 /**
  * A {@link ReactiveAuthenticationManagerResolver} for {@link ServerWebExchange} that routes each
- * request to the right per-issuer {@link ReactiveAuthenticationManager} using a three-tier strategy:
+ * request to the right per-issuer {@link ReactiveAuthenticationManager} using a two-step strategy:
  *
  * <ol>
- *   <li><strong>Tier 1 – raw header string</strong> – the raw base64url header segment (before
- *       the first {@code .}) is looked up directly in a lazy per-request cache with no parsing
- *       at all.</li>
- *   <li><strong>Tier 2 – kid header</strong> – on a tier-1 miss the header segment is decoded
- *       and the {@code kid} value is extracted (header-only Nimbus parse).  If the kid resolves
- *       to an issuer the result is promoted into the tier-1 cache for next time.</li>
- *   <li><strong>Tier 3 – iss claim</strong> – on a tier-2 miss the full JWT is parsed and the
- *       {@code iss} claim is extracted.</li>
+ *   <li><strong>Fast path – kid cache</strong> – the raw base64url header segment (before the
+ *       first {@code .}) is looked up in the tier-1 raw-header cache (no parsing), then on a
+ *       miss the {@code kid} is extracted via a header-only Nimbus parse (tier-2).  Both tiers
+ *       are maintained by the supplied {@link JwtKidIssuerCache}.  On a hit the resolved issuer
+ *       is used to look up the per-issuer {@link ReactiveAuthenticationManager} directly.</li>
+ *   <li><strong>Fallback – {@link JwtIssuerReactiveAuthenticationManagerResolver}</strong> – on
+ *       a cache miss (kid unknown or cache not yet warm) the token is delegated to the standard
+ *       Spring Security reactive issuer resolver, which performs a full JWT parse to extract the
+ *       {@code iss} claim and then routes to the same per-issuer manager map.</li>
  * </ol>
- *
- * <p>This class is modelled after the inner
- * {@code JwtIssuerReactiveAuthenticationManagerResolver.ResolvingAuthenticationManager} in Spring
- * Security, and delegates actual issuer-to-manager mapping to a caller-supplied
- * {@link ReactiveAuthenticationManagerResolver ReactiveAuthenticationManagerResolver&lt;String&gt;}.
  */
 public class JwtKidCachingReactiveAuthenticationManagerResolver
         implements ReactiveAuthenticationManagerResolver<ServerWebExchange> {
@@ -41,8 +34,15 @@ public class JwtKidCachingReactiveAuthenticationManagerResolver
     public JwtKidCachingReactiveAuthenticationManagerResolver(
             ReactiveAuthenticationManagerResolver<String> issuerAuthenticationManagerResolver,
             JwtKidIssuerCache kidIssuerCache) {
+        // Pre-resolve the fallback manager once; JwtIssuerReactiveAuthenticationManagerResolver
+        // .resolve() ignores the exchange and always returns the same inner manager via Mono.just().
+        ReactiveAuthenticationManager fallbackAuthenticationManager =
+                new JwtIssuerReactiveAuthenticationManagerResolver(issuerAuthenticationManagerResolver)
+                        .resolve(null)
+                        .block(); // safe: resolve() returns Mono.just(), no I/O
         this.resolvingAuthenticationManager =
-                new ResolvingAuthenticationManager(issuerAuthenticationManagerResolver, kidIssuerCache);
+                new ResolvingAuthenticationManager(issuerAuthenticationManagerResolver, kidIssuerCache,
+                        fallbackAuthenticationManager);
     }
 
     @Override
@@ -56,12 +56,15 @@ public class JwtKidCachingReactiveAuthenticationManagerResolver
 
         private final ReactiveAuthenticationManagerResolver<String> issuerAuthenticationManagerResolver;
         private final JwtKidIssuerCache kidIssuerCache;
+        private final ReactiveAuthenticationManager fallbackAuthenticationManager;
 
         ResolvingAuthenticationManager(
                 ReactiveAuthenticationManagerResolver<String> issuerAuthenticationManagerResolver,
-                JwtKidIssuerCache kidIssuerCache) {
+                JwtKidIssuerCache kidIssuerCache,
+                ReactiveAuthenticationManager fallbackAuthenticationManager) {
             this.issuerAuthenticationManagerResolver = issuerAuthenticationManagerResolver;
             this.kidIssuerCache = kidIssuerCache;
+            this.fallbackAuthenticationManager = fallbackAuthenticationManager;
         }
 
         @Override
@@ -72,50 +75,22 @@ public class JwtKidCachingReactiveAuthenticationManagerResolver
                             "Authentication must be of type BearerTokenAuthenticationToken"));
                 }
 
-                String issuer;
-                try {
-                    issuer = resolveIssuer(bearer.getToken());
-                } catch (InvalidBearerTokenException e) {
-                    e.setAuthenticationRequest(authentication);
-                    return Mono.error(e);
+                // Fast path: tier 1 (raw header string) + tier 2 (kid extraction).
+                String issuer = kidIssuerCache.lookupIssuer(bearer.getToken());
+                if (issuer != null) {
+                    return issuerAuthenticationManagerResolver.resolve(issuer)
+                            .switchIfEmpty(Mono.defer(() -> {
+                                InvalidBearerTokenException ex = new InvalidBearerTokenException("Invalid issuer");
+                                ex.setAuthenticationRequest(authentication);
+                                return Mono.error(ex);
+                            }))
+                            .flatMap(manager -> manager.authenticate(authentication));
                 }
 
-                if (issuer == null) {
-                    InvalidBearerTokenException ex = new InvalidBearerTokenException("Invalid issuer");
-                    ex.setAuthenticationRequest(authentication);
-                    return Mono.error(ex);
-                }
-
-                return issuerAuthenticationManagerResolver.resolve(issuer)
-                        .switchIfEmpty(Mono.defer(() -> {
-                            InvalidBearerTokenException ex = new InvalidBearerTokenException("Invalid issuer");
-                            ex.setAuthenticationRequest(authentication);
-                            return Mono.error(ex);
-                        }))
-                        .flatMap(manager -> manager.authenticate(authentication));
+                // Fallback: delegate to JwtIssuerReactiveAuthenticationManagerResolver which
+                // performs a full JWT parse to extract the iss claim and routes to the per-issuer manager.
+                return fallbackAuthenticationManager.authenticate(authentication);
             });
-        }
-
-        private String resolveIssuer(String token) {
-            // Tier 1 + 2: fast path via the kid/header cache – avoids calling JWTParser.parse()
-            // when the JWT header is already known.
-            String issuer = kidIssuerCache.lookupIssuer(token);
-            if (issuer != null) {
-                return issuer;
-            }
-
-            // Tier 3: full JWT parse to extract the iss claim.
-            JWT jwt;
-            try {
-                jwt = JWTParser.parse(token);
-            } catch (ParseException e) {
-                throw new InvalidBearerTokenException("Invalid JWT token", e);
-            }
-            try {
-                return jwt.getJWTClaimsSet().getIssuer();
-            } catch (ParseException e) {
-                throw new InvalidBearerTokenException("Invalid JWT claims", e);
-            }
         }
     }
 }

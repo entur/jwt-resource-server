@@ -1,7 +1,5 @@
 package org.entur.jwt.spring.config;
 
-import com.nimbusds.jwt.JWT;
-import com.nimbusds.jwt.JWTParser;
 import jakarta.servlet.http.HttpServletRequest;
 import org.entur.jwt.spring.JwtKidIssuerCache;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -10,29 +8,24 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
+import org.springframework.security.oauth2.server.resource.authentication.JwtIssuerAuthenticationManagerResolver;
 import org.springframework.util.Assert;
-
-import java.text.ParseException;
 
 /**
  * An {@link AuthenticationManagerResolver} for {@link HttpServletRequest} that routes each
- * request to the right per-issuer {@link AuthenticationManager} using a three-tier strategy:
+ * request to the right per-issuer {@link AuthenticationManager} using a two-step strategy:
  *
  * <ol>
- *   <li><strong>Tier 1 – raw header string</strong> – the raw base64url header segment (before
- *       the first {@code .}) is looked up directly in a lazy per-request cache with no parsing
- *       at all.</li>
- *   <li><strong>Tier 2 – kid header</strong> – on a tier-1 miss the header segment is decoded
- *       and the {@code kid} value is extracted (header-only Nimbus parse).  If the kid resolves
- *       to an issuer the result is promoted into the tier-1 cache for next time.</li>
- *   <li><strong>Tier 3 – iss claim</strong> – on a tier-2 miss the full JWT is parsed and the
- *       {@code iss} claim is extracted.</li>
+ *   <li><strong>Fast path – kid cache</strong> – the raw base64url header segment (before the
+ *       first {@code .}) is looked up in the tier-1 raw-header cache (no parsing), then on a
+ *       miss the {@code kid} is extracted via a header-only Nimbus parse (tier-2).  Both tiers
+ *       are maintained by the supplied {@link JwtKidIssuerCache}.  On a hit the resolved issuer
+ *       is used to look up the per-issuer {@link AuthenticationManager} directly.</li>
+ *   <li><strong>Fallback – {@link JwtIssuerAuthenticationManagerResolver}</strong> – on a cache
+ *       miss (kid unknown or cache not yet warm) the token is delegated to the standard Spring
+ *       Security issuer resolver, which performs a full JWT parse to extract the {@code iss}
+ *       claim and then routes to the same per-issuer manager map.</li>
  * </ol>
- *
- * <p>This class is modelled after the inner
- * {@code JwtIssuerAuthenticationManagerResolver.ResolvingAuthenticationManager} in Spring
- * Security, and delegates actual issuer-to-manager mapping to a caller-supplied
- * {@link AuthenticationManagerResolver AuthenticationManagerResolver&lt;String&gt;}.
  */
 public class JwtKidCachingAuthenticationManagerResolver
         implements AuthenticationManagerResolver<HttpServletRequest> {
@@ -42,8 +35,14 @@ public class JwtKidCachingAuthenticationManagerResolver
     public JwtKidCachingAuthenticationManagerResolver(
             AuthenticationManagerResolver<String> issuerAuthenticationManagerResolver,
             JwtKidIssuerCache kidIssuerCache) {
+        // Pre-resolve the fallback manager once; JwtIssuerAuthenticationManagerResolver.resolve()
+        // ignores the request and always returns the same inner AuthenticationManager.
+        AuthenticationManager fallbackAuthenticationManager =
+                new JwtIssuerAuthenticationManagerResolver(issuerAuthenticationManagerResolver)
+                        .resolve(null);
         this.resolvingAuthenticationManager =
-                new ResolvingAuthenticationManager(issuerAuthenticationManagerResolver, kidIssuerCache);
+                new ResolvingAuthenticationManager(issuerAuthenticationManagerResolver, kidIssuerCache,
+                        fallbackAuthenticationManager);
     }
 
     @Override
@@ -57,12 +56,15 @@ public class JwtKidCachingAuthenticationManagerResolver
 
         private final AuthenticationManagerResolver<String> issuerAuthenticationManagerResolver;
         private final JwtKidIssuerCache kidIssuerCache;
+        private final AuthenticationManager fallbackAuthenticationManager;
 
         ResolvingAuthenticationManager(
                 AuthenticationManagerResolver<String> issuerAuthenticationManagerResolver,
-                JwtKidIssuerCache kidIssuerCache) {
+                JwtKidIssuerCache kidIssuerCache,
+                AuthenticationManager fallbackAuthenticationManager) {
             this.issuerAuthenticationManagerResolver = issuerAuthenticationManagerResolver;
             this.kidIssuerCache = kidIssuerCache;
+            this.fallbackAuthenticationManager = fallbackAuthenticationManager;
         }
 
         @Override
@@ -71,48 +73,26 @@ public class JwtKidCachingAuthenticationManagerResolver
                     "Authentication must be of type BearerTokenAuthenticationToken");
             BearerTokenAuthenticationToken bearer = (BearerTokenAuthenticationToken) authentication;
 
-            String issuer = resolveIssuer(bearer.getToken());
-            if (issuer == null) {
-                InvalidBearerTokenException ex = new InvalidBearerTokenException("Invalid issuer");
-                ex.setAuthenticationRequest(authentication);
-                throw ex;
-            }
-
-            AuthenticationManager authenticationManager = issuerAuthenticationManagerResolver.resolve(issuer);
-            if (authenticationManager == null) {
-                InvalidBearerTokenException ex = new InvalidBearerTokenException("Invalid issuer");
-                ex.setAuthenticationRequest(authentication);
-                throw ex;
-            }
-
-            try {
-                return authenticationManager.authenticate(authentication);
-            } catch (AuthenticationException e) {
-                e.setAuthenticationRequest(authentication);
-                throw e;
-            }
-        }
-
-        private String resolveIssuer(String token) {
-            // Tier 1 + 2: fast path via the kid/header cache – avoids calling JWTParser.parse()
-            // when the JWT header is already known.
-            String issuer = kidIssuerCache.lookupIssuer(token);
+            // Fast path: tier 1 (raw header string) + tier 2 (kid extraction).
+            String issuer = kidIssuerCache.lookupIssuer(bearer.getToken());
             if (issuer != null) {
-                return issuer;
+                AuthenticationManager authenticationManager = issuerAuthenticationManagerResolver.resolve(issuer);
+                if (authenticationManager == null) {
+                    InvalidBearerTokenException ex = new InvalidBearerTokenException("Invalid issuer");
+                    ex.setAuthenticationRequest(authentication);
+                    throw ex;
+                }
+                try {
+                    return authenticationManager.authenticate(authentication);
+                } catch (AuthenticationException e) {
+                    e.setAuthenticationRequest(authentication);
+                    throw e;
+                }
             }
 
-            // Tier 3: full JWT parse to extract the iss claim.
-            JWT jwt;
-            try {
-                jwt = JWTParser.parse(token);
-            } catch (ParseException e) {
-                throw new InvalidBearerTokenException("Invalid JWT token", e);
-            }
-            try {
-                return jwt.getJWTClaimsSet().getIssuer();
-            } catch (ParseException e) {
-                throw new InvalidBearerTokenException("Invalid JWT claims", e);
-            }
+            // Fallback: delegate to JwtIssuerAuthenticationManagerResolver which performs a
+            // full JWT parse to extract the iss claim and routes to the per-issuer manager.
+            return fallbackAuthenticationManager.authenticate(authentication);
         }
     }
 }
