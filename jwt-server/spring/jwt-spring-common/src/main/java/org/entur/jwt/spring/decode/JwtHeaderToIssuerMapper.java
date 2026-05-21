@@ -1,5 +1,6 @@
 package org.entur.jwt.spring.decode;
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -44,7 +45,7 @@ public class JwtHeaderToIssuerMapper {
         headerToIssuer.clear();
     }
 
-    public ConcurrentHashMap<String, String> getHeaderToIssuer() {
+    public Map<String, String> getHeaderToIssuer() {
         return headerToIssuer;
     }
 
