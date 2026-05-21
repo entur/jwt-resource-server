@@ -15,6 +15,11 @@ public class JwkSourceMap<C extends SecurityContext> implements Closeable, Dispo
     private final Map<String, JWKSource<C>> jwkSources;
     private final Map<String, ListEventListener> jwkEventListeners;
 
+    @Deprecated
+    public JwkSourceMap(Map<String, JWKSource<C>> jwkSources) {
+        this(jwkSources, Collections.emptyMap());
+    }
+
     public JwkSourceMap(Map<String, JWKSource<C>> jwkSources, Map<String, ListEventListener> jwkEventListeners) {
         this.jwkSources = jwkSources;
         this.jwkEventListeners = jwkEventListeners;
