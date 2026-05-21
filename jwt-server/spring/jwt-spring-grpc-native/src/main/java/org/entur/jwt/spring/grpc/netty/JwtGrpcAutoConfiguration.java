@@ -13,7 +13,9 @@ import org.entur.jwt.spring.grpc.properties.GrpcServicesConfiguration;
 import org.entur.jwt.spring.grpc.properties.ServiceMatcherConfiguration;
 import org.entur.jwt.spring.properties.Auth0Flavour;
 import org.entur.jwt.spring.properties.Flavours;
+import org.entur.jwt.spring.properties.JwtProperties;
 import org.entur.jwt.spring.properties.KeycloakFlavour;
+import org.entur.jwt.spring.properties.SecurityProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
@@ -44,7 +46,7 @@ import java.util.List;
 import java.util.Map;
 
 @Configuration
-@EnableConfigurationProperties({GrpcPermitAll.class, Flavours.class})
+@EnableConfigurationProperties({GrpcPermitAll.class, SecurityProperties.class})
 @AutoConfigureAfter(value = {JwtAutoConfiguration.class})
 @AutoConfigureBefore(value = {OAuth2ResourceServerAutoConfiguration.class})
 @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
@@ -56,14 +58,14 @@ public class JwtGrpcAutoConfiguration {
 
     private List<OAuth2TokenValidator<Jwt>> jwtValidators;
 
-    private Flavours flavours;
+    private SecurityProperties securityProperties;
 
     private final Map<String, List<String>> permitAllMappings;
 
-    public JwtGrpcAutoConfiguration(JwkSourceMap jwkSourceMap, List<OAuth2TokenValidator<Jwt>> jwtValidators, GrpcPermitAll permitAll, Flavours flavours) {
+    public JwtGrpcAutoConfiguration(JwkSourceMap jwkSourceMap, List<OAuth2TokenValidator<Jwt>> jwtValidators, GrpcPermitAll permitAll, SecurityProperties securityProperties) {
         this.jwkSourceMap = jwkSourceMap;
         this.jwtValidators = jwtValidators;
-        this.flavours = flavours;
+        this.securityProperties = securityProperties;
 
         if(permitAll.isEnabled()) {
             permitAllMappings = getPermitAllMappings(permitAll.getGrpc());
@@ -138,6 +140,8 @@ public class JwtGrpcAutoConfiguration {
     }
 
     private List<JwtAuthorityEnricher> getJwtAuthorityEnrichers(List<JwtAuthorityEnricher> jwtAuthorityEnrichers) {
+        JwtProperties jwtProperties = securityProperties.getJwt();
+        Flavours flavours = jwtProperties.getFlavours();
         if (flavours.isEnabled()) {
             List<JwtAuthorityEnricher> enrichers = new ArrayList<>(jwtAuthorityEnrichers);
 

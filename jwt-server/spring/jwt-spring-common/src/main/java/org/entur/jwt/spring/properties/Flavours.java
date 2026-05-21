@@ -1,8 +1,5 @@
 package org.entur.jwt.spring.properties;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
-
-@ConfigurationProperties(prefix = "entur.jwt.flavour")
 public class Flavours {
 
     private boolean enabled = true;
@@ -26,7 +23,6 @@ public class Flavours {
     public void setKeycloak(KeycloakFlavour keycloak) {
         this.keycloak = keycloak;
     }
-
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
