@@ -8,6 +8,7 @@ import org.entur.jwt.spring.JwtAuthorityEnricher;
 import org.entur.jwt.spring.JwtAutoConfiguration;
 import org.entur.jwt.spring.KeycloakJwtAuthorityEnricher;
 import org.entur.jwt.spring.NoUserDetailsService;
+import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.entur.jwt.spring.grpc.properties.GrpcPermitAll;
 import org.entur.jwt.spring.grpc.properties.GrpcServicesConfiguration;
 import org.entur.jwt.spring.grpc.properties.ServiceMatcherConfiguration;
@@ -18,6 +19,7 @@ import org.entur.jwt.spring.properties.KeycloakFlavour;
 import org.entur.jwt.spring.properties.SecurityProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -39,7 +41,6 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -96,8 +97,14 @@ public class JwtGrpcAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnProperty(name = "entur.jwt.decode.header.map-to-issuer.enabled", havingValue = "true")
+    public JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper() {
+        return new JwtHeaderToIssuerMapper();
+    }
+
+    @Bean
     @GlobalServerInterceptor
-    public AuthenticationProcessInterceptor jwtSecurityFilterChain(GrpcSecurity grpcSecurity, List<JwtAuthorityEnricher> jwtAuthorityEnrichers) throws Exception {
+    public AuthenticationProcessInterceptor jwtSecurityFilterChain(GrpcSecurity grpcSecurity, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, ObjectProvider<JwtHeaderToIssuerMapper> jwtHeaderToIssuerMapperProvider) throws Exception {
         try {
             grpcSecurity.authorizeRequests((requests) -> {
 
@@ -117,9 +124,13 @@ public class JwtGrpcAutoConfiguration {
                 requests.allRequests().fullyAuthenticated();
             });
 
+            JwtProperties jwtProperties = securityProperties.getJwt();
+
             JwtDecoder decoder = IssuerJwtDecoder.newBuilder()
                     .withJwkSourceMap(jwkSourceMap)
                     .withJwtValidators(jwtValidators)
+                    .withMapHeaderToIssuer(jwtProperties.getDecode().getHeader().getMapToIssuer().isEnabled())
+                    .withJwtHeaderToIssuerMapper(jwtHeaderToIssuerMapperProvider.getIfAvailable())
                     .build();
 
             Customizer<OAuth2ResourceServerConfigurer.JwtConfigurer> configurer = new Customizer<OAuth2ResourceServerConfigurer.JwtConfigurer>() {

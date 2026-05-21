@@ -8,6 +8,7 @@ import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTParser;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import org.entur.jwt.spring.JwkSourceMap;
+import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.BadJwtException;
@@ -42,6 +43,8 @@ public class IssuerJwtDecoder implements JwtDecoder {
 
         private List<OAuth2TokenValidator<Jwt>> jwtValidators;
         private JwkSourceMap jwkSourceMap;
+        private boolean mapHeaderToIssuer;
+        private JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper;
 
         public Builder withJwkSourceMap(JwkSourceMap jwkSourceMap) {
             this.jwkSourceMap = jwkSourceMap;
@@ -50,6 +53,11 @@ public class IssuerJwtDecoder implements JwtDecoder {
 
         public Builder withJwtValidators(List<OAuth2TokenValidator<Jwt>> jwtValidators) {
             this.jwtValidators = jwtValidators;
+            return this;
+        }
+
+        public Builder withJwtHeaderToIssuerMapper(JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper) {
+            this.jwtHeaderToIssuerMapper = jwtHeaderToIssuerMapper;
             return this;
         }
 
@@ -75,6 +83,13 @@ public class IssuerJwtDecoder implements JwtDecoder {
                 return map.values().iterator().next();
             }
 
+            if(mapHeaderToIssuer) {
+                if(jwtHeaderToIssuerMapper == null) {
+                    throw new IllegalStateException("JwtHeaderToIssuerMapper bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
+                }
+                return new FastIssuerJwtDecoder(map, jwtHeaderToIssuerMapper);
+            }
+
             return new IssuerJwtDecoder(map);
         }
 
@@ -84,6 +99,11 @@ public class IssuerJwtDecoder implements JwtDecoder {
             validators.addAll(jwtValidators);
             DelegatingOAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(validators);
             return validator;
+        }
+
+        public Builder withMapHeaderToIssuer(boolean mapHeaderToIssuer) {
+            this.mapHeaderToIssuer = mapHeaderToIssuer;
+            return this;
         }
     }
 
