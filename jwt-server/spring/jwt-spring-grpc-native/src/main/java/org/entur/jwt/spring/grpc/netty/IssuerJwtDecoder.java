@@ -44,6 +44,7 @@ public class IssuerJwtDecoder implements JwtDecoder {
         private List<OAuth2TokenValidator<Jwt>> jwtValidators;
         private JwkSourceMap jwkSourceMap;
         private boolean mapHeaderToIssuer;
+        private JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper;
 
         public Builder withJwkSourceMap(JwkSourceMap jwkSourceMap) {
             this.jwkSourceMap = jwkSourceMap;
@@ -52,6 +53,11 @@ public class IssuerJwtDecoder implements JwtDecoder {
 
         public Builder withJwtValidators(List<OAuth2TokenValidator<Jwt>> jwtValidators) {
             this.jwtValidators = jwtValidators;
+            return this;
+        }
+
+        public Builder withJwtHeaderToIssuerMapper(JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper) {
+            this.jwtHeaderToIssuerMapper = jwtHeaderToIssuerMapper;
             return this;
         }
 
@@ -78,7 +84,10 @@ public class IssuerJwtDecoder implements JwtDecoder {
             }
 
             if(mapHeaderToIssuer) {
-                return new FastIssuerJwtDecoder(map, new JwtHeaderToIssuerMapper());
+                if(jwtHeaderToIssuerMapper == null) {
+                    throw new IllegalStateException("JwtHeaderToIssuerMapper bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
+                }
+                return new FastIssuerJwtDecoder(map, jwtHeaderToIssuerMapper);
             }
 
             return new IssuerJwtDecoder(map);
