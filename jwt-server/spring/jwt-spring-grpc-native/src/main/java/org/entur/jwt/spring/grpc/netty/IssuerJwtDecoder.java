@@ -8,11 +8,7 @@ import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTParser;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import org.entur.jwt.spring.JwkSourceMap;
-import org.entur.jwt.spring.actuate.ListEventListener;
-import org.entur.jwt.spring.issuer.JwkHeaderToIssuerEventListener;
-import org.entur.jwt.spring.issuer.JwkHeaderToIssuerEventListeners;
-import org.entur.jwt.spring.issuer.JwtHeaderToIssuerMapper;
-import org.jspecify.annotations.NonNull;
+import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.BadJwtException;
@@ -47,6 +43,7 @@ public class IssuerJwtDecoder implements JwtDecoder {
 
         private List<OAuth2TokenValidator<Jwt>> jwtValidators;
         private JwkSourceMap jwkSourceMap;
+        private boolean mapHeaderToIssuer;
 
         public Builder withJwkSourceMap(JwkSourceMap jwkSourceMap) {
             this.jwkSourceMap = jwkSourceMap;
@@ -61,45 +58,30 @@ public class IssuerJwtDecoder implements JwtDecoder {
         public JwtDecoder build() {
             Map<String, JWKSource> jwkSources = jwkSourceMap.getJwkSources();
 
-            if(jwkSources.size() == 1) {
-                String issuer = jwkSources.keySet().iterator().next();
-                JWKSource jwkSource = jwkSources.get(issuer);
-
-                return getNimbusJwtDecoder(issuer, jwkSource);
-            }
-
-            // create multi-tenant decoder which attempts to avoid parsing the whole
-            // JWT to map the JWT to the correct decoder
-            Map<String, ListEventListener> jwkEventListeners = jwkSourceMap.getJwkEventListeners();
-
-            JwtHeaderToIssuerMapper mapper =  new JwtHeaderToIssuerMapper();
-            JwkHeaderToIssuerEventListeners listeners = new JwkHeaderToIssuerEventListeners(jwkSources.size(), mapper);
-
             Map<String, JwtDecoder> map = new HashMap<>(jwkSources.size() * 4);
 
             for (Map.Entry<String, JWKSource> entry : jwkSources.entrySet()) {
                 JWKSource jwkSource = entry.getValue();
-                String issuer = entry.getKey();
 
-                ListEventListener listEventListener = jwkEventListeners.get(issuer);
-                listEventListener.addEventListener(new JwkHeaderToIssuerEventListener(issuer, listeners));
+                DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
+                JWSVerificationKeySelector keySelector = new JWSVerificationKeySelector(JWSAlgorithm.Family.SIGNATURE, jwkSource);
+                jwtProcessor.setJWSKeySelector(keySelector);
 
-                NimbusJwtDecoder nimbusJwtDecoder = getNimbusJwtDecoder(issuer, jwkSource);
+                NimbusJwtDecoder nimbusJwtDecoder = new NimbusJwtDecoder(jwtProcessor);
+                nimbusJwtDecoder.setJwtValidator(getJwtValidators(entry.getKey()));
 
-                map.put(issuer, nimbusJwtDecoder);
+                map.put(entry.getKey(), nimbusJwtDecoder);
             }
 
-            return new IssuerJwtDecoder(map, mapper);
-        }
+            if(map.size() == 1) {
+                return map.values().iterator().next();
+            }
 
-        private @NonNull NimbusJwtDecoder getNimbusJwtDecoder(String issuer, JWKSource jwkSource) {
-            DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
-            JWSVerificationKeySelector keySelector = new JWSVerificationKeySelector(JWSAlgorithm.Family.SIGNATURE, jwkSource);
-            jwtProcessor.setJWSKeySelector(keySelector);
+            if(mapHeaderToIssuer) {
+                return new FastIssuerJwtDecoder(map, new JwtHeaderToIssuerMapper());
+            }
 
-            NimbusJwtDecoder nimbusJwtDecoder = new NimbusJwtDecoder(jwtProcessor);
-            nimbusJwtDecoder.setJwtValidator(getJwtValidators(issuer));
-            return nimbusJwtDecoder;
+            return new IssuerJwtDecoder(map);
         }
 
         private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(String issuer) {
@@ -109,57 +91,33 @@ public class IssuerJwtDecoder implements JwtDecoder {
             DelegatingOAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(validators);
             return validator;
         }
+
+        public Builder withMapHeaderToIssuer(boolean mapHeaderToIssuer) {
+            this.mapHeaderToIssuer = mapHeaderToIssuer;
+            return this;
+        }
     }
 
     protected final Map<String, JwtDecoder> decoders;
-    private final JwtHeaderToIssuerMapper mapper;
 
-    public IssuerJwtDecoder(Map<String, JwtDecoder> decoders, JwtHeaderToIssuerMapper mapper) {
+    public IssuerJwtDecoder(Map<String, JwtDecoder> decoders) {
         this.decoders = decoders;
-        this.mapper = mapper;
     }
 
     @Override
     public Jwt decode(String token) throws JwtException {
         // note to self: there is two jwt classes, Jwt and JWT
         try {
-            String issuer = mapper.get(token);
-            if(issuer != null) {
-                // fast path
-                JwtDecoder decoder = decoders.get(issuer);
-                if (decoder != null) {
-                    return decoder.decode(token);
-                }
-            } else {
-                // slow path
-                JWT parse = JWTParser.parse(token);
+            JWT parse = JWTParser.parse(token);
 
-                issuer = parse.getJWTClaimsSet().getIssuer();
-
-                JwtDecoder decoder = decoders.get(issuer);
-                if (decoder != null) {
-                    Jwt decode = decoder.decode(token);
-
-                    if(mapper.isEnabled(issuer) && hasKid(decode)) {
-                        // cache this jwt header
-                        mapper.add(issuer, token);
-                    }
-
-                    return decode;
-                }
+            JwtDecoder decoder = decoders.get(parse.getJWTClaimsSet().getIssuer());
+            if (decoder != null) {
+                return decoder.decode(token);
             }
 
-            throw new BadJwtException("Unknown issuer " + issuer);
+            throw new BadJwtException("Unknown issuer " + parse.getJWTClaimsSet().getIssuer());
         } catch (ParseException ex) {
             throw new InvalidBearerTokenException(String.format(DECODING_ERROR_MESSAGE_TEMPLATE, ex.getMessage()), ex);
         }
-    }
-
-    private static boolean hasKid(Jwt decode) {
-        return decode.getHeaders().get("kid") != null;
-    }
-
-    public JwtHeaderToIssuerMapper getMapper() {
-        return mapper;
     }
 }

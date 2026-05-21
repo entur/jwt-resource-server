@@ -1,7 +1,7 @@
 package org.entur.jwt.spring.config;
 
 import com.nimbusds.jwt.JWTParser;
-import org.entur.jwt.spring.issuer.JwtHeaderToIssuerMapper;
+import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -13,13 +13,13 @@ import org.springframework.security.oauth2.server.resource.authentication.Bearer
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.util.Assert;
 
-public class FastIssuerResolvingAuthenticationManager implements AuthenticationManager {
+public class FastIssuerAuthenticationManager implements AuthenticationManager {
 
     protected final JwtClaimIssuerConverter issuerConverter = new JwtClaimIssuerConverter();
     protected final AuthenticationManagerResolver<String> issuerAuthenticationManagerResolver;
     protected final JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper;
 
-    public FastIssuerResolvingAuthenticationManager(AuthenticationManagerResolver<String> issuerAuthenticationManagerResolver, JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper) {
+    public FastIssuerAuthenticationManager(AuthenticationManagerResolver<String> issuerAuthenticationManagerResolver, JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper) {
         this.issuerAuthenticationManagerResolver = issuerAuthenticationManagerResolver;
         this.jwtHeaderToIssuerMapper = jwtHeaderToIssuerMapper;
     }
@@ -44,21 +44,13 @@ public class FastIssuerResolvingAuthenticationManager implements AuthenticationM
 
             Authentication result = getAuthentication(authentication, authenticationManager);
 
-            if(jwtHeaderToIssuerMapper.isEnabled(issuer)) {
-                if(result instanceof JwtAuthenticationToken jwtAuthenticationToken) {
-                    if(isKid(jwtAuthenticationToken)) {
-                        // cache this jwt header to issuer mapping for future requests with the same token
-                        jwtHeaderToIssuerMapper.add(issuer, token.getToken());
-                    }
-                }
+            if(result instanceof JwtAuthenticationToken) {
+                // cache this jwt header to issuer mapping for future requests with the same token
+                jwtHeaderToIssuerMapper.add(issuer, token.getToken());
             }
 
             return result;
         }
-    }
-
-    private static boolean isKid(JwtAuthenticationToken jwtAuthenticationToken) {
-        return jwtAuthenticationToken.getToken().getHeaders().containsKey("kid");
     }
 
     // from JwtIssuerAuthenticationManagerResolver

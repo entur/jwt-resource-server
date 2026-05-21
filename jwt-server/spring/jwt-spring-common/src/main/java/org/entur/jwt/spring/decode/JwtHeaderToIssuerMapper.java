@@ -1,7 +1,5 @@
-package org.entur.jwt.spring.issuer;
+package org.entur.jwt.spring.decode;
 
-import java.util.Collections;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -11,20 +9,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class JwtHeaderToIssuerMapper {
 
     protected final ConcurrentHashMap<String, String> headerToIssuer = new ConcurrentHashMap<>();
-    protected Set<String> issuers = Collections.emptySet();
-
-    public boolean isEnabled() {
-        return !issuers.isEmpty();
-    }
-
-    public void setIssuers(Set<String> issuers) {
-        this.issuers = issuers;
-
-        // clean up
-        // if some old kid for some reason is added while this call is made
-        // it is not important.
-        headerToIssuer.entrySet().removeIf(entry -> !issuers.contains(entry.getValue()));
-    }
 
     /**
      * Look up the issuer for the given JWT token.
@@ -49,10 +33,6 @@ public class JwtHeaderToIssuerMapper {
         return null;
     }
 
-    public boolean isEnabled(String issuer) {
-        return issuers.contains(issuer);
-    }
-
     public void add(String issuer, String jwtToken) {
         int firstDot = jwtToken.indexOf('.');
         String rawHeader = jwtToken.substring(0, firstDot);
@@ -60,8 +40,8 @@ public class JwtHeaderToIssuerMapper {
         headerToIssuer.put(rawHeader, issuer);
     }
 
-    public void clearIssuer(String issuer) {
-        headerToIssuer.entrySet().removeIf(entry -> issuer.equals(entry.getValue()));
+    public void clear() {
+        headerToIssuer.clear();
     }
 
 }

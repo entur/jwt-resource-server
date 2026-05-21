@@ -5,14 +5,13 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
-import io.micrometer.observation.Observation;
 import jakarta.servlet.http.HttpServletRequest;
 import org.entur.jwt.spring.EnrichedJwtGrantedAuthoritiesConverter;
 import org.entur.jwt.spring.JwtAuthorityEnricher;
 import org.entur.jwt.spring.actuate.ListEventListener;
-import org.entur.jwt.spring.issuer.JwkHeaderToIssuerEventListener;
-import org.entur.jwt.spring.issuer.JwkHeaderToIssuerEventListeners;
-import org.entur.jwt.spring.issuer.JwtHeaderToIssuerMapper;
+import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
+import org.entur.jwt.spring.properties.JwtDecodeProperties;
+import org.entur.jwt.spring.properties.JwtHeaderDecodeProperties;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +20,6 @@ import org.springframework.security.authentication.AuthenticationManagerResolver
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -29,6 +27,7 @@ import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider;
+import org.springframework.security.oauth2.server.resource.authentication.JwtIssuerAuthenticationManagerResolver;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,8 +42,10 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
     private final List<JwtAuthorityEnricher> jwtAuthorityEnrichers;
     private final List<OAuth2TokenValidator<Jwt>> jwtValidators;
     private final Map<String, ListEventListener> jwkEventListeners;
+    private final JwtDecodeProperties properties;
 
-    public EnturOauth2ResourceServerCustomizer(Map<String, JWKSource> jwkSources, Map<String, ListEventListener> jwkEventListeners, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators) {
+    public EnturOauth2ResourceServerCustomizer(JwtDecodeProperties properties, Map<String, JWKSource> jwkSources, Map<String, ListEventListener> jwkEventListeners, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators) {
+        this.properties = properties;
         this.jwkSources = jwkSources;
         this.jwkEventListeners = jwkEventListeners;
         this.jwtAuthorityEnrichers = jwtAuthorityEnrichers;
@@ -70,16 +71,9 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
 
             Map<String, AuthenticationManager> map = new HashMap<>(); // thread safe for reading
 
-            JwtHeaderToIssuerMapper mapper = new JwtHeaderToIssuerMapper();
-
-            JwkHeaderToIssuerEventListeners contexts = new JwkHeaderToIssuerEventListeners(jwkSources.size(), mapper);
-
             for (Map.Entry<String, JWKSource> entry : jwkSources.entrySet()) {
                 JWKSource jwkSource = entry.getValue();
                 String issuer = entry.getKey();
-
-                ListEventListener listEventListener = jwkEventListeners.get(issuer);
-                listEventListener.addEventListener(new JwkHeaderToIssuerEventListener(issuer, contexts));
 
                 JwtAuthenticationProvider authenticationProvider = getJwtAuthenticationProvider(issuer, jwkSource);
 
@@ -89,9 +83,15 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
 
             AuthenticationManagerResolver<String> issuer = new IssuerAuthenticationManagerResolver(map);
 
-            FastIssuerResolvingAuthenticationManager jwtIssuerAuthenticationManagerResolver = new FastIssuerResolvingAuthenticationManager(issuer, mapper);
-
-            configurer.authenticationManagerResolver(request -> jwtIssuerAuthenticationManagerResolver);
+            JwtHeaderDecodeProperties header = properties.getHeader();
+            if(header.getMapHeaderToIssuer().isEnabled()) {
+                JwtHeaderToIssuerMapper mapper = new JwtHeaderToIssuerMapper();
+                FastIssuerAuthenticationManager jwtIssuerAuthenticationManagerResolver = new FastIssuerAuthenticationManager(issuer, mapper);
+                configurer.authenticationManagerResolver(request -> jwtIssuerAuthenticationManagerResolver);
+            } else {
+                JwtIssuerAuthenticationManagerResolver jwtIssuerAuthenticationManagerResolver = new JwtIssuerAuthenticationManagerResolver(issuer);
+                configurer.authenticationManagerResolver(jwtIssuerAuthenticationManagerResolver);
+            }
         }
     }
 

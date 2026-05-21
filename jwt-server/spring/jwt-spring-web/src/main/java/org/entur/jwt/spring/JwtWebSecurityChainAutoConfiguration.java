@@ -145,7 +145,7 @@ public class JwtWebSecurityChainAutoConfiguration {
                     jwtAuthorityEnrichers = enrichers;
                 }
 
-                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources(), jwkSourceMap.getJwkEventListeners(), jwtAuthorityEnrichers, jwtValidators));
+                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwt.getDecode(), jwkSourceMap.getJwkSources(), jwkSourceMap.getJwkEventListeners(), jwtAuthorityEnrichers, jwtValidators));
             }
 
             MdcProperties mdc = jwt.getMdc();
