@@ -41,13 +41,11 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
     private final Map<String, JWKSource> jwkSources;
     private final List<JwtAuthorityEnricher> jwtAuthorityEnrichers;
     private final List<OAuth2TokenValidator<Jwt>> jwtValidators;
-    private final Map<String, ListEventListener> jwkEventListeners;
     private final JwtDecodeProperties properties;
 
-    public EnturOauth2ResourceServerCustomizer(JwtDecodeProperties properties, Map<String, JWKSource> jwkSources, Map<String, ListEventListener> jwkEventListeners, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators) {
+    public EnturOauth2ResourceServerCustomizer(JwtDecodeProperties properties, Map<String, JWKSource> jwkSources, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators) {
         this.properties = properties;
         this.jwkSources = jwkSources;
-        this.jwkEventListeners = jwkEventListeners;
         this.jwtAuthorityEnrichers = jwtAuthorityEnrichers;
         this.jwtValidators = jwtValidators;
     }
@@ -57,30 +55,31 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
 
         if(LOGGER.isDebugEnabled()) LOGGER.debug("Customize {} issuers", jwkSources.size());
 
-        if(jwkSources.size() == 1) {
-            String issuer = jwkSources.keySet().iterator().next();
-            JWKSource jwkSource = jwkSources.get(issuer);
+        Map<String, AuthenticationManager> map = new HashMap<>(); // thread safe for reading
 
-            JwtAuthenticationProvider authenticationProvider = getJwtAuthenticationProvider(issuer, jwkSource);
+        for (Map.Entry<String, JWKSource> entry : jwkSources.entrySet()) {
+            JWKSource jwkSource = entry.getValue();
 
-            AuthenticationManagerResolver<HttpServletRequest> resolver = request -> authenticationProvider::authenticate;
-            configurer.authenticationManagerResolver(resolver);
+            DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
+            JWSVerificationKeySelector keySelector = new JWSVerificationKeySelector(JWSAlgorithm.Family.SIGNATURE, jwkSource);
+            jwtProcessor.setJWSKeySelector(keySelector);
+
+            NimbusJwtDecoder nimbusJwtDecoder = new NimbusJwtDecoder(jwtProcessor);
+            nimbusJwtDecoder.setJwtValidator(getJwtValidators(entry.getKey()));
+
+            JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
+            jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(new EnrichedJwtGrantedAuthoritiesConverter(jwtAuthorityEnrichers));
+
+            JwtAuthenticationProvider authenticationProvider = new JwtAuthenticationProvider(nimbusJwtDecoder);
+            authenticationProvider.setJwtAuthenticationConverter(jwtAuthenticationConverter);
+
+            map.put(entry.getKey(), authenticationProvider::authenticate);
+        }
+
+        if(map.size() == 1) {
+            AuthenticationManager next = map.values().iterator().next();
+            configurer.authenticationManagerResolver(request -> next);
         } else {
-            // create multi-tenant decoder which attempts to avoid parsing the
-            // JWT to map the JWT to the correct decoder
-
-            Map<String, AuthenticationManager> map = new HashMap<>(); // thread safe for reading
-
-            for (Map.Entry<String, JWKSource> entry : jwkSources.entrySet()) {
-                JWKSource jwkSource = entry.getValue();
-                String issuer = entry.getKey();
-
-                JwtAuthenticationProvider authenticationProvider = getJwtAuthenticationProvider(issuer, jwkSource);
-
-                AuthenticationManager authenticationManager = authenticationProvider::authenticate;
-                map.put(entry.getKey(), authenticationManager);
-            }
-
             AuthenticationManagerResolver<String> issuer = new IssuerAuthenticationManagerResolver(map);
 
             JwtHeaderDecodeProperties header = properties.getHeader();
@@ -90,25 +89,10 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
                 configurer.authenticationManagerResolver(request -> jwtIssuerAuthenticationManagerResolver);
             } else {
                 JwtIssuerAuthenticationManagerResolver jwtIssuerAuthenticationManagerResolver = new JwtIssuerAuthenticationManagerResolver(issuer);
+
                 configurer.authenticationManagerResolver(jwtIssuerAuthenticationManagerResolver);
             }
         }
-    }
-
-    private @NonNull JwtAuthenticationProvider getJwtAuthenticationProvider(String issuer, JWKSource jwkSource) {
-        DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
-        JWSVerificationKeySelector keySelector = new JWSVerificationKeySelector(JWSAlgorithm.Family.SIGNATURE, jwkSource);
-        jwtProcessor.setJWSKeySelector(keySelector);
-
-        NimbusJwtDecoder nimbusJwtDecoder = new NimbusJwtDecoder(jwtProcessor);
-        nimbusJwtDecoder.setJwtValidator(getJwtValidators(issuer));
-
-        JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(new EnrichedJwtGrantedAuthoritiesConverter(jwtAuthorityEnrichers));
-
-        JwtAuthenticationProvider authenticationProvider = new JwtAuthenticationProvider(nimbusJwtDecoder);
-        authenticationProvider.setJwtAuthenticationConverter(jwtAuthenticationConverter);
-        return authenticationProvider;
     }
 
     private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(String issuer) {

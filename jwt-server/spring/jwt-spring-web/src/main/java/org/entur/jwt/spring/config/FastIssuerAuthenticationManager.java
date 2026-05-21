@@ -33,7 +33,7 @@ public class FastIssuerAuthenticationManager implements AuthenticationManager {
         String issuer = jwtHeaderToIssuerMapper.get(token.getToken());
         if(issuer != null) {
             // fast path
-            AuthenticationManager authenticationManager = this.issuerAuthenticationManagerResolver.resolve(issuer);
+            AuthenticationManager authenticationManager = issuerAuthenticationManagerResolver.resolve(issuer);
 
             return getAuthentication(authentication, authenticationManager);
         } else {
