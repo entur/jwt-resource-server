@@ -13,6 +13,9 @@ import com.nimbusds.jwt.proc.JWTProcessor;
 import org.entur.jwt.spring.EnrichedJwtGrantedAuthoritiesConverter;
 import org.entur.jwt.spring.JwtAuthorityEnricher;
 import org.entur.jwt.spring.ReactiveJwtMonoConverter;
+import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
+import org.entur.jwt.spring.properties.JwtDecodeProperties;
+import org.entur.jwt.spring.properties.JwtHeaderDecodeProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
@@ -43,11 +46,13 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHtt
     private final Map<String, JWKSource> jwkSources;
     private final List<JwtAuthorityEnricher> jwtAuthorityEnrichers;
     private final List<OAuth2TokenValidator<Jwt>> jwtValidators;
+    private final JwtDecodeProperties properties;
 
-    public EnturOauth2ResourceServerCustomizer(Map<String, JWKSource> jwkSources, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators) {
+    public EnturOauth2ResourceServerCustomizer(Map<String, JWKSource> jwkSources, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators, JwtDecodeProperties properties) {
         this.jwkSources = jwkSources;
         this.jwtAuthorityEnrichers = jwtAuthorityEnrichers;
         this.jwtValidators = jwtValidators;
+        this.properties = properties;
     }
 
     @Override
@@ -90,9 +95,17 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHtt
         } else {
             IssuerAuthenticationManagerResolver issuer = new IssuerAuthenticationManagerResolver(map);
 
-            JwtIssuerReactiveAuthenticationManagerResolver jwtIssuerAuthenticationManagerResolver = new JwtIssuerReactiveAuthenticationManagerResolver(issuer);
+            JwtHeaderDecodeProperties header = properties.getHeader();
+            if(header.getMapToIssuer().isEnabled()) {
+                JwtHeaderToIssuerMapper mapper = new JwtHeaderToIssuerMapper();
+                FastReactiveIssuerAuthenticationManager jwtIssuerAuthenticationManagerResolver = new FastReactiveIssuerAuthenticationManager(issuer, mapper);
+                Mono<ReactiveAuthenticationManager> mono = Mono.just(jwtIssuerAuthenticationManagerResolver);
+                configurer.authenticationManagerResolver(request -> mono);
+            } else {
+                JwtIssuerReactiveAuthenticationManagerResolver jwtIssuerAuthenticationManagerResolver = new JwtIssuerReactiveAuthenticationManagerResolver(issuer);
 
-            configurer.authenticationManagerResolver(jwtIssuerAuthenticationManagerResolver);
+                configurer.authenticationManagerResolver(jwtIssuerAuthenticationManagerResolver);
+            }
         }
     }
 
