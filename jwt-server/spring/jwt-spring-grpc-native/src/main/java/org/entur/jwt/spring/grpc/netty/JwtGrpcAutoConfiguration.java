@@ -121,7 +121,7 @@ public class JwtGrpcAutoConfiguration {
             JwtDecoder decoder = IssuerJwtDecoder.newBuilder()
                     .withJwkSourceMap(jwkSourceMap)
                     .withJwtValidators(jwtValidators)
-                    .withMapHeaderToIssuer(jwtProperties.getDecode().getHeader().getMapHeaderToIssuer().isEnabled())
+                    .withMapHeaderToIssuer(jwtProperties.getDecode().getHeader().getMapToIssuer().isEnabled())
                     .build();
 
             Customizer<OAuth2ResourceServerConfigurer.JwtConfigurer> configurer = new Customizer<OAuth2ResourceServerConfigurer.JwtConfigurer>() {

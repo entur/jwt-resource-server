@@ -80,7 +80,7 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
             AuthenticationManagerResolver<String> issuer = new IssuerAuthenticationManagerResolver(map);
 
             JwtHeaderDecodeProperties header = properties.getHeader();
-            if(header.getMapHeaderToIssuer().isEnabled()) {
+            if(header.getMapToIssuer().isEnabled()) {
                 JwtHeaderToIssuerMapper mapper = new JwtHeaderToIssuerMapper();
                 FastIssuerAuthenticationManager jwtIssuerAuthenticationManagerResolver = new FastIssuerAuthenticationManager(issuer, mapper);
                 configurer.authenticationManagerResolver(request -> jwtIssuerAuthenticationManagerResolver);

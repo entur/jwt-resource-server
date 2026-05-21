@@ -2,13 +2,13 @@ package org.entur.jwt.spring.properties;
 
 public class JwtHeaderDecodeProperties {
 
-    private JwtHeaderDecodeMapHeaderToIssuerProperties mapHeaderToIssuer = new JwtHeaderDecodeMapHeaderToIssuerProperties();
+    private JwtHeaderDecodeMapHeaderToIssuerProperties mapToIssuer = new JwtHeaderDecodeMapHeaderToIssuerProperties();
 
-    public void setMapHeaderToIssuer(JwtHeaderDecodeMapHeaderToIssuerProperties mapHeaderToIssuer) {
-        this.mapHeaderToIssuer = mapHeaderToIssuer;
+    public void setMapToIssuer(JwtHeaderDecodeMapHeaderToIssuerProperties mapToIssuer) {
+        this.mapToIssuer = mapToIssuer;
     }
 
-    public JwtHeaderDecodeMapHeaderToIssuerProperties getMapHeaderToIssuer() {
-        return mapHeaderToIssuer;
+    public JwtHeaderDecodeMapHeaderToIssuerProperties getMapToIssuer() {
+        return mapToIssuer;
     }
 }
