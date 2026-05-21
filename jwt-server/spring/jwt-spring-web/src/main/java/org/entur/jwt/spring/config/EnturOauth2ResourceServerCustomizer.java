@@ -82,8 +82,8 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
             JwtHeaderDecodeProperties header = properties.getHeader();
             if(header.getMapToIssuer().isEnabled()) {
                 JwtHeaderToIssuerMapper mapper = new JwtHeaderToIssuerMapper();
-                FastIssuerAuthenticationManager jwtIssuerAuthenticationManagerResolver = new FastIssuerAuthenticationManager(issuer, mapper);
-                configurer.authenticationManagerResolver(request -> jwtIssuerAuthenticationManagerResolver);
+                FastIssuerAuthenticationManager fastIssuerAuthenticationManager = new FastIssuerAuthenticationManager(issuer, mapper);
+                configurer.authenticationManagerResolver(request -> fastIssuerAuthenticationManager);
             } else {
                 JwtIssuerAuthenticationManagerResolver jwtIssuerAuthenticationManagerResolver = new JwtIssuerAuthenticationManagerResolver(issuer);
 
