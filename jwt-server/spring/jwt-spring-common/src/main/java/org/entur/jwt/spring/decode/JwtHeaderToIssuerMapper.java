@@ -44,4 +44,8 @@ public class JwtHeaderToIssuerMapper {
         headerToIssuer.clear();
     }
 
+    public ConcurrentHashMap<String, String> getHeaderToIssuer() {
+        return headerToIssuer;
+    }
+
 }

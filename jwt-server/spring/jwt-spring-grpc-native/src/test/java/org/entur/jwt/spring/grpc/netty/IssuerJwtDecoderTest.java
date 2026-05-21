@@ -1,25 +1,27 @@
 package org.entur.jwt.spring.grpc.netty;
 
 import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.util.JSONObjectUtils;
 import org.entur.jwt.spring.JwkSourceMap;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 
-import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 public class IssuerJwtDecoderTest {
@@ -34,7 +36,7 @@ public class IssuerJwtDecoderTest {
 
         assertThat(decoder).isInstanceOf(FastIssuerJwtDecoder.class);
         FastIssuerJwtDecoder fastDecoder = (FastIssuerJwtDecoder) decoder;
-        assertThat(getHeaderToIssuerState(fastDecoder.getMapper())).isEmpty();
+        assertThat(fastDecoder.getMapper().getHeaderToIssuer()).isEmpty();
     }
 
     @Test
@@ -63,14 +65,27 @@ public class IssuerJwtDecoderTest {
         decoder.decode(validToken);
 
         assertThat(mapper.get(validToken)).isEqualTo(issuer);
-        assertThat(getHeaderToIssuerState(mapper)).hasSize(1);
+        assertThat(mapper.getHeaderToIssuer()).hasSize(1);
 
         String malformedTokenWithSameHeader = headerSegment(validToken) + ".x";
         decoder.decode(malformedTokenWithSameHeader);
 
         verify(issuerDecoder).decode(validToken);
         verify(issuerDecoder).decode(malformedTokenWithSameHeader);
-        assertThat(getHeaderToIssuerState(mapper)).hasSize(1);
+        assertThat(mapper.getHeaderToIssuer()).hasSize(1);
+    }
+
+    @Test
+    public void testFastDecoderDoesNotCacheInvalidTokenHeader() {
+        String invalidToken = base64Json(Map.of("alg", "RS256", "kid", "kid-a")) + ".x";
+
+        JwtDecoder issuerDecoder = mock(JwtDecoder.class);
+        JwtHeaderToIssuerMapper mapper = new JwtHeaderToIssuerMapper();
+        FastIssuerJwtDecoder decoder = new FastIssuerJwtDecoder(Map.of("https://issuer-a", issuerDecoder), mapper);
+
+        assertThatThrownBy(() -> decoder.decode(invalidToken)).isInstanceOf(InvalidBearerTokenException.class);
+        assertThat(mapper.getHeaderToIssuer()).isEmpty();
+        verifyNoInteractions(issuerDecoder);
     }
 
     private static JwkSourceMap<?> jwkSourceMapWithTwoIssuers() {
@@ -90,8 +105,8 @@ public class IssuerJwtDecoderTest {
     }
 
     private static String tokenWithIssuer(String kid, String issuer) {
-        String header = Base64.getUrlEncoder().withoutPadding().encodeToString(("{\"alg\":\"RS256\",\"kid\":\"" + kid + "\"}").getBytes(StandardCharsets.UTF_8));
-        String payload = Base64.getUrlEncoder().withoutPadding().encodeToString(("{\"iss\":\"" + issuer + "\"}").getBytes(StandardCharsets.UTF_8));
+        String header = base64Json(Map.of("alg", "RS256", "kid", kid));
+        String payload = base64Json(Map.of("iss", issuer));
         return header + "." + payload + ".signature";
     }
 
@@ -99,10 +114,8 @@ public class IssuerJwtDecoderTest {
         return token.substring(0, token.indexOf('.'));
     }
 
-    @SuppressWarnings("unchecked")
-    private static ConcurrentHashMap<String, String> getHeaderToIssuerState(JwtHeaderToIssuerMapper mapper) throws Exception {
-        Field field = JwtHeaderToIssuerMapper.class.getDeclaredField("headerToIssuer");
-        field.setAccessible(true);
-        return (ConcurrentHashMap<String, String>) field.get(mapper);
+    private static String base64Json(Map<String, ?> claims) {
+        return Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(JSONObjectUtils.toJSONString(claims).getBytes(StandardCharsets.UTF_8));
     }
 }
