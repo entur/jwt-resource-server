@@ -6,7 +6,7 @@ package org.entur.jwt.spring.properties;
  * Enable if JWT headers are known to be unique and semi-static per issuer.
  *
  * If only one issuer, this setting has no effect.
- * */
+ */
 
 public class JwtHeaderDecodeMapHeaderToIssuerProperties {
 
