@@ -47,12 +47,18 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHtt
     private final List<JwtAuthorityEnricher> jwtAuthorityEnrichers;
     private final List<OAuth2TokenValidator<Jwt>> jwtValidators;
     private final JwtDecodeProperties properties;
+    private final JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper;
 
     public EnturOauth2ResourceServerCustomizer(Map<String, JWKSource> jwkSources, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators, JwtDecodeProperties properties) {
+        this(jwkSources, jwtAuthorityEnrichers, jwtValidators, properties, null);
+    }
+
+    public EnturOauth2ResourceServerCustomizer(Map<String, JWKSource> jwkSources, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators, JwtDecodeProperties properties, JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper) {
         this.jwkSources = jwkSources;
         this.jwtAuthorityEnrichers = jwtAuthorityEnrichers;
         this.jwtValidators = jwtValidators;
         this.properties = properties;
+        this.jwtHeaderToIssuerMapper = jwtHeaderToIssuerMapper;
     }
 
     @Override
@@ -97,8 +103,10 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHtt
 
             JwtHeaderDecodeProperties header = properties.getHeader();
             if(header.getMapToIssuer().isEnabled()) {
-                JwtHeaderToIssuerMapper mapper = new JwtHeaderToIssuerMapper();
-                FastReactiveIssuerAuthenticationManager fastIssuerAuthenticationManager = new FastReactiveIssuerAuthenticationManager(issuer, mapper);
+                if(jwtHeaderToIssuerMapper == null) {
+                    throw new IllegalStateException("JwtHeaderToIssuerMapper bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
+                }
+                FastReactiveIssuerAuthenticationManager fastIssuerAuthenticationManager = new FastReactiveIssuerAuthenticationManager(issuer, jwtHeaderToIssuerMapper);
                 Mono<ReactiveAuthenticationManager> mono = Mono.just(fastIssuerAuthenticationManager);
                 configurer.authenticationManagerResolver(request -> mono);
             } else {
