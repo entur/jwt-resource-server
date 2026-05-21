@@ -54,7 +54,7 @@ public class FastIssuerAuthenticationManager implements AuthenticationManager {
     }
 
     // from JwtIssuerAuthenticationManagerResolver
-    private static @org.jspecify.annotations.NonNull Authentication getAuthentication(Authentication authentication, AuthenticationManager authenticationManager) {
+    private static @NonNull Authentication getAuthentication(Authentication authentication, AuthenticationManager authenticationManager) {
         if (authenticationManager == null) {
            AuthenticationException ex = new InvalidBearerTokenException("Invalid issuer");
            ex.setAuthenticationRequest(authentication);
