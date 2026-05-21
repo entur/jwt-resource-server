@@ -39,13 +39,13 @@ public class FastReactiveIssuerAuthenticationManager implements ReactiveAuthenti
         // slow path: parse the JWT to extract the issuer
         // then populate the cache
         return this.issuerConverter.convert(token)
-                .flatMap(convertIssuer -> resolveAndAuthenticate(convertIssuer, authentication))
-                .doOnNext(result -> {
-                    if (result instanceof JwtAuthenticationToken t) {
-                        // cache this jwt header to issuer mapping for future requests with the same token
-                        jwtHeaderToIssuerMapper.add(t.getToken().getClaim("iss"), token.getToken());
-                    }
-                });
+                .flatMap(convertIssuer -> resolveAndAuthenticate(convertIssuer, authentication)
+                        .doOnNext(result -> {
+                            if (result instanceof JwtAuthenticationToken) {
+                                // cache this jwt header to issuer mapping for future requests with the same token
+                                jwtHeaderToIssuerMapper.add(convertIssuer, token.getToken());
+                            }
+                        }));
     }
 
     private Mono<Authentication> resolveAndAuthenticate(String issuer, Authentication authentication) {
