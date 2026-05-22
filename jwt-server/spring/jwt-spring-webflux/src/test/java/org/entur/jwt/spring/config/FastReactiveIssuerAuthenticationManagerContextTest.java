@@ -2,6 +2,8 @@ package org.entur.jwt.spring.config;
 
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
+import org.entur.jwt.junit5.claim.Issuer;
+import org.entur.jwt.junit5.sabotage.Signature;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.entur.jwt.spring.rest.Greeting;
 import org.junit.jupiter.api.BeforeEach;
@@ -94,5 +96,48 @@ public class FastReactiveIssuerAuthenticationManagerContextTest {
                 .getResponseBody().blockLast();
 
         assertThat(jwtHeaderToIssuerMapper.getHeaderToIssuer()).hasSize(1);
+    }
+
+    @Test
+    public void testInvalidTokenHeaderNotCachedForMalformedToken() {
+        webTestClient
+                .get()
+                .uri("/protected")
+                .header(AUTHORIZATION, "Bearer not.a.valid.jwt")
+                .exchange()
+                .expectStatus().isUnauthorized();
+
+        // Malformed tokens must not be added to the cache
+        assertThat(jwtHeaderToIssuerMapper.getHeaderToIssuer()).isEmpty();
+    }
+
+    @Test
+    public void testInvalidTokenHeaderNotCachedForInvalidSignature(
+            @AccessToken(by = "a", audience = "mock.my.audience") @Signature("tampered") String token) {
+
+        webTestClient
+                .get()
+                .uri("/protected")
+                .header(AUTHORIZATION, token)
+                .exchange()
+                .expectStatus().isUnauthorized();
+
+        // Tokens that fail signature verification must not be added to the cache
+        assertThat(jwtHeaderToIssuerMapper.getHeaderToIssuer()).isEmpty();
+    }
+
+    @Test
+    public void testInvalidTokenHeaderNotCachedForUnknownIssuer(
+            @AccessToken(by = "a", audience = "mock.my.audience") @Issuer("https://unknown.issuer") String token) {
+
+        webTestClient
+                .get()
+                .uri("/protected")
+                .header(AUTHORIZATION, token)
+                .exchange()
+                .expectStatus().isUnauthorized();
+
+        // Tokens with an unrecognised issuer must not be added to the cache
+        assertThat(jwtHeaderToIssuerMapper.getHeaderToIssuer()).isEmpty();
     }
 }

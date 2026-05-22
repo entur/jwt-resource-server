@@ -2,6 +2,8 @@ package org.entur.jwt.spring.config;
 
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
+import org.entur.jwt.junit5.claim.Issuer;
+import org.entur.jwt.junit5.sabotage.Signature;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.entur.jwt.spring.rest.Greeting;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +17,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -91,5 +94,51 @@ public class FastIssuerAuthenticationManagerContextTest {
         // Second request with the same token: fast path, mapper size stays the same
         restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
         assertThat(jwtHeaderToIssuerMapper.getHeaderToIssuer()).hasSize(1);
+    }
+
+    @Test
+    public void testInvalidTokenHeaderNotCachedForMalformedToken() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "Bearer not.a.valid.jwt");
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        String url = "http://localhost:" + randomServerPort + "/protected";
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        // Malformed tokens must not be added to the cache
+        assertThat(jwtHeaderToIssuerMapper.getHeaderToIssuer()).isEmpty();
+    }
+
+    @Test
+    public void testInvalidTokenHeaderNotCachedForInvalidSignature(
+            @AccessToken(by = "a", audience = "mock.my.audience") @Signature("tampered") String token) {
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", token);
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        String url = "http://localhost:" + randomServerPort + "/protected";
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        // Tokens that fail signature verification must not be added to the cache
+        assertThat(jwtHeaderToIssuerMapper.getHeaderToIssuer()).isEmpty();
+    }
+
+    @Test
+    public void testInvalidTokenHeaderNotCachedForUnknownIssuer(
+            @AccessToken(by = "a", audience = "mock.my.audience") @Issuer("https://unknown.issuer") String token) {
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", token);
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        String url = "http://localhost:" + randomServerPort + "/protected";
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        // Tokens with an unrecognised issuer must not be added to the cache
+        assertThat(jwtHeaderToIssuerMapper.getHeaderToIssuer()).isEmpty();
     }
 }
