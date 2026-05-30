@@ -14,6 +14,14 @@ on:
   schedule:
     - cron: "0 3 * * MON" # Run Monday at 3AM UTC
 
+permissions:
+  packages: read
+  security-events: write
+  actions: read
+  contents: write
+  issues: write
+  pull-requests: write
+
 jobs:
   code-scan:
     name: CodeQL Scan
