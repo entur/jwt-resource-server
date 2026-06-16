@@ -19,6 +19,8 @@ public class JwtProperties {
 
     private JwtClaimsProperties claims = new JwtClaimsProperties();
 
+    private JwtDecodeProperties decode = new JwtDecodeProperties();
+
     public Map<String, JwtTenantProperties> getTenants() {
         return tenants;
     }
@@ -68,5 +70,13 @@ public class JwtProperties {
 
     public void setFlavours(Flavours flavours) {
         this.flavours = flavours;
+    }
+
+    public void setDecode(JwtDecodeProperties decode) {
+        this.decode = decode;
+    }
+
+    public JwtDecodeProperties getDecode() {
+        return decode;
     }
 }
