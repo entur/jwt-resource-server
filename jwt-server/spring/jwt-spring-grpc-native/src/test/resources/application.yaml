@@ -28,10 +28,6 @@ entur:
         patterns:
           - /actuator/health
 
-grpc:
-  server.port: 0
-  security.auth.enabled: true
-
 logging:
   level:
     root: DEBUG
