@@ -15,7 +15,7 @@
 	<url>https://github.com/entur/jwt-resource-server</url>
 
 	<properties>
-		<java.version>21</java.version>
+		<java.version>17</java.version>
 		<truth.version>1.4.5</truth.version>
 	</properties>
 
