@@ -82,7 +82,7 @@ public abstract class AbstractRatelimitedUnauthenticatedAccessTokenRecoveryHandl
     }
 
     public void close() {
-        executor.close();
+        executor.shutdown();
     }
 
     protected ThreadPoolExecutor getExecutor() {
