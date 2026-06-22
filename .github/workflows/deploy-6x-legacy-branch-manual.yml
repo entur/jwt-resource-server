@@ -1,4 +1,4 @@
-name: Deploy legacy branch to Maven Central
+name: Deploy 6.x legacy branch to Maven Central
 on:
   workflow_dispatch:
     inputs:
@@ -12,21 +12,22 @@ on:
 
 jobs:
   deploy-maven:
+    if: github.ref_name == '6.x'
     uses: entur/gha-maven-central/.github/workflows/maven-publish.yml@main
     secrets: inherit
     permissions:
       contents: write
-      issues: write    
+      issues: write
     with:
       next_version: ${{ inputs.version-increment }}
       version_strategy: tag
-      version_tag_prefix: legacy-v
+      version_tag_prefix: 6x-legacy-v
       java_version: 25
 
   post-failure-to-slack:
     needs: deploy-maven
     if: failure()
-    uses: entur/gha-slack/.github/workflows/post.yml@v2
+    uses: entur/gha-slack/.github/workflows/post.yml@v3
     permissions:
       contents: read
     with:
@@ -37,7 +38,7 @@ jobs:
   post-success-to-slack:
     needs: deploy-maven
     if: success()
-    uses: entur/gha-slack/.github/workflows/post.yml@v2
+    uses: entur/gha-slack/.github/workflows/post.yml@v3
     permissions:
       contents: read
     with:
