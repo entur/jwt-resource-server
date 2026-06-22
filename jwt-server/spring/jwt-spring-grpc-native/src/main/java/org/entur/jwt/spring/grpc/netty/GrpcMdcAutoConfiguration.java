@@ -10,14 +10,14 @@ import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.grpc.server.autoconfigure.security.OAuth2ResourceServerAutoConfiguration;
+import org.springframework.boot.grpc.server.autoconfigure.security.GrpcServerOAuth2ResourceServerAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @ConditionalOnExpression("${entur.jwt.enabled:true}")
 @EnableConfigurationProperties({GrpcMdcProperties.class, MdcProperties.class})
-@AutoConfigureAfter(value = {JwtAutoConfiguration.class, OAuth2ResourceServerAutoConfiguration.class})
+@AutoConfigureAfter(value = {JwtAutoConfiguration.class, GrpcServerOAuth2ResourceServerAutoConfiguration.class})
 public class GrpcMdcAutoConfiguration {
 
     @Bean
