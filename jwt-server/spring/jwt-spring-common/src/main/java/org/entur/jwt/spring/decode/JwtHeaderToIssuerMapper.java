@@ -37,7 +37,7 @@ public class JwtHeaderToIssuerMapper {
     public void add(String issuer, String jwtToken) {
         int firstDot = jwtToken.indexOf('.');
         if(firstDot == -1) {
-            throw new IllegalArgumentException("Expected JWT token on the for a.b.c");
+            throw new IllegalArgumentException("Expected JWT token on the form a.b.c");
         }
         String rawHeader = jwtToken.substring(0, firstDot);
 
