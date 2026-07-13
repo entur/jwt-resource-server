@@ -99,9 +99,12 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
                 if(jwtHeaderToIssuerMapper == null) {
                     throw new IllegalStateException("JwtHeaderToIssuerMapper bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
                 }
+                if(jwtHeaderToIssuerMapperDecider == null) {
+                    throw new IllegalStateException("JwtHeaderToIssuerMapperDecider bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
+                }
                 FastIssuerAuthenticationManager fastIssuerAuthenticationManager = new FastIssuerAuthenticationManager(issuer, jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider);
                 configurer.authenticationManagerResolver(request -> fastIssuerAuthenticationManager);
-            } else {
+            }
                 JwtIssuerAuthenticationManagerResolver jwtIssuerAuthenticationManagerResolver = new JwtIssuerAuthenticationManagerResolver(issuer);
 
                 configurer.authenticationManagerResolver(jwtIssuerAuthenticationManagerResolver);
