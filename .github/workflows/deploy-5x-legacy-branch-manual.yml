@@ -1,4 +1,4 @@
-name: Deploy legacy branch to Maven Central
+name: Deploy 5.x legacy branch to Maven Central
 on:
   workflow_dispatch:
     inputs:
@@ -12,6 +12,7 @@ on:
 
 jobs:
   deploy-maven:
+    if: github.ref_name == '5.x'
     uses: entur/gha-maven-central/.github/workflows/maven-publish.yml@main
     secrets: inherit
     permissions:
@@ -20,7 +21,7 @@ jobs:
     with:
       next_version: ${{ inputs.version-increment }}
       version_strategy: tag
-      version_tag_prefix: legacy-v
+      version_tag_prefix: 5x-legacy-v
       java_version: 25
 
   post-failure-to-slack:

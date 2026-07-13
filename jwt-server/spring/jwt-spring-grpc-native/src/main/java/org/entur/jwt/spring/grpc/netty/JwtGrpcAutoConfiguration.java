@@ -25,8 +25,9 @@ import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.grpc.server.autoconfigure.ConditionalOnGrpcServletServer;
-import org.springframework.boot.grpc.server.autoconfigure.security.OAuth2ResourceServerAutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.grpc.server.GrpcServletRegistration;
+import org.springframework.boot.grpc.server.autoconfigure.security.GrpcServerOAuth2ResourceServerAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.grpc.server.GlobalServerInterceptor;
@@ -49,7 +50,7 @@ import java.util.Map;
 @Configuration
 @EnableConfigurationProperties({GrpcPermitAll.class, SecurityProperties.class})
 @AutoConfigureAfter(value = {JwtAutoConfiguration.class})
-@AutoConfigureBefore(value = {OAuth2ResourceServerAutoConfiguration.class})
+@AutoConfigureBefore(value = {GrpcServerOAuth2ResourceServerAutoConfiguration.class})
 @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
 public class JwtGrpcAutoConfiguration {
 
@@ -76,7 +77,7 @@ public class JwtGrpcAutoConfiguration {
     }
 
     @Configuration
-    @ConditionalOnGrpcServletServer
+    @ConditionalOnBean(GrpcServletRegistration.class)
     public static class GrpcServletServerGuard {
 
         public GrpcServletServerGuard() {
