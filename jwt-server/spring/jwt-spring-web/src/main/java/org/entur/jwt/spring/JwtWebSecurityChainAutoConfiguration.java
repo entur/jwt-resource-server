@@ -114,7 +114,7 @@ public class JwtWebSecurityChainAutoConfiguration {
         private JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper;
 
         @Autowired(required = false)
-        private JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerHeaderCacheDecider;
+        private JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider;
 
         public CompositeWebSecurityConfigurerAdapter(SecurityProperties securityProperties) {
             this.securityProperties = securityProperties;
@@ -169,7 +169,7 @@ public class JwtWebSecurityChainAutoConfiguration {
                     jwtAuthorityEnrichers = enrichers;
                 }
 
-                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwt.getDecode(), jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers, jwtValidators, jwtHeaderToIssuerMapper, jwtHeaderToIssuerHeaderCacheDecider));
+                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwt.getDecode(), jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers, jwtValidators, jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider));
             }
 
             MdcProperties mdc = jwt.getMdc();

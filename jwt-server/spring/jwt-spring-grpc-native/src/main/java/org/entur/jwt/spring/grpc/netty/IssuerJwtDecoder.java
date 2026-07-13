@@ -48,7 +48,7 @@ public class IssuerJwtDecoder implements JwtDecoder {
         private JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper;
         private JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider;
 
-        public Builder withJwtHeaderToIssuerHeaderCacheDecider(JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider) {
+        public Builder withJwtHeaderToIssuerMapperDeciderProvider(JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider) {
             this.jwtHeaderToIssuerMapperDecider = jwtHeaderToIssuerMapperDecider;
             return this;
         }
@@ -95,7 +95,7 @@ public class IssuerJwtDecoder implements JwtDecoder {
                     throw new IllegalStateException("JwtHeaderToIssuerMapper bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
                 }
                 if(jwtHeaderToIssuerMapperDecider == null) {
-                    throw new IllegalStateException("JwtHeaderToIssuerHeaderCacheDecider bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
+                    throw new IllegalStateException("jwtHeaderToIssuerMapperDecider bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
                 }
                 return new FastIssuerJwtDecoder(map, jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider);
             }

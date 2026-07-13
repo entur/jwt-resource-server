@@ -109,7 +109,7 @@ public class JwtGrpcAutoConfiguration {
     @Bean
     @ConditionalOnProperty(name = "entur.jwt.decode.header.map-to-issuer.enabled", havingValue = "true")
     @ConditionalOnMissingBean(JwtHeaderToIssuerMapperDecider.class)
-    public JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerHeaderCacheDecider() {
+    public JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider() {
         return new DefaultJwtHeaderToIssuerMapperDecider();
     }
 
@@ -118,7 +118,7 @@ public class JwtGrpcAutoConfiguration {
     public AuthenticationProcessInterceptor jwtSecurityFilterChain(
             GrpcSecurity grpcSecurity, List<JwtAuthorityEnricher> jwtAuthorityEnrichers,
             ObjectProvider<JwtHeaderToIssuerMapper> jwtHeaderToIssuerMapperProvider,
-            ObjectProvider<JwtHeaderToIssuerMapperDecider> jwtHeaderToIssuerHeaderCacheDeciderProvider)
+            ObjectProvider<JwtHeaderToIssuerMapperDecider> jwtHeaderToIssuerMapperDeciderProvider)
             throws Exception {
         try {
             grpcSecurity.authorizeRequests((requests) -> {
@@ -146,7 +146,7 @@ public class JwtGrpcAutoConfiguration {
                     .withJwtValidators(jwtValidators)
                     .withMapHeaderToIssuer(jwtProperties.getDecode().getHeader().getMapToIssuer().isEnabled())
                     .withJwtHeaderToIssuerMapper(jwtHeaderToIssuerMapperProvider.getIfAvailable())
-                    .withJwtHeaderToIssuerHeaderCacheDecider(jwtHeaderToIssuerHeaderCacheDeciderProvider.getIfAvailable())
+                    .withJwtHeaderToIssuerMapperDeciderProvider(jwtHeaderToIssuerMapperDeciderProvider.getIfAvailable())
                     .build();
 
             Customizer<OAuth2ResourceServerConfigurer.JwtConfigurer> configurer = new Customizer<OAuth2ResourceServerConfigurer.JwtConfigurer>() {

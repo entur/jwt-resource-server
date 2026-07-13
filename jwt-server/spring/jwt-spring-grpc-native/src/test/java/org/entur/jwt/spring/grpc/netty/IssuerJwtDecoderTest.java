@@ -34,7 +34,7 @@ public class IssuerJwtDecoderTest {
                 .withJwtValidators(List.of())
                 .withMapHeaderToIssuer(true)
                 .withJwtHeaderToIssuerMapper(new JwtHeaderToIssuerMapper())
-                .withJwtHeaderToIssuerHeaderCacheDecider(new DefaultJwtHeaderToIssuerMapperDecider())
+                .withJwtHeaderToIssuerMapperDeciderProvider(new DefaultJwtHeaderToIssuerMapperDecider())
                 .build();
 
         assertThat(decoder).isInstanceOf(FastIssuerJwtDecoder.class);
