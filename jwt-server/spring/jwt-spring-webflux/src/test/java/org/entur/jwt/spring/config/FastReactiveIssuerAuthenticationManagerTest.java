@@ -1,6 +1,7 @@
 package org.entur.jwt.spring.config;
 
 import com.nimbusds.jose.util.JSONObjectUtils;
+import org.entur.jwt.spring.decode.DefaultJwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
@@ -34,12 +35,12 @@ public class FastReactiveIssuerAuthenticationManagerTest {
         ReactiveAuthenticationManager delegate = mock(ReactiveAuthenticationManager.class);
 
         BearerTokenAuthenticationToken bearerToken = new BearerTokenAuthenticationToken(tokenValue);
-        JwtAuthenticationToken jwtAuthentication = new JwtAuthenticationToken(jwt(tokenValue, issuer));
+        JwtAuthenticationToken jwtAuthentication = new JwtAuthenticationToken(jwt(tokenValue, issuer, "kid-a"));
 
         when(resolver.resolve(issuer)).thenReturn(Mono.just(delegate));
         when(delegate.authenticate(bearerToken)).thenReturn(Mono.just(jwtAuthentication));
 
-        FastReactiveIssuerAuthenticationManager manager = new FastReactiveIssuerAuthenticationManager(resolver, mapper);
+        FastReactiveIssuerAuthenticationManager manager = new FastReactiveIssuerAuthenticationManager(resolver, mapper, new DefaultJwtHeaderToIssuerMapperDecider());
         Authentication result = manager.authenticate(bearerToken).block();
 
         assertThat(result).isSameAs(jwtAuthentication);
@@ -67,7 +68,7 @@ public class FastReactiveIssuerAuthenticationManagerTest {
         when(resolver.resolve(issuer)).thenReturn(Mono.just(delegate));
         when(delegate.authenticate(bearerToken)).thenReturn(Mono.just(expected));
 
-        FastReactiveIssuerAuthenticationManager manager = new FastReactiveIssuerAuthenticationManager(resolver, mapper);
+        FastReactiveIssuerAuthenticationManager manager = new FastReactiveIssuerAuthenticationManager(resolver, mapper, new DefaultJwtHeaderToIssuerMapperDecider());
         Authentication result = manager.authenticate(bearerToken).block();
 
         assertThat(result).isSameAs(expected);
@@ -82,7 +83,7 @@ public class FastReactiveIssuerAuthenticationManagerTest {
 
         JwtHeaderToIssuerMapper mapper = new JwtHeaderToIssuerMapper();
         IssuerAuthenticationManagerResolver resolver = mock(IssuerAuthenticationManagerResolver.class);
-        FastReactiveIssuerAuthenticationManager manager = new FastReactiveIssuerAuthenticationManager(resolver, mapper);
+        FastReactiveIssuerAuthenticationManager manager = new FastReactiveIssuerAuthenticationManager(resolver, mapper, new DefaultJwtHeaderToIssuerMapperDecider());
 
         assertThat(manager.authenticate(new BearerTokenAuthenticationToken(invalidToken))
                 .onErrorResume(InvalidBearerTokenException.class, e -> Mono.empty())
@@ -91,9 +92,10 @@ public class FastReactiveIssuerAuthenticationManagerTest {
         verifyNoInteractions(resolver);
     }
 
-    private static Jwt jwt(String token, String issuer) {
+    private static Jwt jwt(String token, String issuer, String kid) {
         return Jwt.withTokenValue(token)
                 .header("alg", "RS256")
+                .header("kid", kid)
                 .claim("iss", issuer)
                 .issuedAt(Instant.EPOCH)
                 .expiresAt(Instant.MAX)

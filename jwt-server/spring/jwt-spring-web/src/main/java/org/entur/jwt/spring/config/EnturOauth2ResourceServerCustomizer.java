@@ -7,6 +7,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import org.entur.jwt.spring.EnrichedJwtGrantedAuthoritiesConverter;
 import org.entur.jwt.spring.JwtAuthorityEnricher;
+import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.entur.jwt.spring.properties.JwtDecodeProperties;
 import org.entur.jwt.spring.properties.JwtHeaderDecodeProperties;
@@ -40,17 +41,25 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
     private final List<OAuth2TokenValidator<Jwt>> jwtValidators;
     private final JwtDecodeProperties properties;
     private final JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper;
+    private final JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider;
 
     public EnturOauth2ResourceServerCustomizer(JwtDecodeProperties properties, Map<String, JWKSource> jwkSources, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators) {
-        this(properties, jwkSources, jwtAuthorityEnrichers, jwtValidators, null);
+        this(properties, jwkSources, jwtAuthorityEnrichers, jwtValidators, null, null);
     }
 
-    public EnturOauth2ResourceServerCustomizer(JwtDecodeProperties properties, Map<String, JWKSource> jwkSources, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators, JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper) {
+    public EnturOauth2ResourceServerCustomizer(
+            JwtDecodeProperties properties, Map<String, JWKSource> jwkSources,
+            List<JwtAuthorityEnricher> jwtAuthorityEnrichers,
+            List<OAuth2TokenValidator<Jwt>> jwtValidators,
+            JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper,
+            JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider
+            ) {
         this.properties = properties;
         this.jwkSources = jwkSources;
         this.jwtAuthorityEnrichers = jwtAuthorityEnrichers;
         this.jwtValidators = jwtValidators;
         this.jwtHeaderToIssuerMapper = jwtHeaderToIssuerMapper;
+        this.jwtHeaderToIssuerMapperDecider = jwtHeaderToIssuerMapperDecider;
     }
 
     @Override
@@ -90,7 +99,7 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
                 if(jwtHeaderToIssuerMapper == null) {
                     throw new IllegalStateException("JwtHeaderToIssuerMapper bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
                 }
-                FastIssuerAuthenticationManager fastIssuerAuthenticationManager = new FastIssuerAuthenticationManager(issuer, jwtHeaderToIssuerMapper);
+                FastIssuerAuthenticationManager fastIssuerAuthenticationManager = new FastIssuerAuthenticationManager(issuer, jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider);
                 configurer.authenticationManagerResolver(request -> fastIssuerAuthenticationManager);
             } else {
                 JwtIssuerAuthenticationManagerResolver jwtIssuerAuthenticationManagerResolver = new JwtIssuerAuthenticationManagerResolver(issuer);

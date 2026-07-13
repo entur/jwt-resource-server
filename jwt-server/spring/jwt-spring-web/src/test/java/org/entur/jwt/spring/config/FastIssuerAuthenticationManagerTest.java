@@ -1,6 +1,7 @@
 package org.entur.jwt.spring.config;
 
 import com.nimbusds.jose.util.JSONObjectUtils;
+import org.entur.jwt.spring.decode.DefaultJwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -35,14 +36,14 @@ public class FastIssuerAuthenticationManagerTest {
         AuthenticationManager delegate = mock(AuthenticationManager.class);
 
         BearerTokenAuthenticationToken bearerToken = new BearerTokenAuthenticationToken(tokenValue);
-        JwtAuthenticationToken jwtAuthentication = new JwtAuthenticationToken(jwt(tokenValue, issuer));
+        JwtAuthenticationToken jwtAuthentication = new JwtAuthenticationToken(jwt(tokenValue, issuer, "kid-a"));
 
         when(resolver.resolve(issuer)).thenReturn(delegate);
         when(delegate.authenticate(bearerToken)).thenReturn(jwtAuthentication);
 
-        FastIssuerAuthenticationManager manager = new FastIssuerAuthenticationManager(resolver, mapper);
+        FastIssuerAuthenticationManager manager = new FastIssuerAuthenticationManager(resolver, mapper, new DefaultJwtHeaderToIssuerMapperDecider());
         Authentication result = manager.authenticate(bearerToken);
-
+        System.out.println(tokenValue);
         assertThat(result).isSameAs(jwtAuthentication);
         assertThat(mapper.get(tokenValue)).isEqualTo(issuer);
         assertThat(mapper.getHeaderToIssuer()).hasSize(1);
@@ -68,7 +69,7 @@ public class FastIssuerAuthenticationManagerTest {
         when(resolver.resolve(issuer)).thenReturn(delegate);
         when(delegate.authenticate(bearerToken)).thenReturn(expected);
 
-        FastIssuerAuthenticationManager manager = new FastIssuerAuthenticationManager(resolver, mapper);
+        FastIssuerAuthenticationManager manager = new FastIssuerAuthenticationManager(resolver, mapper, new DefaultJwtHeaderToIssuerMapperDecider());
         Authentication result = manager.authenticate(bearerToken);
 
         assertThat(result).isSameAs(expected);
@@ -83,7 +84,7 @@ public class FastIssuerAuthenticationManagerTest {
 
         JwtHeaderToIssuerMapper mapper = new JwtHeaderToIssuerMapper();
         AuthenticationManagerResolver<String> resolver = mock(AuthenticationManagerResolver.class);
-        FastIssuerAuthenticationManager manager = new FastIssuerAuthenticationManager(resolver, mapper);
+        FastIssuerAuthenticationManager manager = new FastIssuerAuthenticationManager(resolver, mapper, new DefaultJwtHeaderToIssuerMapperDecider());
 
         assertThatThrownBy(() -> manager.authenticate(new BearerTokenAuthenticationToken(invalidToken)))
                 .isInstanceOf(InvalidBearerTokenException.class);
@@ -91,9 +92,10 @@ public class FastIssuerAuthenticationManagerTest {
         verifyNoInteractions(resolver);
     }
 
-    private static Jwt jwt(String token, String issuer) {
+    private static Jwt jwt(String token, String issuer, String kid) {
         return Jwt.withTokenValue(token)
                 .header("alg", "RS256")
+                .header("kid", kid)
                 .claim("iss", issuer)
                 .issuedAt(Instant.EPOCH)
                 .expiresAt(Instant.MAX)

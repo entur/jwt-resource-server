@@ -2,6 +2,8 @@ package org.entur.jwt.spring;
 
 import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
 import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
+import org.entur.jwt.spring.decode.DefaultJwtHeaderToIssuerMapperDecider;
+import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.entur.jwt.spring.properties.Auth0Flavour;
 import org.entur.jwt.spring.properties.AuthorizationProperties;
@@ -85,6 +87,13 @@ public class JwtWebFluxSecurityAutoConfiguration {
         return new JwtHeaderToIssuerMapper();
     }
 
+    @Bean
+    @ConditionalOnProperty(name = "entur.jwt.decode.header.map-to-issuer.enabled", havingValue = "true")
+    @ConditionalOnMissingBean(JwtHeaderToIssuerMapperDecider.class)
+    public JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerHeaderMapperDecider() {
+        return new DefaultJwtHeaderToIssuerMapperDecider();
+    }
+
     @Configuration
     @ConditionalOnMissingBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
     @ConditionalOnExpression("${entur.authorization.enabled:true} || ${entur.jwt.enabled:true}")
@@ -96,6 +105,9 @@ public class JwtWebFluxSecurityAutoConfiguration {
 
         @Autowired(required = false)
         private JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper;
+
+        @Autowired(required = false)
+        private JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider;
 
         public CompositeWebSecurityConfigurerAdapter(SecurityProperties securityProperties) {
             this.securityProperties = securityProperties;
@@ -152,7 +164,7 @@ public class JwtWebFluxSecurityAutoConfiguration {
                     jwtAuthorityEnrichers = enrichers;
                 }
 
-                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers, jwtValidators, securityProperties.getJwt().getDecode(), jwtHeaderToIssuerMapper));
+                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers, jwtValidators, securityProperties.getJwt().getDecode(), jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider));
             }
 
             MdcProperties mdc = jwt.getMdc();

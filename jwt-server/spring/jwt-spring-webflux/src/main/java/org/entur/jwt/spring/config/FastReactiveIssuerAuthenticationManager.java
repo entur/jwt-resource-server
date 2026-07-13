@@ -1,6 +1,7 @@
 package org.entur.jwt.spring.config;
 
 import com.nimbusds.jwt.JWTParser;
+import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.lang.NonNull;
@@ -18,10 +19,12 @@ public class FastReactiveIssuerAuthenticationManager implements ReactiveAuthenti
     protected final JwtClaimIssuerConverter issuerConverter = new JwtClaimIssuerConverter();
     protected final IssuerAuthenticationManagerResolver issuerAuthenticationManagerResolver;
     protected final JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper;
+    protected final JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider;
 
-    public FastReactiveIssuerAuthenticationManager(IssuerAuthenticationManagerResolver issuerAuthenticationManagerResolver, JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper) {
+    public FastReactiveIssuerAuthenticationManager(IssuerAuthenticationManagerResolver issuerAuthenticationManagerResolver, JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper, JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider) {
         this.issuerAuthenticationManagerResolver = issuerAuthenticationManagerResolver;
         this.jwtHeaderToIssuerMapper = jwtHeaderToIssuerMapper;
+        this.jwtHeaderToIssuerMapperDecider = jwtHeaderToIssuerMapperDecider;
     }
 
     @Override
@@ -41,9 +44,11 @@ public class FastReactiveIssuerAuthenticationManager implements ReactiveAuthenti
         return this.issuerConverter.convert(token)
                 .flatMap(convertIssuer -> resolveAndAuthenticate(convertIssuer, authentication)
                         .doOnNext(result -> {
-                            if (result instanceof JwtAuthenticationToken) {
-                                // cache this jwt header to issuer mapping for future requests with the same token
-                                jwtHeaderToIssuerMapper.add(convertIssuer, token.getToken());
+                            if (result instanceof JwtAuthenticationToken t) {
+                                if(jwtHeaderToIssuerMapperDecider.apply(t.getToken())) {
+                                    // cache this jwt header to issuer mapping for future requests with the same token
+                                    jwtHeaderToIssuerMapper.add(convertIssuer, token.getToken());
+                                }
                             }
                         }));
     }

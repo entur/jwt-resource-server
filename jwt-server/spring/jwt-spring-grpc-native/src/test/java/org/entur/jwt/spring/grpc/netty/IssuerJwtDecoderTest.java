@@ -3,6 +3,7 @@ package org.entur.jwt.spring.grpc.netty;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.util.JSONObjectUtils;
 import org.entur.jwt.spring.JwkSourceMap;
+import org.entur.jwt.spring.decode.DefaultJwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -33,6 +34,7 @@ public class IssuerJwtDecoderTest {
                 .withJwtValidators(List.of())
                 .withMapHeaderToIssuer(true)
                 .withJwtHeaderToIssuerMapper(new JwtHeaderToIssuerMapper())
+                .withJwtHeaderToIssuerHeaderCacheDecider(new DefaultJwtHeaderToIssuerMapperDecider())
                 .build();
 
         assertThat(decoder).isInstanceOf(FastIssuerJwtDecoder.class);
@@ -58,10 +60,10 @@ public class IssuerJwtDecoderTest {
         String validToken = tokenWithIssuer("kid-a", issuer);
 
         JwtDecoder issuerDecoder = mock(JwtDecoder.class);
-        when(issuerDecoder.decode(anyString())).thenReturn(jwt(validToken, issuer));
+        when(issuerDecoder.decode(anyString())).thenReturn(jwt(validToken, issuer, "kid-a"));
 
         JwtHeaderToIssuerMapper mapper = new JwtHeaderToIssuerMapper();
-        FastIssuerJwtDecoder decoder = new FastIssuerJwtDecoder(Map.of(issuer, issuerDecoder), mapper);
+        FastIssuerJwtDecoder decoder = new FastIssuerJwtDecoder(Map.of(issuer, issuerDecoder), mapper, new DefaultJwtHeaderToIssuerMapperDecider());
 
         decoder.decode(validToken);
 
@@ -82,7 +84,7 @@ public class IssuerJwtDecoderTest {
 
         JwtDecoder issuerDecoder = mock(JwtDecoder.class);
         JwtHeaderToIssuerMapper mapper = new JwtHeaderToIssuerMapper();
-        FastIssuerJwtDecoder decoder = new FastIssuerJwtDecoder(Map.of("https://issuer-a", issuerDecoder), mapper);
+        FastIssuerJwtDecoder decoder = new FastIssuerJwtDecoder(Map.of("https://issuer-a", issuerDecoder), mapper, new DefaultJwtHeaderToIssuerMapperDecider());
 
         assertThatThrownBy(() -> decoder.decode(invalidToken)).isInstanceOf(InvalidBearerTokenException.class);
         assertThat(mapper.getHeaderToIssuer()).isEmpty();
@@ -96,9 +98,10 @@ public class IssuerJwtDecoderTest {
         return new JwkSourceMap(jwkSources, Map.of());
     }
 
-    private static Jwt jwt(String token, String issuer) {
+    private static Jwt jwt(String token, String issuer, String kid) {
         return Jwt.withTokenValue(token)
                 .header("alg", "RS256")
+                .header("kid", kid)
                 .claim("iss", issuer)
                 .issuedAt(Instant.EPOCH)
                 .expiresAt(Instant.MAX)

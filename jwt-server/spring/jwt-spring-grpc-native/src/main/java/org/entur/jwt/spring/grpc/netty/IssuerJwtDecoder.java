@@ -8,6 +8,7 @@ import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTParser;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import org.entur.jwt.spring.JwkSourceMap;
+import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
@@ -45,6 +46,12 @@ public class IssuerJwtDecoder implements JwtDecoder {
         private JwkSourceMap jwkSourceMap;
         private boolean mapHeaderToIssuer;
         private JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper;
+        private JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider;
+
+        public Builder withJwtHeaderToIssuerHeaderCacheDecider(JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider) {
+            this.jwtHeaderToIssuerMapperDecider = jwtHeaderToIssuerMapperDecider;
+            return this;
+        }
 
         public Builder withJwkSourceMap(JwkSourceMap jwkSourceMap) {
             this.jwkSourceMap = jwkSourceMap;
@@ -87,7 +94,10 @@ public class IssuerJwtDecoder implements JwtDecoder {
                 if(jwtHeaderToIssuerMapper == null) {
                     throw new IllegalStateException("JwtHeaderToIssuerMapper bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
                 }
-                return new FastIssuerJwtDecoder(map, jwtHeaderToIssuerMapper);
+                if(jwtHeaderToIssuerMapperDecider == null) {
+                    throw new IllegalStateException("JwtHeaderToIssuerHeaderCacheDecider bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
+                }
+                return new FastIssuerJwtDecoder(map, jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider);
             }
 
             return new IssuerJwtDecoder(map);

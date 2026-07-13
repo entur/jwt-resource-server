@@ -1,6 +1,7 @@
 package org.entur.jwt.spring.config;
 
 import com.nimbusds.jwt.JWTParser;
+import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.lang.NonNull;
@@ -18,10 +19,12 @@ public class FastIssuerAuthenticationManager implements AuthenticationManager {
     protected final JwtClaimIssuerConverter issuerConverter = new JwtClaimIssuerConverter();
     protected final AuthenticationManagerResolver<String> issuerAuthenticationManagerResolver;
     protected final JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper;
+    protected final JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider;
 
-    public FastIssuerAuthenticationManager(AuthenticationManagerResolver<String> issuerAuthenticationManagerResolver, JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper) {
+    public FastIssuerAuthenticationManager(AuthenticationManagerResolver<String> issuerAuthenticationManagerResolver, JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper, JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider) {
         this.issuerAuthenticationManagerResolver = issuerAuthenticationManagerResolver;
         this.jwtHeaderToIssuerMapper = jwtHeaderToIssuerMapper;
+        this.jwtHeaderToIssuerMapperDecider = jwtHeaderToIssuerMapperDecider;
     }
 
     @Override
@@ -44,9 +47,11 @@ public class FastIssuerAuthenticationManager implements AuthenticationManager {
 
             Authentication result = getAuthentication(authentication, authenticationManager);
 
-            if(result instanceof JwtAuthenticationToken) {
-                // cache this jwt header to issuer mapping for future requests with the same token
-                jwtHeaderToIssuerMapper.add(issuer, token.getToken());
+            if(result instanceof JwtAuthenticationToken r) {
+                if(jwtHeaderToIssuerMapperDecider.apply(r.getToken())) {
+                    // cache this jwt header to issuer mapping for future requests with the same token
+                    jwtHeaderToIssuerMapper.add(issuer, token.getToken());
+                }
             }
 
             return result;
