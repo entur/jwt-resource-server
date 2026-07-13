@@ -43,7 +43,6 @@ public class FastIssuerAuthenticationManagerTest {
 
         FastIssuerAuthenticationManager manager = new FastIssuerAuthenticationManager(resolver, mapper, new DefaultJwtHeaderToIssuerMapperDecider());
         Authentication result = manager.authenticate(bearerToken);
-        System.out.println(tokenValue);
         assertThat(result).isSameAs(jwtAuthentication);
         assertThat(mapper.get(tokenValue)).isEqualTo(issuer);
         assertThat(mapper.getHeaderToIssuer()).hasSize(1);
