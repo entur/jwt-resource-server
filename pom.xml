@@ -75,7 +75,7 @@
 
 		<grpc.version>1.81.0</grpc.version>
 		<proto.version>4.35.1</proto.version>
-		<jreleaser-maven-plugin.version>1.24.0</jreleaser-maven-plugin.version>
+		<jreleaser-maven-plugin.version>1.25.0</jreleaser-maven-plugin.version>
 
 		<!-- transient dependencies added due to security patching -->
 		<tomcat.version>11.0.23</tomcat.version>
