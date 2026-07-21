@@ -17,7 +17,7 @@ on:
 jobs:
   code-scan:
     name: CodeQL Scan
-    uses: entur/gha-security/.github/workflows/code-scan.yml@v2.13.0
+    uses: entur/gha-security/.github/workflows/code-scan.yml@v2.15.0
     # no secrets necessary
     permissions: # some of these only apply when running on the main branch
       packages: read
