@@ -83,8 +83,9 @@ public class JwtWebFluxSecurityAutoConfiguration {
     @Bean
     @ConditionalOnProperty(name = "entur.jwt.decode.header.map-to-issuer.enabled", havingValue = "true")
     @ConditionalOnMissingBean(JwtHeaderToIssuerMapper.class)
-    public JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper() {
-        return new JwtHeaderToIssuerMapper();
+    public JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper(SecurityProperties securityProperties) {
+        int maxSize = securityProperties.getJwt().getDecode().getHeader().getMapToIssuer().getMaxSize();
+        return new JwtHeaderToIssuerMapper(maxSize);
     }
 
     @Bean
