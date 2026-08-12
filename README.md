@@ -49,6 +49,13 @@ Async is not yet supported.
 
 See documentation contained in each folder to get started. Or skip right to the [examples](examples). 
 
+## Spring Boot compatibility matrix
+
+ * [5.x](https://github.com/entur/jwt-resource-server/tree/5.x): Spring Boot 3.5.x / Ecosystem gRPC
+ * [6.x](https://github.com/entur/jwt-resource-server/tree/6.x): Spring Boot 4.0.x / Spring gRPC (`org.springframework.grpc`)
+ * 7.x (latest): Spring Boot 4.1.x / Spring gRPC (`org.springframework.boot`)
+
+
 # License
 [European Union Public Licence v1.2](https://eupl.eu/).
 
