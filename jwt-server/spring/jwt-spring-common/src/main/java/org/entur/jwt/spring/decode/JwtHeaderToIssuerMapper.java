@@ -5,14 +5,13 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Lookup cache that maps JWT token headers to issuers.
  *
- * <p>When the number of distinct headers exceeds {@code maxSize} the optimization is
- * disabled entirely (both {@link #get} and {@link #add} become no-ops) to guard against
- * unexpected entropy in JWT headers.
+ * <p>When the number of distinct headers exceeds {@code maxSize} (and {@code maxSize} is
+ * not {@code -1}) the optimization is disabled entirely (both {@link #get} and
+ * {@link #add} become no-ops) to guard against unexpected entropy in JWT headers.
  */
 public class JwtHeaderToIssuerMapper {
 
@@ -20,10 +19,10 @@ public class JwtHeaderToIssuerMapper {
 
     protected final ConcurrentHashMap<String, String> headerToIssuer = new ConcurrentHashMap<>();
     protected final int maxSize;
-    private final AtomicBoolean disabled = new AtomicBoolean(false);
+    private boolean disabled = false;
 
     public JwtHeaderToIssuerMapper() {
-        this(1000);
+        this(100);
     }
 
     public JwtHeaderToIssuerMapper(int maxSize) {
@@ -40,7 +39,7 @@ public class JwtHeaderToIssuerMapper {
      * @return the issuer URL, or {@code null} if not cached or the optimization is disabled
      */
     public String get(String jwtToken) {
-        if (disabled.get()) {
+        if (disabled) {
             return null;
         }
         int firstDot = jwtToken.indexOf('.');
@@ -53,7 +52,7 @@ public class JwtHeaderToIssuerMapper {
     }
 
     public void add(String issuer, String jwtToken) {
-        if (disabled.get()) {
+        if (disabled) {
             return;
         }
         int firstDot = jwtToken.indexOf('.');
@@ -66,8 +65,8 @@ public class JwtHeaderToIssuerMapper {
             headerToIssuer.put(rawHeader, issuer);
             int size = headerToIssuer.size();
             LOGGER.info("New JWT header detected for issuer {}; header='{}' cache size={}", issuer, rawHeader, size);
-            if (size > maxSize) {
-                disabled.set(true);
+            if (maxSize != -1 && size > maxSize) {
+                setDisabled(true);
                 LOGGER.warn("JWT header-to-issuer cache exceeded max size of {}; disabling header-to-issuer optimization", maxSize);
             }
         }
@@ -75,7 +74,6 @@ public class JwtHeaderToIssuerMapper {
 
     public void clear() {
         headerToIssuer.clear();
-        disabled.set(false);
     }
 
     public Map<String, String> getHeaderToIssuer() {
@@ -83,7 +81,11 @@ public class JwtHeaderToIssuerMapper {
     }
 
     public boolean isDisabled() {
-        return disabled.get();
+        return disabled;
+    }
+
+    public void setDisabled(boolean disabled) {
+        this.disabled = disabled;
     }
 
 }
