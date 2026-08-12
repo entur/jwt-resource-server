@@ -45,7 +45,7 @@ public class JwtHeaderToIssuerMapper {
         if (!headerToIssuer.containsKey(rawHeader)) {
             headerToIssuer.put(rawHeader, issuer);
             int size = headerToIssuer.size();
-            LOGGER.info("New JWT header detected for issuer {}; header='{}' cache size={}", issuer, rawHeader, size);
+            LOGGER.info("New JWT header detected for issuer {}; cache size={}", issuer, size);
         }
     }
 
