@@ -3,8 +3,6 @@ package org.entur.jwt.spring;
 import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
 import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
 import org.entur.jwt.spring.config.JwtMappedDiagnosticContextFilter;
-import org.entur.jwt.spring.decode.BoundedJwtHeaderToIssuerMapper;
-import org.entur.jwt.spring.decode.DefaultJwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
@@ -99,21 +97,6 @@ public class JwtWebSecurityChainAutoConfiguration {
 
         public CompositeWebSecurityConfigurerAdapter(SecurityProperties securityProperties) {
             this.securityProperties = securityProperties;
-        }
-
-        @Bean
-        @ConditionalOnProperty(name = "entur.jwt.decode.header.map-to-issuer.enabled", havingValue = "true")
-        @ConditionalOnMissingBean(JwtHeaderToIssuerMapper.class)
-        public JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper(SecurityProperties securityProperties) {
-            int maxSize = securityProperties.getJwt().getDecode().getHeader().getMapToIssuer().getMaxSize();
-            return maxSize != -1 ? new BoundedJwtHeaderToIssuerMapper(maxSize) : new JwtHeaderToIssuerMapper();
-        }
-
-        @Bean
-        @ConditionalOnProperty(name = "entur.jwt.decode.header.map-to-issuer.enabled", havingValue = "true")
-        @ConditionalOnMissingBean(JwtHeaderToIssuerMapperDecider.class)
-        public JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerHeaderMapperDecider() {
-            return new DefaultJwtHeaderToIssuerMapperDecider();
         }
 
         @Bean
