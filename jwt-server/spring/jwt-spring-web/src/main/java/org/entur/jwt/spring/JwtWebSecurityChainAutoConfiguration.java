@@ -171,7 +171,7 @@ public class JwtWebSecurityChainAutoConfiguration {
                     jwtAuthorityEnrichers = enrichers;
                 }
 
-                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwt.getDecode(), jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers, jwtValidators, jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider));
+                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwt.getDecode(), jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers, jwtValidators, jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider, jwkSourceMap.getJwkEventListeners(), org.entur.jwt.spring.cache.DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt())));
             }
 
             MdcProperties mdc = jwt.getMdc();

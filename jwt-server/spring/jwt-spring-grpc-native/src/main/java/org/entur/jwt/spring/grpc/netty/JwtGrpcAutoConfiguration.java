@@ -12,6 +12,7 @@ import org.entur.jwt.spring.decode.BoundedJwtHeaderToIssuerMapper;
 import org.entur.jwt.spring.decode.DefaultJwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
+import org.entur.jwt.spring.cache.DecodedJwtCacheConfigurationReader;
 import org.entur.jwt.spring.grpc.properties.GrpcPermitAll;
 import org.entur.jwt.spring.grpc.properties.GrpcServicesConfiguration;
 import org.entur.jwt.spring.grpc.properties.ServiceMatcherConfiguration;
@@ -49,6 +50,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Configuration
 @EnableConfigurationProperties({GrpcPermitAll.class, SecurityProperties.class})
@@ -143,12 +145,16 @@ public class JwtGrpcAutoConfiguration {
 
             JwtProperties jwtProperties = securityProperties.getJwt();
 
-            JwtDecoder decoder = IssuerJwtDecoder.newBuilder()
-                    .withJwkSourceMap(jwkSourceMap)
+            Set<String> decodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt());
+
+            JwtDecoder decoder = new JwtDecoderBuilder()
+                    .withJwkSources(jwkSourceMap.getJwkSources())
+                    .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
                     .withJwtValidators(jwtValidators)
+                    .withDecodedJwtCacheIssuers(decodedJwtCacheIssuers)
                     .withMapHeaderToIssuer(jwtProperties.getDecode().getHeader().getMapToIssuer().isEnabled())
                     .withJwtHeaderToIssuerMapper(jwtHeaderToIssuerMapperProvider.getIfAvailable())
-                    .withJwtHeaderToIssuerMapperDeciderProvider(jwtHeaderToIssuerMapperDeciderProvider.getIfAvailable())
+                    .withJwtHeaderToIssuerMapperDecider(jwtHeaderToIssuerMapperDeciderProvider.getIfAvailable())
                     .build();
 
             Customizer<OAuth2ResourceServerConfigurer.JwtConfigurer> configurer = new Customizer<OAuth2ResourceServerConfigurer.JwtConfigurer>() {
