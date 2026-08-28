@@ -29,12 +29,14 @@ public class IssuerJwtDecoderTest {
 
     @Test
     public void testBuilderReturnsFastIssuerDecoderWhenEnabledForMultipleIssuers() throws Exception {
-        JwtDecoder decoder = IssuerJwtDecoder.newBuilder()
-                .withJwkSourceMap(jwkSourceMapWithTwoIssuers())
+        JwkSourceMap jwkSourceMap = jwkSourceMapWithTwoIssuers();
+        JwtDecoder decoder = new JwtDecoderBuilder()
+                .withJwkSources(jwkSourceMap.getJwkSources())
+                .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
                 .withJwtValidators(List.of())
                 .withMapHeaderToIssuer(true)
                 .withJwtHeaderToIssuerMapper(new JwtHeaderToIssuerMapper())
-                .withJwtHeaderToIssuerMapperDeciderProvider(new DefaultJwtHeaderToIssuerMapperDecider())
+                .withJwtHeaderToIssuerMapperDecider(new DefaultJwtHeaderToIssuerMapperDecider())
                 .build();
 
         assertThat(decoder).isInstanceOf(FastIssuerJwtDecoder.class);
@@ -44,8 +46,10 @@ public class IssuerJwtDecoderTest {
 
     @Test
     public void testBuilderReturnsRegularIssuerDecoderWhenDisabledForMultipleIssuers() {
-        JwtDecoder decoder = IssuerJwtDecoder.newBuilder()
-                .withJwkSourceMap(jwkSourceMapWithTwoIssuers())
+        JwkSourceMap jwkSourceMap = jwkSourceMapWithTwoIssuers();
+        JwtDecoder decoder = new JwtDecoderBuilder()
+                .withJwkSources(jwkSourceMap.getJwkSources())
+                .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
                 .withJwtValidators(List.of())
                 .withMapHeaderToIssuer(false)
                 .build();
@@ -91,7 +95,7 @@ public class IssuerJwtDecoderTest {
         verifyNoInteractions(issuerDecoder);
     }
 
-    private static JwkSourceMap<?> jwkSourceMapWithTwoIssuers() {
+    private static JwkSourceMap jwkSourceMapWithTwoIssuers() {
         Map<String, JWKSource<?>> jwkSources = new HashMap<>();
         jwkSources.put("https://issuer-a", mock(JWKSource.class));
         jwkSources.put("https://issuer-b", mock(JWKSource.class));
