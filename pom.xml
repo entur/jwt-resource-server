@@ -74,7 +74,7 @@
 		<okhttp.version>5.5.0</okhttp.version>
 
 		<grpc.version>1.81.0</grpc.version>
-		<proto.version>4.35.1</proto.version>
+		<proto.version>4.36.0</proto.version>
 		<jreleaser-maven-plugin.version>1.25.0</jreleaser-maven-plugin.version>
 
 		<!-- transient dependencies added due to security patching -->
