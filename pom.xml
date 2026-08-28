@@ -68,7 +68,7 @@
 		<spring-boot.version>4.1.1</spring-boot.version>
 		<httpclient.version>5.6.4</httpclient.version>
 		<!-- added due to security issue -->
-		<spring-security.version>7.1.0</spring-security.version>
+		<spring-security.version>7.1.1</spring-security.version>
 		<spring.version>7.0.9</spring.version>
 		<rest-assured.version>6.0.1</rest-assured.version>
 		<okhttp.version>5.5.0</okhttp.version>
