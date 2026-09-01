@@ -13,10 +13,10 @@ public class DecodedJwtCacheConfigurationReader {
 
     public static Set<String> convert(JwtProperties jwt) {
         JwkCacheProperties cache = jwt.getJwk().getCache();
-        boolean decodedJwtCache = cache.isEnabled() && cache.getPreemptive().isEnabled() && cache.getPreemptive().getEager().isEnabled();
+        boolean preemptiveEagerJwk = cache.isEnabled() && cache.getPreemptive().isEnabled() && cache.getPreemptive().getEager().isEnabled();
 
         Set<String> decodedJwtCacheIssuers;
-        if(decodedJwtCache) {
+        if(preemptiveEagerJwk) {
             decodedJwtCacheIssuers = new HashSet<>();
             for (Map.Entry<String, JwtTenantProperties> entry : jwt.getTenants().entrySet()) {
                 JwtTenantProperties value = entry.getValue();

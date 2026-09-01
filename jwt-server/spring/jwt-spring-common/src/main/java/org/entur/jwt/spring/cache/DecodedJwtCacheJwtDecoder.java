@@ -18,11 +18,7 @@ import org.springframework.security.oauth2.jwt.JwtValidationException;
 import org.springframework.util.StringUtils;
 
 import java.io.Closeable;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -46,20 +42,80 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
 
     protected ScheduledExecutorService scheduledExecutorService = createDefaultScheduledExecutorService();
 
-    protected final JwtDecoder delegate;
+    protected class Cache {
+        protected final ConcurrentHashMap<String, Jwt> cache;
+        protected final Set<String> keyIds;
+
+        protected Cache(Set<String> keyIds, ConcurrentHashMap<String, Jwt> map) {
+            // should be immediately visible to all threads
+            // so the add method can never add anything with the wrong key id
+            this.keyIds = Set.copyOf(keyIds);
+            this.cache = map;
+        }
+
+        protected Cache(Set<String> keyIds) {
+            this(keyIds, new ConcurrentHashMap<>());
+        }
+
+        public void add(String token, Jwt jwt) {
+            String kid = (String)jwt.getHeaders().get("kid");
+            if(kid != null && keyIds.contains(kid)) {
+                cache.put(token, jwt);
+            }
+        }
+
+        public Jwt get(String token) {
+            return cache.get(token);
+        }
+
+        public boolean containsKeyId(String kid) {
+            return keyIds.contains(kid);
+        }
+
+        public void remove(String token) {
+            cache.remove(token);
+        }
+
+        public void clear() {
+            cache.clear();
+        }
+
+        protected void cleanInvalidJwts() {
+            // remove no longer valid JWTs. Typically they expire by time.
+            for (Map.Entry<String, Jwt> entry : cache.entrySet()) {
+                Jwt value = entry.getValue();
+                if(value != null) {
+                    OAuth2TokenValidatorResult result = jwtValidator.validate(value);
+                    if (result.hasErrors()) {
+                        cache.remove(entry.getKey());
+                    }
+                }
+            }
+        }
+
+        public boolean hasSameKeyIds(Set<String> keyIds) {
+            return this.keyIds.equals(keyIds);
+        }
+
+        public void add(Cache cache) {
+            for (Map.Entry<String, Jwt> entry : cache.cache.entrySet()) {
+                Jwt value = entry.getValue();
+                if(value != null) {
+                    add(entry.getKey(), value); // filters on key id
+                }
+            }
+        }
+    }
+
+    protected final JwtDecoder jwtValidatingDecoder;
     protected final OAuth2TokenValidator<Jwt> jwtValidator;
 
-    protected ConcurrentHashMap<String, Jwt> cache = new ConcurrentHashMap<>();
-
-    protected Set<String> keyIds = Collections.emptySet();
-
-    protected volatile boolean writeEnabled = false;
-    protected volatile boolean readEnabled = false;
+    protected volatile Cache cache = new Cache(Collections.emptySet());
 
     protected long cleanupInterval;
 
-    public DecodedJwtCacheJwtDecoder(JwtDecoder delegate, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupInterval) {
-        this.delegate = delegate;
+    public DecodedJwtCacheJwtDecoder(JwtDecoder jwtValidatingDecoder, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupInterval) {
+        this.jwtValidatingDecoder = jwtValidatingDecoder;
         this.jwtValidator = jwtValidators;
         this.cleanupInterval = cleanupInterval;
     }
@@ -68,11 +124,8 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         scheduledExecutorService.scheduleWithFixedDelay(() -> {
             if(LOGGER.isDebugEnabled()) LOGGER.debug("Cleaning cache");
             try {
-                // should not be any, but a catch-all mechanism
-                cleanCacheForJwtsWithUnknownKeyIds();
-
                 // avoid memory leaks
-                cleanCacheForInvalidJwts();
+                cache.cleanInvalidJwts();
             } catch (Throwable e) {
                 // ignore, will be handled by regular flow
                 LOGGER.warn("Problem cleaning cache", e);
@@ -83,28 +136,24 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
     @Override
     public Jwt decode(String token) throws JwtException {
 
-        if(readEnabled) {
-            Jwt cachedJwt = cache.get(token);
-            if (cachedJwt != null) {
-                if(keyIds.contains(cachedJwt.getHeaders().get("kid"))) {
-                    return validateJwt(cachedJwt);
-                }
-            }
+        Cache c = this.cache; // defensive copy
+
+        Jwt cachedJwt = c.get(token);
+        if (cachedJwt != null) {
+            // we have a cache hit, is it still valid?
+            return validateJwt(cachedJwt, c);
         }
 
-        Jwt jwt = delegate.decode(token);
-
-        if(writeEnabled) {
-            cache.put(token, jwt);
-        }
+        Jwt jwt = jwtValidatingDecoder.decode(token); // also validates
+        c.add(token, jwt); // only adds if the keyid is known, otherwise ignored
 
         return jwt;
     }
 
-    protected Jwt validateJwt(Jwt jwt) {
+    protected Jwt validateJwt(Jwt jwt, Cache c) {
         OAuth2TokenValidatorResult result = jwtValidator.validate(jwt);
         if (result.hasErrors()) {
-            cache.remove(jwt.getTokenValue());
+            c.remove(jwt.getTokenValue());
 
             Collection<OAuth2Error> errors = result.getErrors();
             String validationErrorString = getJwtValidationExceptionMessage(errors);
@@ -122,13 +171,9 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         return "Unable to validate Jwt";
     }
 
+    // clears tokens, not key ids
     public void clear() {
         cache.clear();
-    }
-
-    public void setKeyIds(JWKSet jwtSet) {
-        Set<String> keyIds = convert(jwtSet);
-        this.keyIds = keyIds;
     }
 
     private static @NonNull Set<String> convert(JWKSet jwtSet) {
@@ -139,53 +184,28 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         return keyIds;
     }
 
-    public void cleanCacheForJwtsWithUnknownKeyIds() {
-        // remove unknown keys
-        for (Map.Entry<String, Jwt> entry : cache.entrySet()) {
-            Jwt value = entry.getValue();
-            if(value != null) {
-                if (!keyIds.contains(value.getHeaders().get("kid"))) {
-                    cache.remove(entry.getKey());
-                }
-            }
-        }
-    }
-
-    protected void cleanCacheForInvalidJwts() {
-        // remove no longer valid JWTs. Typically they expire by time.
-        for (Map.Entry<String, Jwt> entry : cache.entrySet()) {
-            Jwt value = entry.getValue();
-            if(value != null) {
-                OAuth2TokenValidatorResult result = jwtValidator.validate(value);
-                if (result.hasErrors()) {
-                    cache.remove(entry.getKey());
-                }
-            }
-        }
-    }
-
     @Override
     public void notify(Event event) {
         if(event instanceof CachingJWKSetSource.RefreshInitiatedEvent<?>) {
-            writeEnabled = false;
+            // do nothing
         } else if(event instanceof CachingJWKSetSource.RefreshCompletedEvent<?>) {
             CachingJWKSetSource.RefreshCompletedEvent refreshCompletedEvent = (CachingJWKSetSource.RefreshCompletedEvent) event;
 
+            Cache cache = this.cache;
             Set<String> keyIds = convert(refreshCompletedEvent.getJWKSet());
-            boolean removed = !keyIds.containsAll(this.keyIds);
-            this.keyIds = keyIds;
-            if(removed) {
-                cleanCacheForJwtsWithUnknownKeyIds();
+            if(cache.hasSameKeyIds(keyIds)) {
+                // do nothing
+            } else {
+                // create a new cache
+                Cache nextCache = new Cache(keyIds);
+                // copy still-valid JWTs from the old cache to the new cache
+                nextCache.add(cache);
+                this.cache = nextCache;
             }
-
-            readEnabled = true;
-            writeEnabled = true;
         } else if(event instanceof CachingJWKSetSource.UnableToRefreshEvent<?>) {
-            readEnabled = false;
-            // there might still some time left until no JWKs are cached anymore
+            // do nothing
         } else if(event instanceof CachingJWKSetSource.RefreshTimedOutEvent<?>) {
-            readEnabled = false;
-            // there might still some time left until no JWKs are cached anymore
+            // do nothing
         }
     }
 
