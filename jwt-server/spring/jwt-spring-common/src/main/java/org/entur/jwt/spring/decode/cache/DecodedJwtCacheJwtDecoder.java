@@ -1,4 +1,4 @@
-package org.entur.jwt.spring.cache;
+package org.entur.jwt.spring.decode.cache;
 
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
@@ -46,19 +46,24 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
 
     protected ScheduledExecutorService scheduledExecutorService = createDefaultScheduledExecutorService();
 
-    protected class Cache {
+    protected static class Cache {
         protected final ConcurrentHashMap<String, Jwt> map;
         protected final Set<String> keyIds;
+        protected final int maxCacheSize;
+        protected final OAuth2TokenValidator<Jwt> jwtValidator;
 
-        protected Cache(Set<String> keyIds, ConcurrentHashMap<String, Jwt> map) {
+        protected Cache(Set<String> keyIds, int maxCacheSize, OAuth2TokenValidator<Jwt> jwtValidator) {
             // should be immediately visible to all threads
             // so the add method can never add anything with the wrong key id
             this.keyIds = Set.copyOf(keyIds);
-            this.map = map;
-        }
-
-        protected Cache(Set<String> keyIds) {
-            this(keyIds, new ConcurrentHashMap<>());
+            if(maxCacheSize == -1) {
+                this.map = new ConcurrentHashMap<>();
+                this.maxCacheSize = Integer.MAX_VALUE;
+            } else {
+                this.map = new ConcurrentHashMap<>(2 * maxCacheSize);
+                this.maxCacheSize = maxCacheSize;
+            }
+            this.jwtValidator = jwtValidator;
         }
 
         public void add(String token, Jwt jwt) {
@@ -129,13 +134,15 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
     protected final long cleanupInterval;
     protected final int maxCacheSize;
 
-    protected volatile Cache cache = new Cache(Collections.emptySet());
+    protected volatile Cache cache;
 
     public DecodedJwtCacheJwtDecoder(JwtDecoder jwtValidatingDecoder, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupIntervalMillis, int maxCacheSize) {
         this.jwtValidatingDecoder = jwtValidatingDecoder;
         this.jwtValidator = jwtValidators;
         this.cleanupInterval = cleanupIntervalMillis;
-        this.maxCacheSize = maxCacheSize == -1 ? Integer.MAX_VALUE : maxCacheSize;
+        this.maxCacheSize = maxCacheSize;
+
+        cache = new Cache(Collections.emptySet(), -1, jwtValidator);
     }
 
     public void scheduleCleanup() {
@@ -234,7 +241,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
                 // do nothing
             } else {
                 // create a new cache
-                Cache nextCache = new Cache(keyIds);
+                Cache nextCache = new Cache(keyIds, maxCacheSize, jwtValidator);
                 // copy still-valid JWTs from the old cache to the new cache
                 nextCache.add(cache);
                 this.cache = nextCache;

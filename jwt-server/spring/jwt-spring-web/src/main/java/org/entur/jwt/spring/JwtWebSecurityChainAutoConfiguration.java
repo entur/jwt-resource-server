@@ -1,6 +1,6 @@
 package org.entur.jwt.spring;
 
-import org.entur.jwt.spring.cache.DecodedJwtCacheConfigurationReader;
+import org.entur.jwt.spring.decode.cache.DecodedJwtCacheConfigurationReader;
 import org.entur.jwt.spring.decode.ClosableJwtDecoders;
 import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
 import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;

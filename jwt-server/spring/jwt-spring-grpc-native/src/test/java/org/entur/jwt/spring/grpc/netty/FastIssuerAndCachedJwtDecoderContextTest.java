@@ -6,7 +6,7 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.spring.JwkSourceMap;
-import org.entur.jwt.spring.cache.DecodedJwtCacheJwtDecoder;
+import org.entur.jwt.spring.decode.cache.DecodedJwtCacheJwtDecoder;
 import org.entur.jwt.spring.decode.FastIssuerJwtDecoder;
 import org.entur.jwt.spring.grpc.AbstractGrpcTest;
 import org.entur.jwt.spring.grpc.test.GreetingResponse;

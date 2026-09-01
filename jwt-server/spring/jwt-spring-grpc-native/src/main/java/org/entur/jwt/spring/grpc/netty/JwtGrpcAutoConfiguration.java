@@ -13,7 +13,7 @@ import org.entur.jwt.spring.decode.FastIssuerJwtDecoder;
 import org.entur.jwt.spring.decode.IssuerJwtDecoder;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
-import org.entur.jwt.spring.cache.DecodedJwtCacheConfigurationReader;
+import org.entur.jwt.spring.decode.cache.DecodedJwtCacheConfigurationReader;
 import org.entur.jwt.spring.decode.ClosableJwtDecodersBuilder;
 import org.entur.jwt.spring.grpc.properties.GrpcPermitAll;
 import org.entur.jwt.spring.grpc.properties.GrpcServicesConfiguration;

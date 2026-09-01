@@ -1,4 +1,4 @@
-package org.entur.jwt.spring.cache;
+package org.entur.jwt.spring.decode.cache;
 
 import org.entur.jwt.spring.properties.JwtProperties;
 import org.entur.jwt.spring.properties.jwk.JwkCacheProperties;

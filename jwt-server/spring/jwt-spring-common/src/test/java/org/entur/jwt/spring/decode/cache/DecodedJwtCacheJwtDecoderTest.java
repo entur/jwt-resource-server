@@ -1,4 +1,4 @@
-package org.entur.jwt.spring.cache;
+package org.entur.jwt.spring.decode.cache;
 
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
@@ -197,6 +197,85 @@ class DecodedJwtCacheJwtDecoderTest {
     }
 
     // -----------------------------------------------------------------------
+    // maxCacheSize enforcement
+    // -----------------------------------------------------------------------
+
+    @Test
+    void neverCachesMoreThanMaxCacheSize() throws Exception {
+        int maxCacheSize = 5;
+        int distinctTokens = 50;
+
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        when(delegate.decode(anyString())).thenAnswer(invocation -> {
+            String token = invocation.getArgument(0);
+            return jwt(token, "kid1");
+        });
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, maxCacheSize);
+        decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
+
+        for (int i = 0; i < distinctTokens; i++) {
+            decoder.decode("token-" + i);
+            assertTrue(decoder.getSize() <= maxCacheSize,
+                    "cache size " + decoder.getSize() + " must never exceed maxCacheSize " + maxCacheSize);
+        }
+
+        assertEquals(maxCacheSize, decoder.getSize(), "cache should have filled up to the configured limit");
+    }
+
+    @Test
+    void stopsCachingNewEntriesOnceMaxCacheSizeIsReachedButKeepsServingCachedOnes() throws Exception {
+        int maxCacheSize = 2;
+
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        when(delegate.decode(anyString())).thenAnswer(invocation -> {
+            String token = invocation.getArgument(0);
+            return jwt(token, "kid1");
+        });
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, maxCacheSize);
+        decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
+
+        // fill the cache to its limit
+        decoder.decode("token-0");
+        decoder.decode("token-1");
+        assertEquals(maxCacheSize, decoder.getSize());
+
+        // already-cached entries are still served from cache
+        decoder.decode("token-0");
+        decoder.decode("token-1");
+        verify(delegate, times(1)).decode("token-0");
+        verify(delegate, times(1)).decode("token-1");
+
+        // cache is full -> new entries are not added, delegate is invoked every time
+        decoder.decode("token-2");
+        decoder.decode("token-2");
+        assertEquals(maxCacheSize, decoder.getSize());
+        verify(delegate, times(2)).decode("token-2");
+    }
+
+    @Test
+    void unboundedCacheSizeAllowsGrowthBeyondDefault() throws Exception {
+        int distinctTokens = 500;
+
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        when(delegate.decode(anyString())).thenAnswer(invocation -> {
+            String token = invocation.getArgument(0);
+            return jwt(token, "kid1");
+        });
+
+        // -1 disables the cap (translated internally to Integer.MAX_VALUE)
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, -1);
+        decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
+
+        for (int i = 0; i < distinctTokens; i++) {
+            decoder.decode("token-" + i);
+        }
+
+        assertEquals(distinctTokens, decoder.getSize());
+    }
+
+    // -----------------------------------------------------------------------
     // clear()
     // -----------------------------------------------------------------------
 
@@ -214,6 +293,123 @@ class DecodedJwtCacheJwtDecoderTest {
         decoder.decode("token1");
 
         verify(delegate, times(2)).decode("token1");
+    }
+
+    // -----------------------------------------------------------------------
+    // cleanup()
+    // -----------------------------------------------------------------------
+
+    @Test
+    void cleanupDoesNothingWhenCacheIsEmpty() {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+
+        OAuth2TokenValidator<Jwt> validator = mock(OAuth2TokenValidator.class);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, validator, CLEANUP_INTERVAL, MAX_TOKENS);
+
+        decoder.cleanup();
+
+        // nothing cached -> validator should never be invoked by cleanup
+        verifyNoInteractions(validator);
+        assertEquals(0, decoder.getSize());
+    }
+
+    @Test
+    void cleanupRemovesInvalidJwtsFromCache() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt = jwt("token1", "kid1");
+        when(delegate.decode("token1")).thenReturn(jwt);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysInvalid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
+
+        // cached without going through validateJwt(), since the delegate already validates it
+        decoder.decode("token1");
+        assertEquals(1, decoder.getSize());
+
+        decoder.cleanup();
+
+        // the invalid entry should have been evicted by cleanup()
+        assertEquals(0, decoder.getSize());
+
+        // subsequent decode must hit the delegate again since the cache entry is gone
+        decoder.decode("token1");
+        verify(delegate, times(2)).decode("token1");
+    }
+
+    @Test
+    void cleanupKeepsStillValidJwtsInCache() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt = jwt("token1", "kid1");
+        when(delegate.decode("token1")).thenReturn(jwt);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
+
+        decoder.decode("token1");
+        assertEquals(1, decoder.getSize());
+
+        decoder.cleanup();
+
+        // still valid -> not evicted
+        assertEquals(1, decoder.getSize());
+        decoder.decode("token1");
+        verify(delegate, times(1)).decode("token1");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void cleanupSwallowsExceptionsThrownByValidator() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt = jwt("token1", "kid1");
+        when(delegate.decode("token1")).thenReturn(jwt);
+
+        OAuth2TokenValidator<Jwt> validator = mock(OAuth2TokenValidator.class);
+        // decode() itself is not affected by the validator mock since the delegate "already validates",
+        // so the first call just caches the entry
+        when(validator.validate(any())).thenThrow(new RuntimeException("MOCK EXCEPTION"));
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, validator, CLEANUP_INTERVAL, MAX_TOKENS);
+        decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
+
+        decoder.decode("token1");
+        assertEquals(1, decoder.getSize());
+
+        // cleanup() must not propagate exceptions raised while revalidating cached entries
+        assertDoesNotThrow(() -> decoder.cleanup());
+    }
+
+    @Test
+    void scheduleCleanupPeriodicallyEvictsInvalidJwts() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt = jwt("token1", "kid1");
+        when(delegate.decode("token1")).thenReturn(jwt);
+
+        long shortCleanupInterval = 20L;
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysInvalid(), shortCleanupInterval, MAX_TOKENS);
+        decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
+
+        decoder.decode("token1");
+        assertEquals(1, decoder.getSize());
+
+        decoder.scheduleCleanup();
+
+        long deadline = System.currentTimeMillis() + 5000L;
+        while (decoder.getSize() != 0 && System.currentTimeMillis() < deadline) {
+            Thread.sleep(20L);
+        }
+
+        assertEquals(0, decoder.getSize(), "background cleanup should have evicted the invalid entry");
+    }
+
+    @Test
+    void scheduleCleanupIsNoOpWhenCleanupIntervalIsNotPositive() {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), 0L, MAX_TOKENS);
+
+        // must not throw and must not schedule anything against the executor
+        assertDoesNotThrow(() -> decoder.scheduleCleanup());
     }
 
     // -----------------------------------------------------------------------
