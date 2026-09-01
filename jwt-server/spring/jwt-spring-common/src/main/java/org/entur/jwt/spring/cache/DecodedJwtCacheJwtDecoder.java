@@ -134,9 +134,11 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
     }
 
     public void scheduleCleanup() {
-        scheduledExecutorService.scheduleWithFixedDelay(() -> {
-            cleanup();
-        }, cleanupInterval, cleanupInterval, TimeUnit.MILLISECONDS);
+        if (cleanupInterval <= 0) {
+            return;
+        }
+        scheduledExecutorService.scheduleWithFixedDelay(this::cleanup,
+                cleanupInterval, cleanupInterval, TimeUnit.MILLISECONDS);
     }
 
     public void cleanup() {
