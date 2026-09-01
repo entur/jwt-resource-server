@@ -179,7 +179,10 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
     private static @NonNull Set<String> convert(JWKSet jwtSet) {
         Set<String> keyIds = new HashSet<>(jwtSet.getKeys().size());
         for (JWK key : jwtSet.getKeys()) {
-            keyIds.add(key.getKeyID());
+String keyId = key.getKeyID();
+if (keyId != null) {
+    keyIds.add(keyId);
+}
         }
         return keyIds;
     }
