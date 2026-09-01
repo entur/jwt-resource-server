@@ -108,14 +108,7 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHtt
         } else {
             IssuerAuthenticationManagerResolver issuer = new IssuerAuthenticationManagerResolver(map);
 
-            JwtHeaderDecodeProperties header = properties.getHeader();
-            if(header.getMapToIssuer().isEnabled()) {
-                if(jwtHeaderToIssuerMapper == null) {
-                    throw new IllegalStateException("JwtHeaderToIssuerMapper bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
-                }
-                if(jwtHeaderToIssuerMapperDecider == null) {
-                    throw new IllegalStateException("JwtHeaderToIssuerMapperDecider bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
-                }
+            if(jwtHeaderToIssuerMapper != null && jwtHeaderToIssuerMapperDecider != null) {
                 FastReactiveIssuerAuthenticationManager fastIssuerAuthenticationManager = new FastReactiveIssuerAuthenticationManager(issuer, jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider);
                 Mono<ReactiveAuthenticationManager> mono = Mono.just(fastIssuerAuthenticationManager);
                 configurer.authenticationManagerResolver(request -> mono);
@@ -126,18 +119,6 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHtt
             }
         }
     }
-
-    private static <C extends SecurityContext> JWTClaimsSet createClaimsSet(JWTProcessor<C> jwtProcessor,
-                                                                            JWT parsedToken, C context) {
-        try {
-            return jwtProcessor.process(parsedToken, context);
-        } catch (BadJOSEException ex) {
-            throw new BadJwtException("Failed to validate the token", ex);
-        } catch (JOSEException ex) {
-            throw new JwtException("Failed to validate the token", ex);
-        }
-    }
-
 
     private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(Map.Entry<String, JWKSource> entry) {
         List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();

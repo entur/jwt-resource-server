@@ -1,10 +1,6 @@
-package org.entur.jwt.spring.grpc.netty;
+package org.entur.jwt.spring.decode;
 
-import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.util.JSONObjectUtils;
-import org.entur.jwt.spring.JwkSourceMap;
-import org.entur.jwt.spring.decode.DefaultJwtHeaderToIssuerMapperDecider;
-import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -13,8 +9,6 @@ import org.springframework.security.oauth2.server.resource.InvalidBearerTokenExc
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -26,37 +20,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 public class IssuerJwtDecoderTest {
-
-    @Test
-    public void testBuilderReturnsFastIssuerDecoderWhenEnabledForMultipleIssuers() throws Exception {
-        JwkSourceMap jwkSourceMap = jwkSourceMapWithTwoIssuers();
-        JwtDecoder decoder = new JwtDecoderBuilder()
-                .withJwkSources(jwkSourceMap.getJwkSources())
-                .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
-                .withJwtValidators(List.of())
-                .withMapHeaderToIssuer(true)
-                .withJwtHeaderToIssuerMapper(new JwtHeaderToIssuerMapper())
-                .withJwtHeaderToIssuerMapperDecider(new DefaultJwtHeaderToIssuerMapperDecider())
-                .build();
-
-        assertThat(decoder).isInstanceOf(FastIssuerJwtDecoder.class);
-        FastIssuerJwtDecoder fastDecoder = (FastIssuerJwtDecoder) decoder;
-        assertThat(fastDecoder.getMapper().getHeaderToIssuer()).isEmpty();
-    }
-
-    @Test
-    public void testBuilderReturnsRegularIssuerDecoderWhenDisabledForMultipleIssuers() {
-        JwkSourceMap jwkSourceMap = jwkSourceMapWithTwoIssuers();
-        JwtDecoder decoder = new JwtDecoderBuilder()
-                .withJwkSources(jwkSourceMap.getJwkSources())
-                .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
-                .withJwtValidators(List.of())
-                .withMapHeaderToIssuer(false)
-                .build();
-
-        assertThat(decoder).isInstanceOf(IssuerJwtDecoder.class);
-        assertThat(decoder).isNotInstanceOf(FastIssuerJwtDecoder.class);
-    }
 
     @Test
     public void testFastDecoderCachesHeaderAndUsesFastPath() throws Exception {
@@ -93,13 +56,6 @@ public class IssuerJwtDecoderTest {
         assertThatThrownBy(() -> decoder.decode(invalidToken)).isInstanceOf(InvalidBearerTokenException.class);
         assertThat(mapper.getHeaderToIssuer()).isEmpty();
         verifyNoInteractions(issuerDecoder);
-    }
-
-    private static JwkSourceMap jwkSourceMapWithTwoIssuers() {
-        Map<String, JWKSource<?>> jwkSources = new HashMap<>();
-        jwkSources.put("https://issuer-a", mock(JWKSource.class));
-        jwkSources.put("https://issuer-b", mock(JWKSource.class));
-        return new JwkSourceMap(jwkSources, Map.of());
     }
 
     private static Jwt jwt(String token, String issuer, String kid) {

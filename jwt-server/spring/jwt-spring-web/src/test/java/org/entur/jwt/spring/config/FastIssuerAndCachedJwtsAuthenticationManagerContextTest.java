@@ -4,6 +4,7 @@ import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.spring.actuate.AbstractActuatorTest;
 import org.entur.jwt.spring.cache.DecodedJwtCacheJwtDecoder;
+import org.entur.jwt.spring.decode.ClosableJwtDecoders;
 import org.entur.jwt.spring.rest.Greeting;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -1,4 +1,4 @@
-package org.entur.jwt.spring.config;
+package org.entur.jwt.spring.decode;
 
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 

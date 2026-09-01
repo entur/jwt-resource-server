@@ -1,4 +1,4 @@
-package org.entur.jwt.spring.grpc.netty;
+package org.entur.jwt.spring.decode;
 
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.source.JWKSource;
@@ -7,8 +7,6 @@ import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import org.entur.jwt.spring.actuate.ListEventListener;
 import org.entur.jwt.spring.cache.DecodedJwtCacheJwtDecoder;
-import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
-import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheProperties;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
@@ -22,52 +20,45 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class JwtDecoderBuilder {
+/**
+ *
+ * Builds a per-issuer {@link JwtDecoder} map, wrapped in a {@link ClosableJwtDecoders} so that
+ * caching decoders can be closed by Spring when the context shuts down.
+ *
+ */
+
+public class ClosableJwtDecodersBuilder {
 
     private List<OAuth2TokenValidator<Jwt>> jwtValidators;
     private Map<String, JWKSource> jwkSources;
     private Map<String, ListEventListener> jwkEventListeners;
     private Map<String, JwtDecoderCacheProperties> decodedJwtCacheIssuers;
-    private boolean mapHeaderToIssuer;
-    private JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper;
-    private JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider;
 
-    public JwtDecoderBuilder withJwkEventListeners(Map<String, ListEventListener> jwkEventListeners) {
+    public ClosableJwtDecodersBuilder withJwkEventListeners(Map<String, ListEventListener> jwkEventListeners) {
         this.jwkEventListeners = jwkEventListeners;
         return this;
     }
 
-    public JwtDecoderBuilder withJwkSources(Map<String, JWKSource> jwkSources) {
+    public ClosableJwtDecodersBuilder withJwkSources(Map<String, JWKSource> jwkSources) {
         this.jwkSources = jwkSources;
         return this;
     }
 
-    public JwtDecoderBuilder withJwtValidators(List<OAuth2TokenValidator<Jwt>> jwtValidators) {
+    public ClosableJwtDecodersBuilder withJwtValidators(List<OAuth2TokenValidator<Jwt>> jwtValidators) {
         this.jwtValidators = jwtValidators;
         return this;
     }
 
-    public JwtDecoderBuilder withDecodedJwtCacheIssuers(Map<String, JwtDecoderCacheProperties> decodedJwtCacheIssuers) {
+    public ClosableJwtDecodersBuilder withDecodedJwtCacheIssuers(Map<String, JwtDecoderCacheProperties> decodedJwtCacheIssuers) {
         this.decodedJwtCacheIssuers = decodedJwtCacheIssuers;
         return this;
     }
 
-    public JwtDecoderBuilder withMapHeaderToIssuer(boolean mapHeaderToIssuer) {
-        this.mapHeaderToIssuer = mapHeaderToIssuer;
-        return this;
-    }
-
-    public JwtDecoderBuilder withJwtHeaderToIssuerMapper(JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper) {
-        this.jwtHeaderToIssuerMapper = jwtHeaderToIssuerMapper;
-        return this;
-    }
-
-    public JwtDecoderBuilder withJwtHeaderToIssuerMapperDecider(JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider) {
-        this.jwtHeaderToIssuerMapperDecider = jwtHeaderToIssuerMapperDecider;
-        return this;
-    }
-
-    public JwtDecoder build() {
+    /**
+     * Build the per-issuer {@link JwtDecoder}s, wrapped so that Spring can close any underlying
+     * caching resources on context shutdown.
+     */
+    public ClosableJwtDecoders build() {
         Map<String, JwtDecoder> map = new HashMap<>(jwkSources.size() * 4);
 
         for (Map.Entry<String, JWKSource> entry : jwkSources.entrySet()) {
@@ -83,11 +74,11 @@ public class JwtDecoderBuilder {
 
             JwtDecoder decoder = nimbusJwtDecoder;
 
-            if(decodedJwtCacheIssuers != null) {
+            if (decodedJwtCacheIssuers != null) {
                 JwtDecoderCacheProperties cacheProperties = decodedJwtCacheIssuers.get(entry.getKey());
-                if(cacheProperties != null) {
+                if (cacheProperties != null) {
                     ListEventListener eventListener = jwkEventListeners.get(entry.getKey());
-                    if(eventListener != null) {
+                    if (eventListener != null) {
                         DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(decoder, validators, cacheProperties.getCleanupInterval() * 1000L, cacheProperties.getMaxSize());
                         cachedDecoder.scheduleCleanup();
                         eventListener.addEventListener(cachedDecoder);
@@ -99,21 +90,7 @@ public class JwtDecoderBuilder {
             map.put(entry.getKey(), decoder);
         }
 
-        if(map.size() == 1) {
-            return map.values().iterator().next();
-        }
-
-        if(mapHeaderToIssuer) {
-            if(jwtHeaderToIssuerMapper == null) {
-                throw new IllegalStateException("JwtHeaderToIssuerMapper bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
-            }
-            if(jwtHeaderToIssuerMapperDecider == null) {
-                throw new IllegalStateException("jwtHeaderToIssuerMapperDecider bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
-            }
-            return new FastIssuerJwtDecoder(map, jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider);
-        }
-
-        return new IssuerJwtDecoder(map);
+        return new ClosableJwtDecoders(map);
     }
 
     private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(String issuer) {

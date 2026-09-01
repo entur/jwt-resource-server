@@ -1,4 +1,4 @@
-package org.entur.jwt.spring.grpc.netty;
+package org.entur.jwt.spring.decode;
 
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTParser;

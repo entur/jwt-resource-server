@@ -8,9 +8,13 @@ import org.entur.jwt.spring.JwtAuthorityEnricher;
 import org.entur.jwt.spring.JwtAutoConfiguration;
 import org.entur.jwt.spring.KeycloakJwtAuthorityEnricher;
 import org.entur.jwt.spring.NoUserDetailsService;
+import org.entur.jwt.spring.decode.ClosableJwtDecoders;
+import org.entur.jwt.spring.decode.FastIssuerJwtDecoder;
+import org.entur.jwt.spring.decode.IssuerJwtDecoder;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.entur.jwt.spring.cache.DecodedJwtCacheConfigurationReader;
+import org.entur.jwt.spring.decode.ClosableJwtDecodersBuilder;
 import org.entur.jwt.spring.grpc.properties.GrpcPermitAll;
 import org.entur.jwt.spring.grpc.properties.GrpcServicesConfiguration;
 import org.entur.jwt.spring.grpc.properties.ServiceMatcherConfiguration;
@@ -103,20 +107,25 @@ public class JwtGrpcAutoConfiguration {
     @ConditionalOnMissingBean({JwtDecoder.class})
     public JwtDecoder jwtDecoderWithHeaderMapper(
             JwtHeaderToIssuerMapper jwtHeaderToIssuerMapperProvider,
-            JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDeciderProvider
+            JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider
     ) {
         Map<String, JwtDecoderCacheProperties> activeDecodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(securityProperties.getJwt());
 
-        // bean automatically closed by spring via Closable if necessary
-        return new JwtDecoderBuilder()
+        // decoder(s) automatically closed by spring via Closable if necessary
+        ClosableJwtDecoders decoders = new ClosableJwtDecodersBuilder()
                 .withJwkSources(jwkSourceMap.getJwkSources())
                 .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
                 .withJwtValidators(jwtValidators)
                 .withDecodedJwtCacheIssuers(activeDecodedJwtCacheIssuers)
-                .withMapHeaderToIssuer(securityProperties.getJwt().getDecode().getHeader().getMapToIssuer().isEnabled())
-                .withJwtHeaderToIssuerMapper(jwtHeaderToIssuerMapperProvider)
-                .withJwtHeaderToIssuerMapperDecider(jwtHeaderToIssuerMapperDeciderProvider)
                 .build();
+
+        Map<String, JwtDecoder> map = decoders.getJwtDecoders();
+        if (map.size() == 1) {
+            // if there is only one decoder, we can return it directly without the overhead of the FastIssuerJwtDecoder
+            return map.values().iterator().next();
+        }
+
+        return new FastIssuerJwtDecoder(map, jwtHeaderToIssuerMapperProvider, jwtHeaderToIssuerMapperDecider);
     }
 
     @Bean
@@ -124,14 +133,20 @@ public class JwtGrpcAutoConfiguration {
     public JwtDecoder jwtDecoder() {
         Map<String, JwtDecoderCacheProperties> activeDecodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(securityProperties.getJwt());
 
-        // bean automatically closed by spring via Closable if necessary
-        return new JwtDecoderBuilder()
+        // decoder(s) automatically closed by spring via Closable if necessary
+        ClosableJwtDecoders closableJwtDecoders = new ClosableJwtDecodersBuilder()
                 .withJwkSources(jwkSourceMap.getJwkSources())
                 .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
                 .withJwtValidators(jwtValidators)
                 .withDecodedJwtCacheIssuers(activeDecodedJwtCacheIssuers)
-                .withMapHeaderToIssuer(securityProperties.getJwt().getDecode().getHeader().getMapToIssuer().isEnabled())
                 .build();
+
+        Map<String, JwtDecoder> map = closableJwtDecoders.getJwtDecoders();
+        if (map.size() == 1) {
+            return map.values().iterator().next();
+        }
+        return new IssuerJwtDecoder(map);
+
     }
 
     @Bean

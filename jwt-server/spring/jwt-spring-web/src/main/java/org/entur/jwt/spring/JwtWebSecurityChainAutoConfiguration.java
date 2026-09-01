@@ -1,16 +1,10 @@
 package org.entur.jwt.spring;
 
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.jwk.source.JWKSource;
-import com.nimbusds.jose.proc.JWSVerificationKeySelector;
-import com.nimbusds.jose.proc.SecurityContext;
-import com.nimbusds.jwt.proc.DefaultJWTProcessor;
-import org.entur.jwt.spring.actuate.ListEventListener;
 import org.entur.jwt.spring.cache.DecodedJwtCacheConfigurationReader;
-import org.entur.jwt.spring.cache.DecodedJwtCacheJwtDecoder;
-import org.entur.jwt.spring.config.ClosableJwtDecoders;
+import org.entur.jwt.spring.decode.ClosableJwtDecoders;
 import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
 import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
+import org.entur.jwt.spring.decode.ClosableJwtDecodersBuilder;
 import org.entur.jwt.spring.config.JwtMappedDiagnosticContextFilter;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
@@ -42,12 +36,8 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.DefaultSecurityFilterChain;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
@@ -133,49 +123,14 @@ public class JwtWebSecurityChainAutoConfiguration {
                 SecurityProperties securityProperties
         ) {
 
-            Map<String, ListEventListener> jwkEventListeners = jwkSourceMap.getJwkEventListeners();
             Map<String, JwtDecoderCacheProperties> decodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(securityProperties.getJwt());
 
-            Map<String, JWKSource> jwkSources = jwkSourceMap.getJwkSources();
-
-            Map<String, JwtDecoder> jwtDecoders = new HashMap<>();
-            for (Map.Entry<String, JWKSource> entry : jwkSources.entrySet()) {
-                JWKSource jwkSource = entry.getValue();
-
-                DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
-                JWSVerificationKeySelector keySelector = new JWSVerificationKeySelector(JWSAlgorithm.Family.SIGNATURE, jwkSource);
-                jwtProcessor.setJWSKeySelector(keySelector);
-
-                NimbusJwtDecoder nimbusJwtDecoder = new NimbusJwtDecoder(jwtProcessor);
-                DelegatingOAuth2TokenValidator<Jwt> validators = getJwtValidators(entry.getKey(), jwtValidators);
-                nimbusJwtDecoder.setJwtValidator(validators);
-
-                JwtDecoder decoder = nimbusJwtDecoder;
-
-                JwtDecoderCacheProperties cacheProperties = decodedJwtCacheIssuers.get(entry.getKey());
-                if (cacheProperties != null) {
-                    ListEventListener eventListener = jwkEventListeners.get(entry.getKey());
-                    if (eventListener != null) {
-                        DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(nimbusJwtDecoder, validators, cacheProperties.getCleanupInterval() * 1000L, cacheProperties.getMaxSize());
-                        cachedDecoder.scheduleCleanup();
-                        eventListener.addEventListener(cachedDecoder);
-                        decoder = cachedDecoder;
-
-                        if(log.isInfoEnabled()) log.info("JWT caching is enabled for issuer {}", entry.getKey());
-                    }
-                }
-                jwtDecoders.put(entry.getKey(), decoder);
-            }
-
-            return new ClosableJwtDecoders(jwtDecoders);
-        }
-
-        private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(String issuer, Collection<? extends OAuth2TokenValidator<Jwt>> jwtValidators) {
-            List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();
-            validators.add(new JwtIssuerValidator(issuer));
-            validators.addAll(jwtValidators);
-            DelegatingOAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(validators);
-            return validator;
+            return new ClosableJwtDecodersBuilder()
+                    .withJwkSources(jwkSourceMap.getJwkSources())
+                    .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
+                    .withJwtValidators(jwtValidators)
+                    .withDecodedJwtCacheIssuers(decodedJwtCacheIssuers)
+                    .build();
         }
 
         @Bean
@@ -214,7 +169,6 @@ public class JwtWebSecurityChainAutoConfiguration {
                 }
 
                 http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(
-                        jwt.getDecode(),
                         jwtAuthorityEnrichers,
                         jwtHeaderToIssuerMapper,
                         jwtHeaderToIssuerMapperDecider,
