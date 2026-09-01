@@ -3,8 +3,6 @@ package org.entur.jwt.spring;
 import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
 import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
 import org.entur.jwt.spring.config.JwtMappedDiagnosticContextFilter;
-import org.entur.jwt.spring.decode.BoundedJwtHeaderToIssuerMapper;
-import org.entur.jwt.spring.decode.DefaultJwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.entur.jwt.spring.filter.log.JwtMappedDiagnosticContextMapper;
@@ -89,21 +87,6 @@ public class JwtWebSecurityChainAutoConfiguration {
         return new NoUserDetailsService();  // avoid the default user.
     }
 
-    @Bean
-    @ConditionalOnProperty(name = "entur.jwt.decode.header.map-to-issuer.enabled", havingValue = "true")
-    @ConditionalOnMissingBean(JwtHeaderToIssuerMapper.class)
-    public JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper(SecurityProperties securityProperties) {
-        int maxSize = securityProperties.getJwt().getDecode().getHeader().getMapToIssuer().getMaxSize();
-        return maxSize != -1 ? new BoundedJwtHeaderToIssuerMapper(maxSize) : new JwtHeaderToIssuerMapper();
-    }
-
-    @Bean
-    @ConditionalOnProperty(name = "entur.jwt.decode.header.map-to-issuer.enabled", havingValue = "true")
-    @ConditionalOnMissingBean(JwtHeaderToIssuerMapperDecider.class)
-    public JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerHeaderMapperDecider() {
-        return new DefaultJwtHeaderToIssuerMapperDecider();
-    }
-
     @Configuration
     @ConditionalOnMissingBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
     @ConditionalOnExpression("${entur.authorization.enabled:true} || ${entur.jwt.enabled:true}")
@@ -111,12 +94,6 @@ public class JwtWebSecurityChainAutoConfiguration {
     public static class CompositeWebSecurityConfigurerAdapter {
 
         private SecurityProperties securityProperties;
-
-        @Autowired(required = false)
-        private JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper;
-
-        @Autowired(required = false)
-        private JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider;
 
         public CompositeWebSecurityConfigurerAdapter(SecurityProperties securityProperties) {
             this.securityProperties = securityProperties;
@@ -143,7 +120,9 @@ public class JwtWebSecurityChainAutoConfiguration {
                 HttpSecurity http,
                 JwkSourceMap jwkSourceMap,
                 List<JwtAuthorityEnricher> jwtAuthorityEnrichers,
-                List<OAuth2TokenValidator<Jwt>> jwtValidators
+                List<OAuth2TokenValidator<Jwt>> jwtValidators,
+                @Autowired(required = false) JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper,
+                @Autowired(required = false) JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider
         ) throws Exception {
 
             AuthorizationProperties authorization = securityProperties.getAuthorization();
