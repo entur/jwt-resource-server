@@ -142,7 +142,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         this.cleanupInterval = cleanupIntervalMillis;
         this.maxCacheSize = maxCacheSize;
 
-        cache = new Cache(Collections.emptySet(), -1, jwtValidator);
+        cache = new Cache(Collections.emptySet(), 0, jwtValidator);
     }
 
     public void scheduleCleanup() {
