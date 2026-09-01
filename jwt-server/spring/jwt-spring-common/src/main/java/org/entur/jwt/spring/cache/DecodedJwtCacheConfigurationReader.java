@@ -9,7 +9,7 @@ import java.util.*;
 
 public class DecodedJwtCacheConfigurationReader {
 
-    public static Map<String, JwtDecoderCacheProperties> convert(JwtProperties jwt) {
+    public static Map<String, JwtDecoderCacheProperties> getActiveJwtDecoderCacheProperties(JwtProperties jwt) {
         JwkCacheProperties cache = jwt.getJwk().getCache();
         boolean preemptiveEagerJwk = cache.isEnabled() && cache.getPreemptive().isEnabled() && cache.getPreemptive().getEager().isEnabled();
 

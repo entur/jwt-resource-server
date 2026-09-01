@@ -134,7 +134,7 @@ public class JwtWebSecurityChainAutoConfiguration {
         ) {
 
             Map<String, ListEventListener> jwkEventListeners = jwkSourceMap.getJwkEventListeners();
-            Map<String, JwtDecoderCacheProperties> decodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt());
+            Map<String, JwtDecoderCacheProperties> decodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(securityProperties.getJwt());
 
             Map<String, JWKSource> jwkSources = jwkSourceMap.getJwkSources();
 

@@ -22,7 +22,6 @@ import org.entur.jwt.spring.properties.SecurityProperties;
 import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -49,7 +48,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @Configuration
 @EnableConfigurationProperties({GrpcPermitAll.class, SecurityProperties.class})
@@ -107,7 +105,7 @@ public class JwtGrpcAutoConfiguration {
             JwtHeaderToIssuerMapper jwtHeaderToIssuerMapperProvider,
             JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDeciderProvider
     ) {
-        Map<String, JwtDecoderCacheProperties> activeDecodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt());
+        Map<String, JwtDecoderCacheProperties> activeDecodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(securityProperties.getJwt());
 
         // bean automatically closed by spring via Closable if necessary
         return new JwtDecoderBuilder()
@@ -124,7 +122,7 @@ public class JwtGrpcAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(JwtDecoder.class)
     public JwtDecoder jwtDecoder() {
-        Map<String, JwtDecoderCacheProperties> activeDecodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt());
+        Map<String, JwtDecoderCacheProperties> activeDecodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(securityProperties.getJwt());
 
         // bean automatically closed by spring via Closable if necessary
         return new JwtDecoderBuilder()
