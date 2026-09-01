@@ -43,6 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @TestPropertySource(properties = {
         "entur.jwt.decode.header.map-to-issuer.enabled=true",
         "entur.jwt.tenants.a.decoder-cache.enabled=true",
+        "entur.jwt.jwk.cache.preemptive.eager.enabled=true",
 })
 public class FastIssuerAndCachedJwtsAuthenticationManagerContextTest extends AbstractActuatorTest {
 
