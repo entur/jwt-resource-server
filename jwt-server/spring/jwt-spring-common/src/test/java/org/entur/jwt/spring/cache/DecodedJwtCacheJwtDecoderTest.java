@@ -313,7 +313,7 @@ class DecodedJwtCacheJwtDecoderTest {
         decoder.notify(refreshCompletedEvent(jwkSet("kid0", "kid1", "kid2")));
 
         int rotatorThreads = 2;
-        int decoderThreads = Runtime.getRuntime().availableProcessors() - rotatorThreads;
+int decoderThreads = Math.max(1, Runtime.getRuntime().availableProcessors() - rotatorThreads);
         int iterationsPerDecoderThread = 5000000;
 
         ExecutorService executor = Executors.newFixedThreadPool(decoderThreads + rotatorThreads);
