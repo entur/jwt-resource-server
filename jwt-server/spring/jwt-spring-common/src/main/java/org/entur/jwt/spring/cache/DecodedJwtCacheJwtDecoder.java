@@ -203,8 +203,8 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         cache.clear();
     }
 
-    private static @NonNull Set<String> convert(JWKSet jwtSet) {
-        Set<String> keyIds = new HashSet<>(jwtSet.getKeys().size());
+    private static @NonNull Set<String> getKeyIds(JWKSet jwtSet) {
+        Set<String> keyIds = new HashSet<>(jwtSet.getKeys().size() * 2);
         for (JWK key : jwtSet.getKeys()) {
             String keyId = key.getKeyID();
             if (keyId != null && !keyId.isEmpty()) {
@@ -222,7 +222,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
             CachingJWKSetSource.RefreshCompletedEvent refreshCompletedEvent = (CachingJWKSetSource.RefreshCompletedEvent) event;
 
             Cache cache = this.cache; // defensive copy
-            Set<String> keyIds = convert(refreshCompletedEvent.getJWKSet());
+            Set<String> keyIds = getKeyIds(refreshCompletedEvent.getJWKSet());
 
             // assuming that comparing key ids is representative of the JWK set
             // and that the underlying key does not change without also changing the key id
