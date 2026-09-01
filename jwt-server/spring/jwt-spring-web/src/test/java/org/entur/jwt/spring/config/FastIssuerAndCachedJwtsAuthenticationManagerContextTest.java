@@ -4,7 +4,6 @@ import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.spring.actuate.AbstractActuatorTest;
 import org.entur.jwt.spring.cache.DecodedJwtCacheJwtDecoder;
-import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.entur.jwt.spring.rest.Greeting;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,12 +28,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Spring context test verifying that {@link FastIssuerAuthenticationManager} is wired
- * with a shared {@link JwtHeaderToIssuerMapper} bean when multi-tenant and
- * {@code entur.jwt.decode.header.map-to-issuer.enabled=true}.
- *
- * And also JWT caching is enabled
+ * Verify JWT caching with header-to-issuer mapping enabled.
  */
+
 @AuthorizationServer("a")
 @AuthorizationServer("b")
 @ExtendWith(SpringExtension.class)

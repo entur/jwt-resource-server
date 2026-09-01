@@ -7,7 +7,6 @@ import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.spring.JwkSourceMap;
 import org.entur.jwt.spring.cache.DecodedJwtCacheJwtDecoder;
-import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.entur.jwt.spring.grpc.AbstractGrpcTest;
 import org.entur.jwt.spring.grpc.test.GreetingResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,15 +23,12 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Spring context test verifying that {@link FastIssuerJwtDecoder} is wired with a shared
- * {@link JwtHeaderToIssuerMapper} bean when multi-tenant and
- * {@code entur.jwt.decode.header.map-to-issuer.enabled=true}.
+ * Verify JWT caching with header-to-issuer mapping enabled.
  */
 @AuthorizationServer("a")
 @AuthorizationServer("b")
