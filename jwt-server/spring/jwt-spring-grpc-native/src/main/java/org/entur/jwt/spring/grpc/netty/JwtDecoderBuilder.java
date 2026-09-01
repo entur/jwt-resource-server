@@ -9,6 +9,7 @@ import org.entur.jwt.spring.actuate.ListEventListener;
 import org.entur.jwt.spring.cache.DecodedJwtCacheJwtDecoder;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
+import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheProperties;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -20,14 +21,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class JwtDecoderBuilder {
 
     private List<OAuth2TokenValidator<Jwt>> jwtValidators;
     private Map<String, JWKSource> jwkSources;
     private Map<String, ListEventListener> jwkEventListeners;
-    private Set<String> decodedJwtCacheIssuers;
+    private Map<String, JwtDecoderCacheProperties> decodedJwtCacheIssuers;
     private boolean mapHeaderToIssuer;
     private JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper;
     private JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider;
@@ -47,7 +47,7 @@ public class JwtDecoderBuilder {
         return this;
     }
 
-    public JwtDecoderBuilder withDecodedJwtCacheIssuers(Set<String> decodedJwtCacheIssuers) {
+    public JwtDecoderBuilder withDecodedJwtCacheIssuers(Map<String, JwtDecoderCacheProperties> decodedJwtCacheIssuers) {
         this.decodedJwtCacheIssuers = decodedJwtCacheIssuers;
         return this;
     }
@@ -83,13 +83,16 @@ public class JwtDecoderBuilder {
 
             JwtDecoder decoder = nimbusJwtDecoder;
 
-            if(decodedJwtCacheIssuers != null && decodedJwtCacheIssuers.contains(entry.getKey())) {
-                ListEventListener eventListener = jwkEventListeners.get(entry.getKey());
-                if(eventListener != null) {
-                    DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(nimbusJwtDecoder, validators, 60_000);
-                    cachedDecoder.scheduleCleanup();
-                    eventListener.addEventListener(cachedDecoder);
-                    decoder = cachedDecoder;
+            if(decodedJwtCacheIssuers != null) {
+                JwtDecoderCacheProperties cacheProperties = decodedJwtCacheIssuers.get(entry.getKey());
+                if(cacheProperties != null) {
+                    ListEventListener eventListener = jwkEventListeners.get(entry.getKey());
+                    if(eventListener != null) {
+                        DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(nimbusJwtDecoder, validators, cacheProperties.getCleanupInterval() * 1000, cacheProperties.getMaxSize());
+                        cachedDecoder.scheduleCleanup();
+                        eventListener.addEventListener(cachedDecoder);
+                        decoder = cachedDecoder;
+                    }
                 }
             }
 

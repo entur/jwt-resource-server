@@ -19,6 +19,7 @@ import org.entur.jwt.spring.properties.Flavours;
 import org.entur.jwt.spring.properties.JwtProperties;
 import org.entur.jwt.spring.properties.KeycloakFlavour;
 import org.entur.jwt.spring.properties.SecurityProperties;
+import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -106,13 +107,13 @@ public class JwtGrpcAutoConfiguration {
             JwtHeaderToIssuerMapper jwtHeaderToIssuerMapperProvider,
             JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDeciderProvider
     ) {
-        Set<String> decodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt());
+        Map<String, JwtDecoderCacheProperties> activeDecodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt());
 
         JwtDecoder decoder = new JwtDecoderBuilder()
                 .withJwkSources(jwkSourceMap.getJwkSources())
                 .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
                 .withJwtValidators(jwtValidators)
-                .withDecodedJwtCacheIssuers(decodedJwtCacheIssuers)
+                .withDecodedJwtCacheIssuers(activeDecodedJwtCacheIssuers)
                 .withMapHeaderToIssuer(securityProperties.getJwt().getDecode().getHeader().getMapToIssuer().isEnabled())
                 .withJwtHeaderToIssuerMapper(jwtHeaderToIssuerMapperProvider)
                 .withJwtHeaderToIssuerMapperDecider(jwtHeaderToIssuerMapperDeciderProvider)
@@ -125,13 +126,13 @@ public class JwtGrpcAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(JwtDecoder.class)
     public JwtDecoder jwtDecoder() {
-        Set<String> decodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt());
+        Map<String, JwtDecoderCacheProperties> activeDecodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt());
 
         JwtDecoder decoder = new JwtDecoderBuilder()
                 .withJwkSources(jwkSourceMap.getJwkSources())
                 .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
                 .withJwtValidators(jwtValidators)
-                .withDecodedJwtCacheIssuers(decodedJwtCacheIssuers)
+                .withDecodedJwtCacheIssuers(activeDecodedJwtCacheIssuers)
                 .withMapHeaderToIssuer(securityProperties.getJwt().getDecode().getHeader().getMapToIssuer().isEnabled())
                 .build();
 

@@ -25,6 +25,16 @@ public class IssuerJwtDecoder implements JwtDecoder, Closeable {
 
     protected final Map<String, JwtDecoder> decoders;
 
+    public static Builder newBuilder() {
+        return new Builder();
+    }
+
+    // legacy support for builder pattern, will be removed in future versions
+    @Deprecated
+    public static class Builder extends JwtDecoderBuilder {
+
+    }
+
     public IssuerJwtDecoder(Map<String, JwtDecoder> decoders) {
         this.decoders = decoders;
     }

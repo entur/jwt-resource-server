@@ -58,6 +58,10 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         }
 
         public void add(String token, Jwt jwt) {
+            if(cache.size() >= maxCacheSize) {
+                return;
+            }
+
             String kid = (String)jwt.getHeaders().get("kid");
             if(kid != null && keyIds.contains(kid)) {
                 cache.put(token, jwt);
@@ -80,7 +84,8 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
             cache.clear();
         }
 
-        protected void cleanInvalidJwts() {
+        protected int cleanInvalidJwts() {
+            int count = 0;
             // remove no longer valid JWTs. Typically they expire by time.
             for (Map.Entry<String, Jwt> entry : cache.entrySet()) {
                 Jwt value = entry.getValue();
@@ -88,9 +93,11 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
                     OAuth2TokenValidatorResult result = jwtValidator.validate(value);
                     if (result.hasErrors()) {
                         cache.remove(entry.getKey());
+                        count++;
                     }
                 }
             }
+            return count;
         }
 
         public boolean hasSameKeyIds(Set<String> keyIds) {
@@ -105,6 +112,10 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
                 }
             }
         }
+
+        public boolean isEmpty() {
+            return cache.isEmpty();
+        }
     }
 
     protected final JwtDecoder jwtValidatingDecoder;
@@ -112,23 +123,30 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
 
     protected volatile Cache cache = new Cache(Collections.emptySet());
 
-    protected long cleanupInterval;
+    protected final long cleanupInterval;
+    protected final int maxCacheSize;
 
-    public DecodedJwtCacheJwtDecoder(JwtDecoder jwtValidatingDecoder, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupInterval) {
+    public DecodedJwtCacheJwtDecoder(JwtDecoder jwtValidatingDecoder, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupIntervalMillis, int maxCacheSize) {
         this.jwtValidatingDecoder = jwtValidatingDecoder;
         this.jwtValidator = jwtValidators;
-        this.cleanupInterval = cleanupInterval;
+        this.cleanupInterval = cleanupIntervalMillis;
+        this.maxCacheSize = maxCacheSize == -1 ? Integer.MAX_VALUE : maxCacheSize;
     }
 
     public void scheduleCleanup() {
         scheduledExecutorService.scheduleWithFixedDelay(() -> {
-            if(LOGGER.isDebugEnabled()) LOGGER.debug("Cleaning cache");
-            try {
-                // avoid memory leaks
-                cache.cleanInvalidJwts();
-            } catch (Throwable e) {
-                // ignore, will be handled by regular flow
-                LOGGER.warn("Problem cleaning cache", e);
+            if(!cache.isEmpty()) {
+                if (LOGGER.isDebugEnabled()) LOGGER.debug("Cleaning cache of size {}", cache.cache.size());
+                try {
+                    // avoid memory leaks due to stagnant JWTs
+                    int cleaned = cache.cleanInvalidJwts();
+                    if(cleaned > 0) {
+                        if (LOGGER.isDebugEnabled()) LOGGER.debug("Cleaned {} invalid JWTs from cache, now have {}", cleaned, cache.cache.size());
+                    }
+                } catch (Throwable e) {
+                    // ignore, will be handled by regular flow
+                    LOGGER.warn("Problem cleaning cache", e);
+                }
             }
         }, cleanupInterval, cleanupInterval, TimeUnit.MILLISECONDS);
     }
@@ -179,10 +197,10 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
     private static @NonNull Set<String> convert(JWKSet jwtSet) {
         Set<String> keyIds = new HashSet<>(jwtSet.getKeys().size());
         for (JWK key : jwtSet.getKeys()) {
-String keyId = key.getKeyID();
-if (keyId != null) {
-    keyIds.add(keyId);
-}
+            String keyId = key.getKeyID();
+            if (keyId != null) {
+                keyIds.add(keyId);
+            }
         }
         return keyIds;
     }

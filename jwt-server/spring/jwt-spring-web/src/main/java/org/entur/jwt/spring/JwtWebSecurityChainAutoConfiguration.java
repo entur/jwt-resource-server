@@ -23,6 +23,7 @@ import org.entur.jwt.spring.properties.JwtProperties;
 import org.entur.jwt.spring.properties.KeycloakFlavour;
 import org.entur.jwt.spring.properties.MdcProperties;
 import org.entur.jwt.spring.properties.SecurityProperties;
+import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -133,7 +134,7 @@ public class JwtWebSecurityChainAutoConfiguration {
         ) {
 
             Map<String, ListEventListener> jwkEventListeners = jwkSourceMap.getJwkEventListeners();
-            Set<String> decodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt());
+            Map<String, JwtDecoderCacheProperties> decodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt());
 
             Map<String, JWKSource> jwkSources = jwkSourceMap.getJwkSources();
 
@@ -151,10 +152,11 @@ public class JwtWebSecurityChainAutoConfiguration {
 
                 JwtDecoder decoder = nimbusJwtDecoder;
 
-                if (decodedJwtCacheIssuers.contains(entry.getKey())) {
+                JwtDecoderCacheProperties cacheProperties = decodedJwtCacheIssuers.get(entry.getKey());
+                if (cacheProperties != null) {
                     ListEventListener eventListener = jwkEventListeners.get(entry.getKey());
                     if (eventListener != null) {
-                        DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(nimbusJwtDecoder, validators, 60_000);
+                        DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(nimbusJwtDecoder, validators, cacheProperties.getCleanupInterval() * 1000, cacheProperties.getMaxSize());
                         cachedDecoder.scheduleCleanup();
                         eventListener.addEventListener(cachedDecoder);
                         decoder = cachedDecoder;

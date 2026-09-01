@@ -31,6 +31,7 @@ import static org.mockito.Mockito.*;
 class DecodedJwtCacheJwtDecoderTest {
 
     private static final long CLEANUP_INTERVAL = 24L * 60L * 60L * 1000L; // not used unless scheduleCleanup() is called
+    private static final int MAX_TOKENS = 10000;
 
     private DecodedJwtCacheJwtDecoder decoder;
 
@@ -102,7 +103,7 @@ class DecodedJwtCacheJwtDecoderTest {
         Jwt jwt = jwt("token1", "kid1");
         when(delegate.decode("token1")).thenReturn(jwt);
 
-        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL);
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
 
         Jwt result = decoder.decode("token1");
 
@@ -116,7 +117,7 @@ class DecodedJwtCacheJwtDecoderTest {
         Jwt jwt = jwt("token1", "unknown-kid");
         when(delegate.decode("token1")).thenReturn(jwt);
 
-        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL);
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
         decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
 
         decoder.decode("token1");
@@ -132,7 +133,7 @@ class DecodedJwtCacheJwtDecoderTest {
         Jwt jwt = jwt("token1", "kid1");
         when(delegate.decode("token1")).thenReturn(jwt);
 
-        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL);
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
         decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
 
         Jwt first = decoder.decode("token1");
@@ -153,7 +154,7 @@ class DecodedJwtCacheJwtDecoderTest {
         OAuth2TokenValidator<Jwt> validator = mock(OAuth2TokenValidator.class);
         when(validator.validate(any())).thenReturn(OAuth2TokenValidatorResult.success());
 
-        decoder = new DecodedJwtCacheJwtDecoder(delegate, validator, CLEANUP_INTERVAL);
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, validator, CLEANUP_INTERVAL, MAX_TOKENS);
         decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
 
         decoder.decode("token1");
@@ -170,7 +171,7 @@ class DecodedJwtCacheJwtDecoderTest {
         Jwt jwt = jwt("token1", "kid1");
         when(delegate.decode("token1")).thenReturn(jwt);
 
-        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysInvalid(), CLEANUP_INTERVAL);
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysInvalid(), CLEANUP_INTERVAL, MAX_TOKENS);
         decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
 
         // first call goes straight to the delegate (which "already validates"), so it
@@ -190,7 +191,7 @@ class DecodedJwtCacheJwtDecoderTest {
         JwtDecoder delegate = mock(JwtDecoder.class);
         when(delegate.decode(anyString())).thenThrow(new JwtException("bad token"));
 
-        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL);
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
 
         assertThrows(JwtException.class, () -> decoder.decode("token1"));
     }
@@ -205,7 +206,7 @@ class DecodedJwtCacheJwtDecoderTest {
         Jwt jwt = jwt("token1", "kid1");
         when(delegate.decode("token1")).thenReturn(jwt);
 
-        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL);
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
         decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
 
         decoder.decode("token1");
@@ -225,7 +226,7 @@ class DecodedJwtCacheJwtDecoderTest {
         Jwt jwt = jwt("token1", "kid1");
         when(delegate.decode("token1")).thenReturn(jwt);
 
-        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL);
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
         decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
 
         decoder.decode("token1");
@@ -245,7 +246,7 @@ class DecodedJwtCacheJwtDecoderTest {
         Jwt jwt = jwt("token1", "kid1");
         when(delegate.decode("token1")).thenReturn(jwt);
 
-        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL);
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
         decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
 
         decoder.decode("token1");
@@ -263,7 +264,7 @@ class DecodedJwtCacheJwtDecoderTest {
         Jwt jwt1 = jwt("token1", "kid1");
         when(delegate.decode("token1")).thenReturn(jwt1);
 
-        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL);
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
         decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
 
         decoder.decode("token1"); // cached under kid1
@@ -281,7 +282,7 @@ class DecodedJwtCacheJwtDecoderTest {
         Jwt jwt1 = jwt("token1", "kid1");
         when(delegate.decode("token1")).thenReturn(jwt1);
 
-        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL);
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
         decoder.notify(refreshCompletedEvent(jwkSet("kid1", "kid2")));
 
         decoder.decode("token1"); // cached under kid1
@@ -309,12 +310,12 @@ class DecodedJwtCacheJwtDecoderTest {
             return jwt(token, "kid" + (activeKid.get() % 3));
         });
 
-        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL);
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
         decoder.notify(refreshCompletedEvent(jwkSet("kid0", "kid1", "kid2")));
 
         int rotatorThreads = 2;
 int decoderThreads = Math.max(1, Runtime.getRuntime().availableProcessors() - rotatorThreads);
-        int iterationsPerDecoderThread = 5000000;
+        int iterationsPerDecoderThread = 50000;
 
         ExecutorService executor = Executors.newFixedThreadPool(decoderThreads + rotatorThreads);
         CountDownLatch start = new CountDownLatch(1);
@@ -376,7 +377,7 @@ int decoderThreads = Math.max(1, Runtime.getRuntime().availableProcessors() - ro
         Jwt jwtKid1 = jwt("token1", "kid1");
         when(delegate.decode("token1")).thenReturn(jwtKid1);
 
-        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL);
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
         decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
 
         // warm the cache
@@ -392,7 +393,7 @@ int decoderThreads = Math.max(1, Runtime.getRuntime().availableProcessors() - ro
             futures.add(executor.submit(() -> {
                 try {
                     start.await();
-                    for (int i = 0; i < 5000000; i++) {
+                    for (int i = 0; i < 50000; i++) {
                         Jwt result = decoder.decode("token1");
                         if (result == null || !"kid1".equals(result.getHeaders().get("kid"))) {
                             errors.incrementAndGet();

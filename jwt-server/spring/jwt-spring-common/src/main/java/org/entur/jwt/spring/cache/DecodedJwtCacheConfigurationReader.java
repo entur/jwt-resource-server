@@ -2,30 +2,28 @@ package org.entur.jwt.spring.cache;
 
 import org.entur.jwt.spring.properties.JwtProperties;
 import org.entur.jwt.spring.properties.jwk.JwkCacheProperties;
+import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheProperties;
 import org.entur.jwt.spring.properties.jwk.JwtTenantProperties;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class DecodedJwtCacheConfigurationReader {
 
-    public static Set<String> convert(JwtProperties jwt) {
+    public static Map<String, JwtDecoderCacheProperties> convert(JwtProperties jwt) {
         JwkCacheProperties cache = jwt.getJwk().getCache();
         boolean preemptiveEagerJwk = cache.isEnabled() && cache.getPreemptive().isEnabled() && cache.getPreemptive().getEager().isEnabled();
 
-        Set<String> decodedJwtCacheIssuers;
+        Map<String, JwtDecoderCacheProperties> decodedJwtCacheIssuers;
         if(preemptiveEagerJwk) {
-            decodedJwtCacheIssuers = new HashSet<>();
+            decodedJwtCacheIssuers = new HashMap<>();
             for (Map.Entry<String, JwtTenantProperties> entry : jwt.getTenants().entrySet()) {
                 JwtTenantProperties value = entry.getValue();
                 if(value.isEnabled() && value.getDecoderCache().isEnabled()) {
-decodedJwtCacheIssuers.add(value.getIssuer());
+                    decodedJwtCacheIssuers.put(value.getIssuer(), value.getDecoderCache());
                 }
             }
         } else {
-            decodedJwtCacheIssuers = Collections.emptySet();
+            decodedJwtCacheIssuers = Collections.emptyMap();
         }
         return decodedJwtCacheIssuers;
     }
