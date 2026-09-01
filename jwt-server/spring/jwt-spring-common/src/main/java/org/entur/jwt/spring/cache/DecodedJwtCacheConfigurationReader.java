@@ -21,7 +21,7 @@ public class DecodedJwtCacheConfigurationReader {
             for (Map.Entry<String, JwtTenantProperties> entry : jwt.getTenants().entrySet()) {
                 JwtTenantProperties value = entry.getValue();
                 if(value.isEnabled() && value.getDecoderCache().isEnabled()) {
-                    decodedJwtCacheIssuers.add(entry.getKey());
+decodedJwtCacheIssuers.add(value.getIssuer());
                 }
             }
         } else {
