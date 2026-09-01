@@ -87,7 +87,7 @@ public class FastIssuerAndCachedJwtsAuthenticationManagerContextTest extends Abs
     }
 
     @Test
-    public void testMapperPopulatedAfterAuthenticatedRequest(
+    public void testCachePopulatedAfterAuthenticatedRequests(
             @AccessToken(by = "a", audience = "mock.my.audience", scope =  "1") String token1, @AccessToken(by = "a", audience = "mock.my.audience", scope =  "2") String token2) {
 
         DecodedJwtCacheJwtDecoder a = (DecodedJwtCacheJwtDecoder) closableJwtDecoders.getJwtDecoders().get("https://mock.issuer.a.xyz");
@@ -101,7 +101,7 @@ public class FastIssuerAndCachedJwtsAuthenticationManagerContextTest extends Abs
     }
 
     @Test
-    public void testCacheNotGrownAfterSecondRequestWithSameHeader(
+    public void testCacheNotGrownAfterSecondRequestWithSameJwt(
             @AccessToken(by = "a", audience = "mock.my.audience") String token) {
 
         DecodedJwtCacheJwtDecoder a = (DecodedJwtCacheJwtDecoder) closableJwtDecoders.getJwtDecoders().get("https://mock.issuer.a.xyz");

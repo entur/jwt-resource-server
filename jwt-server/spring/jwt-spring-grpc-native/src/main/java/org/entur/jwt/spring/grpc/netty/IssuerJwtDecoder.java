@@ -64,5 +64,10 @@ public class IssuerJwtDecoder implements JwtDecoder, Closeable {
             }
         }
     }
+
+    // for testing
+    public Map<String, JwtDecoder> getJwtDecoders() {
+        return decoders;
+    }
 }
 
