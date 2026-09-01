@@ -51,10 +51,10 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
 
         if(LOGGER.isDebugEnabled()) LOGGER.debug("Customize {} issuers", decoders.getJwtDecoders().size());
 
-        Map<String, JwtDecoder> decoders = this.decoders.getJwtDecoders();
+        Map<String, JwtDecoder> decodersMap = this.decoders.getJwtDecoders();
 
         Map<String, AuthenticationManager> map = new HashMap<>(); // thread safe for reading
-        for (Map.Entry<String, JwtDecoder> entry : decoders.entrySet()) {
+        for (Map.Entry<String, JwtDecoder> entry : decodersMap.entrySet()) {
 
             JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
             jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(new EnrichedJwtGrantedAuthoritiesConverter(jwtAuthorityEnrichers));

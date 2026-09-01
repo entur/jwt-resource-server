@@ -43,14 +43,14 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
     protected ScheduledExecutorService scheduledExecutorService = createDefaultScheduledExecutorService();
 
     protected class Cache {
-        protected final ConcurrentHashMap<String, Jwt> cache;
+        protected final ConcurrentHashMap<String, Jwt> map;
         protected final Set<String> keyIds;
 
         protected Cache(Set<String> keyIds, ConcurrentHashMap<String, Jwt> map) {
             // should be immediately visible to all threads
             // so the add method can never add anything with the wrong key id
             this.keyIds = Set.copyOf(keyIds);
-            this.cache = map;
+            this.map = map;
         }
 
         protected Cache(Set<String> keyIds) {
@@ -58,41 +58,37 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         }
 
         public void add(String token, Jwt jwt) {
-            if(cache.size() >= maxCacheSize) {
+            if(map.size() >= maxCacheSize) {
                 return;
             }
 
             String kid = (String)jwt.getHeaders().get("kid");
             if(kid != null && keyIds.contains(kid)) {
-                cache.put(token, jwt);
+                map.put(token, jwt);
             }
         }
 
         public Jwt get(String token) {
-            return cache.get(token);
-        }
-
-        public boolean containsKeyId(String kid) {
-            return keyIds.contains(kid);
+            return map.get(token);
         }
 
         public void remove(String token) {
-            cache.remove(token);
+            map.remove(token);
         }
 
         public void clear() {
-            cache.clear();
+            map.clear();
         }
 
         protected int cleanInvalidJwts() {
             int count = 0;
             // remove no longer valid JWTs. Typically they expire by time.
-            for (Map.Entry<String, Jwt> entry : cache.entrySet()) {
+            for (Map.Entry<String, Jwt> entry : map.entrySet()) {
                 Jwt value = entry.getValue();
                 if(value != null) {
                     OAuth2TokenValidatorResult result = jwtValidator.validate(value);
                     if (result.hasErrors()) {
-                        cache.remove(entry.getKey());
+                        map.remove(entry.getKey());
                         count++;
                     }
                 }
@@ -105,7 +101,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         }
 
         public void add(Cache cache) {
-            for (Map.Entry<String, Jwt> entry : cache.cache.entrySet()) {
+            for (Map.Entry<String, Jwt> entry : cache.map.entrySet()) {
                 Jwt value = entry.getValue();
                 if(value != null) {
                     add(entry.getKey(), value); // filters on key id
@@ -114,17 +110,21 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         }
 
         public boolean isEmpty() {
-            return cache.isEmpty();
+            return map.isEmpty();
+        }
+
+        public int size() {
+            return map.size();
         }
     }
 
     protected final JwtDecoder jwtValidatingDecoder;
     protected final OAuth2TokenValidator<Jwt> jwtValidator;
 
-    protected volatile Cache cache = new Cache(Collections.emptySet());
-
     protected final long cleanupInterval;
     protected final int maxCacheSize;
+
+    protected volatile Cache cache = new Cache(Collections.emptySet());
 
     public DecodedJwtCacheJwtDecoder(JwtDecoder jwtValidatingDecoder, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupIntervalMillis, int maxCacheSize) {
         this.jwtValidatingDecoder = jwtValidatingDecoder;
@@ -135,20 +135,23 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
 
     public void scheduleCleanup() {
         scheduledExecutorService.scheduleWithFixedDelay(() -> {
-            if(!cache.isEmpty()) {
-                if (LOGGER.isDebugEnabled()) LOGGER.debug("Cleaning cache of size {}", cache.cache.size());
-                try {
-                    // avoid memory leaks due to stagnant JWTs
-                    int cleaned = cache.cleanInvalidJwts();
-                    if(cleaned > 0) {
-                        if (LOGGER.isDebugEnabled()) LOGGER.debug("Cleaned {} invalid JWTs from cache, now have {}", cleaned, cache.cache.size());
-                    }
-                } catch (Throwable e) {
-                    // ignore, will be handled by regular flow
-                    LOGGER.warn("Problem cleaning cache", e);
-                }
-            }
+            cleanup();
         }, cleanupInterval, cleanupInterval, TimeUnit.MILLISECONDS);
+    }
+
+    public void cleanup() {
+        if(!cache.isEmpty()) {
+            try {
+                // avoid memory leaks due to stagnant JWTs
+                int cleaned = cache.cleanInvalidJwts();
+                if(cleaned > 0) {
+                    if (LOGGER.isDebugEnabled()) LOGGER.debug("Cleaned {} invalid JWTs from cache, now have {}", cleaned, cache.map.size());
+                }
+            } catch (Throwable e) {
+                // ignore, will be handled by regular flow
+                LOGGER.warn("Problem cleaning cache", e);
+            }
+        }
     }
 
     @Override
@@ -164,6 +167,9 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
 
         Jwt jwt = jwtValidatingDecoder.decode(token); // also validates
         c.add(token, jwt); // only adds if the keyid is known, otherwise ignored
+
+        // implementation note: if the first JWT also refreshes that JWKs, it will not be cached itself
+        // since that will create a new cache instance (which is not the same as the local copy)
 
         return jwt;
     }
@@ -212,7 +218,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         } else if(event instanceof CachingJWKSetSource.RefreshCompletedEvent<?>) {
             CachingJWKSetSource.RefreshCompletedEvent refreshCompletedEvent = (CachingJWKSetSource.RefreshCompletedEvent) event;
 
-            Cache cache = this.cache;
+            Cache cache = this.cache; // defensive copy
             Set<String> keyIds = convert(refreshCompletedEvent.getJWKSet());
             if(cache.hasSameKeyIds(keyIds)) {
                 // do nothing
@@ -232,5 +238,9 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
 
     public void close() {
         scheduledExecutorService.shutdownNow();
+    }
+
+    public int getSize() {
+        return cache.size();
     }
 }

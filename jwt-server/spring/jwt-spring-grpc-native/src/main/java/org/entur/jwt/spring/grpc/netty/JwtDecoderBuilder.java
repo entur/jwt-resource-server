@@ -88,7 +88,7 @@ public class JwtDecoderBuilder {
                 if(cacheProperties != null) {
                     ListEventListener eventListener = jwkEventListeners.get(entry.getKey());
                     if(eventListener != null) {
-                        DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(nimbusJwtDecoder, validators, cacheProperties.getCleanupInterval() * 1000, cacheProperties.getMaxSize());
+                        DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(decoder, validators, cacheProperties.getCleanupInterval() * 1000L, cacheProperties.getMaxSize());
                         cachedDecoder.scheduleCleanup();
                         eventListener.addEventListener(cachedDecoder);
                         decoder = cachedDecoder;

@@ -156,14 +156,17 @@ public class JwtWebSecurityChainAutoConfiguration {
                 if (cacheProperties != null) {
                     ListEventListener eventListener = jwkEventListeners.get(entry.getKey());
                     if (eventListener != null) {
-                        DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(nimbusJwtDecoder, validators, cacheProperties.getCleanupInterval() * 1000, cacheProperties.getMaxSize());
+                        DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(nimbusJwtDecoder, validators, cacheProperties.getCleanupInterval() * 1000L, cacheProperties.getMaxSize());
                         cachedDecoder.scheduleCleanup();
                         eventListener.addEventListener(cachedDecoder);
                         decoder = cachedDecoder;
+
+                        if(log.isInfoEnabled()) log.info("JWT caching is enabled for issuer {}", entry.getKey());
                     }
                 }
                 jwtDecoders.put(entry.getKey(), decoder);
             }
+
             return new ClosableJwtDecoders(jwtDecoders);
         }
 

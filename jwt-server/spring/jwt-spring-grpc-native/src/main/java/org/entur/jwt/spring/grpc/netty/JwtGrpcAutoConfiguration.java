@@ -109,7 +109,8 @@ public class JwtGrpcAutoConfiguration {
     ) {
         Map<String, JwtDecoderCacheProperties> activeDecodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt());
 
-        JwtDecoder decoder = new JwtDecoderBuilder()
+        // bean automatically closed by spring via Closable if necessary
+        return new JwtDecoderBuilder()
                 .withJwkSources(jwkSourceMap.getJwkSources())
                 .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
                 .withJwtValidators(jwtValidators)
@@ -118,9 +119,6 @@ public class JwtGrpcAutoConfiguration {
                 .withJwtHeaderToIssuerMapper(jwtHeaderToIssuerMapperProvider)
                 .withJwtHeaderToIssuerMapperDecider(jwtHeaderToIssuerMapperDeciderProvider)
                 .build();
-
-        // automatically closed by spring via Closable if necessary
-        return decoder;
     }
 
     @Bean
@@ -128,16 +126,14 @@ public class JwtGrpcAutoConfiguration {
     public JwtDecoder jwtDecoder() {
         Map<String, JwtDecoderCacheProperties> activeDecodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt());
 
-        JwtDecoder decoder = new JwtDecoderBuilder()
+        // bean automatically closed by spring via Closable if necessary
+        return new JwtDecoderBuilder()
                 .withJwkSources(jwkSourceMap.getJwkSources())
                 .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
                 .withJwtValidators(jwtValidators)
                 .withDecodedJwtCacheIssuers(activeDecodedJwtCacheIssuers)
                 .withMapHeaderToIssuer(securityProperties.getJwt().getDecode().getHeader().getMapToIssuer().isEnabled())
                 .build();
-
-        // automatically closed by spring via Closable if necessary
-        return decoder;
     }
 
     @Bean

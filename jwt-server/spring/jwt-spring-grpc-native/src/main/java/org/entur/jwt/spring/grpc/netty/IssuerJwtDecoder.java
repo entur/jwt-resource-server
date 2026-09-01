@@ -59,8 +59,8 @@ public class IssuerJwtDecoder implements JwtDecoder, Closeable {
     @Override
     public void close() throws IOException {
         for (JwtDecoder decoder : decoders.values()) {
-            if(decoder instanceof Closeable) {
-                ((Closeable) decoder).close();
+            if(decoder instanceof Closeable c) {
+                c.close();
             }
         }
     }
