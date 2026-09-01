@@ -49,7 +49,7 @@ public class FastIssuerAndCachedJwtDecoderContextTest extends AbstractGrpcTest {
     private JwkSourceMap jwkSourceMap;
 
     @BeforeEach
-    public void readniess() throws Exception {
+    public void setup() throws Exception {
         // make sure JWKs are loaded. trigger JWKs population
         Map<String, JWKSource> jwkSources = jwkSourceMap.getJwkSources();
         for (Map.Entry<String, JWKSource> entry : jwkSources.entrySet()) {

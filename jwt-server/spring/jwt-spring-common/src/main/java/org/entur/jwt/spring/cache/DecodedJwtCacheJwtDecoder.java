@@ -58,6 +58,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         }
 
         public void add(String token, Jwt jwt) {
+            // the size check is not atomic with the put, but it is good enough for this use case.
             if(map.size() >= maxCacheSize) {
                 return;
             }
@@ -206,7 +207,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         Set<String> keyIds = new HashSet<>(jwtSet.getKeys().size());
         for (JWK key : jwtSet.getKeys()) {
             String keyId = key.getKeyID();
-            if (keyId != null) {
+            if (keyId != null && !keyId.isEmpty()) {
                 keyIds.add(keyId);
             }
         }
@@ -222,6 +223,9 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
 
             Cache cache = this.cache; // defensive copy
             Set<String> keyIds = convert(refreshCompletedEvent.getJWKSet());
+
+            // assuming that comparing key ids is representative of the JWK set
+            // and that the underlying key does not change without also changing the key id
             if(cache.hasSameKeyIds(keyIds)) {
                 // do nothing
             } else {
