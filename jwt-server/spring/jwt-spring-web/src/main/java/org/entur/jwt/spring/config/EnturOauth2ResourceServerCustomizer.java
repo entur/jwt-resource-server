@@ -23,6 +23,7 @@ import org.springframework.security.config.annotation.web.configurers.oauth2.ser
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
@@ -38,7 +39,7 @@ import java.util.Set;
 
 public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2ResourceServerConfigurer<HttpSecurity>> {
 
-    private static Logger LOGGER = LoggerFactory.getLogger(EnturOauth2ResourceServerCustomizer.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(EnturOauth2ResourceServerCustomizer.class);
 
     private final Map<String, JWKSource> jwkSources;
     private final List<JwtAuthorityEnricher> jwtAuthorityEnrichers;
@@ -100,7 +101,7 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
             DelegatingOAuth2TokenValidator<Jwt> validators = getJwtValidators(entry.getKey());
             nimbusJwtDecoder.setJwtValidator(validators);
 
-            org.springframework.security.oauth2.jwt.JwtDecoder decoder = nimbusJwtDecoder;
+            JwtDecoder decoder = nimbusJwtDecoder;
 
             if(decodedJwtCacheIssuers.contains(entry.getKey())) {
                 ListEventListener eventListener = jwkEventListeners.get(entry.getKey());

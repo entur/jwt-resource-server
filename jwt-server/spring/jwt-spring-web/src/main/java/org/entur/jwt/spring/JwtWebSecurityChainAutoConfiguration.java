@@ -1,5 +1,6 @@
 package org.entur.jwt.spring;
 
+import org.entur.jwt.spring.cache.DecodedJwtCacheConfigurationReader;
 import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
 import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
 import org.entur.jwt.spring.config.JwtMappedDiagnosticContextFilter;
@@ -150,7 +151,16 @@ public class JwtWebSecurityChainAutoConfiguration {
                     jwtAuthorityEnrichers = enrichers;
                 }
 
-                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwt.getDecode(), jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers, jwtValidators, jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider, jwkSourceMap.getJwkEventListeners(), org.entur.jwt.spring.cache.DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt())));
+                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(
+                        jwt.getDecode(),
+                        jwkSourceMap.getJwkSources(),
+                        jwtAuthorityEnrichers,
+                        jwtValidators,
+                        jwtHeaderToIssuerMapper,
+                        jwtHeaderToIssuerMapperDecider,
+                        jwkSourceMap.getJwkEventListeners(),
+                        DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt()))
+                );
             }
 
             MdcProperties mdc = jwt.getMdc();

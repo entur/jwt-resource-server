@@ -88,7 +88,6 @@ public class JwtGrpcAutoConfiguration {
         }
     }
 
-
     @Bean
     public JwtOutageGrpcExceptionHandler jwtOutageGrpcExceptionHandler() {
         return new JwtOutageGrpcExceptionHandler(-1000);
@@ -101,11 +100,51 @@ public class JwtGrpcAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnBean({JwtHeaderToIssuerMapper.class, JwtHeaderToIssuerMapperDecider.class})
+    @ConditionalOnMissingBean({JwtDecoder.class})
+    public JwtDecoder jwtDecoderWithHeaderMapper(
+            JwtHeaderToIssuerMapper jwtHeaderToIssuerMapperProvider,
+            JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDeciderProvider
+    ) {
+        Set<String> decodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt());
+
+        JwtDecoder decoder = new JwtDecoderBuilder()
+                .withJwkSources(jwkSourceMap.getJwkSources())
+                .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
+                .withJwtValidators(jwtValidators)
+                .withDecodedJwtCacheIssuers(decodedJwtCacheIssuers)
+                .withMapHeaderToIssuer(securityProperties.getJwt().getDecode().getHeader().getMapToIssuer().isEnabled())
+                .withJwtHeaderToIssuerMapper(jwtHeaderToIssuerMapperProvider)
+                .withJwtHeaderToIssuerMapperDecider(jwtHeaderToIssuerMapperDeciderProvider)
+                .build();
+
+        // automatically closed by spring via Closable if necessary
+        return decoder;
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(JwtDecoder.class)
+    public JwtDecoder jwtDecoder() {
+        Set<String> decodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt());
+
+        JwtDecoder decoder = new JwtDecoderBuilder()
+                .withJwkSources(jwkSourceMap.getJwkSources())
+                .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
+                .withJwtValidators(jwtValidators)
+                .withDecodedJwtCacheIssuers(decodedJwtCacheIssuers)
+                .withMapHeaderToIssuer(securityProperties.getJwt().getDecode().getHeader().getMapToIssuer().isEnabled())
+                .build();
+
+        // automatically closed by spring via Closable if necessary
+        return decoder;
+    }
+
+    @Bean
     @GlobalServerInterceptor
-    public AuthenticationProcessInterceptor jwtSecurityFilterChain(
+    public AuthenticationProcessInterceptor authenticationProcessInterceptor(
             GrpcSecurity grpcSecurity, List<JwtAuthorityEnricher> jwtAuthorityEnrichers,
-            ObjectProvider<JwtHeaderToIssuerMapper> jwtHeaderToIssuerMapperProvider,
-            ObjectProvider<JwtHeaderToIssuerMapperDecider> jwtHeaderToIssuerMapperDeciderProvider)
+            JwtDecoder decoder
+            )
             throws Exception {
         try {
             grpcSecurity.authorizeRequests((requests) -> {
@@ -125,20 +164,6 @@ public class JwtGrpcAutoConfiguration {
 
                 requests.allRequests().fullyAuthenticated();
             });
-
-            JwtProperties jwtProperties = securityProperties.getJwt();
-
-            Set<String> decodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt());
-
-            JwtDecoder decoder = new JwtDecoderBuilder()
-                    .withJwkSources(jwkSourceMap.getJwkSources())
-                    .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
-                    .withJwtValidators(jwtValidators)
-                    .withDecodedJwtCacheIssuers(decodedJwtCacheIssuers)
-                    .withMapHeaderToIssuer(jwtProperties.getDecode().getHeader().getMapToIssuer().isEnabled())
-                    .withJwtHeaderToIssuerMapper(jwtHeaderToIssuerMapperProvider.getIfAvailable())
-                    .withJwtHeaderToIssuerMapperDecider(jwtHeaderToIssuerMapperDeciderProvider.getIfAvailable())
-                    .build();
 
             Customizer<OAuth2ResourceServerConfigurer.JwtConfigurer> configurer = new Customizer<OAuth2ResourceServerConfigurer.JwtConfigurer>() {
                 @Override
