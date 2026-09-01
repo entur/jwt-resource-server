@@ -1,6 +1,14 @@
 package org.entur.jwt.spring;
 
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.proc.JWSVerificationKeySelector;
+import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jwt.proc.DefaultJWTProcessor;
+import org.entur.jwt.spring.actuate.ListEventListener;
 import org.entur.jwt.spring.cache.DecodedJwtCacheConfigurationReader;
+import org.entur.jwt.spring.cache.DecodedJwtCacheJwtDecoder;
+import org.entur.jwt.spring.config.ClosableJwtDecoders;
 import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
 import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
 import org.entur.jwt.spring.config.JwtMappedDiagnosticContextFilter;
@@ -33,15 +41,18 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.DefaultSecurityFilterChain;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
@@ -102,9 +113,7 @@ public class JwtWebSecurityChainAutoConfiguration {
 
         @Bean
         @ConditionalOnExpression("${entur.authorization.enabled:true} && !${entur.jwt.enabled:true}")
-        public SecurityFilterChain securityWebFilterChain(
-                HttpSecurity http
-        ) throws Exception {
+        public SecurityFilterChain securityWebFilterChain(HttpSecurity http) throws Exception {
             log.info("Configure without JWT");
 
             AuthorizationProperties authorization = securityProperties.getAuthorization();
@@ -117,11 +126,59 @@ public class JwtWebSecurityChainAutoConfiguration {
 
         @Bean
         @ConditionalOnExpression("${entur.jwt.enabled:true}")
+        public ClosableJwtDecoders closableJwtDecoders(
+                JwkSourceMap jwkSourceMap,
+                List<OAuth2TokenValidator<Jwt>> jwtValidators,
+                SecurityProperties securityProperties
+        ) {
+
+            Map<String, ListEventListener> jwkEventListeners = jwkSourceMap.getJwkEventListeners();
+            Set<String> decodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt());
+
+            Map<String, JWKSource> jwkSources = jwkSourceMap.getJwkSources();
+
+            Map<String, JwtDecoder> jwtDecoders = new HashMap<>();
+            for (Map.Entry<String, JWKSource> entry : jwkSources.entrySet()) {
+                JWKSource jwkSource = entry.getValue();
+
+                DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
+                JWSVerificationKeySelector keySelector = new JWSVerificationKeySelector(JWSAlgorithm.Family.SIGNATURE, jwkSource);
+                jwtProcessor.setJWSKeySelector(keySelector);
+
+                NimbusJwtDecoder nimbusJwtDecoder = new NimbusJwtDecoder(jwtProcessor);
+                DelegatingOAuth2TokenValidator<Jwt> validators = getJwtValidators(entry.getKey(), jwtValidators);
+                nimbusJwtDecoder.setJwtValidator(validators);
+
+                JwtDecoder decoder = nimbusJwtDecoder;
+
+                if (decodedJwtCacheIssuers.contains(entry.getKey())) {
+                    ListEventListener eventListener = jwkEventListeners.get(entry.getKey());
+                    if (eventListener != null) {
+                        DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(nimbusJwtDecoder, validators, 60_000);
+                        cachedDecoder.scheduleCleanup();
+                        eventListener.addEventListener(cachedDecoder);
+                        decoder = cachedDecoder;
+                    }
+                }
+                jwtDecoders.put(entry.getKey(), decoder);
+            }
+            return new ClosableJwtDecoders(jwtDecoders);
+        }
+
+        private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(String issuer, Collection<? extends OAuth2TokenValidator<Jwt>> jwtValidators) {
+            List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();
+            validators.add(new JwtIssuerValidator(issuer));
+            validators.addAll(jwtValidators);
+            DelegatingOAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(validators);
+            return validator;
+        }
+
+        @Bean
+        @ConditionalOnExpression("${entur.jwt.enabled:true}")
         public SecurityFilterChain filterChain(
                 HttpSecurity http,
-                JwkSourceMap jwkSourceMap,
+                ClosableJwtDecoders jwtDecoders,
                 List<JwtAuthorityEnricher> jwtAuthorityEnrichers,
-                List<OAuth2TokenValidator<Jwt>> jwtValidators,
                 @Autowired(required = false) JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper,
                 @Autowired(required = false) JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider
         ) throws Exception {
@@ -153,14 +210,11 @@ public class JwtWebSecurityChainAutoConfiguration {
 
                 http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(
                         jwt.getDecode(),
-                        jwkSourceMap.getJwkSources(),
                         jwtAuthorityEnrichers,
-                        jwtValidators,
                         jwtHeaderToIssuerMapper,
                         jwtHeaderToIssuerMapperDecider,
-                        jwkSourceMap.getJwkEventListeners(),
-                        DecodedJwtCacheConfigurationReader.convert(securityProperties.getJwt()))
-                );
+                        jwtDecoders
+                ));
             }
 
             MdcProperties mdc = jwt.getMdc();
