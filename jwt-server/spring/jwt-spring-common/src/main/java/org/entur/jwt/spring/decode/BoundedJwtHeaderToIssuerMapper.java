@@ -15,7 +15,8 @@ public class BoundedJwtHeaderToIssuerMapper extends JwtHeaderToIssuerMapper {
     private static final Logger LOGGER = LoggerFactory.getLogger(BoundedJwtHeaderToIssuerMapper.class);
 
     protected final int maxSize;
-    private boolean disabled = false;
+    // volatile: read/written from concurrent request-handling threads
+    private volatile boolean disabled = false;
 
     public BoundedJwtHeaderToIssuerMapper(int maxSize) {
         this.maxSize = maxSize;
