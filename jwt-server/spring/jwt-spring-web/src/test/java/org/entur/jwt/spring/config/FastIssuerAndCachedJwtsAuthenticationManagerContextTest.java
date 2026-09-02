@@ -54,7 +54,7 @@ public class FastIssuerAndCachedJwtsAuthenticationManagerContextTest extends Abs
     private ClosableJwtDecoders closableJwtDecoders;
 
     @BeforeEach
-    public void readniessProbe() throws Exception {
+    public void readinessProbe() throws Exception {
         // make sure JWKs are loaded.
 
         HttpHeaders headers = new HttpHeaders();
