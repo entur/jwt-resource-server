@@ -15,7 +15,8 @@ public abstract class AbstractJwksHealthIndicator extends AbstractHealthIndicato
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractJwksHealthIndicator.class);
 
-    private JwksHealth previousHealth;
+    // volatile: read/written by concurrent health-check invocations
+    private volatile JwksHealth previousHealth;
 
     protected final String name;
 
