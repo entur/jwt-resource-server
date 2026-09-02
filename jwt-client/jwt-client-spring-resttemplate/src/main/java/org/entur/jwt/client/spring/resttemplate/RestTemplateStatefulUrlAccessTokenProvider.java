@@ -39,8 +39,17 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
 
     protected final RestTemplate restTemplate;
 
+    /**
+     * @deprecated use {@link #RestTemplateStatefulUrlAccessTokenProvider(RestTemplate, URL, Map, Map, URL, URL, long)}
+     * instead, explicitly specifying the call timeout.
+     */
+    @Deprecated
     public RestTemplateStatefulUrlAccessTokenProvider(RestTemplate restTemplate, URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers, URL refreshUrl, URL revokeUrl) {
-        super(issueUrl, parameters, headers, refreshUrl, revokeUrl);
+        this(restTemplate, issueUrl, parameters, headers, refreshUrl, revokeUrl, DEFAULT_CALL_TIMEOUT_MILLIS);
+    }
+
+    public RestTemplateStatefulUrlAccessTokenProvider(RestTemplate restTemplate, URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers, URL refreshUrl, URL revokeUrl, long callTimeoutMillis) {
+        super(issueUrl, parameters, headers, refreshUrl, revokeUrl, callTimeoutMillis);
         this.restTemplate = restTemplate;
     }
 
