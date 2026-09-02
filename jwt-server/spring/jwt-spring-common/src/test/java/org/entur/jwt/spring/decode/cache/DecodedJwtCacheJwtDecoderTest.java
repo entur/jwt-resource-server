@@ -514,57 +514,61 @@ class DecodedJwtCacheJwtDecoderTest {
         int iterationsPerDecoderThread = 50000;
 
         ExecutorService executor = Executors.newFixedThreadPool(decoderThreads + rotatorThreads);
-        CountDownLatch start = new CountDownLatch(1);
-        AtomicInteger errors = new AtomicInteger();
+        try {
+            CountDownLatch start = new CountDownLatch(1);
+            AtomicInteger errors = new AtomicInteger();
 
-        List<Future<?>> futures = new ArrayList<>();
+            List<Future<?>> futures = new ArrayList<>();
 
-        for (int t = 0; t < decoderThreads; t++) {
-            final int threadIndex = t;
-            futures.add(executor.submit(() -> {
-                try {
-                    start.await();
-                    for (int i = 0; i < iterationsPerDecoderThread; i++) {
-                        String token = "token-" + threadIndex + "-" + (i % 10);
-                        try {
-                            decoder.decode(token);
-                        } catch (JwtException e) {
-                            errors.incrementAndGet();
+            for (int t = 0; t < decoderThreads; t++) {
+                final int threadIndex = t;
+                futures.add(executor.submit(() -> {
+                    try {
+                        start.await();
+                        for (int i = 0; i < iterationsPerDecoderThread; i++) {
+                            String token = "token-" + threadIndex + "-" + (i % 10);
+                            try {
+                                decoder.decode(token);
+                            } catch (JwtException e) {
+                                errors.incrementAndGet();
+                            }
                         }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
                     }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }));
-        }
+                }));
+            }
 
-        for (int t = 0; t < rotatorThreads; t++) {
-            futures.add(executor.submit(() -> {
-                try {
-                    start.await();
-                    for (int i = 0; i < 100; i++) {
-                        int next = activeKid.incrementAndGet() % 3;
-                        try {
-                            decoder.notify(refreshCompletedEvent(jwkSet("kid" + next, "kid" + ((next + 1) % 3))));
-                        } catch (Exception e) {
-                            errors.incrementAndGet();
+            for (int t = 0; t < rotatorThreads; t++) {
+                futures.add(executor.submit(() -> {
+                    try {
+                        start.await();
+                        for (int i = 0; i < 100; i++) {
+                            int next = activeKid.incrementAndGet() % 3;
+                            try {
+                                decoder.notify(refreshCompletedEvent(jwkSet("kid" + next, "kid" + ((next + 1) % 3))));
+                            } catch (Exception e) {
+                                errors.incrementAndGet();
+                            }
                         }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
                     }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }));
+                }));
+            }
+
+            start.countDown();
+
+            for (Future<?> future : futures) {
+                future.get(60, TimeUnit.SECONDS);
+            }
+            executor.shutdown();
+            assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+
+            assertEquals(0, errors.get(), "decode()/notify() should never throw unexpectedly under concurrent access");
+        } finally {
+            executor.shutdownNow();
         }
-
-        start.countDown();
-
-        for (Future<?> future : futures) {
-            future.get(60, TimeUnit.SECONDS);
-        }
-        executor.shutdown();
-        assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
-
-        assertEquals(0, errors.get(), "decode()/notify() should never throw unexpectedly under concurrent access");
     }
 
     @Test
@@ -581,49 +585,53 @@ class DecodedJwtCacheJwtDecoderTest {
 
         int threads = Runtime.getRuntime().availableProcessors() * 4;
         ExecutorService executor = Executors.newFixedThreadPool(threads + 1);
-        CountDownLatch start = new CountDownLatch(1);
-        AtomicInteger errors = new AtomicInteger();
+        try {
+            CountDownLatch start = new CountDownLatch(1);
+            AtomicInteger errors = new AtomicInteger();
 
-        List<Future<?>> futures = new ArrayList<>();
-        for (int t = 0; t < threads; t++) {
+            List<Future<?>> futures = new ArrayList<>();
+            for (int t = 0; t < threads; t++) {
+                futures.add(executor.submit(() -> {
+                    try {
+                        start.await();
+                        for (int i = 0; i < 50000; i++) {
+                            Jwt result = decoder.decode("token1");
+                            if (result == null || !"kid1".equals(result.getHeaders().get("kid"))) {
+                                errors.incrementAndGet();
+                            }
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    } catch (JwtException e) {
+                        errors.incrementAndGet();
+                    }
+                }));
+            }
+
+            // rotate the JWKS once concurrently, keeping kid1 known throughout so the
+            // in-flight decode() calls should never fail
             futures.add(executor.submit(() -> {
                 try {
                     start.await();
-                    for (int i = 0; i < 50000; i++) {
-                        Jwt result = decoder.decode("token1");
-                        if (result == null || !"kid1".equals(result.getHeaders().get("kid"))) {
-                            errors.incrementAndGet();
-                        }
-                    }
+                    decoder.notify(refreshCompletedEvent(jwkSet("kid1", "kid2")));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                } catch (JwtException e) {
-                    errors.incrementAndGet();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
                 }
             }));
-        }
 
-        // rotate the JWKS once concurrently, keeping kid1 known throughout so the
-        // in-flight decode() calls should never fail
-        futures.add(executor.submit(() -> {
-            try {
-                start.await();
-                decoder.notify(refreshCompletedEvent(jwkSet("kid1", "kid2")));
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+            start.countDown();
+
+            for (Future<?> future : futures) {
+                future.get(60, TimeUnit.SECONDS);
             }
-        }));
+            executor.shutdown();
+            assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
 
-        start.countDown();
-
-        for (Future<?> future : futures) {
-            future.get(60, TimeUnit.SECONDS);
+            assertEquals(0, errors.get());
+        } finally {
+            executor.shutdownNow();
         }
-        executor.shutdown();
-        assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
-
-        assertEquals(0, errors.get());
     }
 }
