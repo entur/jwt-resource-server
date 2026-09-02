@@ -168,10 +168,11 @@ public class JwtWebSecurityChainAutoConfiguration {
                     jwtAuthorityEnrichers = enrichers;
                 }
 
+                boolean mapHeaderToIssuer = jwt.getDecode().getHeader().getMapToIssuer().isEnabled();
                 http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(
                         jwtAuthorityEnrichers,
-                        jwtHeaderToIssuerMapper,
-                        jwtHeaderToIssuerMapperDecider,
+                        mapHeaderToIssuer ? jwtHeaderToIssuerMapper : null,
+                        mapHeaderToIssuer ? jwtHeaderToIssuerMapperDecider : null,
                         jwtDecoders
                 ));
             }
