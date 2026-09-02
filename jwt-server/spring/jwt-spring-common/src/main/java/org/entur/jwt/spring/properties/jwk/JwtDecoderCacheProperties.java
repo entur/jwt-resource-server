@@ -25,6 +25,9 @@ public class JwtDecoderCacheProperties {
     }
 
     public void setMaxSize(int maxSize) {
+        if (maxSize < -1) {
+            throw new IllegalArgumentException("maxSize must be -1 or non-negative");
+        }
         this.maxSize = maxSize;
     }
 
