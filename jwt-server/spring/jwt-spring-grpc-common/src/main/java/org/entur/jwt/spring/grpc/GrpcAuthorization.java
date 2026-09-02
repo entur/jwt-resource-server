@@ -97,6 +97,7 @@ public interface GrpcAuthorization {
             if (!hasAnyAuthority(authentication, authorities)) {
                 throw new AccessDeniedException("");
             }
+            return;
         }
         throw new AuthenticationCredentialsNotFoundException("");
     }
