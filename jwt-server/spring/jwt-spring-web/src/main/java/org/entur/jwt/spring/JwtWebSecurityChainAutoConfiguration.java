@@ -1,7 +1,10 @@
 package org.entur.jwt.spring;
 
+import org.entur.jwt.spring.decode.cache.DecodedJwtCacheConfigurationReader;
+import org.entur.jwt.spring.decode.ClosableJwtDecoders;
 import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
 import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
+import org.entur.jwt.spring.decode.ClosableJwtDecodersBuilder;
 import org.entur.jwt.spring.config.JwtMappedDiagnosticContextFilter;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
@@ -14,6 +17,7 @@ import org.entur.jwt.spring.properties.JwtProperties;
 import org.entur.jwt.spring.properties.KeycloakFlavour;
 import org.entur.jwt.spring.properties.MdcProperties;
 import org.entur.jwt.spring.properties.SecurityProperties;
+import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,8 +43,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
@@ -101,9 +104,7 @@ public class JwtWebSecurityChainAutoConfiguration {
 
         @Bean
         @ConditionalOnExpression("${entur.authorization.enabled:true} && !${entur.jwt.enabled:true}")
-        public SecurityFilterChain securityWebFilterChain(
-                HttpSecurity http
-        ) throws Exception {
+        public SecurityFilterChain securityWebFilterChain(HttpSecurity http) throws Exception {
             log.info("Configure without JWT");
 
             AuthorizationProperties authorization = securityProperties.getAuthorization();
@@ -116,11 +117,28 @@ public class JwtWebSecurityChainAutoConfiguration {
 
         @Bean
         @ConditionalOnExpression("${entur.jwt.enabled:true}")
+        public ClosableJwtDecoders closableJwtDecoders(
+                JwkSourceMap jwkSourceMap,
+                List<OAuth2TokenValidator<Jwt>> jwtValidators,
+                SecurityProperties securityProperties
+        ) {
+
+            Map<String, JwtDecoderCacheProperties> decodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(securityProperties.getJwt());
+
+            return new ClosableJwtDecodersBuilder()
+                    .withJwkSources(jwkSourceMap.getJwkSources())
+                    .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
+                    .withJwtValidators(jwtValidators)
+                    .withDecodedJwtCacheIssuers(decodedJwtCacheIssuers)
+                    .build();
+        }
+
+        @Bean
+        @ConditionalOnExpression("${entur.jwt.enabled:true}")
         public SecurityFilterChain filterChain(
                 HttpSecurity http,
-                JwkSourceMap jwkSourceMap,
+                ClosableJwtDecoders jwtDecoders,
                 List<JwtAuthorityEnricher> jwtAuthorityEnrichers,
-                List<OAuth2TokenValidator<Jwt>> jwtValidators,
                 @Autowired(required = false) JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper,
                 @Autowired(required = false) JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider
         ) throws Exception {
@@ -150,7 +168,13 @@ public class JwtWebSecurityChainAutoConfiguration {
                     jwtAuthorityEnrichers = enrichers;
                 }
 
-                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwt.getDecode(), jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers, jwtValidators, jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider));
+                boolean mapHeaderToIssuer = jwt.getDecode().getHeader().getMapToIssuer().isEnabled();
+                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(
+                        jwtAuthorityEnrichers,
+                        mapHeaderToIssuer ? jwtHeaderToIssuerMapper : null,
+                        mapHeaderToIssuer ? jwtHeaderToIssuerMapperDecider : null,
+                        jwtDecoders
+                ));
             }
 
             MdcProperties mdc = jwt.getMdc();
