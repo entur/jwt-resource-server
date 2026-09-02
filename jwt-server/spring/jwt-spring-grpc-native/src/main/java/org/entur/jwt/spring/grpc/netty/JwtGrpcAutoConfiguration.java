@@ -103,6 +103,7 @@ public class JwtGrpcAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnProperty(name = "entur.jwt.decode.header.map-to-issuer.enabled", havingValue = "true")
     @ConditionalOnBean({JwtHeaderToIssuerMapper.class, JwtHeaderToIssuerMapperDecider.class})
     @ConditionalOnMissingBean({JwtDecoder.class})
     public JwtDecoder jwtDecoderWithHeaderMapper(
