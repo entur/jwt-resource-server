@@ -15,7 +15,7 @@ public class AccessTokenProviderBuilder extends AbstractAccessTokenProvidersBuil
         } else if (revokeUrl != null && refreshUrl == null) {
             throw new IllegalStateException("Expected refresh url when revoke url is present");
         } else if (revokeUrl != null && refreshUrl != null) {
-            accessTokenProvider = new StatefulUrlAccessTokenProvider(credentials.getIssueURL(), credentials.getParameters(), credentials.getHeaders(), connectTimeout, readTimeout, refreshUrl, revokeUrl);
+            accessTokenProvider = new StatefulUrlAccessTokenProvider(credentials.getIssueURL(), credentials.getParameters(), credentials.getHeaders(), connectTimeout, readTimeout, refreshUrl, revokeUrl, AbstractStatefulUrlAccessTokenProvider.DEFAULT_CALL_TIMEOUT_MILLIS);
         } else {
             accessTokenProvider = new UrlAccessTokenProvider(credentials.getIssueURL(), credentials.getParameters(), credentials.getHeaders(), connectTimeout, readTimeout);
         }

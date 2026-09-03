@@ -1,5 +1,6 @@
 package org.entur.jwt.client.spring.restclient;
 
+import org.entur.jwt.client.AbstractStatefulUrlAccessTokenProvider;
 import org.entur.jwt.client.AccessTokenProvider;
 import org.entur.jwt.client.ClientCredentials;
 import org.entur.jwt.client.properties.JwtClientProperties;
@@ -22,6 +23,6 @@ public class RestClientJwtClientBeanDefinitionRegistryPostProcessorSupport exten
 
     @Override
     protected AccessTokenProvider newStatefulUrlAccessTokenProvider(RestClient client, URL issueURL, Map<String, Object> parameters, Map<String, Object> headers, URL refreshUrl, URL revokeUrl, ClientCredentials credentials) {
-        return new RestClientStatefulUrlAccessTokenProvider(client, credentials.getIssueURL(), credentials.getParameters(), credentials.getHeaders(), refreshUrl, revokeUrl);
+        return new RestClientStatefulUrlAccessTokenProvider(client, credentials.getIssueURL(), credentials.getParameters(), credentials.getHeaders(), refreshUrl, revokeUrl, AbstractStatefulUrlAccessTokenProvider.DEFAULT_CALL_TIMEOUT_MILLIS);
     }
 }
