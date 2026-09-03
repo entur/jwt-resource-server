@@ -106,6 +106,7 @@ public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrl
         try {
             if (refreshLock.tryLock(callTimeoutMillis, TimeUnit.MILLISECONDS)) {
                 try {
+                    time = Math.max(time, System.currentTimeMillis());
                     RefreshToken threadSafeRefreshToken = this.refreshToken; // defensive copy
                     if (threadSafeRefreshToken != null && threadSafeRefreshToken.isValid(time)) {
                         try {
