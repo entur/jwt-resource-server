@@ -5,8 +5,6 @@ import org.entur.jwt.spring.JwtAuthorityEnricher;
 import org.entur.jwt.spring.decode.ClosableJwtDecoders;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
-import org.entur.jwt.spring.properties.JwtDecodeProperties;
-import org.entur.jwt.spring.properties.JwtHeaderDecodeProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -28,17 +26,20 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
     private static final Logger LOGGER = LoggerFactory.getLogger(EnturOauth2ResourceServerCustomizer.class);
 
     private final List<JwtAuthorityEnricher> jwtAuthorityEnrichers;
+    private final boolean mapHeaderToIssuer;
     private final JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper;
     private final JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider;
     private final ClosableJwtDecoders decoders;
 
     public EnturOauth2ResourceServerCustomizer(
             List<JwtAuthorityEnricher> jwtAuthorityEnrichers,
+            boolean mapHeaderToIssuer,
             JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper,
             JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider,
             ClosableJwtDecoders decoders
             ) {
         this.jwtAuthorityEnrichers = jwtAuthorityEnrichers;
+        this.mapHeaderToIssuer = mapHeaderToIssuer;
         this.jwtHeaderToIssuerMapper = jwtHeaderToIssuerMapper;
         this.jwtHeaderToIssuerMapperDecider = jwtHeaderToIssuerMapperDecider;
         this.decoders = decoders;
@@ -69,7 +70,13 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
         } else {
             AuthenticationManagerResolver<String> issuer = new IssuerAuthenticationManagerResolver(map);
 
-            if(jwtHeaderToIssuerMapper != null && jwtHeaderToIssuerMapperDecider != null) {
+            if(mapHeaderToIssuer) {
+                if(jwtHeaderToIssuerMapper == null) {
+                    throw new IllegalStateException("JwtHeaderToIssuerMapper bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
+                }
+                if(jwtHeaderToIssuerMapperDecider == null) {
+                    throw new IllegalStateException("JwtHeaderToIssuerMapperDecider bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
+                }
                 FastIssuerAuthenticationManager fastIssuerAuthenticationManager = new FastIssuerAuthenticationManager(issuer, jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider);
                 configurer.authenticationManagerResolver(request -> fastIssuerAuthenticationManager);
             } else {

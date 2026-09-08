@@ -26,6 +26,7 @@ import org.entur.jwt.spring.properties.SecurityProperties;
 import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -103,35 +104,11 @@ public class JwtGrpcAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnProperty(name = "entur.jwt.decode.header.map-to-issuer.enabled", havingValue = "true")
-    @ConditionalOnBean({JwtHeaderToIssuerMapper.class, JwtHeaderToIssuerMapperDecider.class})
-    @ConditionalOnMissingBean({JwtDecoder.class})
-    public JwtDecoder jwtDecoderWithHeaderMapper(
-            JwtHeaderToIssuerMapper jwtHeaderToIssuerMapperProvider,
-            JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider
-    ) {
-        Map<String, JwtDecoderCacheProperties> activeDecodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(securityProperties.getJwt());
-
-        // decoder(s) automatically closed by spring via Closable if necessary
-        ClosableJwtDecoders decoders = new ClosableJwtDecodersBuilder()
-                .withJwkSources(jwkSourceMap.getJwkSources())
-                .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
-                .withJwtValidators(jwtValidators)
-                .withDecodedJwtCacheIssuers(activeDecodedJwtCacheIssuers)
-                .build();
-
-        Map<String, JwtDecoder> map = decoders.getJwtDecoders();
-        if (map.size() == 1) {
-            // if there is only one decoder, we can return it directly without the overhead of the FastIssuerJwtDecoder
-            return map.values().iterator().next();
-        }
-
-        return new FastIssuerJwtDecoder(map, jwtHeaderToIssuerMapperProvider, jwtHeaderToIssuerMapperDecider);
-    }
-
-    @Bean
     @ConditionalOnMissingBean(JwtDecoder.class)
-    public JwtDecoder jwtDecoder() {
+    public JwtDecoder jwtDecoder(
+            ObjectProvider<JwtHeaderToIssuerMapper> jwtHeaderToIssuerMapperProvider,
+            ObjectProvider<JwtHeaderToIssuerMapperDecider> jwtHeaderToIssuerMapperDeciderProvider
+    ) {
         Map<String, JwtDecoderCacheProperties> activeDecodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(securityProperties.getJwt());
 
         // decoder(s) automatically closed by spring via Closable if necessary
@@ -144,10 +121,23 @@ public class JwtGrpcAutoConfiguration {
 
         Map<String, JwtDecoder> map = closableJwtDecoders.getJwtDecoders();
         if (map.size() == 1) {
+            // if there is only one decoder, we can return it directly without the overhead of the FastIssuerJwtDecoder / IssuerJwtDecoder
             return map.values().iterator().next();
         }
-        return new IssuerJwtDecoder(map);
 
+        if (securityProperties.getJwt().getDecode().getHeader().getMapToIssuer().isEnabled()) {
+            JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper = jwtHeaderToIssuerMapperProvider.getIfAvailable();
+            if (jwtHeaderToIssuerMapper == null) {
+                throw new IllegalStateException("JwtHeaderToIssuerMapper bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
+            }
+            JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider = jwtHeaderToIssuerMapperDeciderProvider.getIfAvailable();
+            if (jwtHeaderToIssuerMapperDecider == null) {
+                throw new IllegalStateException("JwtHeaderToIssuerMapperDecider bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
+            }
+            return new FastIssuerJwtDecoder(map, jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider);
+        }
+
+        return new IssuerJwtDecoder(map);
     }
 
     @Bean

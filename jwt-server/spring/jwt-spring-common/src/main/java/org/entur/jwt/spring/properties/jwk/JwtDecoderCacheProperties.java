@@ -4,7 +4,7 @@ public class JwtDecoderCacheProperties {
 
     private boolean enabled = false;
 
-    // -1 to disable
+    // -1 for unlimited size (no cap on the number of cached tokens); use enabled=false to disable caching entirely
     private int maxSize = 250;
 
     /**

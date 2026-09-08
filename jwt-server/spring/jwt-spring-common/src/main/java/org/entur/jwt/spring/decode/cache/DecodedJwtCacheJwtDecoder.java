@@ -44,7 +44,8 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         return Executors.newSingleThreadScheduledExecutor();
     }
 
-    protected ScheduledExecutorService scheduledExecutorService = createDefaultScheduledExecutorService();
+    // created lazily so instances with cleanup disabled (cleanupInterval <= 0) don't spin up an unused background thread
+    protected volatile ScheduledExecutorService scheduledExecutorService;
 
     protected static class Cache {
         protected final ConcurrentHashMap<String, Jwt> map;
@@ -145,9 +146,12 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         cache = new Cache(Collections.emptySet(), 0, jwtValidator);
     }
 
-    public void scheduleCleanup() {
+    public synchronized void scheduleCleanup() {
         if (cleanupInterval <= 0) {
             return;
+        }
+        if (scheduledExecutorService == null) {
+            scheduledExecutorService = createDefaultScheduledExecutorService();
         }
         scheduledExecutorService.scheduleWithFixedDelay(this::cleanup,
                 cleanupInterval, cleanupInterval, TimeUnit.MILLISECONDS);
@@ -254,7 +258,10 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
     }
 
     public void close() {
-        scheduledExecutorService.shutdownNow();
+        ScheduledExecutorService executor = scheduledExecutorService; // defensive copy
+        if (executor != null) {
+            executor.shutdownNow();
+        }
     }
 
     public int getSize() {
