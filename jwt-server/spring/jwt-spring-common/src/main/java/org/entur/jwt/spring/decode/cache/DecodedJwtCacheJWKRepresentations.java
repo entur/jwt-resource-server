@@ -57,7 +57,7 @@ public class DecodedJwtCacheJWKRepresentations {
     }
 
     protected static @NonNull Map<String, Set<Map<String, Object>>> getKeyRepresentations(JWKSet jwkSet) {
-        Map<String, Set<Map<String, Object>>> keyRepresentations = new HashMap<>(jwkSet.getKeys().size() * 2);
+        Map<String, Set<Map<String, Object>>> keyRepresentations = HashMap.newHashMap(jwkSet.getKeys().size() * 2);
         Date now = new Date();
         for (JWK key : jwkSet.getKeys()) {
             String keyId = key.getKeyID();
@@ -81,7 +81,7 @@ public class DecodedJwtCacheJWKRepresentations {
                     .computeIfAbsent(keyId, k -> new HashSet<>())
                     .add(Map.copyOf(key.toJSONObject()));
         }
-        Map<String, Set<Map<String, Object>>> result = new HashMap<>(keyRepresentations.size() * 2);
+        Map<String, Set<Map<String, Object>>> result = HashMap.newHashMap(keyRepresentations.size() * 2);
         for (Map.Entry<String, Set<Map<String, Object>>> entry : keyRepresentations.entrySet()) {
             result.put(entry.getKey(), Set.copyOf(entry.getValue()));
         }

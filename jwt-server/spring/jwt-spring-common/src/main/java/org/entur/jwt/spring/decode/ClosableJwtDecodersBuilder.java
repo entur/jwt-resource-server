@@ -60,7 +60,7 @@ public class ClosableJwtDecodersBuilder {
      * caching resources on context shutdown.
      */
     public ClosableJwtDecoders build() {
-        Map<String, JwtDecoder> map = new HashMap<>(jwkSources.size() * 4);
+        Map<String, JwtDecoder> map = HashMap.newHashMap(jwkSources.size() * 4);
 
         for (Map.Entry<String, JWKSource> entry : jwkSources.entrySet()) {
             JWKSource jwkSource = entry.getValue();

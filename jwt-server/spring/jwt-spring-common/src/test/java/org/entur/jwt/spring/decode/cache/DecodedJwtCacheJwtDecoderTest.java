@@ -51,17 +51,13 @@ class DecodedJwtCacheJwtDecoderTest {
         loggerUnderTest().addAppender(logAppender);
     }
 
-    @AfterEach
-    void tearDownLogCapture() {
-        loggerUnderTest().detachAppender(logAppender);
-    }
-
     private static Logger loggerUnderTest() {
         return (Logger) LoggerFactory.getLogger(DecodedJwtCacheJwtDecoder.class);
     }
 
     @AfterEach
     void tearDown() {
+        loggerUnderTest().detachAppender(logAppender);
         if (decoder != null) {
             decoder.close();
         }
