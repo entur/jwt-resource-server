@@ -530,6 +530,20 @@ class DecodedJwtCacheJwtDecoderTest {
         verify(delegate, times(2)).decode("token1");
     }
 
+    @Test
+    void refreshCompletedWithDuplicateKidDoesNotCacheJwt() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt1 = jwt("token1", "kid1");
+        when(delegate.decode("token1")).thenReturn(jwt1);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        decoder.notify(refreshCompletedEvent(jwkSet(key("kid1", "HS256"), key("kid1", "HS512"))));
+
+        decoder.decode("token1");
+        decoder.decode("token1");
+        verify(delegate, times(2)).decode("token1");
+    }
+
     // -----------------------------------------------------------------------
     // notify() / JWK "nbf" (notBefore) and "exp" (expirationTime) validity window
     // -----------------------------------------------------------------------

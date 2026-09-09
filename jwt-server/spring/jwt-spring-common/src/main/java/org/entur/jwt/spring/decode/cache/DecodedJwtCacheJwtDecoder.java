@@ -22,7 +22,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -240,6 +242,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
 
     private static @NonNull Map<String, Map<String, Object>> getKeyRepresentations(JWKSet jwtSet) {
         Map<String, Map<String, Object>> keyRepresentations = new HashMap<>(jwtSet.getKeys().size() * 2);
+        Set<String> duplicateKeyIds = new HashSet<>();
         Date now = new Date();
         for (JWK key : jwtSet.getKeys()) {
             String keyId = key.getKeyID();
@@ -256,6 +259,15 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
             }
             Date expirationTime = key.getExpirationTime();
             if (expirationTime != null && expirationTime.before(now)) {
+                continue;
+            }
+
+            if (duplicateKeyIds.contains(keyId)) {
+                continue;
+            }
+            if (keyRepresentations.containsKey(keyId)) {
+                keyRepresentations.remove(keyId);
+                duplicateKeyIds.add(keyId);
                 continue;
             }
 
