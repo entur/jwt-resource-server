@@ -114,18 +114,28 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         }
 
         public void add(Cache cache) {
+            if (keyRepresentations.isEmpty()) {
+                return; // nothing can match, avoid iterating the old cache at all
+            }
             for (Map.Entry<String, Jwt> entry : cache.map.entrySet()) {
+                // bail out as soon as capacity is reached instead of checking size per-entry
+                if (map.size() >= maxCacheSize) {
+                    return;
+                }
                 Jwt value = entry.getValue();
-                if(value != null) {
-                    String kid = (String) value.getHeaders().get("kid");
-                    // only migrate entries whose key is still present with the exact same
-                    // representation; a kid re-used for a rotated/different key
-                    // must not carry over previously cached/validated JWTs
-                    Map<String, Object> previousRepresentation = cache.keyRepresentations.get(kid);
-                    Map<String, Object> currentRepresentation = keyRepresentations.get(kid);
-                    if(currentRepresentation != null && currentRepresentation.equals(previousRepresentation)) {
-                        add(entry.getKey(), value); // also re-filters on key id
-                    }
+                if (value == null) {
+                    continue;
+                }
+                String kid = (String) value.getHeaders().get("kid");
+                // only migrate entries whose key is still present with the exact same
+                // representation; a kid re-used for a rotated/different key
+                // must not carry over previously cached/validated JWTs.
+                // single lookup into the (immutable, so safe to reuse) current
+                // representations instead of delegating to add(String, Jwt),
+                // which would repeat the same kid lookup and size check.
+                Map<String, Object> currentRepresentation = keyRepresentations.get(kid);
+                if (currentRepresentation != null && currentRepresentation.equals(cache.keyRepresentations.get(kid))) {
+                    map.put(entry.getKey(), value);
                 }
             }
         }
