@@ -33,27 +33,27 @@ import java.util.Set;
  *     signing key.</li>
  * </ul>
  */
-public class JWKRepresentations {
+public class DecodedJwtCacheJWKRepresentations {
 
-    private static final JWKRepresentations EMPTY = new JWKRepresentations(Collections.emptyMap());
+    private static final DecodedJwtCacheJWKRepresentations EMPTY = new DecodedJwtCacheJWKRepresentations(Collections.emptyMap());
 
     // kid -> set of full JWK representations advertised for that kid
     protected final Map<String, Set<Map<String, Object>>> keys;
 
-    protected JWKRepresentations(Map<String, Set<Map<String, Object>>> keys) {
+    protected DecodedJwtCacheJWKRepresentations(Map<String, Set<Map<String, Object>>> keys) {
         this.keys = keys;
     }
 
-    protected static JWKRepresentations empty() {
+    protected static DecodedJwtCacheJWKRepresentations empty() {
         return EMPTY;
     }
 
-    protected static JWKRepresentations of(JWKSet jwkSet) {
+    protected static DecodedJwtCacheJWKRepresentations of(JWKSet jwkSet) {
         Map<String, Set<Map<String, Object>>> keyRepresentations = getKeyRepresentations(jwkSet);
         if (keyRepresentations.isEmpty()) {
             return EMPTY;
         }
-        return new JWKRepresentations(keyRepresentations);
+        return new DecodedJwtCacheJWKRepresentations(keyRepresentations);
     }
 
     protected static @NonNull Map<String, Set<Map<String, Object>>> getKeyRepresentations(JWKSet jwkSet) {
@@ -107,7 +107,7 @@ public class JWKRepresentations {
      * rotated/different key (or one that has left/entered its validity window) is not
      * considered "the same".
      */
-    public boolean hasSameKey(String keyId, JWKRepresentations other) {
+    public boolean hasSameKey(String keyId, DecodedJwtCacheJWKRepresentations other) {
         Set<Map<String, Object>> representations = keys.get(keyId);
         return representations != null && representations.equals(other.keys.get(keyId));
     }
@@ -116,7 +116,7 @@ public class JWKRepresentations {
      * @return true if this and the other snapshot advertise exactly the same set of active
      * keys, each key id with the exact same set of full JWK representations.
      */
-    public boolean hasSameKeys(JWKRepresentations other) {
+    public boolean hasSameKeys(DecodedJwtCacheJWKRepresentations other) {
         return this.keys.equals(other.keys);
     }
 
@@ -129,9 +129,9 @@ public class JWKRepresentations {
      * at least one of them differs) must be treated as changed, so JWTs cached under it
      * are not carried over.
      *
-     * @return {@code keySet()} of the current snapshot if {@link #hasSameKeys(JWKRepresentations)} would be true
+     * @return {@code keySet()} of the current snapshot if {@link #hasSameKeys(DecodedJwtCacheJWKRepresentations)} would be true
      */
-    public Set<String> unchangedKeyIds(JWKRepresentations previous) {
+    public Set<String> unchangedKeyIds(DecodedJwtCacheJWKRepresentations previous) {
         if (keys.equals(previous.keys)) {
             return keys.keySet();
         }

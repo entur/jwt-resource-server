@@ -46,11 +46,11 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         protected final ConcurrentHashMap<String, Jwt> map;
         // active keys at the time this cache was created, so that any refresh which
         // changes key selection-relevant metadata while keeping the same kid is detected
-        protected final JWKRepresentations keyRepresentations;
+        protected final DecodedJwtCacheJWKRepresentations keyRepresentations;
         protected final int maxCacheSize;
         protected final OAuth2TokenValidator<Jwt> jwtValidator;
 
-        protected Cache(JWKRepresentations keyRepresentations, int maxCacheSize, OAuth2TokenValidator<Jwt> jwtValidator) {
+        protected Cache(DecodedJwtCacheJWKRepresentations keyRepresentations, int maxCacheSize, OAuth2TokenValidator<Jwt> jwtValidator) {
             this.keyRepresentations = keyRepresentations;
             if(maxCacheSize == -1) {
                 this.map = new ConcurrentHashMap<>();
@@ -102,7 +102,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
             return count;
         }
 
-        public boolean hasSameKeys(JWKRepresentations keyRepresentations) {
+        public boolean hasSameKeys(DecodedJwtCacheJWKRepresentations keyRepresentations) {
             return this.keyRepresentations.hasSameKeys(keyRepresentations);
         }
 
@@ -159,7 +159,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         this.cleanupInterval = cleanupIntervalMillis;
         this.maxCacheSize = maxCacheSize;
 
-        cache = new Cache(JWKRepresentations.empty(), 0, jwtValidator);
+        cache = new Cache(DecodedJwtCacheJWKRepresentations.empty(), 0, jwtValidator);
     }
 
     public synchronized void scheduleCleanup() {
@@ -242,7 +242,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
             CachingJWKSetSource.RefreshCompletedEvent refreshCompletedEvent = (CachingJWKSetSource.RefreshCompletedEvent) event;
 
             Cache cache = this.cache; // defensive copy
-            JWKRepresentations keyRepresentations = JWKRepresentations.of(refreshCompletedEvent.getJWKSet());
+            DecodedJwtCacheJWKRepresentations keyRepresentations = DecodedJwtCacheJWKRepresentations.of(refreshCompletedEvent.getJWKSet());
 
             // compare the full JWK representation for each kid, not just key id or
             // RFC 7638 thumbprint, so metadata changes affecting key selection also

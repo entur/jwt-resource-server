@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class JWKRepresentationsTest {
+class DecodedJwtCacheJWKRepresentationsTest {
 
     private static JWK key(String kid) throws Exception {
         return new OctetSequenceKey.Builder("secret-material".getBytes()).keyID(kid).build();
@@ -45,7 +45,7 @@ class JWKRepresentationsTest {
 
     @Test
     void emptyIsEmptyAndContainsNothing() {
-        JWKRepresentations empty = JWKRepresentations.empty();
+        DecodedJwtCacheJWKRepresentations empty = DecodedJwtCacheJWKRepresentations.empty();
 
         assertTrue(empty.isEmpty());
         assertFalse(empty.contains("kid1"));
@@ -53,14 +53,14 @@ class JWKRepresentationsTest {
 
     @Test
     void ofEmptyJwkSetReturnsEmptyRepresentations() {
-        JWKRepresentations representations = JWKRepresentations.of(new JWKSet());
+        DecodedJwtCacheJWKRepresentations representations = DecodedJwtCacheJWKRepresentations.of(new JWKSet());
 
         assertTrue(representations.isEmpty());
     }
 
     @Test
     void ofJwkSetContainsAdvertisedKeyId() throws Exception {
-        JWKRepresentations representations = JWKRepresentations.of(jwkSet(key("kid1")));
+        DecodedJwtCacheJWKRepresentations representations = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1")));
 
         assertFalse(representations.isEmpty());
         assertTrue(representations.contains("kid1"));
@@ -71,7 +71,7 @@ class JWKRepresentationsTest {
     void ofJwkSetExcludesKeyWithNoKeyId() {
         JWK noKid = new OctetSequenceKey.Builder("secret-material".getBytes()).build();
 
-        JWKRepresentations representations = JWKRepresentations.of(jwkSet(noKid));
+        DecodedJwtCacheJWKRepresentations representations = DecodedJwtCacheJWKRepresentations.of(jwkSet(noKid));
 
         assertTrue(representations.isEmpty());
     }
@@ -80,7 +80,7 @@ class JWKRepresentationsTest {
     void ofJwkSetExcludesKeyWithEmptyKeyId() {
         JWK emptyKid = new OctetSequenceKey.Builder("secret-material".getBytes()).keyID("").build();
 
-        JWKRepresentations representations = JWKRepresentations.of(jwkSet(emptyKid));
+        DecodedJwtCacheJWKRepresentations representations = DecodedJwtCacheJWKRepresentations.of(jwkSet(emptyKid));
 
         assertTrue(representations.isEmpty());
     }
@@ -90,7 +90,7 @@ class JWKRepresentationsTest {
         Date oneHourFromNow = new Date(System.currentTimeMillis() + 3600_000L);
         JWK notYetValid = keyWithValidityWindow("kid1", oneHourFromNow, null);
 
-        JWKRepresentations representations = JWKRepresentations.of(jwkSet(notYetValid));
+        DecodedJwtCacheJWKRepresentations representations = DecodedJwtCacheJWKRepresentations.of(jwkSet(notYetValid));
 
         assertTrue(representations.isEmpty());
         assertFalse(representations.contains("kid1"));
@@ -101,7 +101,7 @@ class JWKRepresentationsTest {
         Date oneHourAgo = new Date(System.currentTimeMillis() - 3600_000L);
         JWK expired = keyWithValidityWindow("kid1", null, oneHourAgo);
 
-        JWKRepresentations representations = JWKRepresentations.of(jwkSet(expired));
+        DecodedJwtCacheJWKRepresentations representations = DecodedJwtCacheJWKRepresentations.of(jwkSet(expired));
 
         assertTrue(representations.isEmpty());
         assertFalse(representations.contains("kid1"));
@@ -113,14 +113,14 @@ class JWKRepresentationsTest {
         Date oneHourFromNow = new Date(System.currentTimeMillis() + 3600_000L);
         JWK currentlyValid = keyWithValidityWindow("kid1", oneHourAgo, oneHourFromNow);
 
-        JWKRepresentations representations = JWKRepresentations.of(jwkSet(currentlyValid));
+        DecodedJwtCacheJWKRepresentations representations = DecodedJwtCacheJWKRepresentations.of(jwkSet(currentlyValid));
 
         assertTrue(representations.contains("kid1"));
     }
 
     @Test
     void ofJwkSetGroupsMultipleKeysSharingTheSameKeyId() throws Exception {
-        JWKRepresentations representations = JWKRepresentations.of(
+        DecodedJwtCacheJWKRepresentations representations = DecodedJwtCacheJWKRepresentations.of(
                 jwkSet(key("kid1", "HS256"), key("kid1", "HS512")));
 
         // both keys are grouped under the same (still active/ambiguous) key id
@@ -129,8 +129,8 @@ class JWKRepresentationsTest {
 
     @Test
     void hasSameKeyIsTrueForIdenticalSingleKeyRepresentation() throws Exception {
-        JWKRepresentations a = JWKRepresentations.of(jwkSet(key("kid1")));
-        JWKRepresentations b = JWKRepresentations.of(jwkSet(key("kid1")));
+        DecodedJwtCacheJWKRepresentations a = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1")));
+        DecodedJwtCacheJWKRepresentations b = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1")));
 
         assertTrue(a.hasSameKey("kid1", b));
         assertTrue(a.hasSameKeys(b));
@@ -139,8 +139,8 @@ class JWKRepresentationsTest {
     @Test
     void hasSameKeyIsFalseWhenKeyMetadataChanges() throws Exception {
         // same kid and key material, but different algorithm metadata
-        JWKRepresentations a = JWKRepresentations.of(jwkSet(key("kid1", "HS256")));
-        JWKRepresentations b = JWKRepresentations.of(jwkSet(key("kid1", "HS512")));
+        DecodedJwtCacheJWKRepresentations a = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1", "HS256")));
+        DecodedJwtCacheJWKRepresentations b = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1", "HS512")));
 
         assertFalse(a.hasSameKey("kid1", b));
         assertFalse(a.hasSameKeys(b));
@@ -148,8 +148,8 @@ class JWKRepresentationsTest {
 
     @Test
     void hasSameKeyIsFalseWhenKeyMaterialChanges() {
-        JWKRepresentations a = JWKRepresentations.of(jwkSet(key("kid1", "secret-a".getBytes())));
-        JWKRepresentations b = JWKRepresentations.of(jwkSet(key("kid1", "secret-b".getBytes())));
+        DecodedJwtCacheJWKRepresentations a = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1", "secret-a".getBytes())));
+        DecodedJwtCacheJWKRepresentations b = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1", "secret-b".getBytes())));
 
         assertFalse(a.hasSameKey("kid1", b));
         assertFalse(a.hasSameKeys(b));
@@ -157,8 +157,8 @@ class JWKRepresentationsTest {
 
     @Test
     void hasSameKeyIsFalseWhenKeyIdIsAbsentInOther() throws Exception {
-        JWKRepresentations a = JWKRepresentations.of(jwkSet(key("kid1")));
-        JWKRepresentations b = JWKRepresentations.empty();
+        DecodedJwtCacheJWKRepresentations a = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1")));
+        DecodedJwtCacheJWKRepresentations b = DecodedJwtCacheJWKRepresentations.empty();
 
         assertFalse(a.hasSameKey("kid1", b));
         assertFalse(b.hasSameKey("kid1", a));
@@ -167,8 +167,8 @@ class JWKRepresentationsTest {
 
     @Test
     void hasSameKeyIsTrueWhenGroupOfDuplicateKidKeysIsUnchanged() throws Exception {
-        JWKRepresentations a = JWKRepresentations.of(jwkSet(key("kid1", "HS256"), key("kid1", "HS512")));
-        JWKRepresentations b = JWKRepresentations.of(jwkSet(key("kid1", "HS512"), key("kid1", "HS256")));
+        DecodedJwtCacheJWKRepresentations a = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1", "HS256"), key("kid1", "HS512")));
+        DecodedJwtCacheJWKRepresentations b = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1", "HS512"), key("kid1", "HS256")));
 
         // set semantics -> order of the duplicate-kid keys in the JWKS doesn't matter
         assertTrue(a.hasSameKey("kid1", b));
@@ -177,8 +177,8 @@ class JWKRepresentationsTest {
 
     @Test
     void hasSameKeyIsFalseWhenOneOfTheDuplicateKidKeysIsRemoved() throws Exception {
-        JWKRepresentations a = JWKRepresentations.of(jwkSet(key("kid1", "HS256"), key("kid1", "HS512")));
-        JWKRepresentations b = JWKRepresentations.of(jwkSet(key("kid1", "HS256")));
+        DecodedJwtCacheJWKRepresentations a = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1", "HS256"), key("kid1", "HS512")));
+        DecodedJwtCacheJWKRepresentations b = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1", "HS256")));
 
         // any change (here: fewer keys) within the group for the kid must be
         // treated as changed, since it's not possible to tell from the kid alone
@@ -189,13 +189,13 @@ class JWKRepresentationsTest {
 
     @Test
     void hasSameKeysIsTrueForTwoEmptyInstances() {
-        assertTrue(JWKRepresentations.empty().hasSameKeys(JWKRepresentations.empty()));
+        assertTrue(DecodedJwtCacheJWKRepresentations.empty().hasSameKeys(DecodedJwtCacheJWKRepresentations.empty()));
     }
 
     @Test
     void hasSameKeysIsFalseWhenAnUnrelatedKeyIdIsAdded() throws Exception {
-        JWKRepresentations a = JWKRepresentations.of(jwkSet(key("kid1")));
-        JWKRepresentations b = JWKRepresentations.of(jwkSet(key("kid1"), key("kid2")));
+        DecodedJwtCacheJWKRepresentations a = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1")));
+        DecodedJwtCacheJWKRepresentations b = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1"), key("kid2")));
 
         assertFalse(a.hasSameKeys(b));
         // the unaffected key id is still reported as unchanged
@@ -204,8 +204,8 @@ class JWKRepresentationsTest {
 
     @Test
     void unchangedKeyIdsContainsAllKeyIdsWhenNothingChanged() throws Exception {
-        JWKRepresentations a = JWKRepresentations.of(jwkSet(key("kid1"), key("kid2")));
-        JWKRepresentations b = JWKRepresentations.of(jwkSet(key("kid1"), key("kid2")));
+        DecodedJwtCacheJWKRepresentations a = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1"), key("kid2")));
+        DecodedJwtCacheJWKRepresentations b = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1"), key("kid2")));
 
         assertEquals(Set.of("kid1", "kid2"), a.unchangedKeyIds(b));
         assertEquals(Set.of("kid1", "kid2"), b.unchangedKeyIds(a));
@@ -213,45 +213,45 @@ class JWKRepresentationsTest {
 
     @Test
     void unchangedKeyIdsBetweenTwoEmptyInstancesIsEmpty() {
-        assertEquals(Set.of(), JWKRepresentations.empty().unchangedKeyIds(JWKRepresentations.empty()));
+        assertEquals(Set.of(), DecodedJwtCacheJWKRepresentations.empty().unchangedKeyIds(DecodedJwtCacheJWKRepresentations.empty()));
     }
 
     @Test
     void unchangedKeyIdsExcludesAddedKeyId() throws Exception {
-        JWKRepresentations previous = JWKRepresentations.of(jwkSet(key("kid1")));
-        JWKRepresentations current = JWKRepresentations.of(jwkSet(key("kid1"), key("kid2")));
+        DecodedJwtCacheJWKRepresentations previous = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1")));
+        DecodedJwtCacheJWKRepresentations current = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1"), key("kid2")));
 
         assertEquals(Set.of("kid1"), current.unchangedKeyIds(previous));
     }
 
     @Test
     void unchangedKeyIdsExcludesRemovedKeyId() throws Exception {
-        JWKRepresentations previous = JWKRepresentations.of(jwkSet(key("kid1"), key("kid2")));
-        JWKRepresentations current = JWKRepresentations.of(jwkSet(key("kid1")));
+        DecodedJwtCacheJWKRepresentations previous = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1"), key("kid2")));
+        DecodedJwtCacheJWKRepresentations current = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1")));
 
         assertEquals(Set.of("kid1"), current.unchangedKeyIds(previous));
     }
 
     @Test
     void unchangedKeyIdsExcludesKeyIdWithChangedMetadataButKeepsUnaffectedKeyIds() throws Exception {
-        JWKRepresentations previous = JWKRepresentations.of(jwkSet(key("kid1", "HS256"), key("kid2")));
-        JWKRepresentations current = JWKRepresentations.of(jwkSet(key("kid1", "HS512"), key("kid2")));
+        DecodedJwtCacheJWKRepresentations previous = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1", "HS256"), key("kid2")));
+        DecodedJwtCacheJWKRepresentations current = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1", "HS512"), key("kid2")));
 
         assertEquals(Set.of("kid2"), current.unchangedKeyIds(previous));
     }
 
     @Test
     void unchangedKeyIdsExcludesKeyIdWhenOneOfSeveralKeysSharingItIsRemoved() throws Exception {
-        JWKRepresentations previous = JWKRepresentations.of(jwkSet(key("kid1", "HS256"), key("kid1", "HS512")));
-        JWKRepresentations current = JWKRepresentations.of(jwkSet(key("kid1", "HS256")));
+        DecodedJwtCacheJWKRepresentations previous = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1", "HS256"), key("kid1", "HS512")));
+        DecodedJwtCacheJWKRepresentations current = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1", "HS256")));
 
         assertEquals(Set.of(), current.unchangedKeyIds(previous));
     }
 
     @Test
     void unchangedKeyIdsIgnoresOrderOfDuplicateKidKeys() throws Exception {
-        JWKRepresentations previous = JWKRepresentations.of(jwkSet(key("kid1", "HS256"), key("kid1", "HS512")));
-        JWKRepresentations current = JWKRepresentations.of(jwkSet(key("kid1", "HS512"), key("kid1", "HS256")));
+        DecodedJwtCacheJWKRepresentations previous = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1", "HS256"), key("kid1", "HS512")));
+        DecodedJwtCacheJWKRepresentations current = DecodedJwtCacheJWKRepresentations.of(jwkSet(key("kid1", "HS512"), key("kid1", "HS256")));
 
         assertEquals(Set.of("kid1"), current.unchangedKeyIds(previous));
     }
