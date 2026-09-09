@@ -531,7 +531,7 @@ class DecodedJwtCacheJwtDecoderTest {
     }
 
     @Test
-    void refreshCompletedWithDuplicateKidDoesNotCacheJwt() throws Exception {
+    void refreshCompletedWithDuplicateKidCachesJwtButEvictsAllOnAnyChange() throws Exception {
         JwtDecoder delegate = mock(JwtDecoder.class);
         Jwt jwt1 = jwt("token1", "kid1");
         when(delegate.decode("token1")).thenReturn(jwt1);
@@ -539,7 +539,17 @@ class DecodedJwtCacheJwtDecoderTest {
         decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
         decoder.notify(refreshCompletedEvent(jwkSet(key("kid1", "HS256"), key("kid1", "HS512"))));
 
+        // multiple JWKs may legally share the same kid; the kid is still active and
+        // can be cached even though it's ambiguous which of the keys signed the JWT
         decoder.decode("token1");
+        decoder.decode("token1");
+        verify(delegate, times(1)).decode("token1");
+
+        // if any of the keys sharing that kid changes (here: one of the two variants
+        // is dropped), the whole group for that kid must be considered changed,
+        // evicting anything cached under it
+        decoder.notify(refreshCompletedEvent(jwkSet(key("kid1", "HS256"))));
+
         decoder.decode("token1");
         verify(delegate, times(2)).decode("token1");
     }

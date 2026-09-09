@@ -1,11 +1,8 @@
 package org.entur.jwt.spring.decode.cache;
 
-import com.nimbusds.jose.jwk.JWK;
-import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
 import com.nimbusds.jose.util.events.Event;
 import com.nimbusds.jose.util.events.EventListener;
-import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.oauth2.core.OAuth2Error;
@@ -19,10 +16,6 @@ import org.springframework.util.StringUtils;
 
 import java.io.Closeable;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,16 +44,14 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
 
     protected static class Cache {
         protected final ConcurrentHashMap<String, Jwt> map;
-        // kid -> full JWK representation, so that any refresh which changes key
-        // selection-relevant metadata while keeping the same kid is detected
-        protected final Map<String, Map<String, Object>> keyRepresentations;
+        // active keys at the time this cache was created, so that any refresh which
+        // changes key selection-relevant metadata while keeping the same kid is detected
+        protected final JWKRepresentations keyRepresentations;
         protected final int maxCacheSize;
         protected final OAuth2TokenValidator<Jwt> jwtValidator;
 
-        protected Cache(Map<String, Map<String, Object>> keyRepresentations, int maxCacheSize, OAuth2TokenValidator<Jwt> jwtValidator) {
-            // should be immediately visible to all threads
-            // so the add method can never add anything with the wrong key id
-            this.keyRepresentations = Map.copyOf(keyRepresentations);
+        protected Cache(JWKRepresentations keyRepresentations, int maxCacheSize, OAuth2TokenValidator<Jwt> jwtValidator) {
+            this.keyRepresentations = keyRepresentations;
             if(maxCacheSize == -1) {
                 this.map = new ConcurrentHashMap<>();
                 this.maxCacheSize = Integer.MAX_VALUE;
@@ -78,7 +69,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
             }
 
             String kid = (String)jwt.getHeaders().get("kid");
-            if(kid != null && keyRepresentations.containsKey(kid)) {
+            if(kid != null && keyRepresentations.contains(kid)) {
                 map.put(token, jwt);
             }
         }
@@ -111,12 +102,19 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
             return count;
         }
 
-        public boolean hasSameKeys(Map<String, Map<String, Object>> keyRepresentations) {
-            return this.keyRepresentations.equals(keyRepresentations);
+        public boolean hasSameKeys(JWKRepresentations keyRepresentations) {
+            return this.keyRepresentations.hasSameKeys(keyRepresentations);
         }
 
-        public void add(Cache cache) {
-            if (keyRepresentations.isEmpty()) {
+        /**
+         * Migrate still-cached JWTs from the (previous) {@code cache}, only carrying over
+         * entries whose kid is in {@code keyIdsToKeep} - the whitelist of key ids proven
+         * unchanged between the previous and this cache's key set. Anything not in this
+         * set (added, removed, or changed keys, including any key sharing a kid with
+         * several JWKs where at least one of them differs) is dropped.
+         */
+        public void add(Cache cache, Set<String> keyIdsToKeep) {
+            if (keyIdsToKeep.isEmpty()) {
                 return; // nothing can match, avoid iterating the old cache at all
             }
             for (Map.Entry<String, Jwt> entry : cache.map.entrySet()) {
@@ -129,14 +127,10 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
                     continue;
                 }
                 String kid = (String) value.getHeaders().get("kid");
-                // only migrate entries whose key is still present with the exact same
-                // representation; a kid re-used for a rotated/different key
-                // must not carry over previously cached/validated JWTs.
-                // single lookup into the (immutable, so safe to reuse) current
-                // representations instead of delegating to add(String, Jwt),
-                // which would repeat the same kid lookup and size check.
-                Map<String, Object> currentRepresentation = keyRepresentations.get(kid);
-                if (currentRepresentation != null && currentRepresentation.equals(cache.keyRepresentations.get(kid))) {
+                // only migrate entries whose key id was positively confirmed unchanged; a
+                // kid re-used for a rotated/different key must not carry over previously
+                // cached/validated JWTs
+                if (kid != null && keyIdsToKeep.contains(kid)) {
                     map.put(entry.getKey(), value);
                 }
             }
@@ -165,7 +159,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         this.cleanupInterval = cleanupIntervalMillis;
         this.maxCacheSize = maxCacheSize;
 
-        cache = new Cache(Collections.emptyMap(), 0, jwtValidator);
+        cache = new Cache(JWKRepresentations.empty(), 0, jwtValidator);
     }
 
     public synchronized void scheduleCleanup() {
@@ -240,42 +234,6 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         cache.clear();
     }
 
-    private static @NonNull Map<String, Map<String, Object>> getKeyRepresentations(JWKSet jwtSet) {
-        Map<String, Map<String, Object>> keyRepresentations = new HashMap<>(jwtSet.getKeys().size() * 2);
-        Set<String> duplicateKeyIds = new HashSet<>();
-        Date now = new Date();
-        for (JWK key : jwtSet.getKeys()) {
-            String keyId = key.getKeyID();
-            if (keyId == null || keyId.isEmpty()) {
-                continue;
-            }
-
-            // exclude keys outside their own "nbf"/"exp" validity window (if set);
-            // such a key must not be treated as an active signing key, so any JWT
-            // referencing its kid is neither cached nor kept in the cache
-            Date notBefore = key.getNotBeforeTime();
-            if (notBefore != null && notBefore.after(now)) {
-                continue;
-            }
-            Date expirationTime = key.getExpirationTime();
-            if (expirationTime != null && expirationTime.before(now)) {
-                continue;
-            }
-
-            if (duplicateKeyIds.contains(keyId)) {
-                continue;
-            }
-            if (keyRepresentations.containsKey(keyId)) {
-                keyRepresentations.remove(keyId);
-                duplicateKeyIds.add(keyId);
-                continue;
-            }
-
-            keyRepresentations.put(keyId, Map.copyOf(key.toJSONObject()));
-        }
-        return keyRepresentations;
-    }
-
     @Override
     public void notify(Event event) {
         if(event instanceof CachingJWKSetSource.RefreshInitiatedEvent<?>) {
@@ -284,7 +242,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
             CachingJWKSetSource.RefreshCompletedEvent refreshCompletedEvent = (CachingJWKSetSource.RefreshCompletedEvent) event;
 
             Cache cache = this.cache; // defensive copy
-            Map<String, Map<String, Object>> keyRepresentations = getKeyRepresentations(refreshCompletedEvent.getJWKSet());
+            JWKRepresentations keyRepresentations = JWKRepresentations.of(refreshCompletedEvent.getJWKSet());
 
             // compare the full JWK representation for each kid, not just key id or
             // RFC 7638 thumbprint, so metadata changes affecting key selection also
@@ -292,10 +250,16 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
             if(cache.hasSameKeys(keyRepresentations)) {
                 // do nothing
             } else {
+                // keys were added, removed, or changed since the previous refresh; work
+                // out which key ids are positively confirmed unchanged (a safe whitelist),
+                // so only cached JWTs signed by those keys are migrated - everything else
+                // is dropped by default rather than only excluded if provably changed
+                Set<String> keyIdsToKeep = keyRepresentations.unchangedKeyIds(cache.keyRepresentations);
+
                 // create a new cache
                 Cache nextCache = new Cache(keyRepresentations, maxCacheSize, jwtValidator);
                 // copy still-valid JWTs from the old cache to the new cache
-                nextCache.add(cache);
+                nextCache.add(cache, keyIdsToKeep);
                 this.cache = nextCache;
             }
         } else if(event instanceof CachingJWKSetSource.UnableToRefreshEvent<?>) {
