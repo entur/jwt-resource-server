@@ -12,6 +12,8 @@ public class JwtDecoderCacheProperties {
      */
     private int cleanupInterval = 60;
 
+    private JwtDecoderCacheOutageProperties outageCache = new JwtDecoderCacheOutageProperties();
+
     public boolean isEnabled() {
         return enabled;
     }
@@ -37,5 +39,13 @@ public class JwtDecoderCacheProperties {
 
     public void setCleanupInterval(int cleanupIntervalSeconds) {
         this.cleanupInterval = cleanupIntervalSeconds;
+    }
+
+    public JwtDecoderCacheOutageProperties getOutageCache() {
+        return outageCache;
+    }
+
+    public void setOutageCache(JwtDecoderCacheOutageProperties outageCache) {
+        this.outageCache = outageCache;
     }
 }

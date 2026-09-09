@@ -151,13 +151,37 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
     protected final long cleanupInterval;
     protected final int maxCacheSize;
 
+    // whether to keep serving cached/validated JWTs while the JWK set fails to refresh
+    // (a "refresh outage"), and if so, for how long (millis) to keep tolerating a
+    // continuing outage before flushing the cache; -1 tolerates outages indefinitely
+    protected final boolean outageCacheEnabled;
+    protected final long outageCacheTimeToLive;
+
+    // the time of the last successful refresh (RefreshCompletedEvent), used as the anchor
+    // point for measuring how long an ongoing refresh outage has lasted; initialized at
+    // construction time since that is when the initial cache/JWK set is considered fresh
+    protected volatile long lastRefreshCompletedAt = System.currentTimeMillis();
+
+    // whether the 50%/75%-of-time-to-live warnings have already been logged for the
+    // current outage, reset whenever the outage clock itself resets (successful refresh)
+    protected volatile boolean outageHalfTimeWarningLogged = false;
+    protected volatile boolean outageThreeQuarterTimeWarningLogged = false;
+
     protected volatile Cache cache;
 
     public DecodedJwtCacheJwtDecoder(JwtDecoder jwtValidatingDecoder, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupIntervalMillis, int maxCacheSize) {
+        // preserve historical behaviour: tolerate refresh outages indefinitely
+        this(jwtValidatingDecoder, jwtValidators, cleanupIntervalMillis, maxCacheSize, true, -1L);
+    }
+
+    public DecodedJwtCacheJwtDecoder(JwtDecoder jwtValidatingDecoder, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupIntervalMillis, int maxCacheSize,
+                                      boolean outageCacheEnabled, long outageCacheTimeToLiveMillis) {
         this.jwtValidatingDecoder = jwtValidatingDecoder;
         this.jwtValidator = jwtValidators;
         this.cleanupInterval = cleanupIntervalMillis;
         this.maxCacheSize = maxCacheSize;
+        this.outageCacheEnabled = outageCacheEnabled;
+        this.outageCacheTimeToLive = outageCacheTimeToLiveMillis;
 
         cache = new Cache(DecodedJwtCacheJWKRepresentations.empty(), 0, jwtValidator);
     }
@@ -241,6 +265,12 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         } else if(event instanceof CachingJWKSetSource.RefreshCompletedEvent<?>) {
             CachingJWKSetSource.RefreshCompletedEvent refreshCompletedEvent = (CachingJWKSetSource.RefreshCompletedEvent) event;
 
+            // refresh succeeded; any ongoing outage is over, and this is the new anchor
+            // point for measuring the duration of a future outage
+            lastRefreshCompletedAt = System.currentTimeMillis();
+            outageHalfTimeWarningLogged = false;
+            outageThreeQuarterTimeWarningLogged = false;
+
             Cache cache = this.cache; // defensive copy
             DecodedJwtCacheJWKRepresentations keyRepresentations = DecodedJwtCacheJWKRepresentations.of(refreshCompletedEvent.getJWKSet());
 
@@ -263,9 +293,52 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
                 this.cache = nextCache;
             }
         } else if(event instanceof CachingJWKSetSource.UnableToRefreshEvent<?>) {
-            // do nothing
+            handleRefreshOutage();
         } else if(event instanceof CachingJWKSetSource.RefreshTimedOutEvent<?>) {
-            // do nothing
+            handleRefreshOutage();
+        }
+    }
+
+    /**
+     * Called whenever the JWK set fails to refresh (or times out doing so). Depending on
+     * {@link #outageCacheEnabled}/{@link #outageCacheTimeToLive}, the cache of previously
+     * validated JWTs is either kept as-is (tolerating the outage), or flushed - either
+     * immediately (outage cache disabled) or once the outage has lasted too long -
+     * forcing JWTs to be re-verified rather than trusted indefinitely against an
+     * increasingly stale local cache. The outage duration is measured relative to the
+     * last successful refresh ({@link #lastRefreshCompletedAt}), not relative to the
+     * first observed failure, so it also accounts for any delay between the last known
+     * good state and the first failure being noticed. Once the outage has lasted 50%,
+     * and again at 75%, of the configured time to live, a warning is logged noting how
+     * much time is left before the cache is flushed.
+     */
+    protected void handleRefreshOutage() {
+        if (!outageCacheEnabled) {
+            cache.clear();
+            return;
+        }
+        if (outageCacheTimeToLive < 0) {
+            // tolerate refresh outages indefinitely; there is no bound to warn about
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        long elapsed = now - lastRefreshCompletedAt;
+
+        if (elapsed >= outageCacheTimeToLive) {
+            // the outage has lasted too long to keep trusting the cache
+            cache.clear();
+            return;
+        }
+
+        long remaining = outageCacheTimeToLive - elapsed;
+        if (elapsed >= outageCacheTimeToLive / 2 && !outageHalfTimeWarningLogged) {
+            outageHalfTimeWarningLogged = true;
+            LOGGER.warn("Refresh outage has lasted for 50% of the configured outage cache time to live ({} ms); {} ms left before the decoded JWT cache is flushed", outageCacheTimeToLive, remaining);
+        }
+        if (elapsed >= (outageCacheTimeToLive * 3) / 4 && !outageThreeQuarterTimeWarningLogged) {
+            outageThreeQuarterTimeWarningLogged = true;
+            LOGGER.error("Refresh outage has lasted for 75% of the configured outage cache time to live ({} ms); {} ms left before the decoded JWT cache is flushed", outageCacheTimeToLive, remaining);
         }
     }
 

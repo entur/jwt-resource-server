@@ -7,6 +7,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import org.entur.jwt.spring.actuate.ListEventListener;
 import org.entur.jwt.spring.decode.cache.DecodedJwtCacheJwtDecoder;
+import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheOutageProperties;
 import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheProperties;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
@@ -79,7 +80,12 @@ public class ClosableJwtDecodersBuilder {
                 if (cacheProperties != null) {
                     ListEventListener eventListener = jwkEventListeners.get(entry.getKey());
                     if (eventListener != null) {
-                        DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(decoder, validators, cacheProperties.getCleanupInterval() * 1000L, cacheProperties.getMaxSize());
+                        JwtDecoderCacheOutageProperties outageCache = cacheProperties.getOutageCache();
+                        boolean outageCacheEnabled = outageCache == null || outageCache.isEnabled();
+                        long outageCacheTimeToLiveMillis = outageCache == null ? -1L : outageCache.getTimeToLive() * 1000L;
+
+                        DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(decoder, validators, cacheProperties.getCleanupInterval() * 1000L, cacheProperties.getMaxSize(),
+                                outageCacheEnabled, outageCacheTimeToLiveMillis);
                         cachedDecoder.scheduleCleanup();
                         eventListener.addEventListener(cachedDecoder);
                         decoder = cachedDecoder;

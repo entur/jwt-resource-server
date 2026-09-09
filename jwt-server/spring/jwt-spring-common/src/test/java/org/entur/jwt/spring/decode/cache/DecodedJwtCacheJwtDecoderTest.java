@@ -1,5 +1,8 @@
 package org.entur.jwt.spring.decode.cache;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.nimbusds.jose.Algorithm;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
@@ -7,7 +10,9 @@ import com.nimbusds.jose.jwk.OctetSequenceKey;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
@@ -37,6 +42,23 @@ class DecodedJwtCacheJwtDecoderTest {
     private static final int MAX_TOKENS = 10000;
 
     private DecodedJwtCacheJwtDecoder decoder;
+    private ListAppender<ILoggingEvent> logAppender;
+
+    @BeforeEach
+    void setUpLogCapture() {
+        logAppender = new ListAppender<>();
+        logAppender.start();
+        loggerUnderTest().addAppender(logAppender);
+    }
+
+    @AfterEach
+    void tearDownLogCapture() {
+        loggerUnderTest().detachAppender(logAppender);
+    }
+
+    private static Logger loggerUnderTest() {
+        return (Logger) LoggerFactory.getLogger(DecodedJwtCacheJwtDecoder.class);
+    }
 
     @AfterEach
     void tearDown() {
@@ -454,6 +476,204 @@ class DecodedJwtCacheJwtDecoderTest {
         decoder.notify(refreshTimedOutEvent());
 
         // still cached, none of the above events should have evicted anything
+        decoder.decode("token1");
+        verify(delegate, times(1)).decode("token1");
+    }
+
+    // -----------------------------------------------------------------------
+    // notify() / refresh outage handling (UnableToRefreshEvent, RefreshTimedOutEvent)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void outageLogsWarningAtHalfAndThreeQuartersOfTimeToLive() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt = jwt("token1", "kid1");
+        when(delegate.decode("token1")).thenReturn(jwt);
+
+        long outageTimeToLiveMillis = 200L;
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS, true, outageTimeToLiveMillis);
+        decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
+
+        decoder.decode("token1"); // cached
+
+        // still well within the tolerated window -> no warnings yet
+        decoder.notify(unableToRefreshEvent());
+        assertTrue(logAppender.list.isEmpty());
+
+        // past 50% -> one warning noting time left
+        Thread.sleep((outageTimeToLiveMillis * 6) / 10);
+        decoder.notify(unableToRefreshEvent());
+        assertEquals(1, logAppender.list.size());
+        assertTrue(logAppender.list.get(0).getFormattedMessage().contains("50%"));
+
+        // repeated notifications while still under 75% must not log again
+        decoder.notify(unableToRefreshEvent());
+        assertEquals(1, logAppender.list.size());
+
+        // past 75% -> a second, distinct warning
+        Thread.sleep((outageTimeToLiveMillis * 2) / 10);
+        decoder.notify(refreshTimedOutEvent());
+        assertEquals(2, logAppender.list.size());
+        assertTrue(logAppender.list.get(1).getFormattedMessage().contains("75%"));
+
+        // cache is still tolerated - not yet flushed
+        decoder.decode("token1");
+        verify(delegate, times(1)).decode("token1");
+    }
+
+    @Test
+    void outageWarningsAreNotLoggedWhenOutageCacheDisabled() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt = jwt("token1", "kid1");
+        when(delegate.decode("token1")).thenReturn(jwt);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS, false, -1L);
+        decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
+
+        decoder.notify(unableToRefreshEvent());
+
+        assertTrue(logAppender.list.isEmpty());
+    }
+
+    @Test
+    void outageWarningsAreNotLoggedWhenOutageToleratedIndefinitely() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt = jwt("token1", "kid1");
+        when(delegate.decode("token1")).thenReturn(jwt);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS, true, -1L);
+        decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
+
+        decoder.notify(unableToRefreshEvent());
+        Thread.sleep(50L);
+        decoder.notify(refreshTimedOutEvent());
+
+        assertTrue(logAppender.list.isEmpty());
+    }
+
+    @Test
+    void successfulRefreshResetsOutageWarningState() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt = jwt("token1", "kid1");
+        when(delegate.decode("token1")).thenReturn(jwt);
+
+        long outageTimeToLiveMillis = 100L;
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS, true, outageTimeToLiveMillis);
+        decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
+
+        Thread.sleep((outageTimeToLiveMillis * 6) / 10);
+        decoder.notify(unableToRefreshEvent());
+        assertEquals(1, logAppender.list.size());
+
+        // a successful refresh resets the outage clock and the warning flags
+        decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
+        logAppender.list.clear();
+
+        decoder.notify(unableToRefreshEvent());
+        assertTrue(logAppender.list.isEmpty());
+    }
+
+    @Test
+    void unableToRefreshEventFlushesCacheImmediatelyWhenOutageCacheDisabled() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt = jwt("token1", "kid1");
+        when(delegate.decode("token1")).thenReturn(jwt);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS, false, -1L);
+        decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
+
+        decoder.decode("token1"); // cached
+
+        decoder.notify(unableToRefreshEvent());
+
+        // outage cache disabled -> flushed immediately, even though this is the first sign of trouble
+        decoder.decode("token1");
+        verify(delegate, times(2)).decode("token1");
+    }
+
+    @Test
+    void refreshTimedOutEventFlushesCacheImmediatelyWhenOutageCacheDisabled() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt = jwt("token1", "kid1");
+        when(delegate.decode("token1")).thenReturn(jwt);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS, false, -1L);
+        decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
+
+        decoder.decode("token1"); // cached
+
+        decoder.notify(refreshTimedOutEvent());
+
+        decoder.decode("token1");
+        verify(delegate, times(2)).decode("token1");
+    }
+
+    @Test
+    void outageIsToleratedUntilItLastsLongerThanConfiguredTimeToLive() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt = jwt("token1", "kid1");
+        when(delegate.decode("token1")).thenReturn(jwt);
+
+        long outageTimeToLiveMillis = 50L;
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS, true, outageTimeToLiveMillis);
+        decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
+
+        decoder.decode("token1"); // cached
+
+        // first sign of trouble; still well within the tolerated outage window
+        decoder.notify(unableToRefreshEvent());
+        decoder.decode("token1");
+        verify(delegate, times(1)).decode("token1");
+
+        // let the outage run past the configured time to live, then observe another
+        // failed refresh attempt -> the cache must now be flushed
+        Thread.sleep(outageTimeToLiveMillis * 3);
+        decoder.notify(refreshTimedOutEvent());
+
+        decoder.decode("token1");
+        verify(delegate, times(2)).decode("token1");
+    }
+
+    @Test
+    void outageCacheToleratesOutageIndefinitelyWhenTimeToLiveIsNegative() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt = jwt("token1", "kid1");
+        when(delegate.decode("token1")).thenReturn(jwt);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS, true, -1L);
+        decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
+
+        decoder.decode("token1"); // cached
+
+        decoder.notify(unableToRefreshEvent());
+        Thread.sleep(50L);
+        decoder.notify(refreshTimedOutEvent());
+
+        // negative time to live -> outage tolerated forever, cache never auto-flushed
+        decoder.decode("token1");
+        verify(delegate, times(1)).decode("token1");
+    }
+
+    @Test
+    void successfulRefreshResetsAnOngoingOutage() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt = jwt("token1", "kid1");
+        when(delegate.decode("token1")).thenReturn(jwt);
+
+        long outageTimeToLiveMillis = 50L;
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS, true, outageTimeToLiveMillis);
+        decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
+
+        decoder.decode("token1"); // cached
+
+        decoder.notify(unableToRefreshEvent());
+        Thread.sleep(outageTimeToLiveMillis * 3);
+
+        // a successful refresh in between resets the outage clock, even though the keys
+        // themselves are unchanged and would otherwise keep the cache as-is
+        decoder.notify(refreshCompletedEvent(jwkSet("kid1")));
+        decoder.notify(unableToRefreshEvent());
+
         decoder.decode("token1");
         verify(delegate, times(1)).decode("token1");
     }
