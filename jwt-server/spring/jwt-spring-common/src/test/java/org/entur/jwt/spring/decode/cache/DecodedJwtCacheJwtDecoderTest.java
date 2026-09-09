@@ -1,5 +1,6 @@
 package org.entur.jwt.spring.decode.cache;
 
+import com.nimbusds.jose.Algorithm;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.OctetSequenceKey;
@@ -58,11 +59,22 @@ class DecodedJwtCacheJwtDecoderTest {
         return new OctetSequenceKey.Builder("secret-material".getBytes()).keyID(kid).build();
     }
 
+    private static JWK key(String kid, String algorithm) throws Exception {
+        return new OctetSequenceKey.Builder("secret-material".getBytes())
+                .keyID(kid)
+                .algorithm(new Algorithm(algorithm))
+                .build();
+    }
+
     private static JWKSet jwkSet(String... kids) throws Exception {
         JWK[] keys = new JWK[kids.length];
         for (int i = 0; i < kids.length; i++) {
             keys[i] = key(kids[i]);
         }
+        return new JWKSet(List.of(keys));
+    }
+
+    private static JWKSet jwkSet(JWK... keys) {
         return new JWKSet(List.of(keys));
     }
 
@@ -488,6 +500,24 @@ class DecodedJwtCacheJwtDecoderTest {
 
         decoder.decode("token1");
         verify(delegate, times(1)).decode("token1");
+    }
+
+    @Test
+    void refreshCompletedWithChangedJwkMetadataEvictsCachedJwt() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt1 = jwt("token1", "kid1");
+        when(delegate.decode("token1")).thenReturn(jwt1);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        decoder.notify(refreshCompletedEvent(jwkSet(key("kid1", "HS256"))));
+
+        decoder.decode("token1"); // cached under kid1
+
+        // same key material and kid, but metadata changed in a way that can affect key selection
+        decoder.notify(refreshCompletedEvent(jwkSet(key("kid1", "HS512"))));
+
+        decoder.decode("token1");
+        verify(delegate, times(2)).decode("token1");
     }
 
     // -----------------------------------------------------------------------
