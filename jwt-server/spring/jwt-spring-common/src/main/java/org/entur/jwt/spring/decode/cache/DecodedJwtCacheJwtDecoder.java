@@ -1,8 +1,10 @@
 package org.entur.jwt.spring.decode.cache;
 
+import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
+import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jose.util.events.Event;
 import com.nimbusds.jose.util.events.EventListener;
 import org.jspecify.annotations.NonNull;
@@ -20,9 +22,8 @@ import org.springframework.util.StringUtils;
 import java.io.Closeable;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -49,14 +50,16 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
 
     protected static class Cache {
         protected final ConcurrentHashMap<String, Jwt> map;
-        protected final Set<String> keyIds;
+        // kid -> RFC 7638 JWK thumbprint, so that a key whose material changed while
+        // keeping the same kid is still detected as a different key (see below)
+        protected final Map<String, Base64URL> keyFingerprints;
         protected final int maxCacheSize;
         protected final OAuth2TokenValidator<Jwt> jwtValidator;
 
-        protected Cache(Set<String> keyIds, int maxCacheSize, OAuth2TokenValidator<Jwt> jwtValidator) {
+        protected Cache(Map<String, Base64URL> keyFingerprints, int maxCacheSize, OAuth2TokenValidator<Jwt> jwtValidator) {
             // should be immediately visible to all threads
             // so the add method can never add anything with the wrong key id
-            this.keyIds = Set.copyOf(keyIds);
+            this.keyFingerprints = Map.copyOf(keyFingerprints);
             if(maxCacheSize == -1) {
                 this.map = new ConcurrentHashMap<>();
                 this.maxCacheSize = Integer.MAX_VALUE;
@@ -74,7 +77,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
             }
 
             String kid = (String)jwt.getHeaders().get("kid");
-            if(kid != null && keyIds.contains(kid)) {
+            if(kid != null && keyFingerprints.containsKey(kid)) {
                 map.put(token, jwt);
             }
         }
@@ -107,15 +110,23 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
             return count;
         }
 
-        public boolean hasSameKeyIds(Set<String> keyIds) {
-            return this.keyIds.equals(keyIds);
+        public boolean hasSameKeys(Map<String, Base64URL> keyFingerprints) {
+            return this.keyFingerprints.equals(keyFingerprints);
         }
 
         public void add(Cache cache) {
             for (Map.Entry<String, Jwt> entry : cache.map.entrySet()) {
                 Jwt value = entry.getValue();
                 if(value != null) {
-                    add(entry.getKey(), value); // filters on key id
+                    String kid = (String) value.getHeaders().get("kid");
+                    // only migrate entries whose key is still present with the exact same
+                    // material (fingerprint); a kid re-used for a rotated/different key
+                    // must not carry over previously cached/validated JWTs
+                    Base64URL previousFingerprint = cache.keyFingerprints.get(kid);
+                    Base64URL currentFingerprint = keyFingerprints.get(kid);
+                    if(currentFingerprint != null && currentFingerprint.equals(previousFingerprint)) {
+                        add(entry.getKey(), value); // also re-filters on key id
+                    }
                 }
             }
         }
@@ -143,7 +154,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         this.cleanupInterval = cleanupIntervalMillis;
         this.maxCacheSize = maxCacheSize;
 
-        cache = new Cache(Collections.emptySet(), 0, jwtValidator);
+        cache = new Cache(Collections.emptyMap(), 0, jwtValidator);
     }
 
     public synchronized void scheduleCleanup() {
@@ -218,15 +229,27 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         cache.clear();
     }
 
-    private static @NonNull Set<String> getKeyIds(JWKSet jwtSet) {
-        Set<String> keyIds = new HashSet<>(jwtSet.getKeys().size() * 2);
+    private static @NonNull Map<String, Base64URL> getKeyFingerprints(JWKSet jwtSet) {
+        Map<String, Base64URL> keyFingerprints = new HashMap<>(jwtSet.getKeys().size() * 2);
         for (JWK key : jwtSet.getKeys()) {
             String keyId = key.getKeyID();
             if (keyId != null && !keyId.isEmpty()) {
-                keyIds.add(keyId);
+                try {
+                    // RFC 7638 thumbprint of the key material itself (not metadata such as
+                    // "use"/"key_ops"), so that a rotated key which keeps the same kid --
+                    // as is known to happen with e.g. Active Directory Federation Services (ADFS),
+                    // which derives the kid from the certificate thumbprint but has in practice
+                    // been observed to reuse identifiers across certificate renewals -- is still
+                    // detected as a different key rather than assumed unchanged.
+                    keyFingerprints.put(keyId, key.computeThumbprint());
+                } catch (JOSEException e) {
+                    // key material could not be fingerprinted; do not trust this kid as unchanged,
+                    // any cached JWTs referencing it are dropped by not being retained here
+                    LOGGER.warn("Unable to compute thumbprint for key with id {}", keyId, e);
+                }
             }
         }
-        return keyIds;
+        return keyFingerprints;
     }
 
     @Override
@@ -237,15 +260,15 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
             CachingJWKSetSource.RefreshCompletedEvent refreshCompletedEvent = (CachingJWKSetSource.RefreshCompletedEvent) event;
 
             Cache cache = this.cache; // defensive copy
-            Set<String> keyIds = getKeyIds(refreshCompletedEvent.getJWKSet());
+            Map<String, Base64URL> keyFingerprints = getKeyFingerprints(refreshCompletedEvent.getJWKSet());
 
-            // assuming that comparing key ids is representative of the JWK set
-            // and that the underlying key does not change without also changing the key id
-            if(cache.hasSameKeyIds(keyIds)) {
+            // compare kid + key material (thumbprint), not just kid, since some IdPs
+            // (see getKeyFingerprints) are known to reuse the same kid across rotations
+            if(cache.hasSameKeys(keyFingerprints)) {
                 // do nothing
             } else {
                 // create a new cache
-                Cache nextCache = new Cache(keyIds, maxCacheSize, jwtValidator);
+                Cache nextCache = new Cache(keyFingerprints, maxCacheSize, jwtValidator);
                 // copy still-valid JWTs from the old cache to the new cache
                 nextCache.add(cache);
                 this.cache = nextCache;
