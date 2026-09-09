@@ -20,6 +20,7 @@ import org.springframework.util.StringUtils;
 import java.io.Closeable;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -229,11 +230,26 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
 
     private static @NonNull Map<String, Map<String, Object>> getKeyRepresentations(JWKSet jwtSet) {
         Map<String, Map<String, Object>> keyRepresentations = new HashMap<>(jwtSet.getKeys().size() * 2);
+        Date now = new Date();
         for (JWK key : jwtSet.getKeys()) {
             String keyId = key.getKeyID();
-            if (keyId != null && !keyId.isEmpty()) {
-                keyRepresentations.put(keyId, Map.copyOf(key.toJSONObject()));
+            if (keyId == null || keyId.isEmpty()) {
+                continue;
             }
+
+            // exclude keys outside their own "nbf"/"exp" validity window (if set);
+            // such a key must not be treated as an active signing key, so any JWT
+            // referencing its kid is neither cached nor kept in the cache
+            Date notBefore = key.getNotBeforeTime();
+            if (notBefore != null && notBefore.after(now)) {
+                continue;
+            }
+            Date expirationTime = key.getExpirationTime();
+            if (expirationTime != null && expirationTime.before(now)) {
+                continue;
+            }
+
+            keyRepresentations.put(keyId, Map.copyOf(key.toJSONObject()));
         }
         return keyRepresentations;
     }

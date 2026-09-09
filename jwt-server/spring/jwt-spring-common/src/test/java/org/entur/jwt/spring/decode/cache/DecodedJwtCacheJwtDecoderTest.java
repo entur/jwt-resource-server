@@ -4,6 +4,7 @@ import com.nimbusds.jose.Algorithm;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.OctetSequenceKey;
+import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.JwtValidationException;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -63,6 +65,14 @@ class DecodedJwtCacheJwtDecoderTest {
         return new OctetSequenceKey.Builder("secret-material".getBytes())
                 .keyID(kid)
                 .algorithm(new Algorithm(algorithm))
+                .build();
+    }
+
+    private static JWK keyWithValidityWindow(String kid, Date notBefore, Date expirationTime) throws Exception {
+        return new OctetSequenceKey.Builder("secret-material".getBytes())
+                .keyID(kid)
+                .notBeforeTime(notBefore)
+                .expirationTime(expirationTime)
                 .build();
     }
 
@@ -518,6 +528,246 @@ class DecodedJwtCacheJwtDecoderTest {
 
         decoder.decode("token1");
         verify(delegate, times(2)).decode("token1");
+    }
+
+    // -----------------------------------------------------------------------
+    // notify() / JWK "nbf" (notBefore) and "exp" (expirationTime) validity window
+    // -----------------------------------------------------------------------
+
+    @Test
+    void refreshCompletedIgnoresKeyThatIsNotYetValid() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt1 = jwt("token1", "kid1");
+        when(delegate.decode("token1")).thenReturn(jwt1);
+
+        Date oneHourFromNow = new Date(System.currentTimeMillis() + 3600_000L);
+        JWK notYetValidKey = keyWithValidityWindow("kid1", oneHourFromNow, null);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        decoder.notify(refreshCompletedEvent(jwkSet(notYetValidKey)));
+
+        // kid1's "nbf" is in the future -> not treated as an active key -> never cached
+        decoder.decode("token1");
+        decoder.decode("token1");
+        verify(delegate, times(2)).decode("token1");
+    }
+
+    @Test
+    void refreshCompletedIgnoresKeyThatHasExpired() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt1 = jwt("token1", "kid1");
+        when(delegate.decode("token1")).thenReturn(jwt1);
+
+        Date oneHourAgo = new Date(System.currentTimeMillis() - 3600_000L);
+        JWK expiredKey = keyWithValidityWindow("kid1", null, oneHourAgo);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        decoder.notify(refreshCompletedEvent(jwkSet(expiredKey)));
+
+        // kid1's "exp" is in the past -> not treated as an active key -> never cached
+        decoder.decode("token1");
+        decoder.decode("token1");
+        verify(delegate, times(2)).decode("token1");
+    }
+
+    @Test
+    void refreshCompletedAcceptsKeyCurrentlyWithinItsValidityWindow() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt1 = jwt("token1", "kid1");
+        when(delegate.decode("token1")).thenReturn(jwt1);
+
+        Date oneHourAgo = new Date(System.currentTimeMillis() - 3600_000L);
+        Date oneHourFromNow = new Date(System.currentTimeMillis() + 3600_000L);
+        JWK currentlyValidKey = keyWithValidityWindow("kid1", oneHourAgo, oneHourFromNow);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        decoder.notify(refreshCompletedEvent(jwkSet(currentlyValidKey)));
+
+        // "now" is within [nbf, exp] -> key is active -> cached as usual
+        decoder.decode("token1");
+        decoder.decode("token1");
+        verify(delegate, times(1)).decode("token1");
+    }
+
+    @Test
+    void refreshCompletedEvictsCachedJwtWhenItsKeyBecomesNotYetValidAgain() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt1 = jwt("token1", "kid1");
+        when(delegate.decode("token1")).thenReturn(jwt1);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        decoder.notify(refreshCompletedEvent(jwkSet("kid1"))); // no validity window -> always active
+
+        decoder.decode("token1"); // cached under kid1
+
+        // JWKS refreshes and now advertises kid1 with a future "nbf" (e.g. a
+        // pre-published upcoming key reusing an old kid) -> must be treated as
+        // a different/inactive key, evicting anything cached under that kid
+        Date oneHourFromNow = new Date(System.currentTimeMillis() + 3600_000L);
+        decoder.notify(refreshCompletedEvent(jwkSet(keyWithValidityWindow("kid1", oneHourFromNow, null))));
+
+        decoder.decode("token1");
+        verify(delegate, times(2)).decode("token1");
+    }
+
+    // -----------------------------------------------------------------------
+    // notify() using a real-world JWKS (Auth0 tenant partner.dev.entur.org)
+    //
+    // The fixture in src/test/resources/.../auth0-partner-dev-jwks.json is a
+    // frozen snapshot fetched from
+    // https://partner.dev.entur.org/.well-known/jwks.json on 2026-09-09, used
+    // here only as realistic fixture data (real RSA "n"/"e", "x5c" cert chain,
+    // "x5t" thumbprint, "alg"/"use" fields) that the synthetic HMAC JWKs used
+    // elsewhere in this file don't exercise.
+    //
+    // Time-variant fields / caveats for future maintainers:
+    //  - The set of keys itself is time-variant: Auth0 rotates/retires signing
+    //    keys over time, so this snapshot will eventually no longer match the
+    //    live endpoint. Do not assert this JSON is "current" or fetch it live
+    //    in the test (no network calls in unit tests) - it is reference data.
+    //  - Individual JWK entries have no exp/iat-like field of their own, so
+    //    nothing here changes merely with wall-clock time.
+    //  - Each "x5c" certificate embeds its own notBefore/notAfter validity
+    //    window (2018-04-27/2032-01-04 for AUTH0_KID_1, 2020-03-17/2033-11-24
+    //    for AUTH0_KID_2 at fetch time). This decoder does not itself validate
+    //    those certificate timestamps, but they are part of the "x5c" bytes
+    //    that feed into the full-JWK-representation comparison, so
+    //    refreshCompletedWithUnchangedAuth0JwksIncludingCertValidityKeepsCache
+    //    below explicitly re-parses the fixture and checks that notBefore/
+    //    notAfter come out identical across parses, and that such a
+    //    genuinely-unchanged refresh does NOT evict the cache.
+    //  - Note kid conventions are inconsistent even within this one tenant:
+    //    AUTH0_KID_1 happens to equal its own "x5t" (cert SHA-1 thumbprint),
+    //    while AUTH0_KID_2 does not. A future cert renewal could reuse a kid
+    //    while changing "x5c"/"x5t" (or vice versa) - exactly the scenario
+    //    the full-JWK-representation comparison below is meant to catch,
+    //    rather than relying on kid alone.
+    private static final String AUTH0_KID_1 = "N0JDNjBGMUJCQzlDMDVERTE4NTI4MDA0NzU3MUQ0QzJBNTM1MjhCNw";
+    private static final String AUTH0_KID_2 = "DL_LhIMfNWaGymXRjFEWG";
+
+    private static String readClasspathResourceToString(String path) throws java.io.IOException {
+        try (java.io.InputStream in = DecodedJwtCacheJwtDecoderTest.class.getResourceAsStream(path)) {
+            if (in == null) {
+                throw new java.io.FileNotFoundException("Classpath resource not found: " + path);
+            }
+            return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        }
+    }
+
+    private static JWKSet auth0JwkSet() throws Exception {
+        String json = readClasspathResourceToString("auth0-partner-dev-jwks.json");
+        return JWKSet.parse(json);
+    }
+
+    private static java.security.cert.X509Certificate leafCertificate(JWK key) throws Exception {
+        RSAKey rsaKey = (RSAKey) key;
+        return com.nimbusds.jose.util.X509CertChainUtils.parse(rsaKey.getX509CertChain()).get(0);
+    }
+
+    @Test
+    void cachesJwtsSignedWithRealAuth0PublicKeysWhileBothPresent() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt1 = jwt("token1", AUTH0_KID_1);
+        Jwt jwt2 = jwt("token2", AUTH0_KID_2);
+        when(delegate.decode("token1")).thenReturn(jwt1);
+        when(delegate.decode("token2")).thenReturn(jwt2);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        decoder.notify(refreshCompletedEvent(auth0JwkSet()));
+
+        decoder.decode("token1");
+        decoder.decode("token2");
+        decoder.decode("token1");
+        decoder.decode("token2");
+
+        // both real kids are known -> both get cached and only decoded once each
+        verify(delegate, times(1)).decode("token1");
+        verify(delegate, times(1)).decode("token2");
+    }
+
+    @Test
+    void refreshCompletedWhenRealAuth0KeyIsRotatedAwayEvictsOnlyThatKeysCachedJwt() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt1 = jwt("token1", AUTH0_KID_1);
+        Jwt jwt2 = jwt("token2", AUTH0_KID_2);
+        when(delegate.decode("token1")).thenReturn(jwt1);
+        when(delegate.decode("token2")).thenReturn(jwt2);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        decoder.notify(refreshCompletedEvent(auth0JwkSet()));
+
+        decoder.decode("token1"); // cached under AUTH0_KID_1
+        decoder.decode("token2"); // cached under AUTH0_KID_2
+
+        // Auth0 rotates away the older key (AUTH0_KID_1), keeping only AUTH0_KID_2
+        JWK retainedKey = auth0JwkSet().getKeyByKeyId(AUTH0_KID_2);
+        decoder.notify(refreshCompletedEvent(new JWKSet(retainedKey)));
+
+        decoder.decode("token1"); // AUTH0_KID_1 no longer known -> re-decoded
+        decoder.decode("token2"); // AUTH0_KID_2 still known -> still cached
+
+        verify(delegate, times(2)).decode("token1");
+        verify(delegate, times(1)).decode("token2");
+    }
+
+    @Test
+    void refreshCompletedWithRealAuth0KeyCertRenewalEvictsCachedJwt() throws Exception {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt1 = jwt("token1", AUTH0_KID_2);
+        when(delegate.decode("token1")).thenReturn(jwt1);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        decoder.notify(refreshCompletedEvent(auth0JwkSet()));
+
+        decoder.decode("token1"); // cached under AUTH0_KID_2
+
+        // simulate a certificate renewal that keeps the same kid and RSA key
+        // material (n/e) but replaces the x5c chain / x5t thumbprint, which is
+        // a realistic thing for an IdP to do (e.g. yearly cert reissue against
+        // the same key pair) and is exactly the sort of change a kid-only or
+        // thumbprint-only comparison would miss
+        RSAKey original = (RSAKey) auth0JwkSet().getKeyByKeyId(AUTH0_KID_2);
+        RSAKey renewedCert = new RSAKey.Builder(original)
+                .x509CertChain(null)
+                .x509CertThumbprint(null)
+                .build();
+        decoder.notify(refreshCompletedEvent(new JWKSet(renewedCert)));
+
+        decoder.decode("token1");
+        verify(delegate, times(2)).decode("token1");
+    }
+
+    @Test
+    void refreshCompletedWithUnchangedAuth0JwksIncludingCertValidityKeepsCache() throws Exception {
+        // parse the same fixture independently twice, as if it had been fetched
+        // on two separate (unrelated) JWKS refreshes with no actual key rotation
+        JWKSet firstRefresh = auth0JwkSet();
+        JWKSet secondRefresh = auth0JwkSet();
+
+        // the embedded x5c certificate's notBefore/notAfter validity window is
+        // taken into account (it is part of the x5c bytes compared as part of
+        // the full JWK representation), but since it genuinely did not change
+        // between the two parses, it must not by itself trigger cache eviction
+        java.security.cert.X509Certificate firstCert = leafCertificate(firstRefresh.getKeyByKeyId(AUTH0_KID_2));
+        java.security.cert.X509Certificate secondCert = leafCertificate(secondRefresh.getKeyByKeyId(AUTH0_KID_2));
+        assertEquals(firstCert.getNotBefore(), secondCert.getNotBefore());
+        assertEquals(firstCert.getNotAfter(), secondCert.getNotAfter());
+
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        Jwt jwt1 = jwt("token1", AUTH0_KID_2);
+        when(delegate.decode("token1")).thenReturn(jwt1);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        decoder.notify(refreshCompletedEvent(firstRefresh));
+
+        decoder.decode("token1"); // cached under AUTH0_KID_2
+
+        // refresh completes again with an independently-parsed but content-identical
+        // JWKS (same notBefore/notAfter, same everything else) -> cache is retained
+        decoder.notify(refreshCompletedEvent(secondRefresh));
+
+        decoder.decode("token1");
+        verify(delegate, times(1)).decode("token1");
     }
 
     // -----------------------------------------------------------------------
