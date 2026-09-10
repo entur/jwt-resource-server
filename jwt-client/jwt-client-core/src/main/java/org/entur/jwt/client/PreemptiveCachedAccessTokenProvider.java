@@ -44,7 +44,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
     
     /** do not preemptively refresh before this percentage of a token's lifetime has passed */
     private final int refreshConstraintInPercent;
-    private ScheduledFuture<?> eagerScheduledFuture;
+    private volatile ScheduledFuture<?> eagerScheduledFuture;
     
 
     // cache expire time is used as its fingerprint

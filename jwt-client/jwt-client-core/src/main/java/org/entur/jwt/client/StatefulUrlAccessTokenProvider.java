@@ -28,8 +28,17 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
     protected final int readTimeout;
     protected final ObjectReader reader;
 
+    /**
+     * @deprecated use {@link #StatefulUrlAccessTokenProvider(URL, Map, Map, long, long, URL, URL, long)} instead,
+     * explicitly specifying the call timeout.
+     */
+    @Deprecated
     public StatefulUrlAccessTokenProvider(URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers, long connectTimeout, long readTimeout, URL refreshUrl, URL revokeUrl) {
-        super(issueUrl, parameters, headers, refreshUrl, revokeUrl);
+        this(issueUrl, parameters, headers, connectTimeout, readTimeout, refreshUrl, revokeUrl, DEFAULT_CALL_TIMEOUT_MILLIS);
+    }
+
+    public StatefulUrlAccessTokenProvider(URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers, long connectTimeout, long readTimeout, URL refreshUrl, URL revokeUrl, long callTimeoutMillis) {
+        super(issueUrl, parameters, headers, refreshUrl, revokeUrl, callTimeoutMillis);
 
         checkArgument(connectTimeout > 0 && connectTimeout <= Integer.MAX_VALUE, "Invalid connect timeout value '" + connectTimeout + "'. Must be a positive integer below or equal to " + Integer.MAX_VALUE + ".");
         checkArgument(readTimeout > 0 && readTimeout <= Integer.MAX_VALUE, "Invalid read timeout value '" + readTimeout + "'. Must be a positive integer below or equal to " + Integer.MAX_VALUE + ".");
