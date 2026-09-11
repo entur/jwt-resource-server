@@ -1,7 +1,5 @@
-package org.entur.jwt.spring.grpc.netty;
+package org.entur.jwt.spring.decode;
 
-import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
-import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
