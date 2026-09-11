@@ -68,8 +68,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
                 return;
             }
 
-            String kid = (String)jwt.getHeaders().get("kid");
-            if(kid != null && keyRepresentations.contains(kid)) {
+            if (isKeyKnown(jwt)) {
                 map.put(token, jwt);
             }
         }
@@ -84,6 +83,16 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
 
         public void clear() {
             map.clear();
+        }
+
+        /**
+         * @return true if the JWT's key id is present in this cache's own snapshot of
+         * active key ids ({@link #keyRepresentations}), taken when this cache instance
+         * was created (i.e. as of the last processed JWKS refresh at that time).
+         */
+        protected boolean isKeyKnown(Jwt jwt) {
+            String kid = (String) jwt.getHeaders().get("kid");
+            return kid != null && keyRepresentations.contains(kid);
         }
 
         protected int cleanInvalidJwts() {
@@ -193,8 +202,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         if (scheduledExecutorService == null) {
             scheduledExecutorService = createDefaultScheduledExecutorService();
         }
-        scheduledExecutorService.scheduleWithFixedDelay(this::cleanup,
-                cleanupInterval, cleanupInterval, TimeUnit.MILLISECONDS);
+        scheduledExecutorService.scheduleWithFixedDelay(this::cleanup, cleanupInterval, cleanupInterval, TimeUnit.MILLISECONDS);
     }
 
     public void cleanup() {
@@ -224,10 +232,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         }
 
         Jwt jwt = jwtValidatingDecoder.decode(token); // also validates
-        c.add(token, jwt); // only adds if the keyid is known, otherwise ignored
-
-        // implementation note: if the first JWT also refreshes that JWKs, it will not be cached itself
-        // since that will create a new cache instance (which is not the same as the local copy)
+        this.cache.add(token, jwt); // re-read the live cache; only adds if the keyid is known
 
         return jwt;
     }
@@ -263,6 +268,8 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         if(event instanceof CachingJWKSetSource.RefreshInitiatedEvent<?>) {
             // do nothing
         } else if(event instanceof CachingJWKSetSource.RefreshCompletedEvent<?>) {
+            // this event is fired AFTER the decoder has been updated with the new JWK set
+
             CachingJWKSetSource.RefreshCompletedEvent refreshCompletedEvent = (CachingJWKSetSource.RefreshCompletedEvent) event;
 
             // refresh succeeded; any ongoing outage is over, and this is the new anchor
