@@ -17,11 +17,11 @@ import reactor.core.publisher.Mono;
 public class FastReactiveIssuerAuthenticationManager implements ReactiveAuthenticationManager {
 
     protected final JwtClaimIssuerConverter issuerConverter = new JwtClaimIssuerConverter();
-    protected final IssuerAuthenticationManagerResolver issuerAuthenticationManagerResolver;
+    protected final ReactiveIssuerAuthenticationManagerResolver issuerAuthenticationManagerResolver;
     protected final JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper;
     protected final JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider;
 
-    public FastReactiveIssuerAuthenticationManager(IssuerAuthenticationManagerResolver issuerAuthenticationManagerResolver, JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper, JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider) {
+    public FastReactiveIssuerAuthenticationManager(ReactiveIssuerAuthenticationManagerResolver issuerAuthenticationManagerResolver, JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper, JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider) {
         this.issuerAuthenticationManagerResolver = issuerAuthenticationManagerResolver;
         this.jwtHeaderToIssuerMapper = jwtHeaderToIssuerMapper;
         this.jwtHeaderToIssuerMapperDecider = jwtHeaderToIssuerMapperDecider;

@@ -31,7 +31,7 @@ public class FastReactiveIssuerAuthenticationManagerTest {
         String tokenValue = tokenWithIssuer("kid-a", issuer);
 
         JwtHeaderToIssuerMapper mapper = new JwtHeaderToIssuerMapper();
-        IssuerAuthenticationManagerResolver resolver = mock(IssuerAuthenticationManagerResolver.class);
+        ReactiveIssuerAuthenticationManagerResolver resolver = mock(ReactiveIssuerAuthenticationManagerResolver.class);
         ReactiveAuthenticationManager delegate = mock(ReactiveAuthenticationManager.class);
 
         BearerTokenAuthenticationToken bearerToken = new BearerTokenAuthenticationToken(tokenValue);
@@ -59,7 +59,7 @@ public class FastReactiveIssuerAuthenticationManagerTest {
         JwtHeaderToIssuerMapper mapper = new JwtHeaderToIssuerMapper();
         mapper.add(issuer, cachedToken);
 
-        IssuerAuthenticationManagerResolver resolver = mock(IssuerAuthenticationManagerResolver.class);
+        ReactiveIssuerAuthenticationManagerResolver resolver = mock(ReactiveIssuerAuthenticationManagerResolver.class);
         ReactiveAuthenticationManager delegate = mock(ReactiveAuthenticationManager.class);
 
         BearerTokenAuthenticationToken bearerToken = new BearerTokenAuthenticationToken(malformedTokenWithSameHeader);
@@ -82,7 +82,7 @@ public class FastReactiveIssuerAuthenticationManagerTest {
         String invalidToken = base64Json(Map.of("alg", "RS256", "kid", "kid-a")) + ".x";
 
         JwtHeaderToIssuerMapper mapper = new JwtHeaderToIssuerMapper();
-        IssuerAuthenticationManagerResolver resolver = mock(IssuerAuthenticationManagerResolver.class);
+        ReactiveIssuerAuthenticationManagerResolver resolver = mock(ReactiveIssuerAuthenticationManagerResolver.class);
         FastReactiveIssuerAuthenticationManager manager = new FastReactiveIssuerAuthenticationManager(resolver, mapper, new DefaultJwtHeaderToIssuerMapperDecider());
 
         assertThat(manager.authenticate(new BearerTokenAuthenticationToken(invalidToken))

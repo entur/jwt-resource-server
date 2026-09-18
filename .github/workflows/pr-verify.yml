@@ -13,3 +13,24 @@ jobs:
     # no secrets necessary
     with:
       java-version: 25
+
+  coverage-report:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+      - name: Run tests (all modules)
+        run: mvn -B test
+      - name: Build cross-module coverage report
+        run: .github/scripts/jacoco-flat-report.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-coverage-report
+          path: target/jacoco-flat-report
+          retention-days: 30

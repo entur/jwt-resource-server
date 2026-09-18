@@ -1,7 +1,7 @@
 package org.entur.jwt.spring;
 
-import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
-import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
+import org.entur.jwt.spring.config.ReactiveEnturAuthorizeHttpRequestsCustomizer;
+import org.entur.jwt.spring.config.ReactiveEnturOauth2ResourceServerCustomizer;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.entur.jwt.spring.properties.Auth0Flavour;
@@ -107,7 +107,7 @@ public class JwtWebFluxSecurityAutoConfiguration {
 
             AuthorizationProperties authorization = securityProperties.getAuthorization();
             if (authorization.isEnabled()) {
-                http.authorizeExchange(new EnturAuthorizeHttpRequestsCustomizer(authorization));
+                http.authorizeExchange(new ReactiveEnturAuthorizeHttpRequestsCustomizer(authorization));
             }
 
             return getSecurityWebFilterChain(http);
@@ -126,7 +126,7 @@ public class JwtWebFluxSecurityAutoConfiguration {
 
             AuthorizationProperties authorization = securityProperties.getAuthorization();
             if (authorization.isEnabled()) {
-                http.authorizeExchange(new EnturAuthorizeHttpRequestsCustomizer(authorization));
+                http.authorizeExchange(new ReactiveEnturAuthorizeHttpRequestsCustomizer(authorization));
             }
 
             JwtProperties jwt = securityProperties.getJwt();
@@ -149,7 +149,7 @@ public class JwtWebFluxSecurityAutoConfiguration {
                     jwtAuthorityEnrichers = enrichers;
                 }
 
-                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers, jwtValidators, securityProperties.getJwt().getDecode(), jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider));
+                http.oauth2ResourceServer(new ReactiveEnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers, jwtValidators, securityProperties.getJwt().getDecode(), jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider));
             }
 
             MdcProperties mdc = jwt.getMdc();
