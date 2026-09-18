@@ -4,7 +4,7 @@
 
 * **Ensure the bug was not already reported** by searching on GitHub under [Issues](https://github.com/entur/jwt-resource-server/issues)
 
-* If you're unable to find an open issue addressing the problem, [open a new one](https://github.com/entur/jwt-resource-server/issues/new). Be sure to include a **title and clear description**, a link to a worklow run demonstrating the bug and a description of the expected behavior
+* If you're unable to find an open issue addressing the problem, [open a new one](https://github.com/entur/jwt-resource-server/issues/new). Be sure to include a **title and clear description**, a link to a workflow run demonstrating the bug and a description of the expected behavior
 
 #### **Did you write a patch that fixes a bug?**
 
