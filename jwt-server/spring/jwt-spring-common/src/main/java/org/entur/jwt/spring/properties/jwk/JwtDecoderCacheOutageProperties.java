@@ -33,6 +33,9 @@ public class JwtDecoderCacheOutageProperties {
     }
 
     public void setTimeToLive(long timeToLive) {
+        if (timeToLive < -1) {
+            throw new IllegalArgumentException("timeToLive must be -1 or non-negative");
+        }
         this.timeToLive = timeToLive;
     }
 
