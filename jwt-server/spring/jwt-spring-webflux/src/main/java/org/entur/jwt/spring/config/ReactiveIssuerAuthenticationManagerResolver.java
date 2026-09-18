@@ -8,13 +8,13 @@ import reactor.core.publisher.Mono;
 
 import java.util.Map;
 
-public class IssuerAuthenticationManagerResolver implements ReactiveAuthenticationManagerResolver<String> {
+public class ReactiveIssuerAuthenticationManagerResolver implements ReactiveAuthenticationManagerResolver<String> {
 
-    private static Logger LOGGER = LoggerFactory.getLogger(IssuerAuthenticationManagerResolver.class);
+    private static Logger LOGGER = LoggerFactory.getLogger(ReactiveIssuerAuthenticationManagerResolver.class);
 
     private final Map<String, ReactiveAuthenticationManager> map;
 
-    public IssuerAuthenticationManagerResolver(Map<String, ReactiveAuthenticationManager> map) {
+    public ReactiveIssuerAuthenticationManagerResolver(Map<String, ReactiveAuthenticationManager> map) {
         this.map = map;
     }
 
