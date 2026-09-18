@@ -12,6 +12,6 @@ public class DataTypePredicate<T> implements Predicate<T> {
 
     @Override
     public boolean test(T t) {
-        return t != null && t.getClass().isAssignableFrom(clazz);
+        return clazz.isInstance(t);
     }
 }
