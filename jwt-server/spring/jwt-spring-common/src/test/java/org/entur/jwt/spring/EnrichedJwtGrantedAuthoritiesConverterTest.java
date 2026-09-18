@@ -31,9 +31,7 @@ class EnrichedJwtGrantedAuthoritiesConverterTest {
 
         Collection<GrantedAuthority> authorities = converter.convert(jwt());
 
-        assertEquals(2, authorities.size());
-        assertTrue(authorities.stream().anyMatch(a -> a.getAuthority().equals("FIRST")));
-        assertTrue(authorities.stream().anyMatch(a -> a.getAuthority().equals("SECOND")));
+        assertEquals(List.of("FIRST", "SECOND"), authorities.stream().map(GrantedAuthority::getAuthority).toList());
     }
 
     @Test

@@ -17,18 +17,16 @@ class DataTypePredicateTest {
 
     @Test
     @SuppressWarnings({"unchecked", "rawtypes"})
-    void matchesWhenConfiguredClassIsSubtypeOfActualValueType() {
-        // The predicate checks t.getClass().isAssignableFrom(clazz), i.e. whether the
-        // configured class is a subtype of (or equal to) the actual runtime type of t.
+    void doesNotMatchWhenActualValueTypeIsNotSubtypeOfConfiguredClass() {
         Predicate<Object> predicate = new DataTypePredicate(String.class);
-        assertTrue(predicate.test(new Object()));
+        assertFalse(predicate.test(new Object()));
     }
 
     @Test
     @SuppressWarnings({"unchecked", "rawtypes"})
-    void doesNotMatchWhenConfiguredClassIsNotSubtypeOfActualValueType() {
+    void matchesWhenActualValueTypeIsSubtypeOfConfiguredClass() {
         Predicate<Object> predicate = new DataTypePredicate(Object.class);
-        assertFalse(predicate.test("hello"));
+        assertTrue(predicate.test("hello"));
     }
 
     @Test

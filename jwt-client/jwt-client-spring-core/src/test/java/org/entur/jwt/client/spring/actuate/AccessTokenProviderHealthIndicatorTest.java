@@ -9,9 +9,12 @@ import org.springframework.boot.health.contributor.Status;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -98,19 +101,24 @@ public class AccessTokenProviderHealthIndicatorTest {
     public void testDoesNotStartConcurrentRefreshWhileOneIsInProgress() throws InterruptedException {
         AccessTokenProviderHealthIndicator indicator = newIndicator();
 
+        CountDownLatch refreshStarted = new CountDownLatch(1);
+        CountDownLatch finishRefresh = new CountDownLatch(1);
         AccessTokenHealthProvider slowProvider = mock(AccessTokenHealthProvider.class);
         when(slowProvider.getHealth(false)).thenReturn(new AccessTokenHealth(System.currentTimeMillis(), false));
         when(slowProvider.getHealth(true)).thenAnswer(invocation -> {
-            Thread.sleep(200);
+            refreshStarted.countDown();
+            finishRefresh.await();
             return new AccessTokenHealth(System.currentTimeMillis(), true);
         });
 
         indicator.addHealthIndicators("a", slowProvider);
 
-        // triggers a background refresh that will take 200ms
+        // triggers a background refresh that remains blocked until the second health check
         assertEquals(Status.DOWN, indicator.health().getStatus());
+        assertTrue(refreshStarted.await(2, TimeUnit.SECONDS));
         // called again while the previous refresh is still running: must not start a second one
         assertEquals(Status.DOWN, indicator.health().getStatus());
+        finishRefresh.countDown();
 
         waitUntilIdle(indicator);
 
