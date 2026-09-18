@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Cold-start HTTP request benchmark, with the decoded-JWT cache <b>disabled</b>,
  * approximating {@code master} behaviour (which has no decoded-JWT cache at all). There
  * is no warm-up phase at all: the very first request is the very first thing timed. A
- * single continuous run of back-to-back requests is made, round-robin across a pool of 30
+ * single continuous run of back-to-back requests is made, round-robin across a pool of 20
  * tokens (a realistic number of distinct client tokens seen concurrently in production),
  * and throughput is reported at cumulative wall-clock checkpoints of 1, 2, 3, 4, 5, 10
  * and 15 seconds - both the throughput of that individual segment and the cumulative
@@ -53,12 +53,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 })
 public class DecodedJwtCacheHttpBenchmarkColdStartNoCacheTest extends AbstractActuatorTest {
 
-    private static final int[] CHECKPOINT_SECONDS = {1, 2, 3, 4, 5, 10, 15};
+    private static final int[] CHECKPOINT_SECONDS = {1, 2, 3, 4, 5, 10, 15, 30, 60};
 
-    // 15 parallel clients, 2 tokens each (30 tokens total) - matches abt-core's observed
-    // peak (08:00/16:00) concurrent client count, per Entur Compass, with each client
-    // presenting 2 distinct tokens
-    private static final int CLIENTS = 15;
+    // 10 parallel clients, 2 tokens each (20 tokens total) - reduced from abt-core's
+    // observed peak (08:00/16:00) concurrent client count, per Entur Compass, to
+    // investigate throughput scaling with fewer concurrent clients
+    private static final int CLIENTS = 10;
     private static final int TOKENS_PER_CLIENT = 2;
 
     @LocalServerPort
@@ -69,6 +69,8 @@ public class DecodedJwtCacheHttpBenchmarkColdStartNoCacheTest extends AbstractAc
 
     @BeforeEach
     public void readinessProbe() throws Exception {
+        HttpBenchmarkSupport.assertJacocoAgentDisabled();
+
         // make sure JWKs are loaded before timing anything - this is not itself part of
         // the "cold start", it merely establishes the same server-side readiness as the
         // other benchmarks in this package
@@ -108,19 +110,9 @@ public class DecodedJwtCacheHttpBenchmarkColdStartNoCacheTest extends AbstractAc
             @AccessToken(by = "a", audience = "mock.my.audience", scope = "17") String token17,
             @AccessToken(by = "a", audience = "mock.my.audience", scope = "18") String token18,
             @AccessToken(by = "a", audience = "mock.my.audience", scope = "19") String token19,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "20") String token20,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "21") String token21,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "22") String token22,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "23") String token23,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "24") String token24,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "25") String token25,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "26") String token26,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "27") String token27,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "28") String token28,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "29") String token29,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "30") String token30) {
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "20") String token20) {
 
-        String[] tokens = {token1, token2, token3, token4, token5, token6, token7, token8, token9, token10, token11, token12, token13, token14, token15, token16, token17, token18, token19, token20, token21, token22, token23, token24, token25, token26, token27, token28, token29, token30};
+        String[] tokens = {token1, token2, token3, token4, token5, token6, token7, token8, token9, token10, token11, token12, token13, token14, token15, token16, token17, token18, token19, token20};
 
         HttpBenchmarkSupport.HttpCall[] calls = new HttpBenchmarkSupport.HttpCall[CLIENTS];
         for (int c = 0; c < CLIENTS; c++) {

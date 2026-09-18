@@ -68,10 +68,10 @@ public class DecodedJwtCacheHttpBenchmarkCachedTest extends AbstractActuatorTest
     private static final int WARMUP_REQUESTS = 20_000;
     private static final int REQUESTS = 10_000;
 
-    // 15 parallel clients, 2 tokens each (30 tokens total) - matches abt-core's observed
-    // peak (08:00/16:00) concurrent client count, per Entur Compass, with each client
-    // presenting 2 distinct tokens
-    private static final int CLIENTS = 15;
+    // 10 parallel clients, 2 tokens each (20 tokens total) - reduced from abt-core's
+    // observed peak (08:00/16:00) concurrent client count, per Entur Compass, to
+    // investigate throughput scaling with fewer concurrent clients
+    private static final int CLIENTS = 10;
     private static final int TOKENS_PER_CLIENT = 2;
 
     @LocalServerPort
@@ -85,6 +85,8 @@ public class DecodedJwtCacheHttpBenchmarkCachedTest extends AbstractActuatorTest
 
     @BeforeEach
     public void readinessProbe() throws Exception {
+        HttpBenchmarkSupport.assertJacocoAgentDisabled();
+
         // make sure JWKs are loaded before timing anything
         HttpHeaders headers = new HttpHeaders();
         HttpEntity<String> entity = new HttpEntity<>(headers);
@@ -142,19 +144,9 @@ public class DecodedJwtCacheHttpBenchmarkCachedTest extends AbstractActuatorTest
             @AccessToken(by = "a", audience = "mock.my.audience", scope = "17") String token17,
             @AccessToken(by = "a", audience = "mock.my.audience", scope = "18") String token18,
             @AccessToken(by = "a", audience = "mock.my.audience", scope = "19") String token19,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "20") String token20,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "21") String token21,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "22") String token22,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "23") String token23,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "24") String token24,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "25") String token25,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "26") String token26,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "27") String token27,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "28") String token28,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "29") String token29,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "30") String token30) {
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "20") String token20) {
 
-        String[] tokens = {token1, token2, token3, token4, token5, token6, token7, token8, token9, token10, token11, token12, token13, token14, token15, token16, token17, token18, token19, token20, token21, token22, token23, token24, token25, token26, token27, token28, token29, token30};
+        String[] tokens = {token1, token2, token3, token4, token5, token6, token7, token8, token9, token10, token11, token12, token13, token14, token15, token16, token17, token18, token19, token20};
 
         HttpBenchmarkSupport.HttpCall[] calls = new HttpBenchmarkSupport.HttpCall[CLIENTS];
         for (int c = 0; c < CLIENTS; c++) {

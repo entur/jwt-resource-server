@@ -1,5 +1,6 @@
 package org.entur.jwt.spring.grpc.perf;
 
+import java.lang.management.ManagementFactory;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -25,6 +26,21 @@ final class GrpcBenchmarkSupport {
     }
 
     private GrpcBenchmarkSupport() {
+    }
+
+    /**
+     * Fails fast if the JaCoCo instrumentation agent is attached to this JVM: coverage
+     * instrumentation adds substantial, uneven per-call overhead that invalidates timing
+     * measurements. Run with {@code -Djacoco.skip=true} (or otherwise without the agent).
+     */
+    static void assertJacocoAgentDisabled() {
+        boolean jacocoActive = ManagementFactory.getRuntimeMXBean().getInputArguments().stream()
+                .anyMatch(arg -> arg.contains("jacoco"));
+        if (jacocoActive) {
+            throw new IllegalStateException(
+                    "JaCoCo agent is attached to this JVM - re-run with -Djacoco.skip=true, "
+                            + "coverage instrumentation invalidates benchmark timings");
+        }
     }
 
     /**
