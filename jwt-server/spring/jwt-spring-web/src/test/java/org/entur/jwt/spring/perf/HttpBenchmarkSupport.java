@@ -1,7 +1,17 @@
 package org.entur.jwt.spring.perf;
 
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * Shared timing helper for the HTTP back-to-back-request benchmarks in this package.
+ * <p>
+ * All measurements here run one dedicated client thread per token (each with its own
+ * {@code HttpClient}/connection), all synchronized to start at the same instant via a
+ * {@link CyclicBarrier}, so the numbers reflect real concurrent client load rather than
+ * a single thread round-robining across tokens.
  */
 final class HttpBenchmarkSupport {
 
@@ -16,68 +26,148 @@ final class HttpBenchmarkSupport {
     }
 
     /**
-     * Issues {@code requests} real HTTP requests back to back (after a warm-up phase of
-     * {@code warmup} requests, to let the JIT and connection pool settle), then reports
-     * average per-request latency and throughput.
+     * Runs {@code calls.length} client threads in parallel (one dedicated call/client
+     * per thread), each issuing {@code requestsPerClient} back-to-back requests (after
+     * an independent {@code warmupPerClient}-request warm-up), all starting at the same
+     * instant. Reports aggregate throughput across all client threads combined.
      */
-    static Stats measure(String label, int requests, int warmup, HttpCall call) {
-        for (int i = 0; i < warmup; i++) {
-            call.request(i);
+    static Stats measureParallel(String label, int requestsPerClient, int warmupPerClient, HttpCall[] calls) {
+        int clients = calls.length;
+        CyclicBarrier barrier = new CyclicBarrier(clients);
+        Thread[] threads = new Thread[clients];
+        long[] durationsNanos = new long[clients];
+
+        for (int c = 0; c < clients; c++) {
+            int idx = c;
+            threads[c] = new Thread(() -> {
+                for (int i = 0; i < warmupPerClient; i++) {
+                    calls[idx].request(i);
+                }
+                await(barrier);
+                long start = System.nanoTime();
+                for (int i = 0; i < requestsPerClient; i++) {
+                    calls[idx].request(i);
+                }
+                durationsNanos[idx] = System.nanoTime() - start;
+            }, "http-bench-client-" + c);
         }
 
-        long start = System.nanoTime();
-        for (int i = 0; i < requests; i++) {
-            call.request(i);
+        for (Thread t : threads) {
+            t.start();
         }
-        long durationNanos = System.nanoTime() - start;
+        for (Thread t : threads) {
+            join(t);
+        }
 
-        double avgLatencyMicros = (durationNanos / 1000.0) / requests;
-        double opsPerSecond = requests / (durationNanos / 1_000_000_000.0);
+        long maxDurationNanos = 0;
+        for (long d : durationsNanos) {
+            maxDurationNanos = Math.max(maxDurationNanos, d);
+        }
 
-        System.out.printf("[%s] %.1f us/request, %.0f requests/sec (%d requests back to back)%n",
-                label, avgLatencyMicros, opsPerSecond, requests);
+        long totalRequests = (long) requestsPerClient * clients;
+        double avgLatencyMicros = (maxDurationNanos / 1000.0) / requestsPerClient;
+        double opsPerSecond = totalRequests / (maxDurationNanos / 1_000_000_000.0);
+
+        System.out.printf(
+                "[%s] %d parallel client(s), %.1f us/request (per client), %.0f requests/sec aggregate (%,d requests total)%n",
+                label, clients, avgLatencyMicros, opsPerSecond, totalRequests);
 
         return new Stats(label, avgLatencyMicros, opsPerSecond);
     }
 
     /**
-     * Issues real HTTP requests back to back starting from a completely cold state (no
-     * warm-up at all), for a single continuous run, reporting throughput at each
-     * cumulative wall-clock checkpoint in {@code checkpointSeconds} (e.g.
-     * {@code {1, 2, 3, 4, 5, 10, 15}}). For each checkpoint this logs both the
-     * throughput of that individual segment (since the previous checkpoint) and the
-     * cumulative throughput since the very first request, so the cache warm-up curve is
-     * visible within a single run.
+     * Runs {@code calls.length} client threads in parallel (one dedicated call/client
+     * per thread), each hammering the endpoint continuously starting from a completely
+     * cold state (no warm-up at all), all synchronized to start at the same instant.
+     * Reports the throughput of each individual segment (since the previous checkpoint,
+     * not cumulative since the start of the run), summed across all client threads, at
+     * each wall-clock checkpoint in {@code checkpointSeconds} (e.g.
+     * {@code {1, 2, 3, 4, 5, 10, 15}}), so the cache warm-up curve is visible within a
+     * single run.
      */
-    static void measureColdStartIntervals(String label, int[] checkpointSeconds, HttpCall call) {
+    static void measureColdStartIntervalsParallel(String label, int[] checkpointSeconds, HttpCall[] calls) {
+        int clients = calls.length;
+        AtomicInteger[] counters = new AtomicInteger[clients];
+        for (int c = 0; c < clients; c++) {
+            counters[c] = new AtomicInteger();
+        }
+        AtomicBoolean stop = new AtomicBoolean(false);
+        CyclicBarrier barrier = new CyclicBarrier(clients + 1);
+
+        Thread[] threads = new Thread[clients];
+        for (int c = 0; c < clients; c++) {
+            int idx = c;
+            threads[c] = new Thread(() -> {
+                await(barrier);
+                int i = 0;
+                while (!stop.get()) {
+                    calls[idx].request(i++);
+                    counters[idx].incrementAndGet();
+                }
+            }, "http-bench-client-" + c);
+            threads[c].start();
+        }
+
+        await(barrier);
         long runStart = System.nanoTime();
         long segmentStart = runStart;
-        int callIndex = 0;
-        int callsAtSegmentStart = 0;
+        int[] callsAtSegmentStart = new int[clients];
 
         for (int checkpointSecond : checkpointSeconds) {
             long checkpointNanos = runStart + checkpointSecond * 1_000_000_000L;
-
-            while (System.nanoTime() < checkpointNanos) {
-                call.request(callIndex++);
-            }
+            sleepUntil(checkpointNanos);
 
             long now = System.nanoTime();
+            int segmentCalls = 0;
+            for (int c = 0; c < clients; c++) {
+                int current = counters[c].get();
+                segmentCalls += current - callsAtSegmentStart[c];
+                callsAtSegmentStart[c] = current;
+            }
 
-            int segmentCalls = callIndex - callsAtSegmentStart;
             double segmentSeconds = (now - segmentStart) / 1_000_000_000.0;
             double segmentOpsPerSecond = segmentCalls / segmentSeconds;
 
-            double cumulativeSeconds = (now - runStart) / 1_000_000_000.0;
-            double cumulativeOpsPerSecond = callIndex / cumulativeSeconds;
-
             System.out.printf(
-                    "[%s] t=%ds: segment %,d requests in %.2fs (%.0f requests/sec), cumulative %,d requests in %.2fs (%.0f requests/sec)%n",
-                    label, checkpointSecond, segmentCalls, segmentSeconds, segmentOpsPerSecond,
-                    callIndex, cumulativeSeconds, cumulativeOpsPerSecond);
+                    "[%s] t=%ds: %d parallel clients, segment %,d requests in %.2fs (%.0f requests/sec)%n",
+                    label, checkpointSecond, clients, segmentCalls, segmentSeconds, segmentOpsPerSecond);
 
             segmentStart = now;
-            callsAtSegmentStart = callIndex;
+        }
+
+        stop.set(true);
+        for (Thread t : threads) {
+            join(t);
+        }
+    }
+
+    private static void await(CyclicBarrier barrier) {
+        try {
+            barrier.await();
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static void join(Thread t) {
+        try {
+            t.join();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static void sleepUntil(long targetNanoTime) {
+        long remaining = targetNanoTime - System.nanoTime();
+        if (remaining <= 0) {
+            return;
+        }
+        try {
+            TimeUnit.NANOSECONDS.sleep(remaining);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
         }
     }
 }

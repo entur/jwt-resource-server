@@ -5,7 +5,6 @@ import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.spring.actuate.AbstractActuatorTest;
 import org.entur.jwt.spring.decode.ClosableJwtDecoders;
 import org.entur.jwt.spring.decode.cache.DecodedJwtCacheJwtDecoder;
-import org.entur.jwt.spring.rest.Greeting;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
@@ -32,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Cold-start HTTP request benchmark, with the decoded-JWT cache <b>enabled</b>. Unlike
  * {@link DecodedJwtCacheHttpBenchmarkCachedTest}, there is no warm-up phase at all: the
  * very first request is the very first thing timed. A single continuous run of
- * back-to-back requests is made, round-robin across a pool of 20 tokens (a realistic
+ * back-to-back requests is made, round-robin across a pool of 30 tokens (a realistic
  * number of distinct client tokens seen concurrently in production), and throughput is reported at
  * cumulative wall-clock checkpoints of 1, 2, 3, 4, 5, 10 and 15 seconds - both the
  * throughput of that individual segment and the cumulative throughput since the first
@@ -61,6 +60,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class DecodedJwtCacheHttpBenchmarkColdStartCachedTest extends AbstractActuatorTest {
 
     private static final int[] CHECKPOINT_SECONDS = {1, 2, 3, 4, 5, 10, 15};
+
+    // 15 parallel clients, 2 tokens each (30 tokens total) - matches abt-core's observed
+    // peak (08:00/16:00) concurrent client count, per Entur Compass, with each client
+    // presenting 2 distinct tokens
+    private static final int CLIENTS = 15;
+    private static final int TOKENS_PER_CLIENT = 2;
 
     @LocalServerPort
     private int randomServerPort;
@@ -116,23 +121,33 @@ public class DecodedJwtCacheHttpBenchmarkColdStartCachedTest extends AbstractAct
             @AccessToken(by = "a", audience = "mock.my.audience", scope = "17") String token17,
             @AccessToken(by = "a", audience = "mock.my.audience", scope = "18") String token18,
             @AccessToken(by = "a", audience = "mock.my.audience", scope = "19") String token19,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "20") String token20) {
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "20") String token20,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "21") String token21,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "22") String token22,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "23") String token23,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "24") String token24,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "25") String token25,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "26") String token26,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "27") String token27,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "28") String token28,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "29") String token29,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "30") String token30) {
 
-        String[] tokens = {token1, token2, token3, token4, token5, token6, token7, token8, token9, token10, token11, token12, token13, token14, token15, token16, token17, token18, token19, token20};
+        String[] tokens = {token1, token2, token3, token4, token5, token6, token7, token8, token9, token10, token11, token12, token13, token14, token15, token16, token17, token18, token19, token20, token21, token22, token23, token24, token25, token26, token27, token28, token29, token30};
 
-        HttpBenchmarkSupport.measureColdStartIntervals(
-                "decoded-JWT cache enabled, cold start, pool of 20 tokens reused round-robin",
-                CHECKPOINT_SECONDS, i -> assertProtectedRequestSucceeds(tokens[i % tokens.length]));
-    }
+        HttpBenchmarkSupport.HttpCall[] calls = new HttpBenchmarkSupport.HttpCall[CLIENTS];
+        for (int c = 0; c < CLIENTS; c++) {
+            RawHttpClientSupport client = new RawHttpClientSupport();
+            String[] clientTokens = new String[TOKENS_PER_CLIENT];
+            for (int t = 0; t < TOKENS_PER_CLIENT; t++) {
+                clientTokens[t] = tokens[c * TOKENS_PER_CLIENT + t];
+            }
+            calls[c] = i -> client.assertProtectedRequestSucceeds(randomServerPort, clientTokens[i % clientTokens.length], "Hello protected");
+        }
 
-    private void assertProtectedRequestSucceeds(String token) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", token);
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-
-        String url = "http://localhost:" + randomServerPort + "/protected";
-        ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
-
-        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+        HttpBenchmarkSupport.measureColdStartIntervalsParallel(
+                "decoded-JWT cache enabled, cold start, " + CLIENTS + " parallel clients, " + TOKENS_PER_CLIENT
+                        + " tokens each (" + tokens.length + " tokens total)",
+                CHECKPOINT_SECONDS, calls);
     }
 }

@@ -3,7 +3,6 @@ package org.entur.jwt.spring.perf;
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.spring.actuate.AbstractActuatorTest;
-import org.entur.jwt.spring.rest.Greeting;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
@@ -64,6 +63,12 @@ public class DecodedJwtCacheHttpBenchmarkNoCacheTest extends AbstractActuatorTes
     private static final int WARMUP_REQUESTS = 20_000;
     private static final int REQUESTS = 10_000;
 
+    // 15 parallel clients, 2 tokens each (30 tokens total) - matches abt-core's observed
+    // peak (08:00/16:00) concurrent client count, per Entur Compass, with each client
+    // presenting 2 distinct tokens
+    private static final int CLIENTS = 15;
+    private static final int TOKENS_PER_CLIENT = 2;
+
     @LocalServerPort
     private int randomServerPort;
 
@@ -91,9 +96,14 @@ public class DecodedJwtCacheHttpBenchmarkNoCacheTest extends AbstractActuatorTes
     @Test
     @Order(1)
     public void singleTokenReused(@AccessToken(by = "a", audience = "mock.my.audience") String token) {
-        HttpBenchmarkSupport.Stats stats = HttpBenchmarkSupport.measure(
+        RawHttpClientSupport client = new RawHttpClientSupport();
+        HttpBenchmarkSupport.HttpCall[] calls = {
+                i -> client.assertProtectedRequestSucceeds(randomServerPort, token, "Hello protected")
+        };
+
+        HttpBenchmarkSupport.Stats stats = HttpBenchmarkSupport.measureParallel(
                 "no decoded-JWT cache, single token reused",
-                REQUESTS, WARMUP_REQUESTS, i -> assertProtectedRequestSucceeds(token));
+                REQUESTS, WARMUP_REQUESTS, calls);
 
         assertTrue(stats.opsPerSecond() > 0);
     }
@@ -105,25 +115,50 @@ public class DecodedJwtCacheHttpBenchmarkNoCacheTest extends AbstractActuatorTes
             @AccessToken(by = "a", audience = "mock.my.audience", scope = "2") String token2,
             @AccessToken(by = "a", audience = "mock.my.audience", scope = "3") String token3,
             @AccessToken(by = "a", audience = "mock.my.audience", scope = "4") String token4,
-            @AccessToken(by = "a", audience = "mock.my.audience", scope = "5") String token5) {
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "5") String token5,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "6") String token6,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "7") String token7,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "8") String token8,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "9") String token9,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "10") String token10,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "11") String token11,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "12") String token12,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "13") String token13,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "14") String token14,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "15") String token15,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "16") String token16,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "17") String token17,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "18") String token18,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "19") String token19,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "20") String token20,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "21") String token21,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "22") String token22,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "23") String token23,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "24") String token24,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "25") String token25,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "26") String token26,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "27") String token27,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "28") String token28,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "29") String token29,
+            @AccessToken(by = "a", audience = "mock.my.audience", scope = "30") String token30) {
 
-        String[] tokens = {token1, token2, token3, token4, token5};
+        String[] tokens = {token1, token2, token3, token4, token5, token6, token7, token8, token9, token10, token11, token12, token13, token14, token15, token16, token17, token18, token19, token20, token21, token22, token23, token24, token25, token26, token27, token28, token29, token30};
 
-        HttpBenchmarkSupport.Stats stats = HttpBenchmarkSupport.measure(
-                "no decoded-JWT cache, pool of " + tokens.length + " tokens reused round-robin",
-                REQUESTS, WARMUP_REQUESTS, i -> assertProtectedRequestSucceeds(tokens[i % tokens.length]));
+        HttpBenchmarkSupport.HttpCall[] calls = new HttpBenchmarkSupport.HttpCall[CLIENTS];
+        for (int c = 0; c < CLIENTS; c++) {
+            RawHttpClientSupport client = new RawHttpClientSupport();
+            String[] clientTokens = new String[TOKENS_PER_CLIENT];
+            for (int t = 0; t < TOKENS_PER_CLIENT; t++) {
+                clientTokens[t] = tokens[c * TOKENS_PER_CLIENT + t];
+            }
+            calls[c] = i -> client.assertProtectedRequestSucceeds(randomServerPort, clientTokens[i % clientTokens.length], "Hello protected");
+        }
+
+        HttpBenchmarkSupport.Stats stats = HttpBenchmarkSupport.measureParallel(
+                "no decoded-JWT cache, " + CLIENTS + " parallel clients, " + TOKENS_PER_CLIENT + " tokens each ("
+                        + tokens.length + " tokens total)",
+                REQUESTS, WARMUP_REQUESTS, calls);
 
         assertTrue(stats.opsPerSecond() > 0);
-    }
-
-    private void assertProtectedRequestSucceeds(String token) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", token);
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-
-        String url = "http://localhost:" + randomServerPort + "/protected";
-        ResponseEntity<Greeting> response = restTemplate.exchange(url, HttpMethod.GET, entity, Greeting.class);
-
-        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
     }
 }
