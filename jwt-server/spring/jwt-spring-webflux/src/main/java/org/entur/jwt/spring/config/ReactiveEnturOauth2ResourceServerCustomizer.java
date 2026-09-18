@@ -40,9 +40,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHttpSecurity.OAuth2ResourceServerSpec> {
+public class ReactiveEnturOauth2ResourceServerCustomizer implements Customizer<ServerHttpSecurity.OAuth2ResourceServerSpec> {
 
-    private static Logger LOGGER = LoggerFactory.getLogger(EnturOauth2ResourceServerCustomizer.class);
+    private static Logger LOGGER = LoggerFactory.getLogger(ReactiveEnturOauth2ResourceServerCustomizer.class);
 
     private final Map<String, JWKSource> jwkSources;
     private final List<JwtAuthorityEnricher> jwtAuthorityEnrichers;
@@ -51,11 +51,11 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHtt
     private final JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper;
     private final JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider;
 
-    public EnturOauth2ResourceServerCustomizer(Map<String, JWKSource> jwkSources, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators, JwtDecodeProperties properties) {
+    public ReactiveEnturOauth2ResourceServerCustomizer(Map<String, JWKSource> jwkSources, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators, JwtDecodeProperties properties) {
         this(jwkSources, jwtAuthorityEnrichers, jwtValidators, properties, null, null);
     }
 
-    public EnturOauth2ResourceServerCustomizer(Map<String, JWKSource> jwkSources, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators,
+    public ReactiveEnturOauth2ResourceServerCustomizer(Map<String, JWKSource> jwkSources, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators,
                                                JwtDecodeProperties properties,
                                                JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper,
                                                JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider
@@ -106,7 +106,7 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<ServerHtt
             Mono<ReactiveAuthenticationManager> authenticationManager = Mono.just(next);
             configurer.authenticationManagerResolver(request -> authenticationManager);
         } else {
-            IssuerAuthenticationManagerResolver issuer = new IssuerAuthenticationManagerResolver(map);
+            ReactiveIssuerAuthenticationManagerResolver issuer = new ReactiveIssuerAuthenticationManagerResolver(map);
 
             if(properties.getHeader().getMapToIssuer().isEnabled()) {
                 if(jwtHeaderToIssuerMapper == null) {

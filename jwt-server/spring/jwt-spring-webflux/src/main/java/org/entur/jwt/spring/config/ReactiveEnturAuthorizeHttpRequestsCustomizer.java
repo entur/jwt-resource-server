@@ -13,13 +13,13 @@ import org.springframework.security.config.web.server.ServerHttpSecurity;
  * Default authorization. Extracted into its own class to allow for customization / override.
  */
 
-public class EnturAuthorizeHttpRequestsCustomizer implements Customizer<ServerHttpSecurity.AuthorizeExchangeSpec> {
+public class ReactiveEnturAuthorizeHttpRequestsCustomizer implements Customizer<ServerHttpSecurity.AuthorizeExchangeSpec> {
 
-    private static final Logger log = LoggerFactory.getLogger(EnturAuthorizeHttpRequestsCustomizer.class);
+    private static final Logger log = LoggerFactory.getLogger(ReactiveEnturAuthorizeHttpRequestsCustomizer.class);
 
     private final AuthorizationProperties authorizationProperties;
 
-    public EnturAuthorizeHttpRequestsCustomizer(AuthorizationProperties authorizationProperties) {
+    public ReactiveEnturAuthorizeHttpRequestsCustomizer(AuthorizationProperties authorizationProperties) {
         this.authorizationProperties = authorizationProperties;
     }
 
