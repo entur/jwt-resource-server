@@ -478,6 +478,21 @@
 				</executions>
 			</plugin>
 			<plugin>
+				<!--
+					NOTE: jacoco:report-aggregate is intentionally NOT bound here.
+					It requires the aggregating module to declare real <dependencies>
+					on every reactor module it aggregates, but this is the root
+					(parent) POM: adding such <dependencies> here would be inherited
+					by every child module and break the build (self-referencing /
+					missing-version errors). Without those dependency edges,
+					report-aggregate silently produces an empty "0 of 0" report, so
+					it was removed instead of being left in a broken state.
+
+					Cross-module coverage (e.g. jwt-spring-web/jwt-spring-webflux
+					exercising jwt-spring-common) is instead computed in CI using the
+					jacococli.jar CLI report goal across all modules' exec/class/source
+					directories - see .github/workflows/master-verify.yml.
+				-->
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 				<version>${jacoco-maven-plugin.version}</version>
@@ -491,10 +506,10 @@
 					</execution>
 					<execution>
 						<id>report</id>
-						<goals>
-							<goal>report-aggregate</goal>
-						</goals>
 						<phase>verify</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
 					</execution>
 				</executions>
 			</plugin>
