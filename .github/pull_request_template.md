@@ -24,6 +24,6 @@
 <!-- Check off when the items are fulfilled -->
 
 - [ ] The PR title follows [Conventional Commits](https://www.conventionalcommits.org/)
-- [ ] .github/README.md is updated if relevant
+- [ ] Relevant README documentation is updated if needed
 - [ ] Unit tests are updated if relevant
 - [ ] No secrets, project IDs or other sensitive values are hardcoded
