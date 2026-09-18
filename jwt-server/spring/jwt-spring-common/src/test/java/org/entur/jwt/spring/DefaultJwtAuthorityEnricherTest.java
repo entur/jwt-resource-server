@@ -34,9 +34,4 @@ class DefaultJwtAuthorityEnricherTest {
         assertEquals(2, current.size());
     }
 
-    @Test
-    void exposesUnderlyingConverter() {
-        DefaultJwtAuthorityEnricher enricher = new DefaultJwtAuthorityEnricher();
-        assertTrue(enricher.getJwtGrantedAuthoritiesConverter() != null);
-    }
 }

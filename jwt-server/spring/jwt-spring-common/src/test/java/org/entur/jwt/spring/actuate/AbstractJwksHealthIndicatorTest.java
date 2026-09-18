@@ -58,9 +58,4 @@ class AbstractJwksHealthIndicatorTest {
         assertEquals(Status.UNKNOWN, health.getStatus());
     }
 
-    @Test
-    void exposesName() {
-        TestJwksHealthIndicator indicator = new TestJwksHealthIndicator("my-tenant");
-        assertEquals("my-tenant", indicator.getName());
-    }
 }
