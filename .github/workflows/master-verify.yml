@@ -28,7 +28,7 @@ jobs:
         run: mvn -B test
       - name: Build cross-module coverage report
         run: .github/scripts/jacoco-flat-report.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: jacoco-coverage-report
           path: target/jacoco-flat-report
