@@ -1,4 +1,5 @@
 # CHANGELOG
+ - 6.1.0: BREAKING: renamed jwt-spring-webflux's `EnturAuthorizeHttpRequestsCustomizer`, `EnturOauth2ResourceServerCustomizer` and `IssuerAuthenticationManagerResolver` to `ReactiveEnturAuthorizeHttpRequestsCustomizer`, `ReactiveEnturOauth2ResourceServerCustomizer` and `ReactiveIssuerAuthenticationManagerResolver` to resolve class name collisions with jwt-spring-web that prevented accurate code coverage reporting. Update any overrides/references to these classes accordingly.
  - 6.0.0: Spring Boot 4 and Spring gRPC
  - 5.2.1: Adjust logging; less info more debug.
  - 5.2.0: Improve Spring unit testing.
