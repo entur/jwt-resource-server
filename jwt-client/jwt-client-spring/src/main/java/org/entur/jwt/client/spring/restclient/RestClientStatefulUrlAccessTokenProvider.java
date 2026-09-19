@@ -33,8 +33,17 @@ public class RestClientStatefulUrlAccessTokenProvider extends AbstractStatefulUr
 
     protected final RestClient restClient;
 
+    /**
+     * @deprecated use {@link #RestClientStatefulUrlAccessTokenProvider(RestClient, URL, Map, Map, URL, URL, long)}
+     * instead, explicitly specifying the call timeout.
+     */
+    @Deprecated
     public RestClientStatefulUrlAccessTokenProvider(RestClient restClient, URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers, URL refreshUrl, URL revokeUrl) {
-        super(issueUrl, parameters, headers, refreshUrl, revokeUrl);
+        this(restClient, issueUrl, parameters, headers, refreshUrl, revokeUrl, DEFAULT_CALL_TIMEOUT_MILLIS);
+    }
+
+    public RestClientStatefulUrlAccessTokenProvider(RestClient restClient, URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers, URL refreshUrl, URL revokeUrl, long callTimeoutMillis) {
+        super(issueUrl, parameters, headers, refreshUrl, revokeUrl, callTimeoutMillis);
         this.restClient = restClient;
     }
 

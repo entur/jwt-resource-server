@@ -35,8 +35,17 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
 
     protected final WebClient webClient;
 
+    /**
+     * @deprecated use {@link #WebClientStatefulUrlAccessTokenProvider(WebClient, URL, Map, Map, URL, URL, long)}
+     * instead, explicitly specifying the call timeout.
+     */
+    @Deprecated
     public WebClientStatefulUrlAccessTokenProvider(WebClient webClient, URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers, URL refreshUrl, URL revokeUrl) {
-        super(issueUrl, parameters, headers, refreshUrl, revokeUrl);
+        this(webClient, issueUrl, parameters, headers, refreshUrl, revokeUrl, DEFAULT_CALL_TIMEOUT_MILLIS);
+    }
+
+    public WebClientStatefulUrlAccessTokenProvider(WebClient webClient, URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers, URL refreshUrl, URL revokeUrl, long callTimeoutMillis) {
+        super(issueUrl, parameters, headers, refreshUrl, revokeUrl, callTimeoutMillis);
         this.webClient = webClient;
     }
 
