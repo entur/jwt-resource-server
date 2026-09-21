@@ -96,7 +96,7 @@
 		<maven-deploy-plugin.version>3.1.4</maven-deploy-plugin.version>
 
 		<os-maven-plugin.version>1.7.1</os-maven-plugin.version>
-		<protobuf-maven-plugin.version>5.1.8</protobuf-maven-plugin.version>
+		<protobuf-maven-plugin.version>5.1.9</protobuf-maven-plugin.version>
 	</properties>
 
 	<dependencyManagement>
