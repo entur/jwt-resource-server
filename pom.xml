@@ -93,7 +93,7 @@
 		<maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
 		<maven-shade-plugin.version>3.1.1</maven-shade-plugin.version>
 		<maven-war-plugin.version>3.2.2</maven-war-plugin.version>
-		<maven-deploy-plugin.version>3.1.4</maven-deploy-plugin.version>
+		<maven-deploy-plugin.version>3.2.0</maven-deploy-plugin.version>
 
 		<os-maven-plugin.version>1.7.1</os-maven-plugin.version>
 		<protobuf-maven-plugin.version>5.1.8</protobuf-maven-plugin.version>
