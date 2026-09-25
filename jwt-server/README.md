@@ -307,6 +307,67 @@ OPTIONS calls, can be sent backwards to the Spring application.
 
 See [jwt-spring-web] for a concrete implementation example.
 
+## Advanced features
+A couple of optional, opt-in performance features are available. Both default to disabled and are safe to leave off.
+
+### Header-to-issuer mapping
+In a multi-tenant setup (more than one configured issuer), figuring out which tenant a token belongs to normally requires fully parsing the JWT (to read the `iss` claim) before the matching per-issuer `JwtDecoder` can be selected.
+
+`FastIssuerJwtDecoder` optimizes this by caching a mapping from the JWT's header (the raw, unparsed segment before the first `.`) to the issuer it previously resolved to. JWT headers are small and typically contain just `alg` and `kid`, which are effectively static per signing key - so once a header has been seen, subsequent tokens with that same header can jump straight to the right per-issuer decoder (fast path) instead of parsing the whole token just to find the issuer (slow path). Claims and the signature are still fully verified as normal either way; only issuer resolution is short-circuited.
+
+This setting has no effect if only one issuer/tenant is configured.
+
+```yaml
+entur:
+  jwt:
+    decode:
+      header:
+        map-to-issuer:
+          enabled: true # opt-in, default false
+          max-size: 100 # default; -1 for unlimited
+```
+
+To guard against unexpected entropy in JWT headers (e.g. random/dynamic values that would otherwise grow the cache unbounded), the cache is capped at `max-size` distinct headers; if the cap is exceeded, the optimization is disabled entirely (logged as a warning) rather than left partially populated. Use `max-size: -1` to disable the cap.
+
+By default, only headers with a non-empty `kid` are considered safe to cache (see `DefaultJwtHeaderToIssuerMapperDecider`); provide your own `JwtHeaderToIssuerMapperDecider` bean to customize this.
+
+### Decoded JWT cache
+Verifying a JWT's signature on every request has a real CPU cost, especially for PKI-based signatures. The decoded JWT cache avoids repeating that work for tokens that have already been seen and validated.
+
+Intended for services:
+ * with a relatively limited set of clients,
+ * with a reasonably long JWT time-to-live, and
+ * using CPU-intensive signatures / PKI.
+
+Services outside this profile (e.g. many distinct, short-lived clients/tokens, or already-cheap verification such as HMAC) are unlikely to see a meaningful benefit.
+
+Only the decoding/signature verification step is cached - claim validators (audience, expiry etc.) still run on every request, so an expired or otherwise invalid cached token is never served as valid.
+
+The cache is opt-in per tenant, and __requires eager, preemptive JWK background refresh to also be enabled__. This is because the cache relies exclusively on JWKS refresh events to detect key rotation/revocation and evict affected entries; without eager background refresh, the JWK set (and therefore this cache) would only refresh on demand, i.e. on a JWK cache miss, so a key rotation could go undetected for as long as there is no such miss:
+
+```yaml
+entur:
+  jwt:
+    jwk:
+      cache:
+        enabled: true # default
+        preemptive:
+          enabled: true # default
+          eager:
+            enabled: true # required for decoder cache coherence; default false
+    tenants:
+      myKeycloak:
+        decoder-cache:
+          enabled: true # opt-in per issuer, default false
+          max-size: 250 # default; -1 for unlimited
+          cleanup-interval: 60 # seconds; default background eviction interval; -1 to disable
+          outage-cache:
+            enabled: true # default
+            time-to-live: 36000 # seconds; default
+```
+
+Like the JWK set's own outage cache described above, the decoded JWT cache has a configurable outage cache: it keeps serving previously validated JWTs while the JWK set is failing to refresh, until `outage-cache.time-to-live` has elapsed, at which point it is flushed so tokens are re-verified rather than trusted indefinitely against an increasingly stale cache.
+
 [jwt-spring-web]: spring/jwt-spring-web
 [jwt-test]: ../jwt-test
 [jwt-junit5-spring]: ../jwt-test/jwt-junit5-spring
