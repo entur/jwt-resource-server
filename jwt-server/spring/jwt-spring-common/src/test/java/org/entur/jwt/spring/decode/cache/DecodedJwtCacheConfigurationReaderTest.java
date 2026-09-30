@@ -101,65 +101,6 @@ public class DecodedJwtCacheConfigurationReaderTest {
     }
 
     @Test
-    public void testWarnsWhenOutageCacheDurationsMismatch() {
-        JwtProperties jwt = jwtProperties();
-        jwt.getJwk().getCache().setEnabled(true);
-        jwt.getJwk().getCache().getPreemptive().setEnabled(true);
-        jwt.getJwk().getCache().getPreemptive().getEager().setEnabled(true);
-        jwt.getJwk().getOutageCache().setEnabled(true);
-        jwt.getJwk().getOutageCache().setTimeToLive(3600L);
-
-        JwtTenantProperties tenant = tenant("https://issuer-a", true, true);
-        tenant.getDecoderCache().getOutageCache().setEnabled(true);
-        tenant.getDecoderCache().getOutageCache().setTimeToLive(7200L);
-        jwt.getTenants().put("a", tenant);
-
-        DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt);
-
-        List<ILoggingEvent> warnings = logAppender.list;
-        assertThat(warnings).hasSize(1);
-        assertThat(warnings.get(0).getFormattedMessage()).contains("a", "3600", "7200");
-    }
-
-    @Test
-    public void testDoesNotWarnWhenOutageCacheDurationsMatch() {
-        JwtProperties jwt = jwtProperties();
-        jwt.getJwk().getCache().setEnabled(true);
-        jwt.getJwk().getCache().getPreemptive().setEnabled(true);
-        jwt.getJwk().getCache().getPreemptive().getEager().setEnabled(true);
-        jwt.getJwk().getOutageCache().setEnabled(true);
-        jwt.getJwk().getOutageCache().setTimeToLive(3600L);
-
-        JwtTenantProperties tenant = tenant("https://issuer-a", true, true);
-        tenant.getDecoderCache().getOutageCache().setEnabled(true);
-        tenant.getDecoderCache().getOutageCache().setTimeToLive(3600L);
-        jwt.getTenants().put("a", tenant);
-
-        DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt);
-
-        assertThat(logAppender.list).isEmpty();
-    }
-
-    @Test
-    public void testDoesNotWarnWhenOneOutageCacheIsDisabled() {
-        JwtProperties jwt = jwtProperties();
-        jwt.getJwk().getCache().setEnabled(true);
-        jwt.getJwk().getCache().getPreemptive().setEnabled(true);
-        jwt.getJwk().getCache().getPreemptive().getEager().setEnabled(true);
-        jwt.getJwk().getOutageCache().setEnabled(false);
-        jwt.getJwk().getOutageCache().setTimeToLive(3600L);
-
-        JwtTenantProperties tenant = tenant("https://issuer-a", true, true);
-        tenant.getDecoderCache().getOutageCache().setEnabled(true);
-        tenant.getDecoderCache().getOutageCache().setTimeToLive(7200L);
-        jwt.getTenants().put("a", tenant);
-
-        DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt);
-
-        assertThat(logAppender.list).isEmpty();
-    }
-
-    @Test
     public void testWarnsWhenDecoderCacheEnabledButEagerRefreshDisabled() {
         JwtProperties jwt = jwtProperties();
         jwt.getJwk().getCache().setEnabled(true);

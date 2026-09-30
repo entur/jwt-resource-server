@@ -32,6 +32,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -54,6 +55,18 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
     private static RSAKey key;
 
     private DecodedJwtCacheJwtDecoder decoder;
+
+    private DecodedJwtCacheJwkEventListener jwkEventListener;
+
+    // the JWK event listener for the current decoder
+    private DecodedJwtCacheJwkEventListener jwkEventListener() {
+        DecodedJwtCacheJwkEventListener l = jwkEventListener;
+        if (l == null || l.getDecoder() != decoder) {
+            l = new DecodedJwtCacheJwkEventListener(decoder);
+            jwkEventListener = l;
+        }
+        return l;
+    }
 
     static class SwitchableJWKSetSource implements JWKSetSource<SecurityContext> {
 
@@ -107,15 +120,15 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
         return nimbusJwtDecoder;
     }
 
-    private static JWKSource<SecurityContext> jwkSource(JWKSetSource<SecurityContext> source, ListEventListener listener, boolean outageTolerant) {
+    private static JWKSource<SecurityContext> jwkSource(JWKSetSource<SecurityContext> source, ListEventListener listener, long outageCacheTimeToLive) {
         // similar to JwkSourceMapFactory, with eager (scheduled) refresh-ahead
         JWKSourceBuilder<SecurityContext> builder = JWKSourceBuilder.create(source)
                 .rateLimited(false)
                 .cache(JWK_CACHE_TIME_TO_LIVE, JWK_CACHE_REFRESH_TIMEOUT, listener)
                 .refreshAheadCache(JWK_CACHE_REFRESH_AHEAD, true, listener)
                 .retrying(listener);
-        if (outageTolerant) {
-            builder.outageTolerant(60_000, listener);
+        if (outageCacheTimeToLive > 0) {
+            builder.outageTolerant(outageCacheTimeToLive, listener);
         } else {
             builder.outageTolerant(false);
         }
@@ -133,63 +146,71 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
     }
 
     @Test
-    void testOutageCacheDisabledFlushesWhenJwkSetServedFromJwkOutageCache() throws Exception {
+    void testCacheIsUsedUntilJwkOutageCacheExpires() throws Exception {
         SwitchableJWKSetSource source = new SwitchableJWKSetSource(new JWKSet(key.toPublicJWK()));
         ListEventListener listener = new ListEventListener();
-        JWKSource<SecurityContext> jwkSource = jwkSource(source, listener, true);
+        long outageCacheTimeToLive = 3000;
+        JWKSource<SecurityContext> jwkSource = jwkSource(source, listener, outageCacheTimeToLive);
 
-        decoder = new DecodedJwtCacheJwtDecoder(nimbusJwtDecoder(jwkSource), jwt -> OAuth2TokenValidatorResult.success(), 0, 100, false, -1);
-        listener.addEventListener(decoder);
+        AtomicInteger decodes = new AtomicInteger();
+        NimbusJwtDecoder nimbusJwtDecoder = nimbusJwtDecoder(jwkSource);
+        decoder = new DecodedJwtCacheJwtDecoder(t -> {
+            decodes.incrementAndGet();
+            return nimbusJwtDecoder.decode(t);
+        }, jwt -> OAuth2TokenValidatorResult.success(), 0, 100);
+        listener.addEventListener(jwkEventListener());
 
         String token = token(key, "a");
+        decoder.decode(token); // loads the JWK set, not cached since the keys changed during decode
+        long loadedAt = System.currentTimeMillis();
         decoder.decode(token);
-        decoder.decode(token);
+        assertEquals(2, decodes.get());
         assertEquals(1, decoder.getSize());
 
         // the JWK outage cache masks the failure as a completed refresh, but also fires an OutageEvent
         source.fail = true;
-        await(() -> decoder.getSize() == 0);
+        await(() -> decoder.suspendedAt != DecodedJwtCacheJwtDecoder.NEVER);
 
-        // JWTs are still accepted (verified against the JWK outage cache), but not cached
+        // while the JWK outage cache is valid, the cache is used
         decoder.decode(token);
-        decoder.decode(token(key, "b"));
+        assertEquals(2, decodes.get());
+
+        Thread.sleep(Math.max(0, loadedAt + outageCacheTimeToLive + 100 - System.currentTimeMillis()));
+
+        // JWK outage cache expired: decoded as if not cached
+        decoder.decode(token);
+        decoder.decode(token);
+        assertEquals(4, decodes.get());
         assertEquals(0, decoder.getSize());
     }
 
     @Test
-    void testOutageCacheTimeToLiveFlushesOnCleanupAfterFailedRefreshAhead() throws Exception {
+    void testCacheIsNotUsedAfterFailedRefreshWithoutJwkOutageCache() throws Exception {
         SwitchableJWKSetSource source = new SwitchableJWKSetSource(new JWKSet(key.toPublicJWK()));
         List<Object> events = new CopyOnWriteArrayList<>();
         ListEventListener listener = new ListEventListener();
         listener.addEventListener(events::add);
-        JWKSource<SecurityContext> jwkSource = jwkSource(source, listener, false);
+        JWKSource<SecurityContext> jwkSource = jwkSource(source, listener, 0);
 
-        long timeToLive = 2500;
-        decoder = new DecodedJwtCacheJwtDecoder(nimbusJwtDecoder(jwkSource), jwt -> OAuth2TokenValidatorResult.success(), 0, 100, true, timeToLive);
-        listener.addEventListener(decoder);
+        decoder = new DecodedJwtCacheJwtDecoder(nimbusJwtDecoder(jwkSource), jwt -> OAuth2TokenValidatorResult.success(), 0, 100);
+        listener.addEventListener(jwkEventListener());
 
         String token = token(key, "a");
         decoder.decode(token);
-        long loadedAt = System.currentTimeMillis();
         decoder.decode(token);
         assertEquals(1, decoder.getSize());
 
         source.fail = true;
 
-        // the scheduled refresh-ahead fails once and is not rescheduled
+        // the scheduled refresh-ahead fails (once, it is not rescheduled)
         await(() -> events.stream().anyMatch(e -> e instanceof RefreshAheadCachingJWKSetSource.UnableToRefreshAheadOfExpirationEvent));
-        assertTrue(decoder.outageDetected);
 
-        // still within the outage time to live
-        decoder.cleanup();
-        assertEquals(1, decoder.getSize());
+        // decoded as if not cached; the JWK set is still cached by the JWK source for a while
         decoder.decode(token);
-
-        Thread.sleep(Math.max(0, loadedAt + timeToLive + 100 - System.currentTimeMillis()));
-
-        // no further failure events, so the time to live is enforced by the cleanup
-        decoder.cleanup();
         assertEquals(0, decoder.getSize());
+
+        // once the JWK source cache expires, the JWT is rejected
+        Thread.sleep(JWK_CACHE_TIME_TO_LIVE);
         assertThrows(JwtException.class, () -> decoder.decode(token));
 
         // recovery: successful refresh resumes caching
@@ -197,7 +218,6 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
         decoder.decode(token);
         decoder.decode(token);
         assertEquals(1, decoder.getSize());
-        assertTrue(!decoder.outageDetected);
     }
 
     @Test
@@ -217,13 +237,13 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
             Jwt jwt = nimbusJwtDecoder.decode(token);
             if (rotateDuringDecode.getAndSet(false)) {
                 rotated.set(true);
-                decoder.notify(refreshCompletedEvent(newJwkSet));
+                jwkEventListener().notify(refreshCompletedEvent(newJwkSet));
             }
             return jwt;
         };
 
         decoder = new DecodedJwtCacheJwtDecoder(delegate, jwt -> OAuth2TokenValidatorResult.success(), 0, 100);
-        decoder.notify(refreshCompletedEvent(oldJwkSet));
+        jwkEventListener().notify(refreshCompletedEvent(oldJwkSet));
 
         String token = token(oldKey, "a");
         decoder.decode(token);
