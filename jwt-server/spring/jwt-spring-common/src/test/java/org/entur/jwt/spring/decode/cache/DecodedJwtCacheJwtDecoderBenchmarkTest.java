@@ -188,7 +188,7 @@ public class DecodedJwtCacheJwtDecoderBenchmarkTest {
         JWKSet jwkSet = new JWKSet(List.of(signingKey.toPublicJWK()));
         CachingJWKSetSource.RefreshCompletedEvent<?> event = mock(CachingJWKSetSource.RefreshCompletedEvent.class);
         when(event.getJWKSet()).thenReturn(jwkSet);
-        cachedDecoder.notify(event);
+        new DecodedJwtCacheJwkEventListener(cachedDecoder).notify(event);
 
         return cachedDecoder;
     }

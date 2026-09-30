@@ -9,6 +9,7 @@ import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.spring.JwkSourceMap;
 import org.entur.jwt.spring.decode.cache.DecodedJwtCacheJwtDecoder;
+import org.entur.jwt.spring.grpc.netty.GrpcJwtDecoderHolder;
 import org.entur.jwt.spring.grpc.AbstractGrpcTest;
 import org.entur.jwt.spring.grpc.JwtCallCredentials;
 import org.entur.jwt.spring.grpc.test.GreetingResponse;
@@ -73,7 +74,7 @@ public class DecodedJwtCacheGrpcBenchmarkColdStartCachedTest extends AbstractGrp
     private static final int TOKENS_PER_CLIENT = 2;
 
     @Autowired
-    private JwtDecoder jwtDecoder;
+    private GrpcJwtDecoderHolder grpcJwtDecoderHolder;
 
     @Autowired
     private JwkSourceMap jwkSourceMap;
@@ -92,6 +93,7 @@ public class DecodedJwtCacheGrpcBenchmarkColdStartCachedTest extends AbstractGrp
             entry.getValue().get(selector, null);
         }
 
+        JwtDecoder jwtDecoder = grpcJwtDecoderHolder.getJwtDecoder();
         assertThat(jwtDecoder).isInstanceOf(DecodedJwtCacheJwtDecoder.class);
         ((DecodedJwtCacheJwtDecoder) jwtDecoder).clear();
     }
