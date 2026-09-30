@@ -1155,4 +1155,24 @@ class DecodedJwtCacheJwtDecoderTest {
             executor.shutdownNow();
         }
     }
+
+    @Test
+    void testConstructorRejectsMaxCacheSizeLessThanNegativeOne() {
+        JwtDecoder delegate = mock(JwtDecoder.class);
+        OAuth2TokenValidator<Jwt> validator = mock(OAuth2TokenValidator.class);
+
+        assertThrows(IllegalArgumentException.class, () -> new DecodedJwtCacheJwtDecoder(delegate, validator, CLEANUP_INTERVAL, -2));
+    }
+
+    @Test
+    void testDefaultScheduledExecutorServiceUsesNamedDaemonThread() throws Exception {
+        java.util.concurrent.ScheduledExecutorService executor = DecodedJwtCacheJwtDecoder.createDefaultScheduledExecutorService();
+        try {
+            Thread thread = executor.submit(Thread::currentThread).get(5, TimeUnit.SECONDS);
+            assertTrue(thread.isDaemon());
+            assertEquals("decoded-jwt-cache-cleanup", thread.getName());
+        } finally {
+            executor.shutdownNow();
+        }
+    }
 }

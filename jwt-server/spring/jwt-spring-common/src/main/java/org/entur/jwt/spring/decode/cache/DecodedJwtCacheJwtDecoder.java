@@ -36,7 +36,12 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
     private static final Logger LOGGER = LoggerFactory.getLogger(DecodedJwtCacheJwtDecoder.class);
 
     public static ScheduledExecutorService createDefaultScheduledExecutorService() {
-        return Executors.newSingleThreadScheduledExecutor();
+        // daemon thread so that a decoder which is never closed does not block JVM shutdown
+        return Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread thread = new Thread(r, "decoded-jwt-cache-cleanup");
+            thread.setDaemon(true);
+            return thread;
+        });
     }
 
     // created lazily so instances with cleanup disabled (cleanupInterval <= 0) don't spin up an unused background thread
@@ -185,6 +190,9 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
 
     public DecodedJwtCacheJwtDecoder(JwtDecoder jwtValidatingDecoder, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupIntervalMillis, int maxCacheSize,
                                       boolean outageCacheEnabled, long outageCacheTimeToLiveMillis) {
+        if (maxCacheSize < -1) {
+            throw new IllegalArgumentException("maxCacheSize must be -1 (unlimited) or non-negative, was " + maxCacheSize);
+        }
         this.jwtValidatingDecoder = jwtValidatingDecoder;
         this.jwtValidator = jwtValidators;
         this.cleanupInterval = cleanupIntervalMillis;
@@ -206,12 +214,13 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
     }
 
     public void cleanup() {
-        if(!cache.isEmpty()) {
+        Cache c = this.cache; // defensive copy
+        if(!c.isEmpty()) {
             try {
                 // avoid memory leaks due to stagnant JWTs
-                int cleaned = cache.cleanInvalidJwts();
+                int cleaned = c.cleanInvalidJwts();
                 if(cleaned > 0) {
-                    if (LOGGER.isDebugEnabled()) LOGGER.debug("Cleaned {} invalid JWTs from cache, now have {}", cleaned, cache.map.size());
+                    if (LOGGER.isDebugEnabled()) LOGGER.debug("Cleaned {} invalid JWTs from cache, now have {}", cleaned, c.size());
                 }
             } catch (Throwable e) {
                 // ignore, will be handled by regular flow

@@ -159,6 +159,47 @@ public class DecodedJwtCacheConfigurationReaderTest {
         assertThat(logAppender.list).isEmpty();
     }
 
+    @Test
+    public void testWarnsWhenDecoderCacheEnabledButEagerRefreshDisabled() {
+        JwtProperties jwt = jwtProperties();
+        jwt.getJwk().getCache().setEnabled(true);
+        jwt.getJwk().getCache().getPreemptive().setEnabled(true);
+        jwt.getJwk().getCache().getPreemptive().getEager().setEnabled(false);
+
+        jwt.getTenants().put("a", tenant("https://issuer-a", true, true));
+        jwt.getTenants().put("b", tenant("https://issuer-b", true, false));
+        jwt.getTenants().put("c", tenant("https://issuer-c", false, true));
+
+        Map<String, JwtDecoderCacheProperties> result = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt);
+
+        assertThat(result).isEmpty();
+        List<ILoggingEvent> warnings = logAppender.list;
+        assertThat(warnings).hasSize(1);
+        assertThat(warnings.get(0).getFormattedMessage()).contains("'a'", "eager");
+    }
+
+    @Test
+    public void testDoesNotWarnWhenDecoderCacheDisabledAndEagerRefreshDisabled() {
+        JwtProperties jwt = jwtProperties();
+        jwt.getJwk().getCache().getPreemptive().getEager().setEnabled(false);
+
+        jwt.getTenants().put("a", tenant("https://issuer-a", true, false));
+
+        DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt);
+
+        assertThat(logAppender.list).isEmpty();
+    }
+
+    @Test
+    public void testGetTenantsWithDecoderCacheEnabled() {
+        JwtProperties jwt = jwtProperties();
+        jwt.getTenants().put("a", tenant("https://issuer-a", true, true));
+        jwt.getTenants().put("b", tenant("https://issuer-b", true, false));
+        jwt.getTenants().put("c", tenant("https://issuer-c", false, true));
+
+        assertThat(DecodedJwtCacheConfigurationReader.getTenantsWithDecoderCacheEnabled(jwt)).containsExactly("a");
+    }
+
     private static JwtTenantProperties tenant(String issuer, boolean enabled, boolean decoderCacheEnabled) {
         JwtTenantProperties tenant = new JwtTenantProperties();
         tenant.setIssuer(issuer);
