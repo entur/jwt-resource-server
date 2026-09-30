@@ -118,9 +118,12 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
                     return;
                 }
                 // temporarily exceed the max size, evict in the background
+                // (after adding, so that the eviction accounts for this entry)
+                map.put(token, new Entry(jwt, sequence.incrementAndGet(), System.currentTimeMillis()));
                 scheduleEviction();
+            } else {
+                map.put(token, new Entry(jwt, sequence.incrementAndGet(), System.currentTimeMillis()));
             }
-            map.put(token, new Entry(jwt, sequence.incrementAndGet(), System.currentTimeMillis()));
         }
 
         protected boolean isEvicting() {

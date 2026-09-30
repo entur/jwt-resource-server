@@ -252,8 +252,9 @@ class DecodedJwtCacheModeTest {
                     for (int i = 0; i < 5_000; i++) {
                         decoder.decode("t" + thread + "-" + i);
                         decoder.decode("t" + thread + "-" + (i / 2));
-                        // hard max (2 * max size) is approximate: the size check is not atomic with the put
-                        assertTrue(decoder.getSize() <= 3 * maxSize);
+                        // note: the size is not checked here, as ConcurrentHashMap.size() is not a snapshot
+                        // and might over-count substantially while (batch) eviction runs concurrently with
+                        // additions. See testDoesNotCacheBeyondTwiceMaxSizeWhenEvictionDoesNotKeepUp.
                     }
                 }));
             }
