@@ -366,7 +366,9 @@ entur:
             time-to-live: 36000 # seconds; default
 ```
 
-Like the JWK set's own outage cache described above, the decoded JWT cache has a configurable outage cache: it keeps serving previously validated JWTs while the JWK set is failing to refresh, until `outage-cache.time-to-live` has elapsed, at which point it is flushed so tokens are re-verified rather than trusted indefinitely against an increasingly stale cache.
+Like the JWK set's own outage cache described above, the decoded JWT cache has a configurable outage cache: it keeps serving previously validated JWTs while the JWK set is failing to refresh, until `outage-cache.time-to-live` has elapsed (measured from the last successful JWK set refresh), at which point it is flushed so tokens are re-verified rather than trusted indefinitely against an increasingly stale cache. New tokens are then not cached until the JWK set is successfully refreshed again. With `outage-cache.enabled: false`, the cache is flushed as soon as an outage is detected.
+
+A JWK set served from the JWK set's own outage cache counts as an outage, not as a successful refresh. The outage duration is also checked on every `cleanup-interval`, so keep the cleanup enabled if relying on `outage-cache.time-to-live`.
 
 [jwt-spring-web]: spring/jwt-spring-web
 [jwt-test]: ../jwt-test

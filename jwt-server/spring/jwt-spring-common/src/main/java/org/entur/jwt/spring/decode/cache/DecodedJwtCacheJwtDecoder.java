@@ -1,6 +1,8 @@
 package org.entur.jwt.spring.decode.cache;
 
 import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
+import com.nimbusds.jose.jwk.source.OutageTolerantJWKSetSource;
+import com.nimbusds.jose.jwk.source.RefreshAheadCachingJWKSetSource;
 import com.nimbusds.jose.util.events.Event;
 import com.nimbusds.jose.util.events.EventListener;
 import org.slf4j.Logger;
@@ -171,10 +173,24 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
     protected final boolean outageCacheEnabled;
     protected final long outageCacheTimeToLive;
 
-    // the time of the last successful refresh (RefreshCompletedEvent), used as the anchor
-    // point for measuring how long an ongoing refresh outage has lasted; initialized at
-    // construction time since that is when the initial cache/JWK set is considered fresh
+    // the time of the last successful refresh (RefreshCompletedEvent, not served from the JWK
+    // outage cache), used as the anchor point for measuring how long an ongoing refresh outage
+    // has lasted; initialized at construction time since that is when the initial cache/JWK set
+    // is considered fresh
     protected volatile long lastRefreshCompletedAt = System.currentTimeMillis();
+
+    // whether a refresh outage has been detected since the last successful refresh
+    protected volatile boolean outageDetected = false;
+
+    // whether the JWK outage cache (OutageTolerantJWKSetSource) served the JWK set during the
+    // current refresh; if so, the RefreshCompletedEvent which follows does not signal a successful
+    // refresh. Refreshes are serialized by CachingJWKSetSource, so the events of a single refresh
+    // arrive in order: RefreshInitiatedEvent, (OutageEvent), RefreshCompletedEvent
+    protected volatile boolean outageDuringRefresh = false;
+
+    // whether new JWTs are kept out of the cache because the outage lasted too long (or the
+    // outage cache is disabled); reset on the next successful refresh
+    protected volatile boolean cachingSuspended = false;
 
     // whether the 50%/75%-of-time-to-live warnings have already been logged for the
     // current outage, reset whenever the outage clock itself resets (successful refresh)
@@ -214,6 +230,13 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
     }
 
     public void cleanup() {
+        if (outageDetected) {
+            // failure events are not necessarily repeated during an outage (i.e. a failed scheduled
+            // refresh is not rescheduled, and cache hits do not touch the JWK source), so also check
+            // the outage duration periodically
+            checkRefreshOutage();
+        }
+
         Cache c = this.cache; // defensive copy
         if(!c.isEmpty()) {
             try {
@@ -241,7 +264,12 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         }
 
         Jwt jwt = jwtValidatingDecoder.decode(token); // also validates
-        this.cache.add(token, jwt); // re-read the live cache; only adds if the keyid is known
+
+        // Only add if no JWK set refresh completed while decoding: the decoder might have verified the
+        // JWT using the previous JWK set, i.e. with a key which has since been replaced under the same key id.
+        if (this.cache == c && !cachingSuspended) {
+            c.add(token, jwt); // only adds if the keyid is known
+        }
 
         return jwt;
     }
@@ -275,17 +303,25 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
     @Override
     public void notify(Event event) {
         if(event instanceof CachingJWKSetSource.RefreshInitiatedEvent<?>) {
-            // do nothing
+            outageDuringRefresh = false;
+        } else if(event instanceof OutageTolerantJWKSetSource.OutageEvent<?>) {
+            // the JWK set could not be refreshed, the previous JWK set is served from the JWK outage cache instead
+            outageDuringRefresh = true;
+            handleRefreshOutage();
         } else if(event instanceof CachingJWKSetSource.RefreshCompletedEvent<?>) {
             // this event is fired AFTER the decoder has been updated with the new JWK set
 
             CachingJWKSetSource.RefreshCompletedEvent refreshCompletedEvent = (CachingJWKSetSource.RefreshCompletedEvent) event;
 
-            // refresh succeeded; any ongoing outage is over, and this is the new anchor
-            // point for measuring the duration of a future outage
-            lastRefreshCompletedAt = System.currentTimeMillis();
-            outageHalfTimeWarningLogged = false;
-            outageThreeQuarterTimeWarningLogged = false;
+            if (!outageDuringRefresh) {
+                // refresh succeeded; any ongoing outage is over, and this is the new anchor
+                // point for measuring the duration of a future outage
+                lastRefreshCompletedAt = System.currentTimeMillis();
+                outageDetected = false;
+                cachingSuspended = false;
+                outageHalfTimeWarningLogged = false;
+                outageThreeQuarterTimeWarningLogged = false;
+            }
 
             Cache cache = this.cache; // defensive copy
             DecodedJwtCacheJWKRepresentations keyRepresentations = DecodedJwtCacheJWKRepresentations.of(refreshCompletedEvent.getJWKSet());
@@ -308,9 +344,10 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
                 nextCache.add(cache, keyIdsToKeep);
                 this.cache = nextCache;
             }
-        } else if(event instanceof CachingJWKSetSource.UnableToRefreshEvent<?>) {
-            handleRefreshOutage();
-        } else if(event instanceof CachingJWKSetSource.RefreshTimedOutEvent<?>) {
+        } else if(event instanceof CachingJWKSetSource.UnableToRefreshEvent<?>
+                || event instanceof CachingJWKSetSource.RefreshTimedOutEvent<?>
+                || event instanceof RefreshAheadCachingJWKSetSource.UnableToRefreshAheadOfExpirationEvent<?>
+                || event instanceof RefreshAheadCachingJWKSetSource.ScheduledRefreshFailed<?>) {
             handleRefreshOutage();
         }
     }
@@ -329,8 +366,17 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
      * much time is left before the cache is flushed.
      */
     protected void handleRefreshOutage() {
+        outageDetected = true;
+        checkRefreshOutage();
+    }
+
+    /**
+     * Flush the cache (and stop caching new JWTs until the next successful refresh) if the ongoing
+     * outage has lasted too long, or warn if it is approaching the configured time to live.
+     */
+    protected void checkRefreshOutage() {
         if (!outageCacheEnabled) {
-            cache.clear();
+            flushDueToOutage();
             return;
         }
         if (outageCacheTimeToLive < 0) {
@@ -343,7 +389,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
 
         if (elapsed >= outageCacheTimeToLive) {
             // the outage has lasted too long to keep trusting the cache
-            cache.clear();
+            flushDueToOutage();
             return;
         }
 
@@ -356,6 +402,14 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
             outageThreeQuarterTimeWarningLogged = true;
             LOGGER.error("Refresh outage has lasted for 75% of the configured outage cache time to live ({} ms); {} ms left before the decoded JWT cache is flushed", outageCacheTimeToLive, remaining);
         }
+    }
+
+    protected void flushDueToOutage() {
+        if (!cachingSuspended) {
+            cachingSuspended = true;
+            LOGGER.warn("Flushing the decoded JWT cache due to JWK set refresh outage; JWTs are not cached until the JWK set is successfully refreshed");
+        }
+        cache.clear();
     }
 
     public void close() {

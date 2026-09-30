@@ -529,7 +529,9 @@ class DecodedJwtCacheJwtDecoderTest {
 
         decoder.notify(unableToRefreshEvent());
 
-        assertTrue(logAppender.list.isEmpty());
+        // only the flush itself is logged, not the 50%/75% time to live warnings
+        assertTrue(logAppender.list.stream().noneMatch(e -> e.getFormattedMessage().startsWith("Refresh outage has lasted")));
+        assertEquals(1, logAppender.list.size());
     }
 
     @Test

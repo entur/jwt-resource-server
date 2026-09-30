@@ -35,8 +35,8 @@ public class JwtDecoderCacheProperties {
      * key rotation could go undetected for as long as traffic keeps hitting the JWK cache,
      * defeating cache coherence.
      * <p>
-     * If any prerequisite above is not met, this flag is silently a no-op and no decoded JWT
-     * cache is created for the tenant.
+     * If any prerequisite above is not met, this flag is a no-op (a warning is logged) and no
+     * decoded JWT cache is created for the tenant.
      *
      * @see JwkCacheProperties#isEnabled()
      * @see JwkPreemptiveCacheProperties#isEnabled()

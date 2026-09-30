@@ -1,4 +1,5 @@
 # CHANGELOG
+ - 7.2.x: Performance improvement (opt-in): per-tenant decoded JWT cache. `IssuerJwtDecoder` and `FastIssuerJwtDecoder` moved from `org.entur.jwt.spring.grpc.netty` to `org.entur.jwt.spring.decode` (common module).
  - 7.1.x: Performance improvement (opt-in): JWT header-to-issuer mapper for multi-tenant setups
  - 7.0.x: Spring Boot 4.1 and Spring gRPC (under `org.springframework.boot` group)
  - 6.0.0: Spring Boot 4 and Spring gRPC (under `org.springframework.grpc` group)
