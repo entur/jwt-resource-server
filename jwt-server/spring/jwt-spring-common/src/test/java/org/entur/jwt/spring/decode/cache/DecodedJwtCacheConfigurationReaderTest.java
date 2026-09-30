@@ -101,39 +101,30 @@ public class DecodedJwtCacheConfigurationReaderTest {
     }
 
     @Test
-    public void testWarnsWhenOutageCacheDurationsMismatch() {
+    public void testWarnsWhenDecoderCacheEnabledButEagerRefreshDisabled() {
         JwtProperties jwt = jwtProperties();
         jwt.getJwk().getCache().setEnabled(true);
         jwt.getJwk().getCache().getPreemptive().setEnabled(true);
-        jwt.getJwk().getCache().getPreemptive().getEager().setEnabled(true);
-        jwt.getJwk().getOutageCache().setEnabled(true);
-        jwt.getJwk().getOutageCache().setTimeToLive(3600L);
+        jwt.getJwk().getCache().getPreemptive().getEager().setEnabled(false);
 
-        JwtTenantProperties tenant = tenant("https://issuer-a", true, true);
-        tenant.getDecoderCache().getOutageCache().setEnabled(true);
-        tenant.getDecoderCache().getOutageCache().setTimeToLive(7200L);
-        jwt.getTenants().put("a", tenant);
+        jwt.getTenants().put("a", tenant("https://issuer-a", true, true));
+        jwt.getTenants().put("b", tenant("https://issuer-b", true, false));
+        jwt.getTenants().put("c", tenant("https://issuer-c", false, true));
 
-        DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt);
+        Map<String, JwtDecoderCacheProperties> result = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt);
 
+        assertThat(result).isEmpty();
         List<ILoggingEvent> warnings = logAppender.list;
         assertThat(warnings).hasSize(1);
-        assertThat(warnings.get(0).getFormattedMessage()).contains("a", "3600", "7200");
+        assertThat(warnings.get(0).getFormattedMessage()).contains("'a'", "eager");
     }
 
     @Test
-    public void testDoesNotWarnWhenOutageCacheDurationsMatch() {
+    public void testDoesNotWarnWhenDecoderCacheDisabledAndEagerRefreshDisabled() {
         JwtProperties jwt = jwtProperties();
-        jwt.getJwk().getCache().setEnabled(true);
-        jwt.getJwk().getCache().getPreemptive().setEnabled(true);
-        jwt.getJwk().getCache().getPreemptive().getEager().setEnabled(true);
-        jwt.getJwk().getOutageCache().setEnabled(true);
-        jwt.getJwk().getOutageCache().setTimeToLive(3600L);
+        jwt.getJwk().getCache().getPreemptive().getEager().setEnabled(false);
 
-        JwtTenantProperties tenant = tenant("https://issuer-a", true, true);
-        tenant.getDecoderCache().getOutageCache().setEnabled(true);
-        tenant.getDecoderCache().getOutageCache().setTimeToLive(3600L);
-        jwt.getTenants().put("a", tenant);
+        jwt.getTenants().put("a", tenant("https://issuer-a", true, false));
 
         DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt);
 
@@ -141,22 +132,13 @@ public class DecodedJwtCacheConfigurationReaderTest {
     }
 
     @Test
-    public void testDoesNotWarnWhenOneOutageCacheIsDisabled() {
+    public void testGetTenantsWithDecoderCacheEnabled() {
         JwtProperties jwt = jwtProperties();
-        jwt.getJwk().getCache().setEnabled(true);
-        jwt.getJwk().getCache().getPreemptive().setEnabled(true);
-        jwt.getJwk().getCache().getPreemptive().getEager().setEnabled(true);
-        jwt.getJwk().getOutageCache().setEnabled(false);
-        jwt.getJwk().getOutageCache().setTimeToLive(3600L);
+        jwt.getTenants().put("a", tenant("https://issuer-a", true, true));
+        jwt.getTenants().put("b", tenant("https://issuer-b", true, false));
+        jwt.getTenants().put("c", tenant("https://issuer-c", false, true));
 
-        JwtTenantProperties tenant = tenant("https://issuer-a", true, true);
-        tenant.getDecoderCache().getOutageCache().setEnabled(true);
-        tenant.getDecoderCache().getOutageCache().setTimeToLive(7200L);
-        jwt.getTenants().put("a", tenant);
-
-        DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt);
-
-        assertThat(logAppender.list).isEmpty();
+        assertThat(DecodedJwtCacheConfigurationReader.getTenantsWithDecoderCacheEnabled(jwt)).containsExactly("a");
     }
 
     private static JwtTenantProperties tenant(String issuer, boolean enabled, boolean decoderCacheEnabled) {

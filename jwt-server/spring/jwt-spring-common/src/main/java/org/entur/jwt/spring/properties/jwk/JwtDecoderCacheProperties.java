@@ -35,8 +35,8 @@ public class JwtDecoderCacheProperties {
      * key rotation could go undetected for as long as traffic keeps hitting the JWK cache,
      * defeating cache coherence.
      * <p>
-     * If any prerequisite above is not met, this flag is silently a no-op and no decoded JWT
-     * cache is created for the tenant.
+     * If any prerequisite above is not met, this flag is a no-op (a warning is logged) and no
+     * decoded JWT cache is created for the tenant.
      *
      * @see JwkCacheProperties#isEnabled()
      * @see JwkPreemptiveCacheProperties#isEnabled()
@@ -49,11 +49,16 @@ public class JwtDecoderCacheProperties {
     private int maxSize = 250;
 
     /**
+     * What to do with new JWTs once the cache holds {@code maxSize} JWTs: evict the least recently used ({@code LRU}, default)
+     * or the oldest ({@code FIFO}) JWTs, or stop caching new JWTs until cached JWTs are no longer valid ({@code FIXED}).
+     */
+    private JwtDecoderCacheMode mode = JwtDecoderCacheMode.LRU;
+
+    /**
      * In seconds, how often to clean up the cache. Default is 60 seconds. Set to -1 to disable cleanup.
      */
     private int cleanupInterval = 60;
 
-    private JwtDecoderCacheOutageProperties outageCache = new JwtDecoderCacheOutageProperties();
 
     public boolean isEnabled() {
         return enabled;
@@ -74,6 +79,17 @@ public class JwtDecoderCacheProperties {
         this.maxSize = maxSize;
     }
 
+    public JwtDecoderCacheMode getMode() {
+        return mode;
+    }
+
+    public void setMode(JwtDecoderCacheMode mode) {
+        if (mode == null) {
+            throw new IllegalArgumentException("mode must not be null");
+        }
+        this.mode = mode;
+    }
+
     public int getCleanupInterval() {
         return cleanupInterval;
     }
@@ -82,11 +98,4 @@ public class JwtDecoderCacheProperties {
         this.cleanupInterval = cleanupIntervalSeconds;
     }
 
-    public JwtDecoderCacheOutageProperties getOutageCache() {
-        return outageCache;
-    }
-
-    public void setOutageCache(JwtDecoderCacheOutageProperties outageCache) {
-        this.outageCache = outageCache;
-    }
 }

@@ -43,6 +43,8 @@ import static org.mockito.Mockito.when;
 public class FastIssuerAndCachedJwtDecoderContextTest extends AbstractGrpcTest {
 
     @Autowired
+    private GrpcJwtDecoderHolder grpcJwtDecoderHolder;
+
     private JwtDecoder jwtDecoder;
 
     @Autowired
@@ -50,6 +52,8 @@ public class FastIssuerAndCachedJwtDecoderContextTest extends AbstractGrpcTest {
 
     @BeforeEach
     public void setup() throws Exception {
+        jwtDecoder = grpcJwtDecoderHolder.getJwtDecoder();
+
         // make sure JWKs are loaded. trigger JWKs population
         Map<String, JWKSource> jwkSources = jwkSourceMap.getJwkSources();
         for (Map.Entry<String, JWKSource> entry : jwkSources.entrySet()) {

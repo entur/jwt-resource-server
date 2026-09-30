@@ -360,13 +360,19 @@ entur:
         decoder-cache:
           enabled: true # opt-in per issuer, default false
           max-size: 250 # default; -1 for unlimited
+          mode: lru # default; what to do when full: lru, fifo or fixed
           cleanup-interval: 60 # seconds; default background eviction interval; -1 to disable
-          outage-cache:
-            enabled: true # default
-            time-to-live: 36000 # seconds; default
 ```
 
-Like the JWK set's own outage cache described above, the decoded JWT cache has a configurable outage cache: it keeps serving previously validated JWTs while the JWK set is failing to refresh, until `outage-cache.time-to-live` has elapsed, at which point it is flushed so tokens are re-verified rather than trusted indefinitely against an increasingly stale cache.
+When the cache holds `max-size` JWTs, `mode` decides what happens to new JWTs:
+
+ * `lru` (default): evict the least recently used JWTs, i.e. tokens from clients (pods) which have stopped calling.
+ * `fifo`: evict the JWTs which were cached first.
+ * `fixed`: do not cache new JWTs until cached JWTs are removed by the cleanup (i.e. expire). A warning is logged when the cache first fills up.
+
+For `lru` and `fifo`, eviction runs on a background thread: once the cache is full, new JWTs are still cached (temporarily exceeding `max-size`) and eviction is triggered straight away, reducing the cache to 90% of `max-size`. So the cost of eviction is spread over many cache misses, and neither cache hits nor misses wait for it. Should eviction not keep up, new JWTs are not cached once the cache holds twice `max-size`.
+
+During a JWK set refresh outage, the decoded JWT cache follows the JWK set's own outage cache (see above): cached JWTs are trusted for as long as the JWK set served from the outage cache is, i.e. until `entur.jwt.jwk.outage-cache.time-to-live` has passed since the JWK set was last refreshed. Then the cache is cleared and not used, i.e. JWTs are decoded as if no JWT was cached, until the JWK set is successfully refreshed again. If the JWK outage cache is disabled (or has expired), this happens as soon as a refresh fails. This is checked when decoding JWTs, so no background thread is needed.
 
 [jwt-spring-web]: spring/jwt-spring-web
 [jwt-test]: ../jwt-test

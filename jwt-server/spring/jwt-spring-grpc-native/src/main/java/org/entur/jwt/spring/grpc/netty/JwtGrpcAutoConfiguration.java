@@ -104,14 +104,13 @@ public class JwtGrpcAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(JwtDecoder.class)
-    public JwtDecoder jwtDecoder(
+    public GrpcJwtDecoderHolder grpcJwtDecoderHolder(
             ObjectProvider<JwtHeaderToIssuerMapper> jwtHeaderToIssuerMapperProvider,
             ObjectProvider<JwtHeaderToIssuerMapperDecider> jwtHeaderToIssuerMapperDeciderProvider
     ) {
         Map<String, JwtDecoderCacheProperties> activeDecodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(securityProperties.getJwt());
 
-        // decoder(s) automatically closed by spring via Closable if necessary
+        // decoder(s) automatically closed by spring via the holder
         ClosableJwtDecoders closableJwtDecoders = new ClosableJwtDecodersBuilder()
                 .withJwkSources(jwkSourceMap.getJwkSources())
                 .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
@@ -119,7 +118,12 @@ public class JwtGrpcAutoConfiguration {
                 .withDecodedJwtCacheIssuers(activeDecodedJwtCacheIssuers)
                 .build();
 
-        Map<String, JwtDecoder> map = closableJwtDecoders.getJwtDecoders();
+        return new GrpcJwtDecoderHolder(getJwtDecoder(closableJwtDecoders.getJwtDecoders(), jwtHeaderToIssuerMapperProvider, jwtHeaderToIssuerMapperDeciderProvider), closableJwtDecoders);
+    }
+
+    private JwtDecoder getJwtDecoder(Map<String, JwtDecoder> map,
+                                     ObjectProvider<JwtHeaderToIssuerMapper> jwtHeaderToIssuerMapperProvider,
+                                     ObjectProvider<JwtHeaderToIssuerMapperDecider> jwtHeaderToIssuerMapperDeciderProvider) {
         if (map.size() == 1) {
             // if there is only one decoder, we can return it directly without the overhead of the FastIssuerJwtDecoder / IssuerJwtDecoder
             return map.values().iterator().next();
@@ -144,9 +148,10 @@ public class JwtGrpcAutoConfiguration {
     @GlobalServerInterceptor
     public AuthenticationProcessInterceptor authenticationProcessInterceptor(
             GrpcSecurity grpcSecurity, List<JwtAuthorityEnricher> jwtAuthorityEnrichers,
-            JwtDecoder decoder
+            GrpcJwtDecoderHolder grpcJwtDecoderHolder
             )
             throws Exception {
+        JwtDecoder decoder = grpcJwtDecoderHolder.getJwtDecoder();
         try {
             grpcSecurity.authorizeRequests((requests) -> {
 

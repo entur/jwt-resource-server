@@ -1,8 +1,7 @@
 package org.entur.jwt.spring.decode.cache;
 
-import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
-import com.nimbusds.jose.util.events.Event;
-import com.nimbusds.jose.util.events.EventListener;
+import com.nimbusds.jose.jwk.JWKSet;
+import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.oauth2.core.OAuth2Error;
@@ -16,41 +15,81 @@ import org.springframework.util.StringUtils;
 
 import java.io.Closeable;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Caching of validated JWTs.
- *
- * If used, make sure to proactively update JWKs somehow.
- *
+ * <br><br>
+ * Must be kept up to date with the JWK set via {@link #updateKeys(JWKSet)}, and suspended while the JWK set can
+ * no longer be trusted via {@link #suspendAt(long)} / {@link #resume()}; i.e. by registering a {@link DecodedJwtCacheJwkEventListener}
+ * with the JWK source. Make sure to proactively (eagerly) refresh the JWK set, so that key rotation is detected.
  */
-public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Closeable {
+public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
 
     private static final String DECODING_ERROR_MESSAGE_TEMPLATE = "An error occurred while attempting to decode the Jwt: %s";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DecodedJwtCacheJwtDecoder.class);
 
     public static ScheduledExecutorService createDefaultScheduledExecutorService() {
-        return Executors.newSingleThreadScheduledExecutor();
+        // daemon thread so that a decoder which is never closed does not block JVM shutdown
+        return Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread thread = new Thread(r, "decoded-jwt-cache-cleanup");
+            thread.setDaemon(true);
+            return thread;
+        });
     }
 
-    // created lazily so instances with cleanup disabled (cleanupInterval <= 0) don't spin up an unused background thread
+    // created lazily (on scheduling cleanup or on the first eviction) so instances which need neither don't spin up an unused background thread
     protected volatile ScheduledExecutorService scheduledExecutorService;
+    protected volatile boolean closed = false;
+
+    protected static class Entry {
+        protected final Jwt jwt;
+        // insertion order, for FIFO eviction
+        protected final long sequence;
+        // last access time (millis), for LRU eviction
+        protected volatile long accessed;
+
+        protected Entry(Jwt jwt, long sequence, long accessed) {
+            this.jwt = jwt;
+            this.sequence = sequence;
+            this.accessed = accessed;
+        }
+    }
 
     protected static class Cache {
-        protected final ConcurrentHashMap<String, Jwt> map;
+
+        // when full (FIFO / LRU), evict down to this percentage of the max size, so the cost of
+        // finding the entries to evict is amortized over many subsequent additions
+        protected static final int EVICTION_TARGET_PERCENT = 90;
+
+        protected final ConcurrentHashMap<String, Entry> map;
         // active keys at the time this cache was created, so that any refresh which
         // changes key selection-relevant metadata while keeping the same kid is detected
         protected final DecodedJwtCacheJWKRepresentations keyRepresentations;
         protected final int maxCacheSize;
+        protected final JwtDecoderCacheMode mode;
         protected final OAuth2TokenValidator<Jwt> jwtValidator;
 
-        protected Cache(DecodedJwtCacheJWKRepresentations keyRepresentations, int maxCacheSize, OAuth2TokenValidator<Jwt> jwtValidator) {
+        protected final AtomicLong sequence = new AtomicLong();
+
+        // background eviction (FIFO / LRU)
+        protected final Executor evictionExecutor;
+        protected final AtomicBoolean evictionScheduled = new AtomicBoolean();
+
+        protected volatile boolean fullWarningLogged = false;
+
+        protected Cache(DecodedJwtCacheJWKRepresentations keyRepresentations, int maxCacheSize, JwtDecoderCacheMode mode, OAuth2TokenValidator<Jwt> jwtValidator, Executor evictionExecutor) {
             this.keyRepresentations = keyRepresentations;
             if(maxCacheSize == -1) {
                 this.map = new ConcurrentHashMap<>();
@@ -59,22 +98,173 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
                 this.map = new ConcurrentHashMap<>(2 * maxCacheSize);
                 this.maxCacheSize = maxCacheSize;
             }
+            this.mode = mode;
             this.jwtValidator = jwtValidator;
+            this.evictionExecutor = evictionExecutor;
         }
 
         public void add(String token, Jwt jwt) {
-            // the size check is not atomic with the put, but it is good enough for this use case.
-            if(map.size() >= maxCacheSize) {
+            if (!isKeyKnown(jwt)) {
                 return;
             }
+            // the size checks are not atomic with the put, but it is good enough for this use case.
+            int size = map.size();
+            if(size >= maxCacheSize) {
+                if(!isEvicting() || size >= getHardMaxCacheSize()) {
+                    warnFull();
+                    return;
+                }
+                // temporarily exceed the max size, evict in the background
+                scheduleEviction();
+            }
+            map.put(token, new Entry(jwt, sequence.incrementAndGet(), System.currentTimeMillis()));
+        }
 
-            if (isKeyKnown(jwt)) {
-                map.put(token, jwt);
+        protected boolean isEvicting() {
+            return mode != JwtDecoderCacheMode.FIXED && evictionExecutor != null && maxCacheSize > 0;
+        }
+
+        /**
+         * With eviction, the max size may temporarily be exceeded until the background eviction has run;
+         * do not grow without bound if eviction does not keep up.
+         */
+        protected int getHardMaxCacheSize() {
+            return maxCacheSize > Integer.MAX_VALUE / 2 ? Integer.MAX_VALUE : maxCacheSize * 2;
+        }
+
+        protected void warnFull() {
+            if(!fullWarningLogged && maxCacheSize > 0) {
+                fullWarningLogged = true;
+                if(mode == JwtDecoderCacheMode.FIXED) {
+                    LOGGER.warn("Decoded JWT cache is full ({} JWTs), new JWTs are not cached until cached JWTs are no longer valid. Consider increasing the max size or using another cache mode.", maxCacheSize);
+                } else {
+                    LOGGER.warn("Decoded JWT cache eviction does not keep up, cache is at {} JWTs (max size {}); new JWTs are not cached until eviction has run.", map.size(), maxCacheSize);
+                }
             }
         }
 
+        protected void scheduleEviction() {
+            if(evictionScheduled.compareAndSet(false, true)) {
+                try {
+                    evictionExecutor.execute(this::evict);
+                } catch (RejectedExecutionException e) {
+                    // decoder closed
+                    evictionScheduled.set(false);
+                }
+            }
+        }
+
+        /**
+         * Evict entries with the lowest order (sequence for FIFO, last access time for LRU),
+         * leaving at most {@link #EVICTION_TARGET_PERCENT} of the max size.
+         */
+        protected void evict() {
+            try {
+                int target = (int) ((long) maxCacheSize * EVICTION_TARGET_PERCENT / 100);
+                int count = map.size() - target;
+                if(count > 0) {
+                    evict(count);
+                }
+            } catch (Throwable e) {
+                LOGGER.warn("Problem evicting JWTs from cache", e);
+            } finally {
+                evictionScheduled.set(false);
+            }
+            // JWTs added while evicting might again exceed the max size
+            if(map.size() > maxCacheSize) {
+                scheduleEviction();
+            }
+        }
+
+        /**
+         * Evict (at most) the given number of entries with the lowest order.
+         */
+        protected void evict(int count) {
+            int size = map.size();
+            if(size == 0) {
+                return;
+            }
+            long[] orders = new long[size + 16]; // map might grow concurrently
+            int n = 0;
+            for (Entry entry : map.values()) {
+                if(n == orders.length) {
+                    break;
+                }
+                orders[n++] = order(entry);
+            }
+            if(n == 0) {
+                return;
+            }
+            long threshold = select(orders, n, Math.min(count, n) - 1);
+
+            int evicted = 0;
+            Iterator<Entry> iterator = map.values().iterator();
+            while (iterator.hasNext() && evicted < count) {
+                if(order(iterator.next()) <= threshold) {
+                    iterator.remove();
+                    evicted++;
+                }
+            }
+        }
+
+        /**
+         * Quickselect: find the k-th smallest (0-based) of the first n values, in expected linear time.
+         * Partially reorders the array.
+         */
+        protected static long select(long[] values, int n, int k) {
+            int left = 0;
+            int right = n - 1;
+            while (left < right) {
+                // median of three as pivot, to avoid the worst case for already (partially) ordered values
+                int middle = (left + right) >>> 1;
+                long pivot = median(values[left], values[middle], values[right]);
+
+                int i = left;
+                int j = right;
+                while (i <= j) {
+                    while (values[i] < pivot) i++;
+                    while (values[j] > pivot) j--;
+                    if (i <= j) {
+                        long swap = values[i];
+                        values[i] = values[j];
+                        values[j] = swap;
+                        i++;
+                        j--;
+                    }
+                }
+                // now values[left..j] <= pivot <= values[i..right]
+                if (k <= j) {
+                    right = j;
+                } else if (k >= i) {
+                    left = i;
+                } else {
+                    return values[k];
+                }
+            }
+            return values[k];
+        }
+
+        private static long median(long a, long b, long c) {
+            return Math.max(Math.min(a, b), Math.min(Math.max(a, b), c));
+        }
+
+        protected long order(Entry entry) {
+            return mode == JwtDecoderCacheMode.LRU ? entry.accessed : entry.sequence;
+        }
+
         public Jwt get(String token) {
-            return map.get(token);
+            Entry entry = map.get(token);
+            if(entry == null) {
+                return null;
+            }
+            if(mode == JwtDecoderCacheMode.LRU) {
+                // avoid writing (cache line contention) more than once per millisecond
+                long now = System.currentTimeMillis();
+                if(entry.accessed != now) {
+                    entry.accessed = now;
+                }
+            }
+            return entry.jwt;
         }
 
         public void remove(String token) {
@@ -98,10 +288,10 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         protected int cleanInvalidJwts() {
             int count = 0;
             // remove no longer valid JWTs. Typically they expire by time.
-            for (Map.Entry<String, Jwt> entry : map.entrySet()) {
-                Jwt value = entry.getValue();
+            for (Map.Entry<String, Entry> entry : map.entrySet()) {
+                Entry value = entry.getValue();
                 if(value != null) {
-                    OAuth2TokenValidatorResult result = jwtValidator.validate(value);
+                    OAuth2TokenValidatorResult result = jwtValidator.validate(value.jwt);
                     if (result.hasErrors()) {
                         map.remove(entry.getKey());
                         count++;
@@ -126,16 +316,18 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
             if (keyIdsToKeep.isEmpty()) {
                 return; // nothing can match, avoid iterating the old cache at all
             }
-            for (Map.Entry<String, Jwt> entry : cache.map.entrySet()) {
+            // keep the insertion order for FIFO
+            sequence.set(cache.sequence.get());
+            for (Map.Entry<String, Entry> entry : cache.map.entrySet()) {
                 // bail out as soon as capacity is reached instead of checking size per-entry
                 if (map.size() >= maxCacheSize) {
                     return;
                 }
-                Jwt value = entry.getValue();
+                Entry value = entry.getValue();
                 if (value == null) {
                     continue;
                 }
-                String kid = (String) value.getHeaders().get("kid");
+                String kid = (String) value.jwt.getHeaders().get("kid");
                 // only migrate entries whose key id was positively confirmed unchanged; a
                 // kid re-used for a rotated/different key must not carry over previously
                 // cached/validated JWTs
@@ -159,59 +351,78 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
 
     protected final long cleanupInterval;
     protected final int maxCacheSize;
+    protected final JwtDecoderCacheMode mode;
 
-    // whether to keep serving cached/validated JWTs while the JWK set fails to refresh
-    // (a "refresh outage"), and if so, for how long (millis) to keep tolerating a
-    // continuing outage before flushing the cache; -1 tolerates outages indefinitely
-    protected final boolean outageCacheEnabled;
-    protected final long outageCacheTimeToLive;
+    protected static final long NEVER = Long.MAX_VALUE;
 
-    // the time of the last successful refresh (RefreshCompletedEvent), used as the anchor
-    // point for measuring how long an ongoing refresh outage has lasted; initialized at
-    // construction time since that is when the initial cache/JWK set is considered fresh
-    protected volatile long lastRefreshCompletedAt = System.currentTimeMillis();
-
-    // whether the 50%/75%-of-time-to-live warnings have already been logged for the
-    // current outage, reset whenever the outage clock itself resets (successful refresh)
-    protected volatile boolean outageHalfTimeWarningLogged = false;
-    protected volatile boolean outageThreeQuarterTimeWarningLogged = false;
+    // from when the cache is not used, checked when decoding (see suspendAt(..))
+    protected volatile long suspendedAt = NEVER;
 
     protected volatile Cache cache;
 
+    /**
+     * Create a decoder using {@link JwtDecoderCacheMode#FIXED} mode, i.e. new JWTs are not cached when the cache is full.
+     * Note that the Spring configuration defaults to {@link JwtDecoderCacheMode#LRU}.
+     */
     public DecodedJwtCacheJwtDecoder(JwtDecoder jwtValidatingDecoder, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupIntervalMillis, int maxCacheSize) {
-        // preserve historical behaviour: tolerate refresh outages indefinitely
-        this(jwtValidatingDecoder, jwtValidators, cleanupIntervalMillis, maxCacheSize, true, -1L);
+        this(jwtValidatingDecoder, jwtValidators, cleanupIntervalMillis, maxCacheSize, JwtDecoderCacheMode.FIXED);
     }
 
-    public DecodedJwtCacheJwtDecoder(JwtDecoder jwtValidatingDecoder, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupIntervalMillis, int maxCacheSize,
-                                      boolean outageCacheEnabled, long outageCacheTimeToLiveMillis) {
+    public DecodedJwtCacheJwtDecoder(JwtDecoder jwtValidatingDecoder, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupIntervalMillis, int maxCacheSize, JwtDecoderCacheMode mode) {
+        if (maxCacheSize < -1) {
+            throw new IllegalArgumentException("maxCacheSize must be -1 (unlimited) or non-negative, was " + maxCacheSize);
+        }
+        if (mode == null) {
+            throw new IllegalArgumentException("mode must not be null");
+        }
         this.jwtValidatingDecoder = jwtValidatingDecoder;
         this.jwtValidator = jwtValidators;
         this.cleanupInterval = cleanupIntervalMillis;
         this.maxCacheSize = maxCacheSize;
-        this.outageCacheEnabled = outageCacheEnabled;
-        this.outageCacheTimeToLive = outageCacheTimeToLiveMillis;
+        this.mode = mode;
 
-        cache = new Cache(DecodedJwtCacheJWKRepresentations.empty(), 0, jwtValidator);
+        cache = new Cache(DecodedJwtCacheJWKRepresentations.empty(), 0, mode, jwtValidator, null);
     }
 
     public synchronized void scheduleCleanup() {
         if (cleanupInterval <= 0) {
             return;
         }
+        getScheduledExecutorService().scheduleWithFixedDelay(this::cleanup, cleanupInterval, cleanupInterval, TimeUnit.MILLISECONDS);
+    }
+
+    protected synchronized ScheduledExecutorService getScheduledExecutorService() {
+        if (closed) {
+            throw new RejectedExecutionException("Closed");
+        }
         if (scheduledExecutorService == null) {
             scheduledExecutorService = createDefaultScheduledExecutorService();
         }
-        scheduledExecutorService.scheduleWithFixedDelay(this::cleanup, cleanupInterval, cleanupInterval, TimeUnit.MILLISECONDS);
+        return scheduledExecutorService;
+    }
+
+    // run eviction on the (single) background thread, also used for cleanup
+    protected void executeInBackground(Runnable command) {
+        ScheduledExecutorService executor = scheduledExecutorService; // defensive copy
+        if (executor == null) {
+            executor = getScheduledExecutorService();
+        }
+        executor.execute(command);
     }
 
     public void cleanup() {
-        if(!cache.isEmpty()) {
+        if (isSuspended()) {
+            cache.clear();
+            return;
+        }
+
+        Cache c = this.cache; // defensive copy
+        if(!c.isEmpty()) {
             try {
                 // avoid memory leaks due to stagnant JWTs
-                int cleaned = cache.cleanInvalidJwts();
+                int cleaned = c.cleanInvalidJwts();
                 if(cleaned > 0) {
-                    if (LOGGER.isDebugEnabled()) LOGGER.debug("Cleaned {} invalid JWTs from cache, now have {}", cleaned, cache.map.size());
+                    if (LOGGER.isDebugEnabled()) LOGGER.debug("Cleaned {} invalid JWTs from cache, now have {}", cleaned, c.size());
                 }
             } catch (Throwable e) {
                 // ignore, will be handled by regular flow
@@ -222,6 +433,14 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
 
     @Override
     public Jwt decode(String token) throws JwtException {
+        if (isSuspended()) {
+            // decode as if no JWT was cached
+            Cache c = this.cache;
+            if (!c.isEmpty()) {
+                c.clear();
+            }
+            return jwtValidatingDecoder.decode(token);
+        }
 
         Cache c = this.cache; // defensive copy
 
@@ -232,7 +451,12 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         }
 
         Jwt jwt = jwtValidatingDecoder.decode(token); // also validates
-        this.cache.add(token, jwt); // re-read the live cache; only adds if the keyid is known
+
+        // Only add if no JWK set refresh completed while decoding: the decoder might have verified the
+        // JWT using the previous JWK set, i.e. with a key which has since been replaced under the same key id.
+        if (this.cache == c) {
+            c.add(token, jwt); // only adds if the keyid is known
+        }
 
         return jwt;
     }
@@ -263,93 +487,54 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, EventListener, Clo
         cache.clear();
     }
 
-    @Override
-    public void notify(Event event) {
-        if(event instanceof CachingJWKSetSource.RefreshInitiatedEvent<?>) {
-            // do nothing
-        } else if(event instanceof CachingJWKSetSource.RefreshCompletedEvent<?>) {
-            // this event is fired AFTER the decoder has been updated with the new JWK set
+    /**
+     * Update the cached key representations from a (re)loaded JWK set, evicting cached JWTs whose key was added,
+     * removed or changed. Cached JWTs whose key is unchanged are kept.
+     */
+    public void updateKeys(JWKSet jwkSet) {
+        Cache cache = this.cache; // defensive copy
+        DecodedJwtCacheJWKRepresentations keyRepresentations = DecodedJwtCacheJWKRepresentations.of(jwkSet);
 
-            CachingJWKSetSource.RefreshCompletedEvent refreshCompletedEvent = (CachingJWKSetSource.RefreshCompletedEvent) event;
+        // compare the full JWK representation for each kid, not just key id or
+        // RFC 7638 thumbprint, so metadata changes affecting key selection also
+        // invalidate previously cached JWTs.
+        if(!cache.hasSameKeys(keyRepresentations)) {
+            // keys were added, removed, or changed since the previous refresh; work
+            // out which key ids are positively confirmed unchanged (a safe whitelist),
+            // so only cached JWTs signed by those keys are migrated - everything else
+            // is dropped by default rather than only excluded if provably changed
+            Set<String> keyIdsToKeep = keyRepresentations.unchangedKeyIds(cache.keyRepresentations);
 
-            // refresh succeeded; any ongoing outage is over, and this is the new anchor
-            // point for measuring the duration of a future outage
-            lastRefreshCompletedAt = System.currentTimeMillis();
-            outageHalfTimeWarningLogged = false;
-            outageThreeQuarterTimeWarningLogged = false;
-
-            Cache cache = this.cache; // defensive copy
-            DecodedJwtCacheJWKRepresentations keyRepresentations = DecodedJwtCacheJWKRepresentations.of(refreshCompletedEvent.getJWKSet());
-
-            // compare the full JWK representation for each kid, not just key id or
-            // RFC 7638 thumbprint, so metadata changes affecting key selection also
-            // invalidate previously cached JWTs.
-            if(cache.hasSameKeys(keyRepresentations)) {
-                // do nothing
-            } else {
-                // keys were added, removed, or changed since the previous refresh; work
-                // out which key ids are positively confirmed unchanged (a safe whitelist),
-                // so only cached JWTs signed by those keys are migrated - everything else
-                // is dropped by default rather than only excluded if provably changed
-                Set<String> keyIdsToKeep = keyRepresentations.unchangedKeyIds(cache.keyRepresentations);
-
-                // create a new cache
-                Cache nextCache = new Cache(keyRepresentations, maxCacheSize, jwtValidator);
-                // copy still-valid JWTs from the old cache to the new cache
-                nextCache.add(cache, keyIdsToKeep);
-                this.cache = nextCache;
-            }
-        } else if(event instanceof CachingJWKSetSource.UnableToRefreshEvent<?>) {
-            handleRefreshOutage();
-        } else if(event instanceof CachingJWKSetSource.RefreshTimedOutEvent<?>) {
-            handleRefreshOutage();
+            Cache nextCache = new Cache(keyRepresentations, maxCacheSize, mode, jwtValidator, this::executeInBackground);
+            nextCache.add(cache, keyIdsToKeep);
+            this.cache = nextCache;
         }
     }
 
     /**
-     * Called whenever the JWK set fails to refresh (or times out doing so). Depending on
-     * {@link #outageCacheEnabled}/{@link #outageCacheTimeToLive}, the cache of previously
-     * validated JWTs is either kept as-is (tolerating the outage), or flushed - either
-     * immediately (outage cache disabled) or once the outage has lasted too long -
-     * forcing JWTs to be re-verified rather than trusted indefinitely against an
-     * increasingly stale local cache. The outage duration is measured relative to the
-     * last successful refresh ({@link #lastRefreshCompletedAt}), not relative to the
-     * first observed failure, so it also accounts for any delay between the last known
-     * good state and the first failure being noticed. Once the outage has lasted 50%,
-     * and again at 75%, of the configured time to live, a warning is logged noting how
-     * much time is left before the cache is flushed.
+     * Stop using the cache from the given time: the cache is cleared, and JWTs are decoded as if no JWT
+     * was cached, until {@link #resume()}. Checked when decoding (and on cleanup), so no timer is needed.
+     *
+     * @param timeMillis time (epoch millis) from which the cache is not used
      */
-    protected void handleRefreshOutage() {
-        if (!outageCacheEnabled) {
-            cache.clear();
-            return;
-        }
-        if (outageCacheTimeToLive < 0) {
-            // tolerate refresh outages indefinitely; there is no bound to warn about
-            return;
-        }
-
-        long now = System.currentTimeMillis();
-        long elapsed = now - lastRefreshCompletedAt;
-
-        if (elapsed >= outageCacheTimeToLive) {
-            // the outage has lasted too long to keep trusting the cache
-            cache.clear();
-            return;
-        }
-
-        long remaining = outageCacheTimeToLive - elapsed;
-        if (elapsed >= outageCacheTimeToLive / 2 && !outageHalfTimeWarningLogged) {
-            outageHalfTimeWarningLogged = true;
-            LOGGER.warn("Refresh outage has lasted for 50% of the configured outage cache time to live ({} ms); {} ms left before the decoded JWT cache is flushed", outageCacheTimeToLive, remaining);
-        }
-        if (elapsed >= (outageCacheTimeToLive * 3) / 4 && !outageThreeQuarterTimeWarningLogged) {
-            outageThreeQuarterTimeWarningLogged = true;
-            LOGGER.error("Refresh outage has lasted for 75% of the configured outage cache time to live ({} ms); {} ms left before the decoded JWT cache is flushed", outageCacheTimeToLive, remaining);
-        }
+    public void suspendAt(long timeMillis) {
+        this.suspendedAt = timeMillis;
     }
 
-    public void close() {
+    /**
+     * Use the cache again, cancelling any {@link #suspendAt(long)}.
+     */
+    public void resume() {
+        this.suspendedAt = NEVER;
+    }
+
+    protected boolean isSuspended() {
+        long suspendedAt = this.suspendedAt;
+        return suspendedAt != NEVER && System.currentTimeMillis() >= suspendedAt;
+    }
+
+    public synchronized void close() {
+        closed = true;
         ScheduledExecutorService executor = scheduledExecutorService; // defensive copy
         if (executor != null) {
             executor.shutdownNow();

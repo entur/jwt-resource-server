@@ -3,6 +3,7 @@ package org.entur.jwt.spring;
 import org.entur.jwt.spring.config.ReactiveEnturAuthorizeHttpRequestsCustomizer;
 import org.entur.jwt.spring.config.ReactiveEnturOauth2ResourceServerCustomizer;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
+import org.entur.jwt.spring.decode.cache.DecodedJwtCacheConfigurationReader;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.entur.jwt.spring.properties.Auth0Flavour;
 import org.entur.jwt.spring.properties.AuthorizationProperties;
@@ -147,6 +148,11 @@ public class JwtWebFluxSecurityAutoConfiguration {
                     }
 
                     jwtAuthorityEnrichers = enrichers;
+                }
+
+                // the decoded JWT cache is not supported for webflux; warn so the misconfiguration is not silent
+                for (String tenant : DecodedJwtCacheConfigurationReader.getTenantsWithDecoderCacheEnabled(jwt)) {
+                    log.warn("Tenant '{}' has decoder-cache.enabled=true, but the decoded JWT cache is not supported for webflux; the setting is ignored", tenant);
                 }
 
                 http.oauth2ResourceServer(new ReactiveEnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers, jwtValidators, securityProperties.getJwt().getDecode(), jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider));
