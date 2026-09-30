@@ -14,7 +14,6 @@ import org.springframework.security.oauth2.jwt.JwtValidationException;
 import org.springframework.util.StringUtils;
 
 import java.io.Closeable;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
@@ -196,8 +195,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
             if(n == 0) {
                 return;
             }
-            Arrays.sort(orders, 0, n);
-            long threshold = orders[Math.min(count, n) - 1];
+            long threshold = select(orders, n, Math.min(count, n) - 1);
 
             int evicted = 0;
             Iterator<Entry> iterator = map.values().iterator();
@@ -207,6 +205,47 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
                     evicted++;
                 }
             }
+        }
+
+        /**
+         * Quickselect: find the k-th smallest (0-based) of the first n values, in expected linear time.
+         * Partially reorders the array.
+         */
+        protected static long select(long[] values, int n, int k) {
+            int left = 0;
+            int right = n - 1;
+            while (left < right) {
+                // median of three as pivot, to avoid the worst case for already (partially) ordered values
+                int middle = (left + right) >>> 1;
+                long pivot = median(values[left], values[middle], values[right]);
+
+                int i = left;
+                int j = right;
+                while (i <= j) {
+                    while (values[i] < pivot) i++;
+                    while (values[j] > pivot) j--;
+                    if (i <= j) {
+                        long swap = values[i];
+                        values[i] = values[j];
+                        values[j] = swap;
+                        i++;
+                        j--;
+                    }
+                }
+                // now values[left..j] <= pivot <= values[i..right]
+                if (k <= j) {
+                    right = j;
+                } else if (k >= i) {
+                    left = i;
+                } else {
+                    return values[k];
+                }
+            }
+            return values[k];
+        }
+
+        private static long median(long a, long b, long c) {
+            return Math.max(Math.min(a, b), Math.min(Math.max(a, b), c));
         }
 
         protected long order(Entry entry) {
@@ -321,8 +360,11 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
 
     protected volatile Cache cache;
 
+    /**
+     * Create a decoder using {@link JwtDecoderCacheMode#FIXED} mode, i.e. new JWTs are not cached when the cache is full.
+     * Note that the Spring configuration defaults to {@link JwtDecoderCacheMode#LRU}.
+     */
     public DecodedJwtCacheJwtDecoder(JwtDecoder jwtValidatingDecoder, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupIntervalMillis, int maxCacheSize) {
-        // preserve historical behaviour: stop caching new JWTs when full
         this(jwtValidatingDecoder, jwtValidators, cleanupIntervalMillis, maxCacheSize, JwtDecoderCacheMode.FIXED);
     }
 

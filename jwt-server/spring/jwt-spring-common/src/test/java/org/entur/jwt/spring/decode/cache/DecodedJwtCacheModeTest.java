@@ -270,6 +270,30 @@ class DecodedJwtCacheModeTest {
     }
 
     @Test
+    void testSelectFindsKthSmallest() {
+        java.util.Random random = new java.util.Random(1);
+        for (int run = 0; run < 1_000; run++) {
+            int n = 1 + random.nextInt(300);
+            long[] values = new long[n + 16]; // unused tail, as in evict
+            for (int i = 0; i < n; i++) {
+                // few distinct values in some runs, to exercise duplicates
+                values[i] = run % 2 == 0 ? random.nextLong() : random.nextInt(5);
+            }
+            long[] sorted = java.util.Arrays.copyOf(values, n);
+            java.util.Arrays.sort(sorted);
+
+            int k = random.nextInt(n);
+            assertEquals(sorted[k], DecodedJwtCacheJwtDecoder.Cache.select(values.clone(), n, k));
+        }
+        // already ordered input
+        long[] ordered = new long[1000];
+        for (int i = 0; i < ordered.length; i++) {
+            ordered[i] = i;
+        }
+        assertEquals(99, DecodedJwtCacheJwtDecoder.Cache.select(ordered.clone(), ordered.length, 99));
+    }
+
+    @Test
     void testRejectsNullMode() {
         assertThrows(IllegalArgumentException.class, () -> new DecodedJwtCacheJwtDecoder(delegate, jwt -> OAuth2TokenValidatorResult.success(), CLEANUP_INTERVAL, 10, null));
         assertThrows(IllegalArgumentException.class, () -> new JwtDecoderCacheProperties().setMode(null));
