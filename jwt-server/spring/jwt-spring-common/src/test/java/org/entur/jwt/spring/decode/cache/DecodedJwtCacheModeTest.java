@@ -145,9 +145,10 @@ class DecodedJwtCacheModeTest {
         decoder(10, JwtDecoderCacheMode.LRU);
         fill(10);
 
-        // deterministic access times, token0 is the least recently used
+        // deterministic access times, one second apart; token0 is the least recently used
+        long now = System.currentTimeMillis();
         for (int i = 0; i < 10; i++) {
-            decoder.cache.map.get("token" + i).accessed = i;
+            decoder.cache.map.get("token" + i).accessed = now - (10 - i) * 1000L;
         }
         decoder.decode("token0"); // cache hit, now the most recently used
 
@@ -269,28 +270,61 @@ class DecodedJwtCacheModeTest {
         assertTrue(decoder.getSize() <= maxSize);
     }
 
-    @Test
-    void testSelectFindsKthSmallest() {
-        java.util.Random random = new java.util.Random(1);
-        for (int run = 0; run < 1_000; run++) {
-            int n = 1 + random.nextInt(300);
-            long[] values = new long[n + 16]; // unused tail, as in evict
-            for (int i = 0; i < n; i++) {
-                // few distinct values in some runs, to exercise duplicates
-                values[i] = run % 2 == 0 ? random.nextLong() : random.nextInt(5);
-            }
-            long[] sorted = java.util.Arrays.copyOf(values, n);
-            java.util.Arrays.sort(sorted);
+    private static DecodedJwtCacheJwtDecoder.Cache cacheWithOrders(long... sequences) {
+        DecodedJwtCacheJwtDecoder.Cache cache = new DecodedJwtCacheJwtDecoder.Cache(DecodedJwtCacheJWKRepresentations.empty(), 1000, JwtDecoderCacheMode.FIFO, jwt -> OAuth2TokenValidatorResult.success(), Runnable::run);
+        for (int i = 0; i < sequences.length; i++) {
+            Jwt jwt = Jwt.withTokenValue("t" + i).header("alg", "none").claim("sub", "s").build();
+            cache.map.put("t" + i, new DecodedJwtCacheJwtDecoder.Entry(jwt, sequences[i], 0));
+        }
+        return cache;
+    }
 
-            int k = random.nextInt(n);
-            assertEquals(sorted[k], DecodedJwtCacheJwtDecoder.Cache.select(values.clone(), n, k));
+    @Test
+    void testEvictRemovesLowestOrdersByHistogram() {
+        java.util.Random random = new java.util.Random(1);
+        for (int run = 0; run < 200; run++) {
+            int n = 1 + random.nextInt(500);
+            long[] sequences = new long[n];
+            for (int i = 0; i < n; i++) {
+                sequences[i] = random.nextInt(1_000_000);
+            }
+            DecodedJwtCacheJwtDecoder.Cache cache = cacheWithOrders(sequences);
+            int count = random.nextInt(n + 1);
+
+            long min = java.util.Arrays.stream(sequences).min().getAsLong();
+            long max = java.util.Arrays.stream(sequences).max().getAsLong();
+            int buckets = Math.min(n, DecodedJwtCacheJwtDecoder.Cache.HISTOGRAM_BUCKETS);
+            long width = (max - min) / buckets + 1;
+
+            cache.evict(count);
+
+            assertEquals(n - count, cache.size());
+
+            // everything kept is in the same or a higher bucket than everything evicted
+            java.util.Set<String> kept = cache.map.keySet();
+            int maxEvictedBucket = -1;
+            int minKeptBucket = Integer.MAX_VALUE;
+            for (int i = 0; i < n; i++) {
+                int bucket = DecodedJwtCacheJwtDecoder.Cache.bucket(sequences[i], min, width, buckets);
+                if (kept.contains("t" + i)) {
+                    minKeptBucket = Math.min(minKeptBucket, bucket);
+                } else {
+                    maxEvictedBucket = Math.max(maxEvictedBucket, bucket);
+                }
+            }
+            assertTrue(maxEvictedBucket <= minKeptBucket);
         }
-        // already ordered input
-        long[] ordered = new long[1000];
-        for (int i = 0; i < ordered.length; i++) {
-            ordered[i] = i;
-        }
-        assertEquals(99, DecodedJwtCacheJwtDecoder.Cache.select(ordered.clone(), ordered.length, 99));
+    }
+
+    @Test
+    void testEvictTooFullBucketTakesWhicheverFirst() {
+        // skewed: an outlier puts all other entries in the first bucket
+        DecodedJwtCacheJwtDecoder.Cache cache = cacheWithOrders(1, 2, 3, 4, 5, 6, 7, 8, 9, 1_000_000);
+
+        cache.evict(3);
+
+        assertEquals(7, cache.size());
+        assertTrue(cache.map.containsKey("t9"));
     }
 
     @Test

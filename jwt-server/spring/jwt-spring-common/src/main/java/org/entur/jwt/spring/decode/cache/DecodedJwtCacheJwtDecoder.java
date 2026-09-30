@@ -73,6 +73,9 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
         // finding the entries to evict is amortized over many subsequent additions
         protected static final int EVICTION_TARGET_PERCENT = 90;
 
+        // max number of histogram buckets used to find the entries to evict
+        protected static final int HISTOGRAM_BUCKETS = 128;
+
         protected final ConcurrentHashMap<String, Entry> map;
         // active keys at the time this cache was created, so that any refresh which
         // changes key selection-relevant metadata while keeping the same kid is detected
@@ -177,75 +180,69 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
         }
 
         /**
-         * Evict (at most) the given number of entries with the lowest order.
+         * Evict (at most) the given number of entries with the lowest order, approximately:
+         * the orders are counted into a histogram (between the min and max order), to find the bucket
+         * holding the limit. Entries in lower buckets are evicted; within the limit bucket, whichever entries
+         * the iterator covers first. Linear time, and no sorting or copying of the entries.
          */
         protected void evict(int count) {
-            int size = map.size();
-            if(size == 0) {
-                return;
-            }
-            long[] orders = new long[size + 16]; // map might grow concurrently
+            // pass 1: range of orders
+            long min = Long.MAX_VALUE;
+            long max = Long.MIN_VALUE;
             int n = 0;
             for (Entry entry : map.values()) {
-                if(n == orders.length) {
-                    break;
+                long order = order(entry);
+                if(order < min) {
+                    min = order;
                 }
-                orders[n++] = order(entry);
+                if(order > max) {
+                    max = order;
+                }
+                n++;
             }
             if(n == 0) {
                 return;
             }
-            long threshold = select(orders, n, Math.min(count, n) - 1);
 
+            // pass 2: histogram
+            int buckets = Math.min(n, HISTOGRAM_BUCKETS);
+            long width = (max - min) / buckets + 1;
+            int[] histogram = new int[buckets];
+            for (Entry entry : map.values()) {
+                histogram[bucket(order(entry), min, width, buckets)]++;
+            }
+
+            // find the bucket holding the limit, and how many to evict from it
+            int limitBucket = 0;
+            int remaining = count;
+            while (limitBucket < buckets - 1 && histogram[limitBucket] < remaining) {
+                remaining -= histogram[limitBucket];
+                limitBucket++;
+            }
+
+            // pass 3: evict everything below the limit bucket, and the first entries in the limit bucket
             int evicted = 0;
             Iterator<Entry> iterator = map.values().iterator();
             while (iterator.hasNext() && evicted < count) {
-                if(order(iterator.next()) <= threshold) {
+                int bucket = bucket(order(iterator.next()), min, width, buckets);
+                if(bucket < limitBucket) {
                     iterator.remove();
                     evicted++;
+                } else if(bucket == limitBucket && remaining > 0) {
+                    iterator.remove();
+                    evicted++;
+                    remaining--;
                 }
             }
         }
 
-        /**
-         * Quickselect: find the k-th smallest (0-based) of the first n values, in expected linear time.
-         * Partially reorders the array.
-         */
-        protected static long select(long[] values, int n, int k) {
-            int left = 0;
-            int right = n - 1;
-            while (left < right) {
-                // median of three as pivot, to avoid the worst case for already (partially) ordered values
-                int middle = (left + right) >>> 1;
-                long pivot = median(values[left], values[middle], values[right]);
-
-                int i = left;
-                int j = right;
-                while (i <= j) {
-                    while (values[i] < pivot) i++;
-                    while (values[j] > pivot) j--;
-                    if (i <= j) {
-                        long swap = values[i];
-                        values[i] = values[j];
-                        values[j] = swap;
-                        i++;
-                        j--;
-                    }
-                }
-                // now values[left..j] <= pivot <= values[i..right]
-                if (k <= j) {
-                    right = j;
-                } else if (k >= i) {
-                    left = i;
-                } else {
-                    return values[k];
-                }
+        protected static int bucket(long order, long min, long width, int buckets) {
+            // orders might have changed since the range was determined (i.e. LRU access, new entries)
+            if(order <= min) {
+                return 0;
             }
-            return values[k];
-        }
-
-        private static long median(long a, long b, long c) {
-            return Math.max(Math.min(a, b), Math.min(Math.max(a, b), c));
+            long bucket = (order - min) / width;
+            return bucket >= buckets ? buckets - 1 : (int) bucket;
         }
 
         protected long order(Entry entry) {
