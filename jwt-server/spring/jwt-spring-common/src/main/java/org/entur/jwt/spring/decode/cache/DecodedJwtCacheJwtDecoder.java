@@ -122,8 +122,14 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
             // the size checks are not atomic with the put, but it is good enough for this use case.
             int size = map.size();
             if(size >= maxCacheSize) {
-                if(!isEvicting() || size >= getHardMaxCacheSize()) {
+                if(!isEvicting()) {
                     warnFull();
+                    return;
+                }
+                if(size >= getHardMaxCacheSize()) {
+                    warnFull();
+                    // i.e. after migrating a full cache on a JWK set change, nothing else might have scheduled eviction
+                    scheduleEviction();
                     return;
                 }
                 // temporarily exceed the max size, evict in the background
@@ -334,19 +340,10 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
             sequence.set(cache.sequence.get());
 
             // with eviction (FIFO / LRU) the previous cache might temporarily hold more than the max size;
-            // migrate up to the hard max size and let eviction pick what to remove, so the entries
-            // which are kept follow the cache mode rather than the (arbitrary) iteration order
+            // copy up to the hard max size, and leave it to the background eviction (triggered by the next
+            // addition) to pick what to remove, so the entries which are kept follow the cache mode rather
+            // than the (arbitrary) iteration order
             int limit = isEvicting() ? getHardMaxCacheSize() : maxCacheSize;
-            try {
-                migrate(cache, keyIdsToKeep, limit);
-            } finally {
-                if (isEvicting() && map.size() > maxCacheSize) {
-                    scheduleEviction();
-                }
-            }
-        }
-
-        protected void migrate(Cache cache, Set<String> keyIdsToKeep, int limit) {
             for (Map.Entry<String, Entry> entry : cache.map.entrySet()) {
                 // bail out as soon as capacity is reached instead of checking size per-entry
                 if (map.size() >= limit) {
