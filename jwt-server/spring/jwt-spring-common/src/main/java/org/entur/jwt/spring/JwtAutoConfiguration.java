@@ -104,8 +104,10 @@ public class JwtAutoConfiguration {
 
     /**
      * Fail startup if there is a JwtDecoder bean, as it would silently be ignored.
+     * Disable with {@code entur.jwt.decode.fail-on-jwt-decoder-bean=false}.
      */
     @Bean
+    @ConditionalOnProperty(name = "entur.jwt.decode.fail-on-jwt-decoder-bean", havingValue = "true", matchIfMissing = true)
     public static UnsupportedJwtDecoderGuard unsupportedJwtDecoderGuard(ListableBeanFactory beanFactory) {
         return new UnsupportedJwtDecoderGuard(beanFactory);
     }

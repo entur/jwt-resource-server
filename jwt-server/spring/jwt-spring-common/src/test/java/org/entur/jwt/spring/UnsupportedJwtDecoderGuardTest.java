@@ -41,7 +41,18 @@ public class UnsupportedJwtDecoderGuardTest {
             assertThat(context.getStartupFailure())
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("myJwtDecoder")
-                    .hasMessageContaining("ClosableJwtDecoders");
+                    .hasMessageContaining("ClosableJwtDecoders")
+                    .hasMessageContaining("entur.jwt.decode.fail-on-jwt-decoder-bean=false");
         });
+    }
+
+    @Test
+    public void testStartsWithJwtDecoderBeanWhenDisabled() {
+        runner.withUserConfiguration(JwtDecoderConfiguration.class)
+                .withPropertyValues("entur.jwt.decode.fail-on-jwt-decoder-bean=false")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).doesNotHaveBean(UnsupportedJwtDecoderGuard.class);
+                });
     }
 }
