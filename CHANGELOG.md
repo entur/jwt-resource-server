@@ -1,4 +1,9 @@
 # CHANGELOG
+ - 8.0.0: Performance improvement (opt-in): per-tenant decoded JWT cache, with `lru` (default), `fifo` or `fixed` mode when full. The per-issuer decoders are now a single `ClosableJwtDecoders` bean in the common module, shared by the web and gRPC modules (so an application with both has one decoded JWT cache per tenant). New example with both REST and gRPC: `examples/jwt-resource-server-spring-boot-grpc-web-example`. Breaking changes:
+   - Startup now fails if there is a `JwtDecoder` (or `ReactiveJwtDecoder`) bean, which was always silently ignored; this includes beans created by Spring Boot from `spring.security.oauth2.resourceserver.jwt.*` properties and mocked decoder beans in tests. Disable with `entur.jwt.decode.fail-on-jwt-decoder-bean=false`.
+   - `IssuerJwtDecoder` and `FastIssuerJwtDecoder` moved from `org.entur.jwt.spring.grpc.netty` to `org.entur.jwt.spring.decode` (common module), and `IssuerJwtDecoder.newBuilder()` was removed (see `ClosableJwtDecodersBuilder` and `IssuerJwtDecoderFactory`).
+   - The `EnturOauth2ResourceServerCustomizer` constructors now take a `ClosableJwtDecoders` instead of JWK sources and validators.
+   - Overriding the `ClosableJwtDecoders` bean affects both the web and the gRPC module.
  - 7.1.x: Performance improvement (opt-in): JWT header-to-issuer mapper for multi-tenant setups
  - 7.0.x: Spring Boot 4.1 and Spring gRPC (under `org.springframework.boot` group)
  - 6.0.0: Spring Boot 4 and Spring gRPC (under `org.springframework.grpc` group)
