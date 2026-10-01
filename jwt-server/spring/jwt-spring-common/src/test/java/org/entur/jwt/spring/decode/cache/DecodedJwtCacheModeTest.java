@@ -22,8 +22,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -428,5 +431,74 @@ class DecodedJwtCacheModeTest {
     @Test
     void testDefaultModeIsLru() {
         assertEquals(JwtDecoderCacheMode.LRU, new JwtDecoderCacheProperties().getMode());
+    }
+
+    @Test
+    void testLruOrderSurvivesKeyRefresh() throws Exception {
+        decoder(10, JwtDecoderCacheMode.LRU);
+        fill(10);
+
+        // use all but token0 and token1, so that they are the least recently used
+        Thread.sleep(5);
+        for (int i = 2; i < 10; i++) {
+            decoder.decode("token" + i);
+        }
+        Thread.sleep(5);
+
+        // new key added, existing kid unchanged, so the JWTs (and their last access time) are migrated to a new cache
+        JWKSet jwkSet = new JWKSet(List.of(
+                new OctetSequenceKey.Builder("secret-material".getBytes()).keyID("kid1").build(),
+                new OctetSequenceKey.Builder("other-material".getBytes()).keyID("kid2").build()));
+        JwkEvents.refresh(jwkEventListener(), jwkSet);
+        assertEquals(10, decoder.getSize());
+
+        decoder.decode("new");
+
+        awaitSize(9);
+        assertTrue(isCached("new"));
+        assertFalse(isCached("token0"));
+        assertFalse(isCached("token1"));
+        for (int i = 2; i < 10; i++) {
+            assertTrue(isCached("token" + i), "token" + i + " should be kept");
+        }
+    }
+
+    @Test
+    void testConcurrentAddsAndKeyRefreshes() throws Exception {
+        int size = 50;
+        decoder(size, JwtDecoderCacheMode.LRU);
+
+        AtomicBoolean running = new AtomicBoolean(true);
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Thread adder = new Thread(() -> {
+            try {
+                for (int i = 0; running.get(); i++) {
+                    decoder.decode("token" + i);
+                }
+            } catch (Throwable e) {
+                failure.set(e);
+            }
+        });
+        adder.start();
+
+        // JWK set changes (kid1 unchanged) while adding and evicting, so caches are migrated during eviction
+        for (int i = 0; i < 200; i++) {
+            JWKSet jwkSet = new JWKSet(List.of(
+                    new OctetSequenceKey.Builder("secret-material".getBytes()).keyID("kid1").build(),
+                    new OctetSequenceKey.Builder(("other-material-" + i).getBytes()).keyID("kid" + (2 + (i % 2))).build()));
+            JwkEvents.refresh(jwkEventListener(), jwkSet);
+            assertTrue(decoder.getSize() <= 2 * size + 1, "size " + decoder.getSize());
+        }
+        running.set(false);
+        adder.join(10_000);
+        assertNull(failure.get());
+
+        // the next addition triggers eviction down to the target size
+        decoder.decode("last");
+        long deadline = System.currentTimeMillis() + 10_000;
+        while (decoder.getSize() > size && System.currentTimeMillis() < deadline) {
+            Thread.sleep(1);
+        }
+        assertTrue(decoder.getSize() <= size, "size " + decoder.getSize());
     }
 }

@@ -6,6 +6,7 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.spring.JwkSourceMap;
+import org.entur.jwt.spring.decode.ClosableJwtDecoders;
 import org.entur.jwt.spring.decode.cache.DecodedJwtCacheJwtDecoder;
 import org.entur.jwt.spring.decode.FastIssuerJwtDecoder;
 import org.entur.jwt.spring.grpc.AbstractGrpcTest;
@@ -51,6 +52,9 @@ public class FastIssuerAndCachedJwtDecoderContextTest extends AbstractGrpcTest {
     @Autowired
     private SecurityProperties securityProperties;
 
+    @Autowired
+    private ClosableJwtDecoders closableJwtDecoders;
+
     @BeforeEach
     public void setup() throws Exception {
         jwtDecoder = grpcJwtDecoderHolder.getJwtDecoder();
@@ -78,6 +82,9 @@ public class FastIssuerAndCachedJwtDecoderContextTest extends AbstractGrpcTest {
         assertThat(b).isInstanceOf(NimbusJwtDecoder.class);
 
         assertEquals(123, securityProperties.getJwt().getTenants().get("a").getDecoderCache().getSize());
+
+        // the shared decoders bean, which Spring closes on shutdown
+        assertThat(a).isSameAs(closableJwtDecoders.getJwtDecoders().get("https://mock.issuer.a.xyz"));
     }
 
     @Test
