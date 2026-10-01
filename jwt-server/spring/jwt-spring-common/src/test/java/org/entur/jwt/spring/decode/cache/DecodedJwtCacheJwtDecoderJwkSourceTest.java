@@ -7,9 +7,7 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
-import com.nimbusds.jose.jwk.source.JWKSetCacheRefreshEvaluator;
 import com.nimbusds.jose.jwk.source.JWKSetSource;
-import com.nimbusds.jose.jwk.source.JWKSetUnavailableException;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.jwk.source.JWKSourceBuilder;
 import com.nimbusds.jose.jwk.source.RefreshAheadCachingJWKSetSource;
@@ -38,8 +36,6 @@ import java.util.function.BooleanSupplier;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Tests the decoded JWT cache against JWK sources built by {@link JWKSourceBuilder}, i.e. with the events
@@ -66,28 +62,6 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
             jwkEventListener = l;
         }
         return l;
-    }
-
-    static class SwitchableJWKSetSource implements JWKSetSource<SecurityContext> {
-
-        private final JWKSet jwkSet;
-        private volatile boolean fail;
-
-        SwitchableJWKSetSource(JWKSet jwkSet) {
-            this.jwkSet = jwkSet;
-        }
-
-        @Override
-        public JWKSet getJWKSet(JWKSetCacheRefreshEvaluator refreshEvaluator, long currentTime, SecurityContext context) throws JWKSetUnavailableException {
-            if (fail) {
-                throw new JWKSetUnavailableException("Simulated outage");
-            }
-            return jwkSet;
-        }
-
-        @Override
-        public void close() {
-        }
     }
 
     @BeforeAll
@@ -147,7 +121,7 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
 
     @Test
     void testCacheIsUsedUntilJwkOutageCacheExpires() throws Exception {
-        SwitchableJWKSetSource source = new SwitchableJWKSetSource(new JWKSet(key.toPublicJWK()));
+        TestJWKSetSource source = new TestJWKSetSource(new JWKSet(key.toPublicJWK()));
         ListEventListener listener = new ListEventListener();
         long outageCacheTimeToLive = 3000;
         JWKSource<SecurityContext> jwkSource = jwkSource(source, listener, outageCacheTimeToLive);
@@ -168,7 +142,7 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
         assertEquals(1, decoder.getSize());
 
         // the JWK outage cache masks the failure as a completed refresh, but also fires an OutageEvent
-        source.fail = true;
+        source.setFail(true);
         await(() -> decoder.suspendedAt != DecodedJwtCacheJwtDecoder.NEVER);
 
         // while the JWK outage cache is valid, the cache is used
@@ -186,7 +160,7 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
 
     @Test
     void testCacheIsNotUsedAfterFailedRefreshWithoutJwkOutageCache() throws Exception {
-        SwitchableJWKSetSource source = new SwitchableJWKSetSource(new JWKSet(key.toPublicJWK()));
+        TestJWKSetSource source = new TestJWKSetSource(new JWKSet(key.toPublicJWK()));
         List<Object> events = new CopyOnWriteArrayList<>();
         ListEventListener listener = new ListEventListener();
         listener.addEventListener(events::add);
@@ -200,7 +174,7 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
         decoder.decode(token);
         assertEquals(1, decoder.getSize());
 
-        source.fail = true;
+        source.setFail(true);
 
         // the scheduled refresh-ahead fails (once, it is not rescheduled)
         await(() -> events.stream().anyMatch(e -> e instanceof RefreshAheadCachingJWKSetSource.UnableToRefreshAheadOfExpirationEvent));
@@ -214,7 +188,7 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
         assertThrows(JwtException.class, () -> decoder.decode(token));
 
         // recovery: successful refresh resumes caching
-        source.fail = false;
+        source.setFail(false);
         decoder.decode(token);
         decoder.decode(token);
         assertEquals(1, decoder.getSize());
@@ -237,25 +211,18 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
             Jwt jwt = nimbusJwtDecoder.decode(token);
             if (rotateDuringDecode.getAndSet(false)) {
                 rotated.set(true);
-                jwkEventListener().notify(refreshCompletedEvent(newJwkSet));
+                JwkEvents.refresh(jwkEventListener(), newJwkSet);
             }
             return jwt;
         };
 
         decoder = new DecodedJwtCacheJwtDecoder(delegate, jwt -> OAuth2TokenValidatorResult.success(), 0, 100);
-        jwkEventListener().notify(refreshCompletedEvent(oldJwkSet));
+        JwkEvents.refresh(jwkEventListener(), oldJwkSet);
 
         String token = token(oldKey, "a");
         decoder.decode(token);
 
         assertEquals(0, decoder.getSize());
         assertThrows(JwtException.class, () -> decoder.decode(token));
-    }
-
-    @SuppressWarnings("unchecked")
-    private static CachingJWKSetSource.RefreshCompletedEvent<?> refreshCompletedEvent(JWKSet jwkSet) {
-        CachingJWKSetSource.RefreshCompletedEvent<?> event = mock(CachingJWKSetSource.RefreshCompletedEvent.class);
-        when(event.getJWKSet()).thenReturn(jwkSet);
-        return event;
     }
 }

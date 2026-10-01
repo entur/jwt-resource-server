@@ -5,7 +5,6 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.OctetSequenceKey;
-import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
 import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheMode;
 import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheProperties;
 import org.junit.jupiter.api.AfterEach;
@@ -28,8 +27,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 class DecodedJwtCacheModeTest {
 
@@ -78,16 +75,8 @@ class DecodedJwtCacheModeTest {
 
     private DecodedJwtCacheJwtDecoder decoder(int maxSize, JwtDecoderCacheMode mode) {
         decoder = new DecodedJwtCacheJwtDecoder(delegate, jwt -> OAuth2TokenValidatorResult.success(), CLEANUP_INTERVAL, maxSize, mode);
-        jwkEventListener().notify(refreshCompletedEvent());
+        JwkEvents.refresh(jwkEventListener(), new JWKSet(new OctetSequenceKey.Builder("secret-material".getBytes()).keyID("kid1").build()));
         return decoder;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static CachingJWKSetSource.RefreshCompletedEvent<?> refreshCompletedEvent() {
-        CachingJWKSetSource.RefreshCompletedEvent<?> event = mock(CachingJWKSetSource.RefreshCompletedEvent.class);
-        JWKSet jwkSet = new JWKSet(new OctetSequenceKey.Builder("secret-material".getBytes()).keyID("kid1").build());
-        when(event.getJWKSet()).thenReturn(jwkSet);
-        return event;
     }
 
     private void fill(int count) {
@@ -221,12 +210,10 @@ class DecodedJwtCacheModeTest {
         fill(10);
 
         // new key added, existing kid unchanged, so the JWTs are migrated to a new cache
-        CachingJWKSetSource.RefreshCompletedEvent<?> event = mock(CachingJWKSetSource.RefreshCompletedEvent.class);
         JWKSet jwkSet = new JWKSet(List.of(
                 new OctetSequenceKey.Builder("secret-material".getBytes()).keyID("kid1").build(),
                 new OctetSequenceKey.Builder("other-material".getBytes()).keyID("kid2").build()));
-        when(event.getJWKSet()).thenReturn((JWKSet) jwkSet);
-        jwkEventListener().notify(event);
+        JwkEvents.refresh(jwkEventListener(), jwkSet);
         assertEquals(10, decoder.getSize());
 
         decoder.decode("new");

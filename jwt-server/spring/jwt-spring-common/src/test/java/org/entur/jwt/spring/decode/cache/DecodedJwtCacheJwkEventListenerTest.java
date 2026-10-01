@@ -1,61 +1,68 @@
 package org.entur.jwt.spring.decode.cache;
 
-import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
-import com.nimbusds.jose.jwk.source.OutageTolerantJWKSetSource;
-import com.nimbusds.jose.jwk.source.RefreshAheadCachingJWKSetSource;
-import com.nimbusds.jose.jwk.source.RetryingJWKSetSource;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.OctetSequenceKey;
+import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
+import com.nimbusds.jose.jwk.source.JWKSetCacheRefreshEvaluator;
+import com.nimbusds.jose.jwk.source.JWKSetSource;
+import com.nimbusds.jose.jwk.source.OutageTolerantJWKSetSource;
+import com.nimbusds.jose.jwk.source.RefreshAheadCachingJWKSetSource;
+import com.nimbusds.jose.jwk.source.RetryingJWKSetSource;
+import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jose.util.events.EventListener;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 
 import java.util.List;
-import org.mockito.ArgumentCaptor;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+/**
+ * Tests the listener with a real decoder, and real events fired by real JWK sources.
+ */
 class DecodedJwtCacheJwkEventListenerTest {
 
-    private final DecodedJwtCacheJwtDecoder decoder = mock(DecodedJwtCacheJwtDecoder.class);
+    private static final long OUTAGE_CACHE_TIME_TO_LIVE = 1000;
+
+    private final DecodedJwtCacheJwtDecoder decoder = new DecodedJwtCacheJwtDecoder(token -> {
+        throw new IllegalStateException("Not used");
+    }, jwt -> OAuth2TokenValidatorResult.success(), 0, 10);
+
     private final DecodedJwtCacheJwkEventListener listener = new DecodedJwtCacheJwkEventListener(decoder);
 
-    private final JWKSet jwkSet = new JWKSet();
+    private final JWKSet jwkSet = new JWKSet(new OctetSequenceKey.Builder("secret-material".getBytes()).keyID("kid1").build());
+
+    private final TestJWKSetSource source = new TestJWKSetSource(jwkSet);
+
+    // caching -> outage tolerant -> retrying -> source, i.e. the order used by JWKSourceBuilder.
+    // The cached JWK set expires after 1 ms, so every call (with an increasing time) refreshes it.
+    private final CachingJWKSetSource<SecurityContext> chain = chain(source, 1000);
 
     private final ListAppender<ILoggingEvent> logAppender = new ListAppender<>();
 
-    @SuppressWarnings("unchecked")
-    private CachingJWKSetSource.RefreshCompletedEvent<?> refreshCompleted() {
-        CachingJWKSetSource.RefreshCompletedEvent<?> event = mock(CachingJWKSetSource.RefreshCompletedEvent.class);
-        when(event.getJWKSet()).thenReturn(jwkSet);
-        return event;
-    }
-
-    private OutageTolerantJWKSetSource.OutageEvent<?> outage(long remainingTime) {
-        return outage(100_000, remainingTime);
-    }
-
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private OutageTolerantJWKSetSource.OutageEvent<?> outage(long timeToLive, long remainingTime) {
-        OutageTolerantJWKSetSource source = mock(OutageTolerantJWKSetSource.class);
-        when(source.getTimeToLive()).thenReturn(timeToLive);
+    private CachingJWKSetSource<SecurityContext> chain(JWKSetSource<SecurityContext> source, long refreshTimeout) {
+        EventListener l = listener;
+        RetryingJWKSetSource<SecurityContext> retrying = new RetryingJWKSetSource<>(source, l);
+        OutageTolerantJWKSetSource<SecurityContext> outageTolerant = new OutageTolerantJWKSetSource<>(retrying, OUTAGE_CACHE_TIME_TO_LIVE, l);
+        return new CachingJWKSetSource<>(outageTolerant, 1, refreshTimeout, l);
+    }
 
-        OutageTolerantJWKSetSource.OutageEvent event = mock(OutageTolerantJWKSetSource.OutageEvent.class);
-        when(event.getRemainingTime()).thenReturn(remainingTime);
-        when(event.getSource()).thenReturn(source);
-        return event;
+    // (re)load the JWK set at the given (simulated) time
+    private void refreshAt(long time) {
+        try {
+            chain.getJWKSet(JWKSetCacheRefreshEvaluator.noRefresh(), time, null);
+        } catch (Exception e) {
+            // failure without outage cache
+        }
     }
 
     private List<String> warnings() {
@@ -71,110 +78,161 @@ class DecodedJwtCacheJwkEventListenerTest {
     @AfterEach
     void tearDown() {
         ((Logger) LoggerFactory.getLogger(DecodedJwtCacheJwkEventListener.class)).detachAppender(logAppender);
+        decoder.close();
     }
 
     @Test
     void testWarnsAtHalfAndThreeQuartersOfJwkOutageCacheTimeToLive() {
-        listener.notify(outage(1000, 900)); // 10%
+        refreshAt(0);
+        source.setFail(true);
+
+        refreshAt(100); // 10%
         assertThat(warnings()).isEmpty();
 
-        listener.notify(outage(1000, 500)); // 50%
+        refreshAt(500); // 50%
         assertThat(warnings()).hasSize(1);
         assertThat(warnings().get(0)).contains("50%", "500 ms left");
 
-        listener.notify(outage(1000, 400)); // 60%, already warned
+        refreshAt(600); // 60%, already warned
         assertThat(warnings()).hasSize(1);
 
-        listener.notify(outage(1000, 200)); // 80%
+        refreshAt(800); // 80%
         assertThat(warnings()).hasSize(2);
         assertThat(warnings().get(1)).contains("75%", "200 ms left");
 
-        listener.notify(outage(1000, 100));
+        refreshAt(900);
         assertThat(warnings()).hasSize(2);
     }
 
     @Test
     void testWarnsBothWhenFirstOutageEventIsLate() {
-        listener.notify(outage(1000, 100)); // 90%
+        refreshAt(0);
+        source.setFail(true);
+
+        refreshAt(900); // 90%
         assertThat(warnings()).hasSize(2);
     }
 
     @Test
     void testRefreshResetsWarnings() {
-        listener.notify(mock(CachingJWKSetSource.RefreshInitiatedEvent.class));
-        listener.notify(outage(1000, 100));
-        listener.notify(refreshCompleted());
+        refreshAt(0);
+        source.setFail(true);
+        refreshAt(900);
         assertThat(warnings()).hasSize(2);
 
         // successful refresh
-        listener.notify(mock(CachingJWKSetSource.RefreshInitiatedEvent.class));
-        listener.notify(refreshCompleted());
+        source.setFail(false);
+        refreshAt(1000);
 
         // new outage
-        listener.notify(mock(CachingJWKSetSource.RefreshInitiatedEvent.class));
-        listener.notify(outage(1000, 500));
+        source.setFail(true);
+        refreshAt(1500);
         assertThat(warnings()).hasSize(3);
     }
 
     @Test
     void testRefreshUpdatesKeysAndResumes() {
-        listener.notify(mock(CachingJWKSetSource.RefreshInitiatedEvent.class));
-        listener.notify(refreshCompleted());
+        decoder.suspendAt(System.currentTimeMillis());
+        assertThat(decoder.isSuspended()).isTrue();
 
-        var order = inOrder(decoder);
-        order.verify(decoder).updateKeys(jwkSet);
-        order.verify(decoder).resume();
-        verify(decoder, never()).suspendAt(anyLong());
+        refreshAt(0);
+
+        assertThat(decoder.cache.keyRepresentations.contains("kid1")).isTrue();
+        assertThat(decoder.isSuspended()).isFalse();
+        assertThat(decoder.suspendedAt).isEqualTo(DecodedJwtCacheJwtDecoder.NEVER);
     }
 
     @Test
     void testRefreshServedFromJwkOutageCacheSuspendsWhenOutageCacheExpires() {
+        refreshAt(0);
+        source.setFail(true);
+
         long before = System.currentTimeMillis();
+        refreshAt(400); // retried, then served from the JWK outage cache with 600 ms left
+        long after = System.currentTimeMillis();
 
-        listener.notify(mock(CachingJWKSetSource.RefreshInitiatedEvent.class));
-        listener.notify(mock(RetryingJWKSetSource.RetrialEvent.class));
-        listener.notify(outage(60_000));
-        listener.notify(refreshCompleted());
-
-        ArgumentCaptor<Long> suspendAt = ArgumentCaptor.forClass(Long.class);
-        verify(decoder).suspendAt(suspendAt.capture());
-        assertThat(suspendAt.getValue()).isBetween(before + 60_000, System.currentTimeMillis() + 60_000);
-
-        verify(decoder).updateKeys(jwkSet);
-        verify(decoder, never()).resume();
+        assertThat(decoder.suspendedAt).isBetween(before + 600, after + 600);
+        assertThat(decoder.isSuspended()).isFalse();
+        assertThat(decoder.cache.keyRepresentations.contains("kid1")).isTrue();
     }
 
     @Test
     void testRefreshAfterOutageResumes() {
-        listener.notify(mock(CachingJWKSetSource.RefreshInitiatedEvent.class));
-        listener.notify(outage(60_000));
-        listener.notify(refreshCompleted());
+        refreshAt(0);
+        source.setFail(true);
+        refreshAt(400);
+        assertThat(decoder.suspendedAt).isNotEqualTo(DecodedJwtCacheJwtDecoder.NEVER);
 
-        listener.notify(mock(CachingJWKSetSource.RefreshInitiatedEvent.class));
-        listener.notify(refreshCompleted());
+        source.setFail(false);
+        refreshAt(500);
 
-        verify(decoder, times(1)).suspendAt(anyLong());
-        verify(decoder, times(1)).resume();
+        assertThat(decoder.suspendedAt).isEqualTo(DecodedJwtCacheJwtDecoder.NEVER);
     }
 
     @Test
-    void testFailureWithoutOutageCacheSuspendsNow() {
-        listener.notify(mock(CachingJWKSetSource.UnableToRefreshEvent.class));
-        listener.notify(mock(RefreshAheadCachingJWKSetSource.UnableToRefreshAheadOfExpirationEvent.class));
-        listener.notify(mock(RefreshAheadCachingJWKSetSource.ScheduledRefreshFailed.class));
+    void testSuspendedWhenJwkOutageCacheExpires() throws Exception {
+        refreshAt(0);
+        source.setFail(true);
 
-        ArgumentCaptor<Long> suspendAt = ArgumentCaptor.forClass(Long.class);
-        verify(decoder, times(3)).suspendAt(suspendAt.capture());
-        assertThat(suspendAt.getAllValues()).allMatch(t -> t <= System.currentTimeMillis());
+        refreshAt(OUTAGE_CACHE_TIME_TO_LIVE - 1); // 1 ms left
+        Thread.sleep(5);
+        assertThat(decoder.isSuspended()).isTrue();
+
+        // past the JWK outage cache time to live, the JWK set is unavailable
+        refreshAt(OUTAGE_CACHE_TIME_TO_LIVE + 1);
+        assertThat(decoder.isSuspended()).isTrue();
     }
 
     @Test
-    void testIgnoresOtherEvents() {
-        listener.notify(mock(CachingJWKSetSource.RefreshInitiatedEvent.class));
-        listener.notify(mock(CachingJWKSetSource.WaitingForRefreshEvent.class));
-        listener.notify(mock(CachingJWKSetSource.RefreshTimedOutEvent.class));
-        listener.notify(mock(RefreshAheadCachingJWKSetSource.ScheduledRefreshInitiatedEvent.class));
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void testUnableToRefreshSuspendsNow() throws Exception {
+        // a JWK set which is already expired when loaded: the refresh completes, but the JWK set cannot be used
+        CachingJWKSetSource<SecurityContext> expiring = new CachingJWKSetSource<>(new TestJWKSetSource(jwkSet), 0, 1000, (EventListener) listener);
 
-        verifyNoInteractions(decoder);
+        assertThrows(Exception.class, () -> expiring.getJWKSet(JWKSetCacheRefreshEvaluator.noRefresh(), System.currentTimeMillis(), null));
+
+        assertThat(decoder.isSuspended()).isTrue();
+    }
+
+    @Test
+    void testFailedScheduledRefreshSuspendsNow() {
+        listener.notify(new RefreshAheadCachingJWKSetSource.UnableToRefreshAheadOfExpirationEvent<>(chain, null));
+        assertThat(decoder.isSuspended()).isTrue();
+
+        decoder.resume();
+        listener.notify(new RefreshAheadCachingJWKSetSource.ScheduledRefreshFailed<>(chain, new Exception("Simulated"), null));
+        assertThat(decoder.isSuspended()).isTrue();
+    }
+
+    @Test
+    void testIgnoresWaitingAndTimedOutRefresh() throws Exception {
+        refreshAt(0);
+        DecodedJwtCacheJwtDecoder.Cache cache = decoder.cache;
+
+        // a slow refresh, and another thread giving up waiting for it
+        TestJWKSetSource slowSource = new TestJWKSetSource(jwkSet);
+        CachingJWKSetSource<SecurityContext> slow = chain(slowSource, 20);
+        slowSource.block();
+        Thread slowRefresh = new Thread(() -> {
+            try {
+                slow.getJWKSet(JWKSetCacheRefreshEvaluator.noRefresh(), System.currentTimeMillis(), null);
+            } catch (Exception e) {
+                // ignore
+            }
+        });
+        slowRefresh.start();
+        long deadline = System.currentTimeMillis() + 10_000;
+        while (slowRefresh.getState() != Thread.State.TIMED_WAITING && System.currentTimeMillis() < deadline) {
+            Thread.sleep(1);
+        }
+
+        // waits for the slow refresh (WaitingForRefreshEvent), then gives up (RefreshTimedOutEvent)
+        assertThrows(Exception.class, () -> slow.getJWKSet(JWKSetCacheRefreshEvaluator.noRefresh(), System.currentTimeMillis(), null));
+
+        assertThat(decoder.isSuspended()).isFalse();
+        assertThat(decoder.cache).isSameAs(cache);
+
+        slowSource.release();
+        slowRefresh.join(10_000);
     }
 }
