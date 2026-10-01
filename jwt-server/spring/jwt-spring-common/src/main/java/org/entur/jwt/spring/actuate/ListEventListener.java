@@ -3,6 +3,7 @@ package org.entur.jwt.spring.actuate;
 import com.nimbusds.jose.util.events.Event;
 import com.nimbusds.jose.util.events.EventListener;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -19,6 +20,10 @@ public class ListEventListener implements EventListener {
 
     public void addEventListener(EventListener eventListener) {
         eventListeners.add(eventListener);
+    }
+
+    public List<EventListener> getEventListeners() {
+        return Collections.unmodifiableList(eventListeners);
     }
 
     @Override

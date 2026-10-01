@@ -1,10 +1,8 @@
 package org.entur.jwt.spring;
 
-import org.entur.jwt.spring.decode.cache.DecodedJwtCacheConfigurationReader;
 import org.entur.jwt.spring.decode.ClosableJwtDecoders;
 import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
 import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
-import org.entur.jwt.spring.decode.ClosableJwtDecodersBuilder;
 import org.entur.jwt.spring.config.JwtMappedDiagnosticContextFilter;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
@@ -17,7 +15,6 @@ import org.entur.jwt.spring.properties.JwtProperties;
 import org.entur.jwt.spring.properties.KeycloakFlavour;
 import org.entur.jwt.spring.properties.MdcProperties;
 import org.entur.jwt.spring.properties.SecurityProperties;
-import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -113,24 +110,6 @@ public class JwtWebSecurityChainAutoConfiguration {
             }
 
             return getSecurityFilterChain(http);
-        }
-
-        @Bean
-        @ConditionalOnExpression("${entur.jwt.enabled:true}")
-        public ClosableJwtDecoders closableJwtDecoders(
-                JwkSourceMap jwkSourceMap,
-                List<OAuth2TokenValidator<Jwt>> jwtValidators,
-                SecurityProperties securityProperties
-        ) {
-
-            Map<String, JwtDecoderCacheProperties> decodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(securityProperties.getJwt());
-
-            return new ClosableJwtDecodersBuilder()
-                    .withJwkSources(jwkSourceMap.getJwkSources())
-                    .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
-                    .withJwtValidators(jwtValidators)
-                    .withDecodedJwtCacheIssuers(decodedJwtCacheIssuers)
-                    .build();
         }
 
         @Bean

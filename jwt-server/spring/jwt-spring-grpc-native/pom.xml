@@ -99,6 +99,13 @@
         </dependency>
         <!-- test -->
         <dependency>
+            <!-- for GrpcAndWebSharedJwtDecodersContextTest, excluded by default in the test application.yaml -->
+            <groupId>org.entur.jwt-rs</groupId>
+            <artifactId>jwt-spring-web</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.entur.jwt-rs</groupId>
             <artifactId>jwt-junit5-spring</artifactId>
             <scope>test</scope>
