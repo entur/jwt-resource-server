@@ -48,8 +48,9 @@ public class JwtDecoderCacheProperties {
     /**
      * Target size, i.e. the number of JWTs the cache normally holds at most. With {@code LRU} / {@code FIFO} mode, the
      * cache temporarily exceeds the target size until background eviction has run, and in extreme cases (eviction does
-     * not keep up, or a JWK set change) holds up to double the target size. With {@code FIXED} mode, the target size is
-     * never exceeded. -1 for unlimited size (no cap on the number of cached tokens); use enabled=false to disable caching entirely.
+     * not keep up, or a JWK set change) holds up to double the target size. With {@code FIXED} mode, the cache does not
+     * grow beyond the target size (approximately, concurrent additions might overshoot by a few JWTs).
+     * -1 for unlimited size (no cap on the number of cached tokens); 0 (like enabled=false) disables the cache.
      */
     private int size = 250;
 

@@ -132,6 +132,24 @@ public class DecodedJwtCacheConfigurationReaderTest {
     }
 
     @Test
+    public void testSizeZeroDisablesCache() {
+        JwtProperties jwt = jwtProperties();
+        jwt.getJwk().getCache().setEnabled(true);
+        jwt.getJwk().getCache().getPreemptive().setEnabled(true);
+        jwt.getJwk().getCache().getPreemptive().getEager().setEnabled(true);
+
+        JwtTenantProperties zero = tenant("https://issuer-a", true, true);
+        zero.getDecoderCache().setSize(0);
+        jwt.getTenants().put("a", zero);
+        jwt.getTenants().put("b", tenant("https://issuer-b", true, true));
+
+        Map<String, JwtDecoderCacheProperties> result = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt);
+
+        assertThat(result).containsOnlyKeys("https://issuer-b");
+        assertThat(logAppender.list).anyMatch(e -> e.getFormattedMessage().contains("'a' has decoder-cache.size=0"));
+    }
+
+    @Test
     public void testGetTenantsWithDecoderCacheEnabled() {
         JwtProperties jwt = jwtProperties();
         jwt.getTenants().put("a", tenant("https://issuer-a", true, true));

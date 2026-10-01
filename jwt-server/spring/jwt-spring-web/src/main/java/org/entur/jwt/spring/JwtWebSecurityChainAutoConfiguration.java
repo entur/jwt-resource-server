@@ -33,14 +33,13 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.oauth2.core.OAuth2TokenValidator;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.web.DefaultSecurityFilterChain;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 

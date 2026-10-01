@@ -373,7 +373,7 @@ entur:
           enabled: true # opt-in per issuer, default false
           size: 250 # target size; default; -1 for unlimited
           mode: lru # default; what to do when full: lru, fifo or fixed
-          cleanup-interval: 60 # seconds; default background eviction interval; -1 to disable
+          cleanup-interval: 60 # seconds; how often expired (no longer valid) JWTs are removed; default; -1 to disable
 ```
 
 `size` is the target size, i.e. the number of JWTs the cache normally holds at most. In extreme cases (see below) the cache holds up to double the target size.
@@ -384,7 +384,7 @@ When the cache holds `size` JWTs, `mode` decides what happens to new JWTs:
  * `fifo`: evict the JWTs which were cached first.
  * `fixed`: do not cache new JWTs until cached JWTs are removed by the cleanup (i.e. expire). A warning is logged when the cache first fills up.
 
-For `lru` and `fifo`, eviction runs on a background thread: once the cache is full, new JWTs are still cached (temporarily exceeding `size`) and eviction is triggered straight away, reducing the cache to 90% of `size`. So the cost of eviction is spread over many cache misses, and neither cache hits nor misses wait for it. Should eviction not keep up, new JWTs are not cached once the cache holds double the target size. Likewise, when the JWK set changes, cached JWTs whose key is unchanged are kept (up to double the target size), and the background eviction then reduces the cache to the target size. With `fixed`, the cache never exceeds `size`.
+For `lru` and `fifo`, eviction runs on a background thread: once the cache is full, new JWTs are still cached (temporarily exceeding `size`) and eviction is triggered straight away, reducing the cache to 90% of `size`. So the cost of eviction is spread over many cache misses, and neither cache hits nor misses wait for it. Should eviction not keep up, new JWTs are not cached once the cache holds double the target size. Likewise, when the JWK set changes, cached JWTs whose key is unchanged are kept (up to double the target size), and the background eviction then reduces the cache to the target size. With `fixed`, the cache does not grow beyond `size` (approximately: concurrent additions might overshoot by a few JWTs). A `size` of 0 disables the cache.
 
 During a JWK set refresh outage, the decoded JWT cache follows the JWK set's own outage cache (see above): cached JWTs are trusted for as long as the JWK set served from the outage cache is, i.e. until `entur.jwt.jwk.outage-cache.time-to-live` has passed since the JWK set was last refreshed. Then the cache is cleared and not used, i.e. JWTs are decoded as if no JWT was cached, until the JWK set is successfully refreshed again. If the JWK outage cache is disabled (or has expired), this happens as soon as a refresh fails. This is checked when decoding JWTs, so no background thread is needed.
 

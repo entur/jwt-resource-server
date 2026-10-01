@@ -16,8 +16,6 @@
 
 	<properties>
 		<java.version>25</java.version>
-		<grpc.version>1.81.0</grpc.version>
-		<proto.version>4.36.1</proto.version>
 		<os-maven-plugin.version>1.7.1</os-maven-plugin.version>
 		<protobuf-maven-plugin.version>5.1.8</protobuf-maven-plugin.version>
 		<rest-assured.version>6.0.1</rest-assured.version>
@@ -52,20 +50,18 @@
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-oauth2-resource-server</artifactId>
 		</dependency>
+		<!-- gRPC and protobuf versions are managed by Spring Boot -->
 		<dependency>
 			<groupId>com.google.protobuf</groupId>
 			<artifactId>protobuf-java</artifactId>
-			<version>${proto.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>io.grpc</groupId>
 			<artifactId>grpc-protobuf</artifactId>
-			<version>${grpc.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>io.grpc</groupId>
 			<artifactId>grpc-stub</artifactId>
-			<version>${grpc.version}</version>
 		</dependency>
 		<!-- test -->
 		<dependency>
@@ -117,12 +113,13 @@
 				<artifactId>protobuf-maven-plugin</artifactId>
 				<version>${protobuf-maven-plugin.version}</version>
 				<configuration>
-					<protoc>${proto.version}</protoc>
+					<!-- generate code with the versions managed by Spring Boot -->
+					<protoc>${protobuf-java.version}</protoc>
 					<plugins>
 						<plugin kind="binary-maven">
 							<groupId>io.grpc</groupId>
 							<artifactId>protoc-gen-grpc-java</artifactId>
-							<version>${grpc.version}</version>
+							<version>${grpc-java.version}</version>
 							<options>@generated=omit</options>
 						</plugin>
 					</plugins>

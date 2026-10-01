@@ -398,6 +398,9 @@ class DecodedJwtCacheModeTest {
 
         assertFalse(next.map.containsKey("new"));
         assertEquals(9, next.size());
+
+        // eviction was not already scheduled, so it is not lagging behind
+        assertEquals(0, logAppender.list.stream().filter(e -> e.getFormattedMessage().startsWith("Decoded JWT cache eviction does not keep up")).count());
     }
 
     @Test

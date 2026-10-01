@@ -70,7 +70,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
 
     protected static class Cache {
 
-        // when full (FIFO / LRU), evict down to this percentage of the max size, so the cost of
+        // when full (FIFO / LRU), evict down to this percentage of the target size, so the cost of
         // finding the entries to evict is amortized over many subsequent additions
         protected static final int EVICTION_TARGET_PERCENT = 90;
 
@@ -127,12 +127,14 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
                     return;
                 }
                 if(size >= getHardMaxCacheSize()) {
-                    warnFull();
-                    // i.e. after migrating a full cache on a JWK set change, nothing else might have scheduled eviction
-                    scheduleEviction();
+                    // i.e. after migrating a full cache on a JWK set change, nothing else might have scheduled eviction;
+                    // if eviction was already scheduled, it does not keep up
+                    if(!scheduleEviction()) {
+                        warnFull();
+                    }
                     return;
                 }
-                // temporarily exceed the max size, evict in the background
+                // temporarily exceed the target size, evict in the background
                 // (after adding, so that the eviction accounts for this entry)
                 map.put(token, new Entry(jwt, sequence.incrementAndGet(), System.currentTimeMillis()));
                 scheduleEviction();
@@ -146,7 +148,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
         }
 
         /**
-         * With eviction, the max size may temporarily be exceeded until the background eviction has run;
+         * With eviction, the target size may temporarily be exceeded until the background eviction has run;
          * do not grow without bound if eviction does not keep up.
          */
         protected int getHardMaxCacheSize() {
@@ -157,27 +159,32 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
             if(!fullWarningLogged && maxCacheSize > 0) {
                 fullWarningLogged = true;
                 if(mode == JwtDecoderCacheMode.FIXED) {
-                    LOGGER.warn("Decoded JWT cache is full ({} JWTs), new JWTs are not cached until cached JWTs are no longer valid. Consider increasing the max size or using another cache mode.", maxCacheSize);
+                    LOGGER.warn("Decoded JWT cache is full ({} JWTs), new JWTs are not cached until cached JWTs are no longer valid. Consider increasing the size or using another cache mode.", maxCacheSize);
                 } else {
-                    LOGGER.warn("Decoded JWT cache eviction does not keep up, cache is at {} JWTs (max size {}); new JWTs are not cached until eviction has run.", map.size(), maxCacheSize);
-                }
-            }
-        }
-
-        protected void scheduleEviction() {
-            if(evictionScheduled.compareAndSet(false, true)) {
-                try {
-                    evictionExecutor.execute(this::evict);
-                } catch (RejectedExecutionException e) {
-                    // decoder closed
-                    evictionScheduled.set(false);
+                    LOGGER.warn("Decoded JWT cache eviction does not keep up, cache is at {} JWTs (target size {}); new JWTs are not cached until eviction has run.", map.size(), maxCacheSize);
                 }
             }
         }
 
         /**
+         * @return true if eviction was scheduled by this call, false if already scheduled (or the decoder is closed)
+         */
+        protected boolean scheduleEviction() {
+            if(evictionScheduled.compareAndSet(false, true)) {
+                try {
+                    evictionExecutor.execute(this::evict);
+                    return true;
+                } catch (RejectedExecutionException e) {
+                    // decoder closed
+                    evictionScheduled.set(false);
+                }
+            }
+            return false;
+        }
+
+        /**
          * Evict entries with the lowest order (sequence for FIFO, last access time for LRU),
-         * leaving at most {@link #EVICTION_TARGET_PERCENT} of the max size.
+         * leaving at most {@link #EVICTION_TARGET_PERCENT} of the target size.
          */
         protected void evict() {
             try {
@@ -193,7 +200,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
             } finally {
                 evictionScheduled.set(false);
             }
-            // JWTs added while evicting might again exceed the max size
+            // JWTs added while evicting might again exceed the target size
             if(map.size() > maxCacheSize) {
                 scheduleEviction();
             }
@@ -339,7 +346,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
             // keep the insertion order for FIFO
             sequence.set(cache.sequence.get());
 
-            // with eviction (FIFO / LRU) the previous cache might temporarily hold more than the max size;
+            // with eviction (FIFO / LRU) the previous cache might temporarily hold more than the target size;
             // copy up to the hard max size, and leave it to the background eviction (triggered by the next
             // addition) to pick what to remove, so the entries which are kept follow the cache mode rather
             // than the (arbitrary) iteration order
@@ -575,7 +582,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
 
     /**
      * @return total number of JWTs evicted to make room for new JWTs ({@link JwtDecoderCacheMode#FIFO} / {@link JwtDecoderCacheMode#LRU}).
-     * A steadily increasing count means the cache churns; consider a larger max size or {@link JwtDecoderCacheMode#FIXED}.
+     * A steadily increasing count means the cache churns; consider a larger size or {@link JwtDecoderCacheMode#FIXED}.
      */
     public long getEvictionCount() {
         return evictions.sum();

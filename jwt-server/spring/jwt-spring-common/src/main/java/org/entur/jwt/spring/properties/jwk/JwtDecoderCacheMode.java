@@ -1,7 +1,7 @@
 package org.entur.jwt.spring.properties.jwk;
 
 /**
- * What the decoded JWT cache does with new JWTs once it has reached its max size.
+ * What the decoded JWT cache does with new JWTs once it has reached its target size.
  */
 public enum JwtDecoderCacheMode {
 
