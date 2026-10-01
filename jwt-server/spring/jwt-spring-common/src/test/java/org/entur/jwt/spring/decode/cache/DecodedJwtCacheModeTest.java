@@ -329,6 +329,70 @@ class DecodedJwtCacheModeTest {
     }
 
     @Test
+    void testDefaultConstructorUsesLru() {
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, jwt -> OAuth2TokenValidatorResult.success(), CLEANUP_INTERVAL, 10);
+        assertEquals(JwtDecoderCacheMode.LRU, decoder.mode);
+    }
+
+    @Test
+    void testCountsEvictions() throws Exception {
+        decoder(10, JwtDecoderCacheMode.FIFO);
+        fill(10);
+        assertEquals(0, decoder.getEvictionCount());
+
+        decoder.decode("new");
+
+        // 11 entries evicted down to 90% of max size; the count is updated right after the entries are removed
+        awaitSize(9);
+        long deadline = System.currentTimeMillis() + 10_000;
+        while (decoder.getEvictionCount() != 2 && System.currentTimeMillis() < deadline) {
+            Thread.sleep(1);
+        }
+        assertEquals(2, decoder.getEvictionCount());
+    }
+
+    @Test
+    void testMigrationBeyondMaxSizeEvictsByMode() throws Exception {
+        DecodedJwtCacheJWKRepresentations keys = DecodedJwtCacheJWKRepresentations.of(new JWKSet(new OctetSequenceKey.Builder("secret-material".getBytes()).keyID("kid1").build()));
+
+        // previous cache temporarily holding more than the max size (15 > 10), with t0 as the oldest
+        DecodedJwtCacheJwtDecoder.Cache previous = new DecodedJwtCacheJwtDecoder.Cache(keys, 10, JwtDecoderCacheMode.FIFO, jwt -> OAuth2TokenValidatorResult.success(), command -> {});
+        for (int i = 0; i < 15; i++) {
+            Jwt jwt = Jwt.withTokenValue("t" + i).header("alg", "none").header("kid", "kid1").claim("sub", "s").build();
+            previous.map.put("t" + i, new DecodedJwtCacheJwtDecoder.Entry(jwt, i, 0));
+        }
+        previous.sequence.set(15);
+
+        DecodedJwtCacheJwtDecoder.Cache next = new DecodedJwtCacheJwtDecoder.Cache(keys, 10, JwtDecoderCacheMode.FIFO, jwt -> OAuth2TokenValidatorResult.success(), Runnable::run);
+        next.add(previous, java.util.Set.of("kid1"));
+
+        // all entries migrated (up to the hard max size), then evicted to 90% by FIFO order: the newest are kept
+        assertEquals(9, next.size());
+        for (int i = 0; i < 6; i++) {
+            assertFalse(next.map.containsKey("t" + i), "t" + i + " should be evicted");
+        }
+        for (int i = 6; i < 15; i++) {
+            assertTrue(next.map.containsKey("t" + i), "t" + i + " should be kept");
+        }
+    }
+
+    @Test
+    void testFixedMigrationStopsAtMaxSize() {
+        DecodedJwtCacheJWKRepresentations keys = DecodedJwtCacheJWKRepresentations.of(new JWKSet(new OctetSequenceKey.Builder("secret-material".getBytes()).keyID("kid1").build()));
+
+        DecodedJwtCacheJwtDecoder.Cache previous = new DecodedJwtCacheJwtDecoder.Cache(keys, 20, JwtDecoderCacheMode.FIXED, jwt -> OAuth2TokenValidatorResult.success(), null);
+        for (int i = 0; i < 15; i++) {
+            Jwt jwt = Jwt.withTokenValue("t" + i).header("alg", "none").header("kid", "kid1").claim("sub", "s").build();
+            previous.map.put("t" + i, new DecodedJwtCacheJwtDecoder.Entry(jwt, i, 0));
+        }
+
+        DecodedJwtCacheJwtDecoder.Cache next = new DecodedJwtCacheJwtDecoder.Cache(keys, 10, JwtDecoderCacheMode.FIXED, jwt -> OAuth2TokenValidatorResult.success(), null);
+        next.add(previous, java.util.Set.of("kid1"));
+
+        assertEquals(10, next.size());
+    }
+
+    @Test
     void testRejectsNullMode() {
         assertThrows(IllegalArgumentException.class, () -> new DecodedJwtCacheJwtDecoder(delegate, jwt -> OAuth2TokenValidatorResult.success(), CLEANUP_INTERVAL, 10, null));
         assertThrows(IllegalArgumentException.class, () -> new JwtDecoderCacheProperties().setMode(null));

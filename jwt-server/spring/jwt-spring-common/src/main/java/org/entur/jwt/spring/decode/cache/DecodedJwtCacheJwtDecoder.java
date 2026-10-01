@@ -26,6 +26,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.LongAdder;
 
 /**
  * Caching of validated JWTs.
@@ -92,8 +93,16 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
 
         protected volatile boolean fullWarningLogged = false;
 
+        // total number of evicted JWTs, shared by all cache instances of a decoder
+        protected final LongAdder evictions;
+
         protected Cache(DecodedJwtCacheJWKRepresentations keyRepresentations, int maxCacheSize, JwtDecoderCacheMode mode, OAuth2TokenValidator<Jwt> jwtValidator, Executor evictionExecutor) {
+            this(keyRepresentations, maxCacheSize, mode, jwtValidator, evictionExecutor, new LongAdder());
+        }
+
+        protected Cache(DecodedJwtCacheJWKRepresentations keyRepresentations, int maxCacheSize, JwtDecoderCacheMode mode, OAuth2TokenValidator<Jwt> jwtValidator, Executor evictionExecutor, LongAdder evictions) {
             this.keyRepresentations = keyRepresentations;
+            this.evictions = evictions;
             if(maxCacheSize == -1) {
                 this.map = new ConcurrentHashMap<>();
                 this.maxCacheSize = Integer.MAX_VALUE;
@@ -169,7 +178,9 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
                 int target = (int) ((long) maxCacheSize * EVICTION_TARGET_PERCENT / 100);
                 int count = map.size() - target;
                 if(count > 0) {
-                    evict(count);
+                    int evicted = evict(count);
+                    evictions.add(evicted);
+                    if (LOGGER.isDebugEnabled()) LOGGER.debug("Evicted {} JWTs from decoded JWT cache ({} in total), now have {}", evicted, evictions.sum(), map.size());
                 }
             } catch (Throwable e) {
                 LOGGER.warn("Problem evicting JWTs from cache", e);
@@ -187,8 +198,10 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
          * the orders are counted into a histogram (between the min and max order), to find the bucket
          * holding the limit. Entries in lower buckets are evicted; within the limit bucket, whichever entries
          * the iterator covers first. Linear time, and no sorting or copying of the entries.
+         *
+         * @return the number of evicted entries
          */
-        protected void evict(int count) {
+        protected int evict(int count) {
             // pass 1: range of orders
             long min = Long.MAX_VALUE;
             long max = Long.MIN_VALUE;
@@ -204,7 +217,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
                 n++;
             }
             if(n == 0) {
-                return;
+                return 0;
             }
 
             // pass 2: histogram
@@ -237,6 +250,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
                     remaining--;
                 }
             }
+            return evicted;
         }
 
         protected static int bucket(long order, long min, long width, int buckets) {
@@ -318,9 +332,24 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
             }
             // keep the insertion order for FIFO
             sequence.set(cache.sequence.get());
+
+            // with eviction (FIFO / LRU) the previous cache might temporarily hold more than the max size;
+            // migrate up to the hard max size and let eviction pick what to remove, so the entries
+            // which are kept follow the cache mode rather than the (arbitrary) iteration order
+            int limit = isEvicting() ? getHardMaxCacheSize() : maxCacheSize;
+            try {
+                migrate(cache, keyIdsToKeep, limit);
+            } finally {
+                if (isEvicting() && map.size() > maxCacheSize) {
+                    scheduleEviction();
+                }
+            }
+        }
+
+        protected void migrate(Cache cache, Set<String> keyIdsToKeep, int limit) {
             for (Map.Entry<String, Entry> entry : cache.map.entrySet()) {
                 // bail out as soon as capacity is reached instead of checking size per-entry
-                if (map.size() >= maxCacheSize) {
+                if (map.size() >= limit) {
                     return;
                 }
                 Entry value = entry.getValue();
@@ -360,12 +389,14 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
 
     protected volatile Cache cache;
 
+    // total number of JWTs evicted to make room for new JWTs (FIFO / LRU)
+    protected final LongAdder evictions = new LongAdder();
+
     /**
-     * Create a decoder using {@link JwtDecoderCacheMode#FIXED} mode, i.e. new JWTs are not cached when the cache is full.
-     * Note that the Spring configuration defaults to {@link JwtDecoderCacheMode#LRU}.
+     * Create a decoder using {@link JwtDecoderCacheMode#LRU} mode, the same default as the Spring configuration.
      */
     public DecodedJwtCacheJwtDecoder(JwtDecoder jwtValidatingDecoder, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupIntervalMillis, int maxCacheSize) {
-        this(jwtValidatingDecoder, jwtValidators, cleanupIntervalMillis, maxCacheSize, JwtDecoderCacheMode.FIXED);
+        this(jwtValidatingDecoder, jwtValidators, cleanupIntervalMillis, maxCacheSize, JwtDecoderCacheMode.LRU);
     }
 
     public DecodedJwtCacheJwtDecoder(JwtDecoder jwtValidatingDecoder, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupIntervalMillis, int maxCacheSize, JwtDecoderCacheMode mode) {
@@ -505,7 +536,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
             // is dropped by default rather than only excluded if provably changed
             Set<String> keyIdsToKeep = keyRepresentations.unchangedKeyIds(cache.keyRepresentations);
 
-            Cache nextCache = new Cache(keyRepresentations, maxCacheSize, mode, jwtValidator, this::executeInBackground);
+            Cache nextCache = new Cache(keyRepresentations, maxCacheSize, mode, jwtValidator, this::executeInBackground, evictions);
             nextCache.add(cache, keyIdsToKeep);
             this.cache = nextCache;
         }
@@ -543,5 +574,13 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
 
     public int getSize() {
         return cache.size();
+    }
+
+    /**
+     * @return total number of JWTs evicted to make room for new JWTs ({@link JwtDecoderCacheMode#FIFO} / {@link JwtDecoderCacheMode#LRU}).
+     * A steadily increasing count means the cache churns; consider a larger max size or {@link JwtDecoderCacheMode#FIXED}.
+     */
+    public long getEvictionCount() {
+        return evictions.sum();
     }
 }

@@ -1,5 +1,7 @@
 package org.entur.jwt.spring.decode.cache;
 
+import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheMode;
+
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
@@ -260,7 +262,7 @@ class DecodedJwtCacheJwtDecoderTest {
             return jwt(token, "kid1");
         });
 
-        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, maxCacheSize);
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, maxCacheSize, JwtDecoderCacheMode.FIXED);
         jwkEventListener().notify(refreshCompletedEvent(jwkSet("kid1")));
 
         for (int i = 0; i < distinctTokens; i++) {
@@ -282,7 +284,7 @@ class DecodedJwtCacheJwtDecoderTest {
             return jwt(token, "kid1");
         });
 
-        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, maxCacheSize);
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, maxCacheSize, JwtDecoderCacheMode.FIXED);
         jwkEventListener().notify(refreshCompletedEvent(jwkSet("kid1")));
 
         // fill the cache to its limit
