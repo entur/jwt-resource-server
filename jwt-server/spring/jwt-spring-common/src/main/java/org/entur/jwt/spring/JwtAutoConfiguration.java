@@ -13,6 +13,7 @@ import org.entur.jwt.spring.properties.SecurityProperties;
 import org.entur.jwt.spring.properties.jwk.JwtTenantProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -99,6 +100,14 @@ public class JwtAutoConfiguration {
                 .withJwtValidators(jwtValidators)
                 .withDecodedJwtCacheIssuers(DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(securityProperties.getJwt()))
                 .build();
+    }
+
+    /**
+     * Fail startup if there is a JwtDecoder bean, as it would silently be ignored.
+     */
+    @Bean
+    public static UnsupportedJwtDecoderGuard unsupportedJwtDecoderGuard(ListableBeanFactory beanFactory) {
+        return new UnsupportedJwtDecoderGuard(beanFactory);
     }
 
     @Bean
