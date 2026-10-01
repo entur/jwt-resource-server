@@ -6,6 +6,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.util.ClassUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,6 +28,17 @@ public class UnsupportedJwtDecoderGuardTest {
                 throw new IllegalStateException("Not used");
             };
         }
+    }
+
+    @Test
+    public void testStartsWithoutReactor() {
+        // this module does not depend on Reactor, i.e. like a servlet application; the guard must not need it
+        assertThat(ClassUtils.isPresent("reactor.core.publisher.Mono", getClass().getClassLoader())).isFalse();
+
+        runner.run(context -> {
+            assertThat(context).hasNotFailed();
+            assertThat(context).hasSingleBean(UnsupportedJwtDecoderGuard.class);
+        });
     }
 
     @Test
