@@ -616,6 +616,7 @@
 			</activation>
 			<modules>
 				<module>examples/jwt-resource-server-spring-boot-example</module>
+				<module>examples/jwt-resource-server-spring-boot-grpc-web-example</module>
 				<module>examples/jwt-client-spring-boot-example</module>
 			</modules>
 		</profile>

@@ -39,7 +39,3 @@ logging:
     io:
       grpc:
         internal: INFO
-spring:
-  autoconfigure:
-    # the web module is on the test classpath only for GrpcAndWebSharedJwtDecodersContextTest
-    exclude: org.entur.jwt.spring.JwtWebAutoConfiguration,org.entur.jwt.spring.JwtWebSecurityChainAutoConfiguration
