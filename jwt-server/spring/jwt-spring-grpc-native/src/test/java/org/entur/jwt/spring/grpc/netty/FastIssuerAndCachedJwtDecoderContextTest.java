@@ -10,6 +10,7 @@ import org.entur.jwt.spring.decode.cache.DecodedJwtCacheJwtDecoder;
 import org.entur.jwt.spring.decode.FastIssuerJwtDecoder;
 import org.entur.jwt.spring.grpc.AbstractGrpcTest;
 import org.entur.jwt.spring.grpc.test.GreetingResponse;
+import org.entur.jwt.spring.properties.SecurityProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @TestPropertySource(properties = {
         "entur.jwt.decode.header.map-to-issuer.enabled=true",
         "entur.jwt.tenants.a.decoder-cache.enabled=true",
+        "entur.jwt.tenants.a.decoder-cache.size=123",
         "entur.jwt.jwk.cache.preemptive.eager.enabled=true",
 })
 @DirtiesContext
@@ -45,6 +47,9 @@ public class FastIssuerAndCachedJwtDecoderContextTest extends AbstractGrpcTest {
 
     @Autowired
     private JwkSourceMap jwkSourceMap;
+
+    @Autowired
+    private SecurityProperties securityProperties;
 
     @BeforeEach
     public void setup() throws Exception {
@@ -71,6 +76,8 @@ public class FastIssuerAndCachedJwtDecoderContextTest extends AbstractGrpcTest {
 
         JwtDecoder b = fastIssuerJwtDecoder.getJwtDecoders().get("https://mock.issuer.b.xyz");
         assertThat(b).isInstanceOf(NimbusJwtDecoder.class);
+
+        assertEquals(123, securityProperties.getJwt().getTenants().get("a").getDecoderCache().getSize());
     }
 
     @Test
