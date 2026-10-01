@@ -9,12 +9,9 @@ import org.entur.jwt.spring.JwtAutoConfiguration;
 import org.entur.jwt.spring.KeycloakJwtAuthorityEnricher;
 import org.entur.jwt.spring.NoUserDetailsService;
 import org.entur.jwt.spring.decode.ClosableJwtDecoders;
-import org.entur.jwt.spring.decode.FastIssuerJwtDecoder;
-import org.entur.jwt.spring.decode.IssuerJwtDecoder;
+import org.entur.jwt.spring.decode.IssuerJwtDecoderFactory;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
-import org.entur.jwt.spring.decode.cache.DecodedJwtCacheConfigurationReader;
-import org.entur.jwt.spring.decode.ClosableJwtDecodersBuilder;
 import org.entur.jwt.spring.grpc.properties.GrpcPermitAll;
 import org.entur.jwt.spring.grpc.properties.GrpcServicesConfiguration;
 import org.entur.jwt.spring.grpc.properties.ServiceMatcherConfiguration;
@@ -23,7 +20,6 @@ import org.entur.jwt.spring.properties.Flavours;
 import org.entur.jwt.spring.properties.JwtProperties;
 import org.entur.jwt.spring.properties.KeycloakFlavour;
 import org.entur.jwt.spring.properties.SecurityProperties;
-import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -105,43 +101,18 @@ public class JwtGrpcAutoConfiguration {
 
     @Bean
     public GrpcJwtDecoderHolder grpcJwtDecoderHolder(
+            ClosableJwtDecoders closableJwtDecoders,
             ObjectProvider<JwtHeaderToIssuerMapper> jwtHeaderToIssuerMapperProvider,
             ObjectProvider<JwtHeaderToIssuerMapperDecider> jwtHeaderToIssuerMapperDeciderProvider
     ) {
-        Map<String, JwtDecoderCacheProperties> activeDecodedJwtCacheIssuers = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(securityProperties.getJwt());
-
-        // decoder(s) automatically closed by spring via the holder
-        ClosableJwtDecoders closableJwtDecoders = new ClosableJwtDecodersBuilder()
-                .withJwkSources(jwkSourceMap.getJwkSources())
-                .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
-                .withJwtValidators(jwtValidators)
-                .withDecodedJwtCacheIssuers(activeDecodedJwtCacheIssuers)
-                .build();
-
-        return new GrpcJwtDecoderHolder(getJwtDecoder(closableJwtDecoders.getJwtDecoders(), jwtHeaderToIssuerMapperProvider, jwtHeaderToIssuerMapperDeciderProvider), closableJwtDecoders);
-    }
-
-    private JwtDecoder getJwtDecoder(Map<String, JwtDecoder> map,
-                                     ObjectProvider<JwtHeaderToIssuerMapper> jwtHeaderToIssuerMapperProvider,
-                                     ObjectProvider<JwtHeaderToIssuerMapperDecider> jwtHeaderToIssuerMapperDeciderProvider) {
-        if (map.size() == 1) {
-            // if there is only one decoder, we can return it directly without the overhead of the FastIssuerJwtDecoder / IssuerJwtDecoder
-            return map.values().iterator().next();
-        }
-
-        if (securityProperties.getJwt().getDecode().getHeader().getMapToIssuer().isEnabled()) {
-            JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper = jwtHeaderToIssuerMapperProvider.getIfAvailable();
-            if (jwtHeaderToIssuerMapper == null) {
-                throw new IllegalStateException("JwtHeaderToIssuerMapper bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
-            }
-            JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider = jwtHeaderToIssuerMapperDeciderProvider.getIfAvailable();
-            if (jwtHeaderToIssuerMapperDecider == null) {
-                throw new IllegalStateException("JwtHeaderToIssuerMapperDecider bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
-            }
-            return new FastIssuerJwtDecoder(map, jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider);
-        }
-
-        return new IssuerJwtDecoder(map);
+        // the per-issuer decoders are shared with the web module (if present), and closed by spring
+        JwtDecoder jwtDecoder = IssuerJwtDecoderFactory.create(
+                closableJwtDecoders.getJwtDecoders(),
+                securityProperties.getJwt().getDecode().getHeader().getMapToIssuer().isEnabled(),
+                jwtHeaderToIssuerMapperProvider.getIfAvailable(),
+                jwtHeaderToIssuerMapperDeciderProvider.getIfAvailable()
+        );
+        return new GrpcJwtDecoderHolder(jwtDecoder);
     }
 
     @Bean

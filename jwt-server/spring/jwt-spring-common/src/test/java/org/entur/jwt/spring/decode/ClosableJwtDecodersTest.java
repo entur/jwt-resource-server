@@ -1,23 +1,53 @@
 package org.entur.jwt.spring.decode;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.withSettings;
 
 public class ClosableJwtDecodersTest {
 
+    private static final JwtDecoder PLAIN_DECODER = token -> {
+        throw new IllegalStateException("Not used");
+    };
+
+    // a decoder which can be closed, i.e. like the decoded JWT cache decoder
+    private static class CloseableJwtDecoder implements JwtDecoder, AutoCloseable {
+
+        private final AtomicInteger closed = new AtomicInteger();
+        private final RuntimeException closeException;
+
+        CloseableJwtDecoder() {
+            this(null);
+        }
+
+        CloseableJwtDecoder(RuntimeException closeException) {
+            this.closeException = closeException;
+        }
+
+        @Override
+        public Jwt decode(String token) {
+            throw new IllegalStateException("Not used");
+        }
+
+        @Override
+        public void close() {
+            closed.incrementAndGet();
+            if (closeException != null) {
+                throw closeException;
+            }
+        }
+    }
+
     @Test
     public void testGetJwtDecodersReturnsSameMap() {
-        Map<String, JwtDecoder> decoders = Map.of("https://issuer-a", mock(JwtDecoder.class));
+        Map<String, JwtDecoder> decoders = Map.of("https://issuer-a", PLAIN_DECODER);
         ClosableJwtDecoders closableJwtDecoders = new ClosableJwtDecoders(decoders);
 
         assertThat(closableJwtDecoders.getJwtDecoders()).isSameAs(decoders);
@@ -25,18 +55,16 @@ public class ClosableJwtDecodersTest {
 
     @Test
     public void testCloseClosesOnlyCloseableDecoders() throws Exception {
-        JwtDecoder plainDecoder = mock(JwtDecoder.class);
-        CloseableJwtDecoder closeableDecoder = mock(CloseableJwtDecoder.class, withSettings().extraInterfaces(AutoCloseable.class));
+        CloseableJwtDecoder closeableDecoder = new CloseableJwtDecoder();
 
         ClosableJwtDecoders closableJwtDecoders = new ClosableJwtDecoders(Map.of(
-                "https://issuer-a", plainDecoder,
-                "https://issuer-b", (JwtDecoder) closeableDecoder
+                "https://issuer-a", PLAIN_DECODER,
+                "https://issuer-b", closeableDecoder
         ));
 
         closableJwtDecoders.close();
 
-        verify((AutoCloseable) closeableDecoder, times(1)).close();
-        // plain decoder has no close method to verify, but ensure no exception thrown for it
+        assertThat(closeableDecoder.closed.get()).isEqualTo(1);
     }
 
     @Test
@@ -47,17 +75,13 @@ public class ClosableJwtDecodersTest {
     }
 
     @Test
-    public void testClosePropagatesExceptionFromUnderlyingDecoder() throws Exception {
-        CloseableJwtDecoder closeableDecoder = mock(CloseableJwtDecoder.class, withSettings().extraInterfaces(AutoCloseable.class));
-        org.mockito.Mockito.doThrow(new IllegalStateException("boom")).when((AutoCloseable) closeableDecoder).close();
+    public void testClosePropagatesExceptionFromUnderlyingDecoder() {
+        CloseableJwtDecoder closeableDecoder = new CloseableJwtDecoder(new IllegalStateException("boom"));
 
-        ClosableJwtDecoders closableJwtDecoders = new ClosableJwtDecoders(Map.of("https://issuer-a", (JwtDecoder) closeableDecoder));
+        ClosableJwtDecoders closableJwtDecoders = new ClosableJwtDecoders(Map.of("https://issuer-a", closeableDecoder));
 
         assertThatThrownBy(closableJwtDecoders::close)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("boom");
-    }
-
-    private interface CloseableJwtDecoder extends JwtDecoder {
     }
 }

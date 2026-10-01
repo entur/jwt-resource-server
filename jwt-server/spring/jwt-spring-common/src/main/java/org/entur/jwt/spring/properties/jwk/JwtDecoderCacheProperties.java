@@ -45,11 +45,17 @@ public class JwtDecoderCacheProperties {
      */
     private boolean enabled = false;
 
-    // -1 for unlimited size (no cap on the number of cached tokens); use enabled=false to disable caching entirely
-    private int maxSize = 250;
+    /**
+     * Target size, i.e. the number of JWTs the cache normally holds at most. With {@code LRU} / {@code FIFO} mode, the
+     * cache temporarily exceeds the target size until background eviction has run, and in extreme cases (eviction does
+     * not keep up, or a JWK set change) holds up to double the target size. With {@code FIXED} mode, the cache does not
+     * grow beyond the target size (approximately, concurrent additions might overshoot by a few JWTs).
+     * -1 for unlimited size (no cap on the number of cached tokens); 0 (like enabled=false) disables the cache.
+     */
+    private int size = 250;
 
     /**
-     * What to do with new JWTs once the cache holds {@code maxSize} JWTs: evict the least recently used ({@code LRU}, default)
+     * What to do with new JWTs once the cache holds {@code size} JWTs: evict the least recently used ({@code LRU}, default)
      * or the oldest ({@code FIFO}) JWTs, or stop caching new JWTs until cached JWTs are no longer valid ({@code FIXED}).
      */
     private JwtDecoderCacheMode mode = JwtDecoderCacheMode.LRU;
@@ -68,15 +74,15 @@ public class JwtDecoderCacheProperties {
         this.enabled = enabled;
     }
 
-    public int getMaxSize() {
-        return maxSize;
+    public int getSize() {
+        return size;
     }
 
-    public void setMaxSize(int maxSize) {
-        if (maxSize < -1) {
-            throw new IllegalArgumentException("maxSize must be -1 or non-negative");
+    public void setSize(int size) {
+        if (size < -1) {
+            throw new IllegalArgumentException("size must be -1 or non-negative");
         }
-        this.maxSize = maxSize;
+        this.size = size;
     }
 
     public JwtDecoderCacheMode getMode() {

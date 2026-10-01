@@ -27,6 +27,11 @@ public class DecodedJwtCacheConfigurationReader {
             for (Map.Entry<String, JwtTenantProperties> entry : jwt.getTenants().entrySet()) {
                 JwtTenantProperties value = entry.getValue();
                 if(value.isEnabled() && value.getDecoderCache().isEnabled()) {
+                    if(value.getDecoderCache().getSize() == 0) {
+                        // nothing would ever be cached
+                        LOGGER.info("Tenant '{}' has decoder-cache.size=0, the decoded JWT cache is disabled", entry.getKey());
+                        continue;
+                    }
                     decodedJwtCacheIssuers.put(value.getIssuer(), value.getDecoderCache());
                 }
             }

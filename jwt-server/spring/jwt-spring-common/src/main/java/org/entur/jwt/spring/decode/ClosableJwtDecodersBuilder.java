@@ -80,7 +80,7 @@ public class ClosableJwtDecodersBuilder {
                 if (cacheProperties != null) {
                     ListEventListener eventListener = jwkEventListeners.get(entry.getKey());
                     if (eventListener != null) {
-                        DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(decoder, validators, cacheProperties.getCleanupInterval() * 1000L, cacheProperties.getMaxSize(), cacheProperties.getMode());
+                        DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(decoder, validators, cacheProperties.getCleanupInterval() * 1000L, cacheProperties.getSize(), cacheProperties.getMode());
                         cachedDecoder.scheduleCleanup();
                         eventListener.addEventListener(new DecodedJwtCacheJwkEventListener(cachedDecoder));
                         decoder = cachedDecoder;

@@ -3,9 +3,11 @@ package org.entur.jwt.spring.config;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -24,6 +26,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 })
 @DirtiesContext
 public class DecoderCacheNotSupportedWarningTest {
+
+    @Autowired
+    private ConfigurableApplicationContext context;
+
+    @Test
+    public void testSharedDecodersAreNotCreated() {
+        // lazy bean from the common module, only used by the web and gRPC modules
+        assertThat(context.getBeanFactory().containsSingleton("closableJwtDecoders")).isFalse();
+    }
 
     @Test
     public void testWarnsThatDecoderCacheIsNotSupported(CapturedOutput output) {

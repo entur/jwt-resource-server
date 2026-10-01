@@ -307,6 +307,18 @@ OPTIONS calls, can be sent backwards to the Spring application.
 
 See [jwt-spring-web] for a concrete implementation example.
 
+## Custom JWT decoders
+JWTs are decoded by per-issuer decoders built from the `entur.jwt.tenants` configuration. A `JwtDecoder` or `ReactiveJwtDecoder` bean in the application context would be ignored, so startup fails if there is one, including one created by Spring Boot from `spring.security.oauth2.resourceserver.jwt.*` properties. To customize JWT decoding for the web and gRPC modules, provide a `ClosableJwtDecoders` bean (a map of issuer to `JwtDecoder`) instead.
+
+To keep such a bean (it is still ignored by this library), disable the check:
+
+```yaml
+entur:
+  jwt:
+    decode:
+      fail-on-jwt-decoder-bean: false # default true
+```
+
 ## Advanced features
 A couple of optional, opt-in performance features are available. Both default to disabled and are safe to leave off.
 
@@ -359,18 +371,20 @@ entur:
       myKeycloak:
         decoder-cache:
           enabled: true # opt-in per issuer, default false
-          max-size: 250 # default; -1 for unlimited
+          size: 250 # target size; default; -1 for unlimited
           mode: lru # default; what to do when full: lru, fifo or fixed
-          cleanup-interval: 60 # seconds; default background eviction interval; -1 to disable
+          cleanup-interval: 60 # seconds; how often expired (no longer valid) JWTs are removed; default; -1 to disable
 ```
 
-When the cache holds `max-size` JWTs, `mode` decides what happens to new JWTs:
+`size` is the target size, i.e. the number of JWTs the cache normally holds at most. In extreme cases (see below) the cache holds up to double the target size.
+
+When the cache holds `size` JWTs, `mode` decides what happens to new JWTs:
 
  * `lru` (default): evict the least recently used JWTs, i.e. tokens from clients (pods) which have stopped calling.
  * `fifo`: evict the JWTs which were cached first.
  * `fixed`: do not cache new JWTs until cached JWTs are removed by the cleanup (i.e. expire). A warning is logged when the cache first fills up.
 
-For `lru` and `fifo`, eviction runs on a background thread: once the cache is full, new JWTs are still cached (temporarily exceeding `max-size`) and eviction is triggered straight away, reducing the cache to 90% of `max-size`. So the cost of eviction is spread over many cache misses, and neither cache hits nor misses wait for it. Should eviction not keep up, new JWTs are not cached once the cache holds twice `max-size`.
+For `lru` and `fifo`, eviction runs on a background thread: once the cache is full, new JWTs are still cached (temporarily exceeding `size`) and eviction is triggered straight away, reducing the cache to 90% of `size`. So the cost of eviction is spread over many cache misses, and neither cache hits nor misses wait for it. Should eviction not keep up, new JWTs are not cached once the cache holds double the target size. Likewise, when the JWK set changes, cached JWTs whose key is unchanged are kept (up to double the target size), and the background eviction then reduces the cache to the target size. With `fixed`, the cache does not grow beyond `size` (approximately: concurrent additions might overshoot by a few JWTs). A `size` of 0 disables the cache.
 
 During a JWK set refresh outage, the decoded JWT cache follows the JWK set's own outage cache (see above): cached JWTs are trusted for as long as the JWK set served from the outage cache is, i.e. until `entur.jwt.jwk.outage-cache.time-to-live` has passed since the JWK set was last refreshed. Then the cache is cleared and not used, i.e. JWTs are decoded as if no JWT was cached, until the JWK set is successfully refreshed again. If the JWK outage cache is disabled (or has expired), this happens as soon as a refresh fails. This is checked when decoding JWTs, so no background thread is needed.
 

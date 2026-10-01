@@ -1,6 +1,6 @@
 package org.entur.jwt.spring.grpc.netty;
 
-import com.nimbusds.jose.jwk.JWK;
+import com.nimbusds.jose.jwk.JWKMatcher;
 import com.nimbusds.jose.jwk.JWKSelector;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import org.entur.jwt.junit5.AccessToken;
@@ -10,6 +10,7 @@ import org.entur.jwt.spring.decode.cache.DecodedJwtCacheJwtDecoder;
 import org.entur.jwt.spring.decode.FastIssuerJwtDecoder;
 import org.entur.jwt.spring.grpc.AbstractGrpcTest;
 import org.entur.jwt.spring.grpc.test.GreetingResponse;
+import org.entur.jwt.spring.properties.SecurityProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,14 +20,10 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 
-import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Verify JWT caching with header-to-issuer mapping enabled.
@@ -37,6 +34,7 @@ import static org.mockito.Mockito.when;
 @TestPropertySource(properties = {
         "entur.jwt.decode.header.map-to-issuer.enabled=true",
         "entur.jwt.tenants.a.decoder-cache.enabled=true",
+        "entur.jwt.tenants.a.decoder-cache.size=123",
         "entur.jwt.jwk.cache.preemptive.eager.enabled=true",
 })
 @DirtiesContext
@@ -50,6 +48,9 @@ public class FastIssuerAndCachedJwtDecoderContextTest extends AbstractGrpcTest {
     @Autowired
     private JwkSourceMap jwkSourceMap;
 
+    @Autowired
+    private SecurityProperties securityProperties;
+
     @BeforeEach
     public void setup() throws Exception {
         jwtDecoder = grpcJwtDecoderHolder.getJwtDecoder();
@@ -58,9 +59,8 @@ public class FastIssuerAndCachedJwtDecoderContextTest extends AbstractGrpcTest {
         Map<String, JWKSource> jwkSources = jwkSourceMap.getJwkSources();
         for (Map.Entry<String, JWKSource> entry : jwkSources.entrySet()) {
 
-            JWKSelector mock = mock(JWKSelector.class);
-            when(mock.select(any())).thenReturn(List.of(mock(JWK.class)));
-            entry.getValue().get(mock, null);
+            // load the JWK set
+            entry.getValue().get(new JWKSelector(new JWKMatcher.Builder().build()), null);
         }
     }
 
@@ -76,6 +76,8 @@ public class FastIssuerAndCachedJwtDecoderContextTest extends AbstractGrpcTest {
 
         JwtDecoder b = fastIssuerJwtDecoder.getJwtDecoders().get("https://mock.issuer.b.xyz");
         assertThat(b).isInstanceOf(NimbusJwtDecoder.class);
+
+        assertEquals(123, securityProperties.getJwt().getTenants().get("a").getDecoderCache().getSize());
     }
 
     @Test
