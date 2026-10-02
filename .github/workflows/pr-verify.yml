@@ -7,7 +7,7 @@ on:
 
 jobs:
   verify-pr:
-    uses: entur/abt-gha-public/.github/workflows/maven-open-source-verify.yml@main
+    uses: entur/abt-gha-public/.github/workflows/maven-open-source-verify.yml@v2
     permissions:
       contents: read
     # no secrets necessary
