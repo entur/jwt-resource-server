@@ -29,6 +29,7 @@ import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -145,6 +146,31 @@ class ClosableJwtDecodersBuilderCacheTest {
         assertThatThrownBy(builderWithoutListeners::build)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining(ISSUER_A);
+    }
+
+    @Test
+    void testFailedBuildCreatesNoResources() {
+        JwtDecoderCacheProperties cache = new JwtDecoderCacheProperties();
+        cache.setEnabled(true);
+        cache.setSize(10);
+
+        // linked map: issuer A (valid) is processed before issuer B (no JWK event listener)
+        Map<String, JWKSource> jwkSources = new LinkedHashMap<>();
+        jwkSources.put(ISSUER_A, jwkSource(keyA, listenerA));
+        jwkSources.put(ISSUER_B, jwkSource(keyB, listenerB));
+
+        ClosableJwtDecodersBuilder builder = new ClosableJwtDecodersBuilder()
+                .withJwkSources(jwkSources)
+                .withJwkEventListeners(Map.of(ISSUER_A, listenerA))
+                .withJwtValidators(List.of(claimValidator))
+                .withDecodedJwtCacheIssuers(Map.of(ISSUER_A, cache, ISSUER_B, cache));
+
+        assertThatThrownBy(builder::build)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(ISSUER_B);
+
+        // the build failed, so there is no ClosableJwtDecoders to close what was created: nothing must have been
+        assertThat(listenerA.getEventListeners()).noneMatch(DecodedJwtCacheJwkEventListener.class::isInstance);
     }
 
     @Test
