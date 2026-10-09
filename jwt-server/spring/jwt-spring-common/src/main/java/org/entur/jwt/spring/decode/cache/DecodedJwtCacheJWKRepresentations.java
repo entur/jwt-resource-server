@@ -81,11 +81,9 @@ public class DecodedJwtCacheJWKRepresentations {
                     .computeIfAbsent(keyId, k -> new HashSet<>())
                     .add(Map.copyOf(key.toJSONObject()));
         }
-        Map<String, Set<Map<String, Object>>> result = HashMap.newHashMap(keyRepresentations.size() * 2);
-        for (Map.Entry<String, Set<Map<String, Object>>> entry : keyRepresentations.entrySet()) {
-            result.put(entry.getKey(), Set.copyOf(entry.getValue()));
-        }
-        return Map.copyOf(result);
+        // make the sets immutable in place, then copy the map once
+        keyRepresentations.replaceAll((keyId, representations) -> Set.copyOf(representations));
+        return Map.copyOf(keyRepresentations);
     }
 
     public boolean isEmpty() {
