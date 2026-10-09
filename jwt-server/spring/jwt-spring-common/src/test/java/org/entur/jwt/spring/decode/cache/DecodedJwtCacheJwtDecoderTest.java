@@ -1070,6 +1070,20 @@ class DecodedJwtCacheJwtDecoderTest {
     }
 
     @Test
+    void testLargeMaxCacheSizeDoesNotOverflowOrPreallocate() {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt = jwt("token1", "kid1");
+        delegate.returning("token1", jwt);
+
+        // 2 * Integer.MAX_VALUE overflows an int; must neither throw nor allocate a huge table
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, Integer.MAX_VALUE);
+        assertDoesNotThrow(() -> JwkEvents.refresh(jwkEventListener(), jwkSet("kid1")));
+
+        decoder.decode("token1");
+        assertEquals(1, decoder.getSize());
+    }
+
+    @Test
     void testConstructorRejectsMaxCacheSizeLessThanNegativeOne() {
         TestJwtDecoder delegate = new TestJwtDecoder();
         OAuth2TokenValidator<Jwt> validator = alwaysValid();

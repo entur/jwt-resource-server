@@ -82,6 +82,30 @@ class DecodedJwtCacheJwkEventListenerTest {
     }
 
     @Test
+    void testListenerExceptionIsNotPropagatedAndSuspendsCache() {
+        // i.e. a bug in the cache; the JWK refresh (and the request which triggered it) must not fail
+        DecodedJwtCacheJwtDecoder failing = new DecodedJwtCacheJwtDecoder(token -> {
+            throw new IllegalStateException("Not used");
+        }, jwt -> OAuth2TokenValidatorResult.success(), 0, 10) {
+            @Override
+            public void updateKeys(JWKSet jwkSet) {
+                throw new IllegalStateException("Simulated cache failure");
+            }
+        };
+        try {
+            DecodedJwtCacheJwkEventListener failingListener = new DecodedJwtCacheJwkEventListener(failing);
+            assertThat(failing.isSuspended()).isFalse();
+
+            JwkEvents.refresh(failingListener, jwkSet);
+
+            assertThat(failing.isSuspended()).isTrue();
+            assertThat(logAppender.list).anyMatch(e -> e.getLevel() == Level.ERROR && e.getFormattedMessage().contains("RefreshCompletedEvent"));
+        } finally {
+            failing.close();
+        }
+    }
+
+    @Test
     void testWarnsAtHalfAndThreeQuartersOfJwkOutageCacheTimeToLive() {
         refreshAt(0);
         source.setFail(true);

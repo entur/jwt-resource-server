@@ -42,8 +42,23 @@ public class DecodedJwtCacheJwkEventListener implements EventListener {
         this.decoder = decoder;
     }
 
+    /**
+     * Never throws: the events are fired from within the JWK source's refresh (holding its refresh lock, or on the
+     * request thread which triggered the refresh), so an exception here would fail the JWK refresh and that request.
+     * Instead, a failure to keep the cache in sync means the cache can no longer be trusted, so it is suspended until
+     * the next successful refresh.
+     */
     @Override
     public void notify(Event event) {
+        try {
+            handle(event);
+        } catch (RuntimeException e) {
+            LOGGER.error("Problem handling JWK event {}, stop using decoded JWT cache until the JWK set is refreshed", event.getClass().getSimpleName(), e);
+            decoder.suspendAt(System.currentTimeMillis());
+        }
+    }
+
+    protected void handle(Event event) {
         if(event instanceof CachingJWKSetSource.RefreshInitiatedEvent<?>) {
             outageDuringRefresh = false;
         } else if(event instanceof OutageTolerantJWKSetSource.OutageEvent<?> outageEvent) {

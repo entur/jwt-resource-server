@@ -77,6 +77,9 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
 
     protected static class Cache {
 
+        // upper bound for the initial capacity of the token map
+        protected static final int MAX_INITIAL_CAPACITY = 1 << 16;
+
         // when full (FIFO / LRU), evict down to this percentage of the target size, so the cost of
         // finding the entries to evict is amortized over many subsequent additions
         protected static final int EVICTION_TARGET_PERCENT = 90;
@@ -114,7 +117,9 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
                 this.map = new ConcurrentHashMap<>();
                 this.maxCacheSize = Integer.MAX_VALUE;
             } else {
-                this.map = new ConcurrentHashMap<>(2 * maxCacheSize);
+                // pre-size for small caches only: the table is allocated up front (and a new cache is created on every
+                // key change, while the previous one is migrated), so a large size would cost a lot of memory per instance
+                this.map = new ConcurrentHashMap<>((int) Math.min(2L * maxCacheSize, MAX_INITIAL_CAPACITY));
                 this.maxCacheSize = maxCacheSize;
             }
             this.mode = mode;
