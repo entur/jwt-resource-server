@@ -141,9 +141,10 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
         assertEquals(2, decodes.get());
         assertEquals(1, decoder.getSize());
 
-        // the JWK outage cache masks the failure as a completed refresh, but also fires an OutageEvent
+        // the JWK outage cache masks the failure as a completed refresh, but also fires an OutageEvent,
+        // which extends the time cached JWTs are trusted from the JWK set's to the JWK outage cache's time to live
         source.setFail(true);
-        await(() -> decoder.suspendedAt != DecodedJwtCacheJwtDecoder.NEVER);
+        await(() -> decoder.suspendedAt > loadedAt + JWK_CACHE_TIME_TO_LIVE);
 
         // while the JWK outage cache is valid, the cache is used
         decoder.decode(token);

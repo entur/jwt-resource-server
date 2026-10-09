@@ -42,24 +42,34 @@ class DecodedJwtCacheJwkEventListenerTest {
 
     private final TestJWKSetSource source = new TestJWKSetSource(jwkSet);
 
+    private static final long JWK_CACHE_TIME_TO_LIVE = 60_000;
+
     // caching -> outage tolerant -> retrying -> source, i.e. the order used by JWKSourceBuilder.
-    // The cached JWK set expires after 1 ms, so every call (with an increasing time) refreshes it.
     private final CachingJWKSetSource<SecurityContext> chain = chain(source, 1000);
+
+    // the JWK set as returned by the chain on the previous call, so that the next call can force a refresh
+    private JWKSet previous;
 
     private final ListAppender<ILoggingEvent> logAppender = new ListAppender<>();
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     private CachingJWKSetSource<SecurityContext> chain(JWKSetSource<SecurityContext> source, long refreshTimeout) {
+        return chain(source, refreshTimeout, JWK_CACHE_TIME_TO_LIVE);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private CachingJWKSetSource<SecurityContext> chain(JWKSetSource<SecurityContext> source, long refreshTimeout, long timeToLive) {
         EventListener l = listener;
         RetryingJWKSetSource<SecurityContext> retrying = new RetryingJWKSetSource<>(source, l);
         OutageTolerantJWKSetSource<SecurityContext> outageTolerant = new OutageTolerantJWKSetSource<>(retrying, OUTAGE_CACHE_TIME_TO_LIVE, l);
-        return new CachingJWKSetSource<>(outageTolerant, 1, refreshTimeout, l);
+        return new CachingJWKSetSource<>(outageTolerant, timeToLive, refreshTimeout, l);
     }
 
-    // (re)load the JWK set at the given (simulated) time
+    // (re)load the JWK set at the given (simulated) time; forces a refresh of the previously returned JWK set
+    // (the outage cache is not used with forceRefresh(), so reference comparison is used instead)
     private void refreshAt(long time) {
+        JWKSetCacheRefreshEvaluator evaluator = previous == null ? JWKSetCacheRefreshEvaluator.noRefresh() : JWKSetCacheRefreshEvaluator.referenceComparison(previous);
         try {
-            chain.getJWKSet(JWKSetCacheRefreshEvaluator.noRefresh(), time, null);
+            previous = chain.getJWKSet(evaluator, time, null);
         } catch (Exception e) {
             // failure without outage cache
         }
@@ -159,11 +169,41 @@ class DecodedJwtCacheJwkEventListenerTest {
         decoder.suspendAt(System.currentTimeMillis());
         assertThat(decoder.isSuspended()).isTrue();
 
+        long before = System.currentTimeMillis();
         refreshAt(0);
+        long after = System.currentTimeMillis();
 
         assertThat(decoder.cache.keyRepresentations.contains("kid1")).isTrue();
         assertThat(decoder.isSuspended()).isFalse();
-        assertThat(decoder.suspendedAt).isEqualTo(DecodedJwtCacheJwtDecoder.NEVER);
+        // trusted for as long as the JWK set is
+        assertThat(decoder.suspendedAt).isBetween(before + JWK_CACHE_TIME_TO_LIVE, after + JWK_CACHE_TIME_TO_LIVE);
+    }
+
+    @Test
+    void testSuspendedWhenJwkSetTimeToLiveExpiresWithoutEvents() throws Exception {
+        // i.e. an on-demand refresh after the JWK set expired fails without the outage cache: no event is fired
+        CachingJWKSetSource<SecurityContext> shortLived = chain(source, 1000, 20);
+        shortLived.getJWKSet(JWKSetCacheRefreshEvaluator.noRefresh(), System.currentTimeMillis(), null);
+        assertThat(decoder.isSuspended()).isFalse();
+
+        Thread.sleep(50);
+
+        assertThat(decoder.isSuspended()).isTrue();
+    }
+
+    @Test
+    void testRefreshNotScheduledIsLogged() throws Exception {
+        // refresh-ahead time + refresh timeout == time to live is accepted, but no refresh-ahead is ever scheduled
+        RefreshAheadCachingJWKSetSource<SecurityContext> refreshAhead = new RefreshAheadCachingJWKSetSource<>(source, 1000, 200, 800, false, null);
+        try {
+            listener.notify(new RefreshAheadCachingJWKSetSource.RefreshNotScheduledEvent<>(refreshAhead, null));
+
+            assertThat(warnings()).hasSize(1);
+            assertThat(warnings().get(0)).contains("No JWK set refresh-ahead was scheduled");
+            assertThat(decoder.isSuspended()).isFalse();
+        } finally {
+            refreshAhead.close();
+        }
     }
 
     @Test
@@ -188,9 +228,11 @@ class DecodedJwtCacheJwkEventListenerTest {
         assertThat(decoder.suspendedAt).isNotEqualTo(DecodedJwtCacheJwtDecoder.NEVER);
 
         source.setFail(false);
+        long before = System.currentTimeMillis();
         refreshAt(500);
 
-        assertThat(decoder.suspendedAt).isEqualTo(DecodedJwtCacheJwtDecoder.NEVER);
+        assertThat(decoder.suspendedAt).isGreaterThanOrEqualTo(before + JWK_CACHE_TIME_TO_LIVE);
+        assertThat(decoder.isSuspended()).isFalse();
     }
 
     @Test

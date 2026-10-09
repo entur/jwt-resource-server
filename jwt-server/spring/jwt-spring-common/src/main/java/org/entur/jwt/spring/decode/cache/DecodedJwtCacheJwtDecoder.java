@@ -587,9 +587,9 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
 
     /**
      * Stop using the cache from the given time: the cache is cleared, and JWTs are decoded as if no JWT
-     * was cached, until {@link #resume()}. Checked when decoding (and on cleanup), so no timer is needed.
+     * was cached, until {@link #resume()} or a later time is set. Checked when decoding (and on cleanup), so no timer is needed.
      *
-     * @param timeMillis time (epoch millis) from which the cache is not used
+     * @param timeMillis time (epoch millis) from which the cache is not used; {@link #NEVER} to resume
      */
     public void suspendAt(long timeMillis) {
         this.suspendedAt = timeMillis;
