@@ -307,6 +307,42 @@ OPTIONS calls, can be sent backwards to the Spring application.
 
 See [jwt-spring-web] for a concrete implementation example.
 
+## Custom JWT decoders
+JWTs are decoded by per-issuer decoders built from the `entur.jwt.tenants` configuration. A `JwtDecoder` or `ReactiveJwtDecoder` bean in the application context is ignored, including one created by Spring Boot from `spring.security.oauth2.resourceserver.jwt.*` properties. To customize JWT decoding for the web and gRPC modules, provide a `ClosableJwtDecoders` bean (a map of issuer to `JwtDecoder`) instead.
+
+To fail startup if there is such a bean (recommended; the default in the next major version), enable the check:
+
+```yaml
+entur:
+  jwt:
+    decode:
+      fail-on-jwt-decoder-bean: true # default false
+```
+
+## Advanced features
+An optional, opt-in performance feature is available. It defaults to disabled and is safe to leave off.
+
+### Header-to-issuer mapping
+In a multi-tenant setup (more than one configured issuer), figuring out which tenant a token belongs to normally requires fully parsing the JWT (to read the `iss` claim) before the matching per-issuer `JwtDecoder` can be selected.
+
+`FastIssuerJwtDecoder` optimizes this by caching a mapping from the JWT's header (the raw, unparsed segment before the first `.`) to the issuer it previously resolved to. JWT headers are small and typically contain just `alg` and `kid`, which are effectively static per signing key - so once a header has been seen, subsequent tokens with that same header can jump straight to the right per-issuer decoder (fast path) instead of parsing the whole token just to find the issuer (slow path). Claims and the signature are still fully verified as normal either way; only issuer resolution is short-circuited.
+
+This setting has no effect if only one issuer/tenant is configured.
+
+```yaml
+entur:
+  jwt:
+    decode:
+      header:
+        map-to-issuer:
+          enabled: true # opt-in, default false
+          max-size: 100 # default; -1 for unlimited
+```
+
+To guard against unexpected entropy in JWT headers (e.g. random/dynamic values that would otherwise grow the cache unbounded), the cache is capped at `max-size` distinct headers; if the cap is exceeded, the optimization is disabled entirely (logged as a warning) rather than left partially populated. Use `max-size: -1` to disable the cap.
+
+By default, only headers with a non-empty `kid` are considered safe to cache (see `DefaultJwtHeaderToIssuerMapperDecider`); provide your own `JwtHeaderToIssuerMapperDecider` bean to customize this.
+
 [jwt-spring-web]: spring/jwt-spring-web
 [jwt-test]: ../jwt-test
 [jwt-junit5-spring]: ../jwt-test/jwt-junit5-spring

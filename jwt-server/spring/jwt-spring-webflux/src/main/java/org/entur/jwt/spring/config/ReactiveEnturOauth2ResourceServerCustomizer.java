@@ -1,22 +1,16 @@
 package org.entur.jwt.spring.config;
 
-import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.source.JWKSource;
-import com.nimbusds.jose.proc.BadJOSEException;
 import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
-import com.nimbusds.jwt.JWT;
-import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
-import com.nimbusds.jwt.proc.JWTProcessor;
 import org.entur.jwt.spring.EnrichedJwtGrantedAuthoritiesConverter;
 import org.entur.jwt.spring.JwtAuthorityEnricher;
 import org.entur.jwt.spring.ReactiveJwtMonoConverter;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.entur.jwt.spring.properties.JwtDecodeProperties;
-import org.entur.jwt.spring.properties.JwtHeaderDecodeProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
@@ -24,9 +18,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
-import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
@@ -108,8 +100,7 @@ public class ReactiveEnturOauth2ResourceServerCustomizer implements Customizer<S
         } else {
             ReactiveIssuerAuthenticationManagerResolver issuer = new ReactiveIssuerAuthenticationManagerResolver(map);
 
-            JwtHeaderDecodeProperties header = properties.getHeader();
-            if(header.getMapToIssuer().isEnabled()) {
+            if(properties.getHeader().getMapToIssuer().isEnabled()) {
                 if(jwtHeaderToIssuerMapper == null) {
                     throw new IllegalStateException("JwtHeaderToIssuerMapper bean is required when 'entur.jwt.decode.header.map-to-issuer.enabled=true' but was not found in the application context");
                 }
@@ -126,18 +117,6 @@ public class ReactiveEnturOauth2ResourceServerCustomizer implements Customizer<S
             }
         }
     }
-
-    private static <C extends SecurityContext> JWTClaimsSet createClaimsSet(JWTProcessor<C> jwtProcessor,
-                                                                            JWT parsedToken, C context) {
-        try {
-            return jwtProcessor.process(parsedToken, context);
-        } catch (BadJOSEException ex) {
-            throw new BadJwtException("Failed to validate the token", ex);
-        } catch (JOSEException ex) {
-            throw new JwtException("Failed to validate the token", ex);
-        }
-    }
-
 
     private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(Map.Entry<String, JWKSource> entry) {
         List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();
