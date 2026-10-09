@@ -5,13 +5,13 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class ClosableJwtDecodersTest {
 
@@ -95,13 +95,48 @@ public class ClosableJwtDecodersTest {
     }
 
     @Test
-    public void testClosePropagatesExceptionFromUnderlyingDecoder() {
+    public void testCloseClosesAllDecodersEvenIfOneThrows() {
+        IllegalStateException boomA = new IllegalStateException("boom-a");
+        IllegalStateException boomB = new IllegalStateException("boom-b");
+        CloseableJwtDecoder failingA = new CloseableJwtDecoder(boomA);
+        CloseableJwtDecoder failingB = new CloseableJwtDecoder(boomB);
+        CloseableJwtDecoder healthy = new CloseableJwtDecoder();
+
+        // linked map: deterministic close order
+        Map<String, JwtDecoder> decoders = new LinkedHashMap<>();
+        decoders.put("https://issuer-a", failingA);
+        decoders.put("https://issuer-b", healthy);
+        decoders.put("https://issuer-c", failingB);
+        ClosableJwtDecoders closableJwtDecoders = new ClosableJwtDecoders(decoders);
+
+        assertThatCode(closableJwtDecoders::close).doesNotThrowAnyException();
+
+        assertThat(failingA.closed.get()).isEqualTo(1);
+        assertThat(healthy.closed.get()).isEqualTo(1);
+        assertThat(failingB.closed.get()).isEqualTo(1);
+    }
+
+    @Test
+    public void testCloseClosesDecodersEvenIfResourceThrows() {
+        IllegalStateException boom = new IllegalStateException("boom");
+        AutoCloseable failingResource = () -> {
+            throw boom;
+        };
+        CloseableJwtDecoder decoder = new CloseableJwtDecoder();
+
+        ClosableJwtDecoders closableJwtDecoders = new ClosableJwtDecoders(Map.of("https://issuer-a", decoder), List.of(failingResource));
+
+        assertThatCode(closableJwtDecoders::close).doesNotThrowAnyException();
+        assertThat(decoder.closed.get()).isEqualTo(1);
+    }
+
+    @Test
+    public void testCloseSwallowsExceptionFromUnderlyingDecoder() {
         CloseableJwtDecoder closeableDecoder = new CloseableJwtDecoder(new IllegalStateException("boom"));
 
         ClosableJwtDecoders closableJwtDecoders = new ClosableJwtDecoders(Map.of("https://issuer-a", closeableDecoder));
 
-        assertThatThrownBy(closableJwtDecoders::close)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("boom");
+        assertThatCode(closableJwtDecoders::close).doesNotThrowAnyException();
+        assertThat(closeableDecoder.closed.get()).isEqualTo(1);
     }
 }
