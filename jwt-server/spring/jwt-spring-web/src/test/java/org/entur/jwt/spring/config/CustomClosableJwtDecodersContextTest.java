@@ -48,6 +48,7 @@ public class CustomClosableJwtDecodersContextTest {
         public ClosableJwtDecoders customClosableJwtDecoders(JwkSourceMap jwkSourceMap, List<OAuth2TokenValidator<Jwt>> jwtValidators) {
             ClosableJwtDecoders decoders = new ClosableJwtDecodersBuilder()
                     .withJwkSources(jwkSourceMap.getJwkSources())
+                    .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
                     .withJwtValidators(jwtValidators)
                     .build();
 

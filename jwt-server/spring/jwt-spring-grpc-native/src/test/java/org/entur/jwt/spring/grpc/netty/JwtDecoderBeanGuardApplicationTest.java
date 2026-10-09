@@ -29,15 +29,15 @@ public class JwtDecoderBeanGuardApplicationTest {
     }
 
     @Test
-    public void testFailsWithSpringBootResourceServerJwtDecoderWhenEnabled() {
-        assertThatThrownBy(() -> application("entur.jwt.decode.fail-on-jwt-decoder-bean=true").run().close())
+    public void testFailsWithSpringBootResourceServerJwtDecoder() {
+        assertThatThrownBy(() -> application().run().close())
                 .hasStackTraceContaining("spring.security.oauth2.resourceserver.jwt")
-                .hasStackTraceContaining("entur.jwt.decode.fail-on-jwt-decoder-bean=true");
+                .hasStackTraceContaining("entur.jwt.decode.fail-on-jwt-decoder-bean=false");
     }
 
     @Test
-    public void testStartsByDefault() {
-        try (ConfigurableApplicationContext context = application().run()) {
+    public void testStartsWhenCheckIsDisabled() {
+        try (ConfigurableApplicationContext context = application("entur.jwt.decode.fail-on-jwt-decoder-bean=false").run()) {
             assertThat(context.isActive()).isTrue();
         }
     }

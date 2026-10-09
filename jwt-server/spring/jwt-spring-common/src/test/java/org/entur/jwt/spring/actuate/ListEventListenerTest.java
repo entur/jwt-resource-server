@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ListEventListenerTest {
 
@@ -48,6 +50,27 @@ class ListEventListenerTest {
         listEventListener.notify(testEvent());
 
         assertEquals(1, first.received.size());
+        assertEquals(1, second.received.size());
+    }
+
+    @Test
+    void removedListenerNoLongerReceivesEvents() {
+        ListEventListener listEventListener = new ListEventListener();
+
+        RecordingEventListener first = new RecordingEventListener();
+        RecordingEventListener second = new RecordingEventListener();
+
+        listEventListener.addEventListener(first);
+        listEventListener.addEventListener(second);
+        assertEquals(2, listEventListener.getEventListeners().size());
+
+        assertTrue(listEventListener.removeEventListener(first));
+        assertFalse(listEventListener.removeEventListener(first));
+        assertEquals(1, listEventListener.getEventListeners().size());
+
+        listEventListener.notify(testEvent());
+
+        assertEquals(0, first.received.size());
         assertEquals(1, second.received.size());
     }
 

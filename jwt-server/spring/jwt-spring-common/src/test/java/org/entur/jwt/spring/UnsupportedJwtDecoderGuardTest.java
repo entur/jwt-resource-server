@@ -47,22 +47,21 @@ public class UnsupportedJwtDecoderGuardTest {
     }
 
     @Test
-    public void testFailsWithJwtDecoderBeanWhenEnabled() {
-        runner.withUserConfiguration(JwtDecoderConfiguration.class)
-                .withPropertyValues("entur.jwt.decode.fail-on-jwt-decoder-bean=true")
-                .run(context -> {
-                    assertThat(context).hasFailed();
-                    assertThat(context.getStartupFailure())
-                            .isInstanceOf(IllegalStateException.class)
-                            .hasMessageContaining("myJwtDecoder")
-                            .hasMessageContaining("ClosableJwtDecoders")
-                            .hasMessageContaining("entur.jwt.decode.fail-on-jwt-decoder-bean=true");
-                });
+    public void testFailsWithJwtDecoderBean() {
+        runner.withUserConfiguration(JwtDecoderConfiguration.class).run(context -> {
+            assertThat(context).hasFailed();
+            assertThat(context.getStartupFailure())
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("myJwtDecoder")
+                    .hasMessageContaining("ClosableJwtDecoders")
+                    .hasMessageContaining("entur.jwt.decode.fail-on-jwt-decoder-bean=false");
+        });
     }
 
     @Test
-    public void testStartsWithJwtDecoderBeanByDefault() {
+    public void testStartsWithJwtDecoderBeanWhenDisabled() {
         runner.withUserConfiguration(JwtDecoderConfiguration.class)
+                .withPropertyValues("entur.jwt.decode.fail-on-jwt-decoder-bean=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     // the guard is still registered, but does nothing
