@@ -21,8 +21,6 @@ import java.util.Map;
 
 public class IssuerJwtDecoder implements JwtDecoder, Closeable {
 
-    private static final String DECODING_ERROR_MESSAGE_TEMPLATE = "An error occurred while attempting to decode the Jwt: %s";
-
     protected final Map<String, JwtDecoder> decoders;
 
     public IssuerJwtDecoder(Map<String, JwtDecoder> decoders) {
@@ -42,7 +40,7 @@ public class IssuerJwtDecoder implements JwtDecoder, Closeable {
 
             throw new BadJwtException("Unknown issuer " + parse.getJWTClaimsSet().getIssuer());
         } catch (ParseException ex) {
-            throw new InvalidBearerTokenException(String.format(DECODING_ERROR_MESSAGE_TEMPLATE, ex.getMessage()), ex);
+            throw new InvalidBearerTokenException(JwtDecodingErrors.decodingErrorMessage(ex.getMessage()), ex);
         }
     }
 

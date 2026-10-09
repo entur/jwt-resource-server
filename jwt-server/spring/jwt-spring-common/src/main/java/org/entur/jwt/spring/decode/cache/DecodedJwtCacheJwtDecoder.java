@@ -1,6 +1,7 @@
 package org.entur.jwt.spring.decode.cache;
 
 import com.nimbusds.jose.jwk.JWKSet;
+import org.entur.jwt.spring.decode.JwtDecodingErrors;
 import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,7 +12,6 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.JwtValidationException;
-import org.springframework.util.StringUtils;
 
 import java.io.Closeable;
 import java.util.Collection;
@@ -36,8 +36,6 @@ import java.util.concurrent.atomic.LongAdder;
  * with the JWK source. Make sure to proactively (eagerly) refresh the JWK set, so that key rotation is detected.
  */
 public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
-
-    private static final String DECODING_ERROR_MESSAGE_TEMPLATE = "An error occurred while attempting to decode the Jwt: %s";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DecodedJwtCacheJwtDecoder.class);
 
@@ -121,7 +119,8 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
             }
             // the size checks are not atomic with the put, but it is good enough for this use case.
             int size = map.size();
-            if(size >= maxCacheSize) {
+            boolean evict = size >= maxCacheSize;
+            if(evict) {
                 if(!isEvicting()) {
                     warnFull();
                     return;
@@ -136,10 +135,10 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
                 }
                 // temporarily exceed the target size, evict in the background
                 // (after adding, so that the eviction accounts for this entry)
-                map.put(token, new Entry(jwt, sequence.incrementAndGet(), System.currentTimeMillis()));
+            }
+            map.put(token, new Entry(jwt, sequence.incrementAndGet(), System.currentTimeMillis()));
+            if(evict) {
                 scheduleEviction();
-            } else {
-                map.put(token, new Entry(jwt, sequence.incrementAndGet(), System.currentTimeMillis()));
             }
         }
 
@@ -509,12 +508,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
     }
 
     protected String getJwtValidationExceptionMessage(Collection<OAuth2Error> errors) {
-        for (OAuth2Error oAuth2Error : errors) {
-            if (StringUtils.hasLength(oAuth2Error.getDescription())) {
-                return String.format(DECODING_ERROR_MESSAGE_TEMPLATE, oAuth2Error.getDescription());
-            }
-        }
-        return "Unable to validate Jwt";
+        return JwtDecodingErrors.validationErrorMessage(errors);
     }
 
     // clears tokens, not key ids
