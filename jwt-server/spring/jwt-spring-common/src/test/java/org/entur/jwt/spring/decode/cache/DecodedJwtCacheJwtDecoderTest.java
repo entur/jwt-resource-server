@@ -450,7 +450,36 @@ class DecodedJwtCacheJwtDecoderTest {
         decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), 0L, MAX_TOKENS);
 
         // must not throw and must not schedule anything against the executor
-        assertDoesNotThrow(() -> decoder.scheduleCleanup());
+        assertFalse(assertDoesNotThrow(() -> decoder.scheduleCleanup()));
+        assertNull(decoder.scheduledExecutorService);
+    }
+
+    @Test
+    void scheduleCleanupIsIdempotent() {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+
+        assertTrue(decoder.scheduleCleanup());
+        java.util.concurrent.ScheduledFuture<?> task = decoder.cleanupTask;
+        assertNotNull(task);
+
+        // a single periodic task; the second call must not replace (or add to) the first
+        assertFalse(decoder.scheduleCleanup());
+        assertSame(task, decoder.cleanupTask);
+        assertFalse(task.isDone());
+    }
+
+    @Test
+    void cleanupThreadIsNamedAfterDecoder() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+
+        decoder = new DecodedJwtCacheJwtDecoder("https://issuer.a", delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS, JwtDecoderCacheMode.LRU);
+        assertEquals("https://issuer.a", decoder.getName());
+
+        Thread thread = decoder.getScheduledExecutorService().submit(Thread::currentThread).get(5, TimeUnit.SECONDS);
+        assertTrue(thread.isDaemon());
+        assertEquals("decoded-jwt-cache-cleanup-https://issuer.a", thread.getName());
     }
 
     // -----------------------------------------------------------------------

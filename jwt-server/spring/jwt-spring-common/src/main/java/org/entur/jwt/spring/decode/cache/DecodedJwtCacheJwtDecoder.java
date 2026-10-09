@@ -23,6 +23,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -39,10 +40,16 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DecodedJwtCacheJwtDecoder.class);
 
+    public static final String DEFAULT_CLEANUP_THREAD_NAME = "decoded-jwt-cache-cleanup";
+
     public static ScheduledExecutorService createDefaultScheduledExecutorService() {
+        return createDefaultScheduledExecutorService(DEFAULT_CLEANUP_THREAD_NAME);
+    }
+
+    public static ScheduledExecutorService createDefaultScheduledExecutorService(String threadName) {
         // daemon thread so that a decoder which is never closed does not block JVM shutdown
         return Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread thread = new Thread(r, "decoded-jwt-cache-cleanup");
+            Thread thread = new Thread(r, threadName);
             thread.setDaemon(true);
             return thread;
         });
@@ -50,6 +57,8 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
 
     // created lazily (on scheduling cleanup or on the first eviction) so instances which need neither don't spin up an unused background thread
     protected volatile ScheduledExecutorService scheduledExecutorService;
+    // the periodic cleanup task, if scheduled (see scheduleCleanup())
+    protected ScheduledFuture<?> cleanupTask;
     protected volatile boolean closed = false;
 
     protected static class Entry {
@@ -378,6 +387,9 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
         }
     }
 
+    // i.e. the issuer; used to name the background thread. Optional.
+    protected final String name;
+
     protected final JwtDecoder jwtValidatingDecoder;
     protected final OAuth2TokenValidator<Jwt> jwtValidator;
 
@@ -403,12 +415,20 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
     }
 
     public DecodedJwtCacheJwtDecoder(JwtDecoder jwtValidatingDecoder, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupIntervalMillis, int maxCacheSize, JwtDecoderCacheMode mode) {
+        this(null, jwtValidatingDecoder, jwtValidators, cleanupIntervalMillis, maxCacheSize, mode);
+    }
+
+    /**
+     * @param name name of this cache, i.e. the issuer; used to name the background thread. Can be null.
+     */
+    public DecodedJwtCacheJwtDecoder(String name, JwtDecoder jwtValidatingDecoder, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupIntervalMillis, int maxCacheSize, JwtDecoderCacheMode mode) {
         if (maxCacheSize < -1) {
             throw new IllegalArgumentException("maxCacheSize must be -1 (unlimited) or non-negative, was " + maxCacheSize);
         }
         if (mode == null) {
             throw new IllegalArgumentException("mode must not be null");
         }
+        this.name = name;
         this.jwtValidatingDecoder = jwtValidatingDecoder;
         this.jwtValidator = jwtValidators;
         this.cleanupInterval = cleanupIntervalMillis;
@@ -418,11 +438,20 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
         cache = new Cache(DecodedJwtCacheJWKRepresentations.empty(), 0, mode, jwtValidator, null);
     }
 
-    public synchronized void scheduleCleanup() {
+    /**
+     * Schedule periodic cleanup of invalid (i.e. expired) cached JWTs. Idempotent: at most one cleanup task is scheduled.
+     *
+     * @return true if cleanup was scheduled by this call, false if already scheduled or the cleanup interval is not positive
+     */
+    public synchronized boolean scheduleCleanup() {
         if (cleanupInterval <= 0) {
-            return;
+            return false;
         }
-        getScheduledExecutorService().scheduleWithFixedDelay(this::cleanup, cleanupInterval, cleanupInterval, TimeUnit.MILLISECONDS);
+        if (cleanupTask != null && !cleanupTask.isDone()) {
+            return false;
+        }
+        cleanupTask = getScheduledExecutorService().scheduleWithFixedDelay(this::cleanup, cleanupInterval, cleanupInterval, TimeUnit.MILLISECONDS);
+        return true;
     }
 
     protected synchronized ScheduledExecutorService getScheduledExecutorService() {
@@ -430,9 +459,20 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
             throw new RejectedExecutionException("Closed");
         }
         if (scheduledExecutorService == null) {
-            scheduledExecutorService = createDefaultScheduledExecutorService();
+            scheduledExecutorService = createDefaultScheduledExecutorService(getCleanupThreadName());
         }
         return scheduledExecutorService;
+    }
+
+    protected String getCleanupThreadName() {
+        if (name == null || name.isEmpty()) {
+            return DEFAULT_CLEANUP_THREAD_NAME;
+        }
+        return DEFAULT_CLEANUP_THREAD_NAME + "-" + name;
+    }
+
+    public String getName() {
+        return name;
     }
 
     // run eviction on the (single) background thread, also used for cleanup

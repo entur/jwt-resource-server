@@ -84,7 +84,7 @@ public class ClosableJwtDecodersBuilder {
                         // the cache must follow the JWK set (key rotation, outage); without events it would never be updated
                         throw new IllegalStateException("Decoded JWT cache is enabled for issuer '" + entry.getKey() + "', but no JWK event listener was provided for it; see " + ClosableJwtDecodersBuilder.class.getSimpleName() + ".withJwkEventListeners(..)");
                     }
-                    DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(decoder, validators, cacheProperties.getCleanupInterval() * 1000L, cacheProperties.getSize(), cacheProperties.getMode());
+                    DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(entry.getKey(), decoder, validators, cacheProperties.getCleanupInterval() * 1000L, cacheProperties.getSize(), cacheProperties.getMode());
                     cachedDecoder.scheduleCleanup();
                     DecodedJwtCacheJwkEventListener cacheEventListener = new DecodedJwtCacheJwkEventListener(cachedDecoder);
                     eventListener.addEventListener(cacheEventListener);

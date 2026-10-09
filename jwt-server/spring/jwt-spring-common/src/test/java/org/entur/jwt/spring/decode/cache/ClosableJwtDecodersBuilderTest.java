@@ -31,6 +31,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -212,6 +213,11 @@ class ClosableJwtDecodersBuilderTest {
         build(60);
         DecodedJwtCacheJwtDecoder decoder = (DecodedJwtCacheJwtDecoder) decoders.getJwtDecoders().get(ISSUER_A);
         assertThat(decoder.scheduledExecutorService).isNotNull();
+
+        // named after the issuer, so that threads of different tenants can be told apart
+        assertThat(decoder.getName()).isEqualTo(ISSUER_A);
+        Thread thread = decoder.scheduledExecutorService.submit(Thread::currentThread).get(5, TimeUnit.SECONDS);
+        assertThat(thread.getName()).isEqualTo("decoded-jwt-cache-cleanup-" + ISSUER_A);
 
         decoders.close();
 
