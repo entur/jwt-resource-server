@@ -9,6 +9,7 @@ import org.entur.jwt.spring.demo.grpc.GreetingResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -18,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 @AuthorizationServer
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@DirtiesContext
 public class GreetingGrpcServiceTest {
 
     private final GrpcClient client = new GrpcClient();
