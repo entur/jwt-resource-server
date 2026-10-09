@@ -1,5 +1,6 @@
 package org.entur.jwt.spring;
 
+import org.entur.jwt.spring.decode.ClosableJwtDecoders;
 import org.entur.jwt.spring.config.EnturAuthorizeHttpRequestsCustomizer;
 import org.entur.jwt.spring.config.EnturOauth2ResourceServerCustomizer;
 import org.entur.jwt.spring.config.JwtMappedDiagnosticContextFilter;
@@ -32,8 +33,6 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.oauth2.core.OAuth2TokenValidator;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.web.DefaultSecurityFilterChain;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
@@ -101,9 +100,7 @@ public class JwtWebSecurityChainAutoConfiguration {
 
         @Bean
         @ConditionalOnExpression("${entur.authorization.enabled:true} && !${entur.jwt.enabled:true}")
-        public SecurityFilterChain securityWebFilterChain(
-                HttpSecurity http
-        ) throws Exception {
+        public SecurityFilterChain securityWebFilterChain(HttpSecurity http) throws Exception {
             log.info("Configure without JWT");
 
             AuthorizationProperties authorization = securityProperties.getAuthorization();
@@ -118,9 +115,8 @@ public class JwtWebSecurityChainAutoConfiguration {
         @ConditionalOnExpression("${entur.jwt.enabled:true}")
         public SecurityFilterChain filterChain(
                 HttpSecurity http,
-                JwkSourceMap jwkSourceMap,
+                ClosableJwtDecoders jwtDecoders,
                 List<JwtAuthorityEnricher> jwtAuthorityEnrichers,
-                List<OAuth2TokenValidator<Jwt>> jwtValidators,
                 @Autowired(required = false) JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper,
                 @Autowired(required = false) JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider
         ) throws Exception {
@@ -150,7 +146,14 @@ public class JwtWebSecurityChainAutoConfiguration {
                     jwtAuthorityEnrichers = enrichers;
                 }
 
-                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(jwt.getDecode(), jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers, jwtValidators, jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider));
+                boolean mapHeaderToIssuer = jwt.getDecode().getHeader().getMapToIssuer().isEnabled();
+                http.oauth2ResourceServer(new EnturOauth2ResourceServerCustomizer(
+                        jwtAuthorityEnrichers,
+                        mapHeaderToIssuer,
+                        jwtHeaderToIssuerMapper,
+                        jwtHeaderToIssuerMapperDecider,
+                        jwtDecoders
+                ));
             }
 
             MdcProperties mdc = jwt.getMdc();

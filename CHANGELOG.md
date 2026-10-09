@@ -1,4 +1,8 @@
 # CHANGELOG
+ - 7.2.x: The per-issuer JWT decoders are now a single `ClosableJwtDecoders` bean in the common module, shared by the web and gRPC modules; override it to customize JWT decoding for both. New example with both REST and gRPC: `examples/jwt-resource-server-spring-boot-grpc-web-example`.
+   - Opt-in startup check `entur.jwt.decode.fail-on-jwt-decoder-bean=true`: fails startup if there is a `JwtDecoder` (or `ReactiveJwtDecoder`) bean, which is silently ignored by this library (including beans created by Spring Boot from `spring.security.oauth2.resourceserver.jwt.*` properties, and mocked decoder beans in tests). Default false; will default to true in the next major version.
+   - gRPC: the `AuthenticationProcessInterceptor` bean is renamed from `jwtSecurityFilterChain` to `authenticationProcessInterceptor`, as the old name collided with Spring Boot's resource server `SecurityFilterChain` bean (if `spring.security.oauth2.resourceserver.jwt.*` properties are set).
+   - Deprecated, to be removed in the next major version: `org.entur.jwt.spring.grpc.netty.IssuerJwtDecoder` / `FastIssuerJwtDecoder` and `IssuerJwtDecoder.newBuilder()` (moved to `org.entur.jwt.spring.decode`; see `ClosableJwtDecodersBuilder` and `IssuerJwtDecoderFactory`), the `EnturOauth2ResourceServerCustomizer` constructors taking JWK sources and validators (use the one taking a `ClosableJwtDecoders`), and the `JwkSourceMap(Map)` constructor.
  - 7.1.x: Performance improvement (opt-in): JWT header-to-issuer mapper for multi-tenant setups
  - 7.0.x: Spring Boot 4.1 and Spring gRPC (under `org.springframework.boot` group)
  - 6.0.0: Spring Boot 4 and Spring gRPC (under `org.springframework.grpc` group)
