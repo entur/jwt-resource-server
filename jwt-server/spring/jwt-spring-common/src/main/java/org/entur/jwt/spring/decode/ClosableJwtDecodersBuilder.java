@@ -61,6 +61,7 @@ public class ClosableJwtDecodersBuilder {
      */
     public ClosableJwtDecoders build() {
         Map<String, JwtDecoder> map = HashMap.newHashMap(jwkSources.size() * 4);
+        List<AutoCloseable> resources = new ArrayList<>();
 
         for (Map.Entry<String, JWKSource> entry : jwkSources.entrySet()) {
             JWKSource jwkSource = entry.getValue();
@@ -85,7 +86,10 @@ public class ClosableJwtDecodersBuilder {
                     }
                     DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(decoder, validators, cacheProperties.getCleanupInterval() * 1000L, cacheProperties.getSize(), cacheProperties.getMode());
                     cachedDecoder.scheduleCleanup();
-                    eventListener.addEventListener(new DecodedJwtCacheJwkEventListener(cachedDecoder));
+                    DecodedJwtCacheJwkEventListener cacheEventListener = new DecodedJwtCacheJwkEventListener(cachedDecoder);
+                    eventListener.addEventListener(cacheEventListener);
+                    // the JWK source outlives the decoders (i.e. when a custom ClosableJwtDecoders bean is rebuilt), so deregister on close
+                    resources.add(() -> eventListener.removeEventListener(cacheEventListener));
                     decoder = cachedDecoder;
                 }
             }
@@ -93,7 +97,7 @@ public class ClosableJwtDecodersBuilder {
             map.put(entry.getKey(), decoder);
         }
 
-        return new ClosableJwtDecoders(map);
+        return new ClosableJwtDecoders(map, resources);
     }
 
     private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(String issuer) {

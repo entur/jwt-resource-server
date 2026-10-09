@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -65,6 +67,24 @@ public class ClosableJwtDecodersTest {
         closableJwtDecoders.close();
 
         assertThat(closeableDecoder.closed.get()).isEqualTo(1);
+    }
+
+    @Test
+    public void testCloseClosesResourcesBeforeDecoders() throws Exception {
+        List<String> order = new ArrayList<>();
+        JwtDecoder decoder = new CloseableJwtDecoder() {
+            @Override
+            public void close() {
+                order.add("decoder");
+            }
+        };
+        AutoCloseable resource = () -> order.add("resource");
+
+        ClosableJwtDecoders closableJwtDecoders = new ClosableJwtDecoders(Map.of("https://issuer-a", decoder), List.of(resource));
+
+        closableJwtDecoders.close();
+
+        assertThat(order).containsExactly("resource", "decoder");
     }
 
     @Test

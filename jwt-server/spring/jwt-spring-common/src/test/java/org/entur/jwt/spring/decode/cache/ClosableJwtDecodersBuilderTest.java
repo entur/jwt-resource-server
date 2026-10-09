@@ -191,6 +191,23 @@ class ClosableJwtDecodersBuilderTest {
     }
 
     @Test
+    void testCloseDeregistersJwkEventListener() throws Exception {
+        build(-1);
+        DecodedJwtCacheJwtDecoder decoder = (DecodedJwtCacheJwtDecoder) decoders.getJwtDecoders().get(ISSUER_A);
+
+        assertThat(listenerA.getEventListeners())
+                .filteredOn(DecodedJwtCacheJwkEventListener.class::isInstance)
+                .map(l -> ((DecodedJwtCacheJwkEventListener) l).getDecoder())
+                .containsExactly(decoder);
+
+        decoders.close();
+        decoders = null;
+
+        // the JWK source (and its listener list) outlives the decoders; the closed decoder must not be retained or updated
+        assertThat(listenerA.getEventListeners()).noneMatch(DecodedJwtCacheJwkEventListener.class::isInstance);
+    }
+
+    @Test
     void testCloseStopsCleanupThread() throws Exception {
         build(60);
         DecodedJwtCacheJwtDecoder decoder = (DecodedJwtCacheJwtDecoder) decoders.getJwtDecoders().get(ISSUER_A);
