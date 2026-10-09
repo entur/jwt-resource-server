@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>4.1.1</version>
+		<relativePath /> <!-- lookup parent from repository -->
+	</parent>
+	<groupId>org.entur.example</groupId>
+	<artifactId>jwt-resource-server-spring-boot-grpc-web-example</artifactId>
+	<name>jwt-resource-server-spring-boot-grpc-web-example</name>
+	<description>Demo project for Spring Boot with both REST and gRPC</description>
+	<version>0.0.0-SNAPSHOT</version>
+	<url>https://github.com/entur/jwt-resource-server</url>
+
+	<properties>
+		<java.version>25</java.version>
+		<os-maven-plugin.version>1.7.1</os-maven-plugin.version>
+		<protobuf-maven-plugin.version>5.1.8</protobuf-maven-plugin.version>
+		<rest-assured.version>6.0.1</rest-assured.version>
+	</properties>
+
+	<dependencies>
+		<!-- REST -->
+		<dependency>
+			<groupId>org.entur.jwt-rs</groupId>
+			<artifactId>jwt-spring-web</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<!-- gRPC -->
+		<dependency>
+			<groupId>org.entur.jwt-rs</groupId>
+			<artifactId>jwt-spring-grpc-native</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-oauth2-resource-server</artifactId>
+		</dependency>
+		<!-- gRPC and protobuf versions are managed by Spring Boot -->
+		<dependency>
+			<groupId>com.google.protobuf</groupId>
+			<artifactId>protobuf-java</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.grpc</groupId>
+			<artifactId>grpc-protobuf</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.grpc</groupId>
+			<artifactId>grpc-stub</artifactId>
+		</dependency>
+		<!-- test -->
+		<dependency>
+			<groupId>org.entur.jwt-rs</groupId>
+			<artifactId>jwt-junit5-spring</artifactId>
+			<version>${project.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.rest-assured</groupId>
+			<artifactId>rest-assured</artifactId>
+			<version>${rest-assured.version}</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>kr.motd.maven</groupId>
+				<artifactId>os-maven-plugin</artifactId>
+				<version>${os-maven-plugin.version}</version>
+				<extensions>true</extensions>
+				<executions>
+					<execution>
+						<goals>
+							<goal>detect</goal>
+						</goals>
+						<phase>validate</phase>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>io.github.ascopes</groupId>
+				<artifactId>protobuf-maven-plugin</artifactId>
+				<version>${protobuf-maven-plugin.version}</version>
+				<configuration>
+					<!-- generate code with the versions managed by Spring Boot -->
+					<protoc>${protobuf-java.version}</protoc>
+					<plugins>
+						<plugin kind="binary-maven">
+							<groupId>io.grpc</groupId>
+							<artifactId>protoc-gen-grpc-java</artifactId>
+							<version>${grpc-java.version}</version>
+							<options>@generated=omit</options>
+						</plugin>
+					</plugins>
+				</configuration>
+				<executions>
+					<execution>
+						<id>protobuf-generate</id>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+</project>
