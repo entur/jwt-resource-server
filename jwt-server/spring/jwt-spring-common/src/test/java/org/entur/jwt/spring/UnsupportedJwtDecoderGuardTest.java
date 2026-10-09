@@ -64,7 +64,9 @@ public class UnsupportedJwtDecoderGuardTest {
                 .withPropertyValues("entur.jwt.decode.fail-on-jwt-decoder-bean=false")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
-                    assertThat(context).doesNotHaveBean(UnsupportedJwtDecoderGuard.class);
+                    // the guard is still registered, but does nothing
+                    assertThat(context).hasSingleBean(UnsupportedJwtDecoderGuard.class);
+                    assertThat(context).hasSingleBean(JwtDecoder.class);
                 });
     }
 }

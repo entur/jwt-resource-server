@@ -24,13 +24,22 @@ public class UnsupportedJwtDecoderGuard implements SmartInitializingSingleton {
     private static final String MONO = "reactor.core.publisher.Mono";
 
     private final ListableBeanFactory beanFactory;
+    private final boolean enabled;
 
-    public UnsupportedJwtDecoderGuard(ListableBeanFactory beanFactory) {
+    /**
+     * @param beanFactory bean factory to inspect
+     * @param enabled whether to fail startup; if false, the guard does nothing
+     */
+    public UnsupportedJwtDecoderGuard(ListableBeanFactory beanFactory, boolean enabled) {
         this.beanFactory = beanFactory;
+        this.enabled = enabled;
     }
 
     @Override
     public void afterSingletonsInstantiated() {
+        if (!enabled) {
+            return;
+        }
         List<String> beanNames = new ArrayList<>();
         // do not initialize lazy beans / factory beans just to check their type
         beanNames.addAll(Arrays.asList(beanFactory.getBeanNamesForType(JwtDecoder.class, true, false)));
