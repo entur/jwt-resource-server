@@ -14,6 +14,8 @@ public class JwtTenantProperties {
 
     protected Map<String, Object> properties = new HashMap<>();
 
+    protected JwtDecoderCacheProperties decoderCache = new JwtDecoderCacheProperties();
+
     public String getType() {
         return type;
     }
@@ -52,6 +54,14 @@ public class JwtTenantProperties {
     
     public Map<String, Object> getProperties() {
         return properties;
+    }
+
+    public JwtDecoderCacheProperties getDecoderCache() {
+        return decoderCache;
+    }
+
+    public void setDecoderCache(JwtDecoderCacheProperties decoderCache) {
+        this.decoderCache = decoderCache;
     }
 
 }

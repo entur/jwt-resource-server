@@ -38,7 +38,7 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
 
     /**
      * @deprecated use {@link #EnturOauth2ResourceServerCustomizer(List, boolean, JwtHeaderToIssuerMapper, JwtHeaderToIssuerMapperDecider, ClosableJwtDecoders)}
-     * with the {@code ClosableJwtDecoders} bean; this constructor builds its own per-issuer decoders, which are not shared with other modules.
+     * with the {@code ClosableJwtDecoders} bean; this constructor builds plain per-issuer decoders without the decoded JWT cache.
      */
     @Deprecated
     public EnturOauth2ResourceServerCustomizer(JwtDecodeProperties properties, Map<String, JWKSource> jwkSources, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators) {
@@ -47,7 +47,7 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
 
     /**
      * @deprecated use {@link #EnturOauth2ResourceServerCustomizer(List, boolean, JwtHeaderToIssuerMapper, JwtHeaderToIssuerMapperDecider, ClosableJwtDecoders)}
-     * with the {@code ClosableJwtDecoders} bean; this constructor builds its own per-issuer decoders, which are not shared with other modules.
+     * with the {@code ClosableJwtDecoders} bean; this constructor builds plain per-issuer decoders without the decoded JWT cache.
      */
     @Deprecated
     public EnturOauth2ResourceServerCustomizer(
