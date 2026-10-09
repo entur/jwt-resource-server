@@ -101,6 +101,9 @@ public class JwtDecoderCacheProperties {
     }
 
     public void setCleanupInterval(int cleanupIntervalSeconds) {
+        if (cleanupIntervalSeconds < -1) {
+            throw new IllegalArgumentException("cleanupInterval must be -1 or non-negative");
+        }
         this.cleanupInterval = cleanupIntervalSeconds;
     }
 
