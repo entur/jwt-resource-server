@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -113,6 +114,36 @@ class ClosableJwtDecodersBuilderTest {
         jwkSourceA.get(new JWKSelector(new JWKMatcher.Builder().build()), null);
 
         return decoders;
+    }
+
+    @Test
+    void testCacheWithoutJwkEventListenerFailsBuild() {
+        JwtDecoderCacheProperties cache = new JwtDecoderCacheProperties();
+        cache.setEnabled(true);
+        cache.setSize(10);
+        cache.setCleanupInterval(-1);
+
+        // listener for another issuer only
+        ClosableJwtDecodersBuilder builder = new ClosableJwtDecodersBuilder()
+                .withJwkSources(Map.of(ISSUER_A, jwkSource(keyA, listenerA)))
+                .withJwkEventListeners(Map.of(ISSUER_B, listenerB))
+                .withJwtValidators(List.of(claimValidator))
+                .withDecodedJwtCacheIssuers(Map.of(ISSUER_A, cache));
+
+        assertThatThrownBy(builder::build)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(ISSUER_A)
+                .hasMessageContaining("withJwkEventListeners");
+
+        // no listeners at all
+        ClosableJwtDecodersBuilder builderWithoutListeners = new ClosableJwtDecodersBuilder()
+                .withJwkSources(Map.of(ISSUER_A, jwkSource(keyA, listenerA)))
+                .withJwtValidators(List.of(claimValidator))
+                .withDecodedJwtCacheIssuers(Map.of(ISSUER_A, cache));
+
+        assertThatThrownBy(builderWithoutListeners::build)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(ISSUER_A);
     }
 
     @Test

@@ -78,13 +78,15 @@ public class ClosableJwtDecodersBuilder {
             if (decodedJwtCacheIssuers != null) {
                 JwtDecoderCacheProperties cacheProperties = decodedJwtCacheIssuers.get(entry.getKey());
                 if (cacheProperties != null) {
-                    ListEventListener eventListener = jwkEventListeners.get(entry.getKey());
-                    if (eventListener != null) {
-                        DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(decoder, validators, cacheProperties.getCleanupInterval() * 1000L, cacheProperties.getSize(), cacheProperties.getMode());
-                        cachedDecoder.scheduleCleanup();
-                        eventListener.addEventListener(new DecodedJwtCacheJwkEventListener(cachedDecoder));
-                        decoder = cachedDecoder;
+                    ListEventListener eventListener = jwkEventListeners != null ? jwkEventListeners.get(entry.getKey()) : null;
+                    if (eventListener == null) {
+                        // the cache must follow the JWK set (key rotation, outage); without events it would never be updated
+                        throw new IllegalStateException("Decoded JWT cache is enabled for issuer '" + entry.getKey() + "', but no JWK event listener was provided for it; see " + ClosableJwtDecodersBuilder.class.getSimpleName() + ".withJwkEventListeners(..)");
                     }
+                    DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(decoder, validators, cacheProperties.getCleanupInterval() * 1000L, cacheProperties.getSize(), cacheProperties.getMode());
+                    cachedDecoder.scheduleCleanup();
+                    eventListener.addEventListener(new DecodedJwtCacheJwkEventListener(cachedDecoder));
+                    decoder = cachedDecoder;
                 }
             }
 

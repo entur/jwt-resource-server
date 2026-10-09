@@ -4,6 +4,7 @@
    - `IssuerJwtDecoder` and `FastIssuerJwtDecoder` moved from `org.entur.jwt.spring.grpc.netty` to `org.entur.jwt.spring.decode` (common module), and `IssuerJwtDecoder.newBuilder()` was removed (see `ClosableJwtDecodersBuilder` and `IssuerJwtDecoderFactory`).
    - The `EnturOauth2ResourceServerCustomizer` constructors now take a `ClosableJwtDecoders` instead of JWK sources and validators.
    - Overriding the `ClosableJwtDecoders` bean affects both the web and the gRPC module.
+   - The deprecated `JwkSourceMap(Map)` constructor was removed; the JWK event listeners are required for the decoded JWT cache, and `ClosableJwtDecodersBuilder` fails if the cache is enabled for an issuer without one.
  - 7.1.x: Performance improvement (opt-in): JWT header-to-issuer mapper for multi-tenant setups
  - 7.0.x: Spring Boot 4.1 and Spring gRPC (under `org.springframework.boot` group)
  - 6.0.0: Spring Boot 4 and Spring gRPC (under `org.springframework.grpc` group)
