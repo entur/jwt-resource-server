@@ -2,6 +2,9 @@ package org.entur.jwt.spring;
 
 import org.entur.jwt.spring.actuate.ListJwksHealthIndicator;
 import org.entur.jwt.spring.decode.BoundedJwtHeaderToIssuerMapper;
+import org.entur.jwt.spring.decode.ClosableJwtDecoders;
+import org.entur.jwt.spring.decode.ClosableJwtDecodersBuilder;
+import org.entur.jwt.spring.decode.cache.DecodedJwtCacheConfigurationReader;
 import org.entur.jwt.spring.decode.DefaultJwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
@@ -10,6 +13,7 @@ import org.entur.jwt.spring.properties.SecurityProperties;
 import org.entur.jwt.spring.properties.jwk.JwtTenantProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -17,6 +21,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.health.autoconfigure.contributor.ConditionalOnEnabledHealthIndicator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
 
@@ -77,6 +82,33 @@ public class JwtAutoConfiguration {
     public JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper(SecurityProperties securityProperties) {
         int maxSize = securityProperties.getJwt().getDecode().getHeader().getMapToIssuer().getMaxSize();
         return maxSize != -1 ? new BoundedJwtHeaderToIssuerMapper(maxSize) : new JwtHeaderToIssuerMapper();
+    }
+
+    /**
+     * Per-issuer JWT decoders (including any decoded JWT caches), shared by the web and gRPC modules,
+     * and closed by Spring on shutdown. Lazy, so that it is only created if used (i.e. not for webflux).
+     * Intentionally not a {@link org.springframework.security.oauth2.jwt.JwtDecoder} bean, as that would activate
+     * Spring Boot's default resource server security filter chain.
+     */
+    @Bean
+    @Lazy
+    @ConditionalOnMissingBean(ClosableJwtDecoders.class)
+    public ClosableJwtDecoders closableJwtDecoders(JwkSourceMap jwkSourceMap, List<OAuth2TokenValidator<Jwt>> jwtValidators, SecurityProperties securityProperties) {
+        return new ClosableJwtDecodersBuilder()
+                .withJwkSources(jwkSourceMap.getJwkSources())
+                .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
+                .withJwtValidators(jwtValidators)
+                .withDecodedJwtCacheIssuers(DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(securityProperties.getJwt()))
+                .build();
+    }
+
+    /**
+     * Fail startup if there is a JwtDecoder bean, as it would silently be ignored.
+     * Opt-in via {@code entur.jwt.decode.fail-on-jwt-decoder-bean=true} (the default in the next major version).
+     */
+    @Bean
+    public UnsupportedJwtDecoderGuard unsupportedJwtDecoderGuard(ListableBeanFactory beanFactory, SecurityProperties securityProperties) {
+        return new UnsupportedJwtDecoderGuard(beanFactory, securityProperties.getJwt().getDecode().isFailOnJwtDecoderBean());
     }
 
     @Bean

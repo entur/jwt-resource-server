@@ -1,0 +1,90 @@
+package org.entur.jwt.spring.config;
+
+import org.entur.jwt.junit5.AccessToken;
+import org.entur.jwt.junit5.AuthorizationServer;
+import org.entur.jwt.spring.JwkSourceMap;
+import org.entur.jwt.spring.decode.ClosableJwtDecoders;
+import org.entur.jwt.spring.decode.ClosableJwtDecodersBuilder;
+import org.entur.jwt.spring.rest.Greeting;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.resttestclient.TestRestTemplate;
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * A custom {@link ClosableJwtDecoders} bean (the documented way to customize JWT decoding) is used for requests.
+ */
+@AuthorizationServer
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureTestRestTemplate
+public class CustomClosableJwtDecodersContextTest {
+
+    static final AtomicInteger DECODES = new AtomicInteger();
+
+    @TestConfiguration
+    static class CustomDecodersConfiguration {
+
+        @Bean
+        public ClosableJwtDecoders customClosableJwtDecoders(JwkSourceMap jwkSourceMap, List<OAuth2TokenValidator<Jwt>> jwtValidators) {
+            ClosableJwtDecoders decoders = new ClosableJwtDecodersBuilder()
+                    .withJwkSources(jwkSourceMap.getJwkSources())
+                    .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
+                    .withJwtValidators(jwtValidators)
+                    .build();
+
+            // count decodes
+            Map<String, JwtDecoder> counting = new HashMap<>();
+            for (Map.Entry<String, JwtDecoder> entry : decoders.getJwtDecoders().entrySet()) {
+                JwtDecoder delegate = entry.getValue();
+                counting.put(entry.getKey(), token -> {
+                    DECODES.incrementAndGet();
+                    return delegate.decode(token);
+                });
+            }
+            return new ClosableJwtDecoders(counting);
+        }
+    }
+
+    @LocalServerPort
+    private int port;
+
+    @Autowired
+    private TestRestTemplate restTemplate;
+
+    @Autowired
+    private ApplicationContext context;
+
+    @Test
+    public void testCustomDecodersAreUsed(@AccessToken(audience = "mock.my.audience") String token) {
+        assertThat(context.getBeansOfType(ClosableJwtDecoders.class)).containsOnlyKeys("customClosableJwtDecoders");
+
+        int decodes = DECODES.get();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", token);
+        ResponseEntity<Greeting> response = restTemplate.exchange("http://localhost:" + port + "/protected", HttpMethod.GET, new HttpEntity<>(headers), Greeting.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(DECODES.get()).isEqualTo(decodes + 1);
+    }
+}

@@ -1,0 +1,1105 @@
+package org.entur.jwt.spring.decode.cache;
+
+import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheMode;
+
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import com.nimbusds.jose.Algorithm;
+import com.nimbusds.jose.jwk.JWK;
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.OctetSequenceKey;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
+import com.nimbusds.jose.KeySourceException;
+import com.nimbusds.jose.jwk.source.JWKSetCacheRefreshEvaluator;
+import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jose.util.events.EventListener;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.security.oauth2.jwt.JwtValidationException;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class DecodedJwtCacheJwtDecoderTest {
+
+    private static final long CLEANUP_INTERVAL = 24L * 60L * 60L * 1000L; // not used unless scheduleCleanup() is called
+    private static final int MAX_TOKENS = 10000;
+
+    private DecodedJwtCacheJwtDecoder decoder;
+
+    private DecodedJwtCacheJwkEventListener jwkEventListener;
+
+    // the JWK event listener for the current decoder
+    private DecodedJwtCacheJwkEventListener jwkEventListener() {
+        DecodedJwtCacheJwkEventListener l = jwkEventListener;
+        if (l == null || l.getDecoder() != decoder) {
+            l = new DecodedJwtCacheJwkEventListener(decoder);
+            jwkEventListener = l;
+        }
+        return l;
+    }
+    private ListAppender<ILoggingEvent> logAppender;
+
+    @BeforeEach
+    void setUpLogCapture() {
+        logAppender = new ListAppender<>();
+        logAppender.start();
+        loggerUnderTest().addAppender(logAppender);
+    }
+
+    private static Logger loggerUnderTest() {
+        return (Logger) LoggerFactory.getLogger(DecodedJwtCacheJwtDecoder.class);
+    }
+
+    @AfterEach
+    void tearDown() {
+        loggerUnderTest().detachAppender(logAppender);
+        if (decoder != null) {
+            decoder.close();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------------
+
+    private static Jwt jwt(String token, String kid) {
+        return Jwt.withTokenValue(token)
+                .header("kid", kid)
+                .header("alg", "none")
+                .claim("sub", "user")
+                .build();
+    }
+
+    private static JWK key(String kid) throws Exception {
+        return new OctetSequenceKey.Builder("secret-material".getBytes()).keyID(kid).build();
+    }
+
+    private static JWK key(String kid, String algorithm) throws Exception {
+        return new OctetSequenceKey.Builder("secret-material".getBytes())
+                .keyID(kid)
+                .algorithm(new Algorithm(algorithm))
+                .build();
+    }
+
+    private static JWK keyWithValidityWindow(String kid, Date notBefore, Date expirationTime) throws Exception {
+        return new OctetSequenceKey.Builder("secret-material".getBytes())
+                .keyID(kid)
+                .notBeforeTime(notBefore)
+                .expirationTime(expirationTime)
+                .build();
+    }
+
+    private static JWKSet jwkSet(String... kids) throws Exception {
+        JWK[] keys = new JWK[kids.length];
+        for (int i = 0; i < kids.length; i++) {
+            keys[i] = key(kids[i]);
+        }
+        return new JWKSet(List.of(keys));
+    }
+
+    private static JWKSet jwkSet(JWK... keys) {
+        return new JWKSet(List.of(keys));
+    }
+
+    private static OAuth2TokenValidator<Jwt> alwaysValid() {
+        return jwt -> OAuth2TokenValidatorResult.success();
+    }
+
+    private static OAuth2TokenValidator<Jwt> alwaysInvalid() {
+        return jwt -> OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "expired", null));
+    }
+
+    // -----------------------------------------------------------------------
+    // Basic decode / caching behaviour
+    // -----------------------------------------------------------------------
+
+    @Test
+    void decodesViaDelegateWhenCacheEmpty() {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt = jwt("token1", "kid1");
+        delegate.returning("token1", jwt);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+
+        Jwt result = decoder.decode("token1");
+
+        assertSame(jwt, result);
+        assertEquals(1, delegate.count("token1"));
+    }
+
+    @Test
+    void doesNotCacheJwtWithUnknownKeyId() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt = jwt("token1", "unknown-kid");
+        delegate.returning("token1", jwt);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1"));
+
+        decoder.decode("token1");
+        decoder.decode("token1");
+
+        // key id unknown to the cache -> never cached -> delegate invoked every time
+        assertEquals(2, delegate.count("token1"));
+    }
+
+    @Test
+    void cachesJwtWithKnownKeyIdAndAvoidsRedecoding() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt = jwt("token1", "kid1");
+        delegate.returning("token1", jwt);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1"));
+
+        Jwt first = decoder.decode("token1");
+        Jwt second = decoder.decode("token1");
+
+        assertSame(jwt, first);
+        assertSame(jwt, second);
+        assertEquals(1, delegate.count("token1"));
+    }
+
+    @Test
+    void reValidatesCachedJwtOnEveryDecode() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt = jwt("token1", "kid1");
+        delegate.returning("token1", jwt);
+
+        AtomicInteger validations = new AtomicInteger();
+        OAuth2TokenValidator<Jwt> validator = validated -> {
+            validations.incrementAndGet();
+            return OAuth2TokenValidatorResult.success();
+        };
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, validator, CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1"));
+
+        decoder.decode("token1");
+        decoder.decode("token1");
+
+        // decoded once via delegate, but the cache-hit path must still re-validate
+        // on every subsequent call
+        assertEquals(1, validations.get());
+    }
+
+    @Test
+    void throwsAndEvictsWhenCachedJwtFailsRevalidation() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt = jwt("token1", "kid1");
+        delegate.returning("token1", jwt);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysInvalid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1"));
+
+        // first call goes straight to the delegate (which "already validates"), so it
+        // is cached without going through validateJwt()
+        decoder.decode("token1");
+
+        // second call is a cache hit and re-validates -> fails and evicts the entry
+        assertThrows(JwtValidationException.class, () -> decoder.decode("token1"));
+
+        // third decode should hit delegate again since the invalid entry was evicted
+        decoder.decode("token1");
+        assertEquals(2, delegate.count("token1"));
+    }
+
+    @Test
+    void propagatesDelegateExceptions() {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        delegate.answering(token -> {
+            throw new JwtException("bad token");
+        });
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+
+        assertThrows(JwtException.class, () -> decoder.decode("token1"));
+    }
+
+    // -----------------------------------------------------------------------
+    // maxCacheSize enforcement
+    // -----------------------------------------------------------------------
+
+    @Test
+    void neverCachesMoreThanMaxCacheSize() throws Exception {
+        int maxCacheSize = 5;
+        int distinctTokens = 50;
+
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        delegate.answering(token -> {
+            return jwt(token, "kid1");
+        });
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, maxCacheSize, JwtDecoderCacheMode.FIXED);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1"));
+
+        for (int i = 0; i < distinctTokens; i++) {
+            decoder.decode("token-" + i);
+            assertTrue(decoder.getSize() <= maxCacheSize,
+                    "cache size " + decoder.getSize() + " must never exceed maxCacheSize " + maxCacheSize);
+        }
+
+        assertEquals(maxCacheSize, decoder.getSize(), "cache should have filled up to the configured limit");
+    }
+
+    @Test
+    void stopsCachingNewEntriesOnceMaxCacheSizeIsReachedButKeepsServingCachedOnes() throws Exception {
+        int maxCacheSize = 2;
+
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        delegate.answering(token -> {
+            return jwt(token, "kid1");
+        });
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, maxCacheSize, JwtDecoderCacheMode.FIXED);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1"));
+
+        // fill the cache to its limit
+        decoder.decode("token-0");
+        decoder.decode("token-1");
+        assertEquals(maxCacheSize, decoder.getSize());
+
+        // already-cached entries are still served from cache
+        decoder.decode("token-0");
+        decoder.decode("token-1");
+        assertEquals(1, delegate.count("token-0"));
+        assertEquals(1, delegate.count("token-1"));
+
+        // cache is full -> new entries are not added, delegate is invoked every time
+        decoder.decode("token-2");
+        decoder.decode("token-2");
+        assertEquals(maxCacheSize, decoder.getSize());
+        assertEquals(2, delegate.count("token-2"));
+    }
+
+    @Test
+    void unboundedCacheSizeAllowsGrowthBeyondDefault() throws Exception {
+        int distinctTokens = 500;
+
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        delegate.answering(token -> {
+            return jwt(token, "kid1");
+        });
+
+        // -1 disables the cap (translated internally to Integer.MAX_VALUE)
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, -1);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1"));
+
+        for (int i = 0; i < distinctTokens; i++) {
+            decoder.decode("token-" + i);
+        }
+
+        assertEquals(distinctTokens, decoder.getSize());
+    }
+
+    // -----------------------------------------------------------------------
+    // clear()
+    // -----------------------------------------------------------------------
+
+    @Test
+    void clearRemovesCachedEntries() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt = jwt("token1", "kid1");
+        delegate.returning("token1", jwt);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1"));
+
+        decoder.decode("token1");
+        decoder.clear();
+        decoder.decode("token1");
+
+        assertEquals(2, delegate.count("token1"));
+    }
+
+    // -----------------------------------------------------------------------
+    // cleanup()
+    // -----------------------------------------------------------------------
+
+    @Test
+    void cleanupDoesNothingWhenCacheIsEmpty() {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+
+        AtomicInteger validations = new AtomicInteger();
+        OAuth2TokenValidator<Jwt> validator = validated -> {
+            validations.incrementAndGet();
+            return OAuth2TokenValidatorResult.success();
+        };
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, validator, CLEANUP_INTERVAL, MAX_TOKENS);
+
+        decoder.cleanup();
+
+        // nothing cached -> validator should never be invoked by cleanup
+        assertEquals(0, validations.get());
+        assertEquals(0, decoder.getSize());
+    }
+
+    @Test
+    void cleanupRemovesInvalidJwtsFromCache() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt = jwt("token1", "kid1");
+        delegate.returning("token1", jwt);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysInvalid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1"));
+
+        // cached without going through validateJwt(), since the delegate already validates it
+        decoder.decode("token1");
+        assertEquals(1, decoder.getSize());
+
+        decoder.cleanup();
+
+        // the invalid entry should have been evicted by cleanup()
+        assertEquals(0, decoder.getSize());
+
+        // subsequent decode must hit the delegate again since the cache entry is gone
+        decoder.decode("token1");
+        assertEquals(2, delegate.count("token1"));
+    }
+
+    @Test
+    void cleanupKeepsStillValidJwtsInCache() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt = jwt("token1", "kid1");
+        delegate.returning("token1", jwt);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1"));
+
+        decoder.decode("token1");
+        assertEquals(1, decoder.getSize());
+
+        decoder.cleanup();
+
+        // still valid -> not evicted
+        assertEquals(1, decoder.getSize());
+        decoder.decode("token1");
+        assertEquals(1, delegate.count("token1"));
+    }
+
+    @Test
+    void cleanupSwallowsExceptionsThrownByValidator() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt = jwt("token1", "kid1");
+        delegate.returning("token1", jwt);
+
+        // decode() itself is not affected by the validator since the delegate "already validates",
+        // so the first call just caches the entry
+        OAuth2TokenValidator<Jwt> validator = validated -> {
+            throw new RuntimeException("TEST EXCEPTION");
+        };
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, validator, CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1"));
+
+        decoder.decode("token1");
+        assertEquals(1, decoder.getSize());
+
+        // cleanup() must not propagate exceptions raised while revalidating cached entries
+        assertDoesNotThrow(() -> decoder.cleanup());
+    }
+
+    @Test
+    void scheduleCleanupPeriodicallyEvictsInvalidJwts() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt = jwt("token1", "kid1");
+        delegate.returning("token1", jwt);
+
+        long shortCleanupInterval = 20L;
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysInvalid(), shortCleanupInterval, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1"));
+
+        decoder.decode("token1");
+        assertEquals(1, decoder.getSize());
+
+        decoder.scheduleCleanup();
+
+        long deadline = System.currentTimeMillis() + 5000L;
+        while (decoder.getSize() != 0 && System.currentTimeMillis() < deadline) {
+            Thread.sleep(20L);
+        }
+
+        assertEquals(0, decoder.getSize(), "background cleanup should have evicted the invalid entry");
+    }
+
+    @Test
+    void scheduleCleanupIsNoOpWhenCleanupIntervalIsNotPositive() {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), 0L, MAX_TOKENS);
+
+        // must not throw and must not schedule anything against the executor
+        assertFalse(assertDoesNotThrow(() -> decoder.scheduleCleanup()));
+        assertNull(decoder.scheduledExecutorService);
+    }
+
+    @Test
+    void scheduleCleanupIsIdempotent() {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+
+        assertTrue(decoder.scheduleCleanup());
+        java.util.concurrent.ScheduledFuture<?> task = decoder.cleanupTask;
+        assertNotNull(task);
+
+        // a single periodic task; the second call must not replace (or add to) the first
+        assertFalse(decoder.scheduleCleanup());
+        assertSame(task, decoder.cleanupTask);
+        assertFalse(task.isDone());
+    }
+
+    @Test
+    void cleanupThreadIsNamedAfterDecoder() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+
+        decoder = new DecodedJwtCacheJwtDecoder("https://issuer.a", delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS, JwtDecoderCacheMode.LRU);
+        assertEquals("https://issuer.a", decoder.getName());
+
+        Thread thread = decoder.getScheduledExecutorService().submit(Thread::currentThread).get(5, TimeUnit.SECONDS);
+        assertTrue(thread.isDaemon());
+        assertEquals("decoded-jwt-cache-cleanup-https://issuer.a", thread.getName());
+    }
+
+    // -----------------------------------------------------------------------
+    // notify() / key id rotation
+    // -----------------------------------------------------------------------
+
+    @Test
+    void refreshInitiatedAndTimedOutEventsAreNoOps() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt = jwt("token1", "kid1");
+        delegate.returning("token1", jwt);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1"));
+
+        decoder.decode("token1");
+
+        // real events: a slow refresh (initiated), and another thread giving up waiting for it (waiting, timed out)
+        TestJWKSetSource source = new TestJWKSetSource(jwkSet("kid1"));
+        CachingJWKSetSource<SecurityContext> caching = new CachingJWKSetSource<>(source, 60_000, 50, (EventListener) jwkEventListener());
+        source.block();
+        Thread slowRefresh = new Thread(() -> {
+            try {
+                caching.getJWKSet(JWKSetCacheRefreshEvaluator.noRefresh(), System.currentTimeMillis(), null);
+            } catch (Exception e) {
+                // ignore
+            }
+        });
+        slowRefresh.start();
+        long deadline = System.currentTimeMillis() + 10_000;
+        while (slowRefresh.getState() != Thread.State.TIMED_WAITING && System.currentTimeMillis() < deadline) {
+            Thread.sleep(1);
+        }
+        assertThrows(KeySourceException.class, () -> caching.getJWKSet(JWKSetCacheRefreshEvaluator.noRefresh(), System.currentTimeMillis(), null));
+
+        // still cached, none of the above events should have evicted anything
+        decoder.decode("token1");
+
+        source.release();
+        slowRefresh.join(10_000);
+        assertEquals(1, delegate.count("token1"));
+    }
+
+    // -----------------------------------------------------------------------
+    // suspend / resume
+    // -----------------------------------------------------------------------
+
+    @Test
+    void suspendedCacheIsClearedAndNotUsedUntilResumed() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        delegate.returning("token1", jwt("token1", "kid1"));
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1"));
+
+        decoder.decode("token1");
+        decoder.suspendAt(System.currentTimeMillis() + 60_000);
+
+        // not yet suspended: served from cache
+        decoder.decode("token1");
+        assertEquals(1, delegate.count("token1"));
+
+        decoder.suspendAt(System.currentTimeMillis() - 1);
+
+        // suspended: cleared, decoded as if not cached, and not cached
+        decoder.decode("token1");
+        decoder.decode("token1");
+        assertEquals(3, delegate.count("token1"));
+        assertEquals(0, decoder.getSize());
+
+        decoder.resume();
+
+        decoder.decode("token1");
+        decoder.decode("token1");
+        assertEquals(4, delegate.count("token1"));
+        assertEquals(1, decoder.getSize());
+    }
+
+    @Test
+    void resumeBeforeSuspensionKeepsCache() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        delegate.returning("token1", jwt("token1", "kid1"));
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1"));
+
+        decoder.decode("token1");
+        decoder.suspendAt(System.currentTimeMillis() + 60_000);
+        decoder.resume();
+
+        decoder.decode("token1");
+        assertEquals(1, delegate.count("token1"));
+    }
+
+    @Test
+    void cleanupClearsSuspendedCache() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        delegate.returning("token1", jwt("token1", "kid1"));
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1"));
+
+        decoder.decode("token1");
+        decoder.suspendAt(System.currentTimeMillis() - 1);
+        decoder.cleanup();
+
+        assertEquals(0, decoder.getSize());
+    }
+
+    @Test
+    void refreshCompletedWithSameKeyIdsKeepsCache() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt = jwt("token1", "kid1");
+        delegate.returning("token1", jwt);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1"));
+
+        decoder.decode("token1");
+
+        // refresh completes again with the very same key ids
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1"));
+
+        decoder.decode("token1");
+        assertEquals(1, delegate.count("token1"));
+    }
+
+    @Test
+    void refreshCompletedWithNewKeyIdsEvictsJwtsWithUnknownKeyIds() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt1 = jwt("token1", "kid1");
+        delegate.returning("token1", jwt1);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1"));
+
+        decoder.decode("token1"); // cached under kid1
+
+        // JWKS rotates: kid1 no longer present, kid2 introduced
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid2"));
+
+        decoder.decode("token1");
+        assertEquals(2, delegate.count("token1"));
+    }
+
+    @Test
+    void refreshCompletedWithOverlappingKeyIdsRetainsStillValidJwts() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt1 = jwt("token1", "kid1");
+        delegate.returning("token1", jwt1);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1", "kid2"));
+
+        decoder.decode("token1"); // cached under kid1
+
+        // JWKS rotates: kid1 retained, kid3 added -> key id set changed, but kid1 still known
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1", "kid3"));
+
+        decoder.decode("token1");
+        assertEquals(1, delegate.count("token1"));
+    }
+
+    @Test
+    void refreshCompletedWithChangedJwkMetadataEvictsCachedJwt() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt1 = jwt("token1", "kid1");
+        delegate.returning("token1", jwt1);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet(key("kid1", "HS256")));
+
+        decoder.decode("token1"); // cached under kid1
+
+        // same key material and kid, but metadata changed in a way that can affect key selection
+        JwkEvents.refresh(jwkEventListener(), jwkSet(key("kid1", "HS512")));
+
+        decoder.decode("token1");
+        assertEquals(2, delegate.count("token1"));
+    }
+
+    @Test
+    void refreshCompletedWithDuplicateKidCachesJwtButEvictsAllOnAnyChange() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt1 = jwt("token1", "kid1");
+        delegate.returning("token1", jwt1);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet(key("kid1", "HS256"), key("kid1", "HS512")));
+
+        // multiple JWKs may legally share the same kid; the kid is still active and
+        // can be cached even though it's ambiguous which of the keys signed the JWT
+        decoder.decode("token1");
+        decoder.decode("token1");
+        assertEquals(1, delegate.count("token1"));
+
+        // if any of the keys sharing that kid changes (here: one of the two variants
+        // is dropped), the whole group for that kid must be considered changed,
+        // evicting anything cached under it
+        JwkEvents.refresh(jwkEventListener(), jwkSet(key("kid1", "HS256")));
+
+        decoder.decode("token1");
+        assertEquals(2, delegate.count("token1"));
+    }
+
+    // -----------------------------------------------------------------------
+    // notify() / JWK "nbf" (notBefore) and "exp" (expirationTime) validity window
+    // -----------------------------------------------------------------------
+
+    @Test
+    void refreshCompletedIgnoresKeyThatIsNotYetValid() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt1 = jwt("token1", "kid1");
+        delegate.returning("token1", jwt1);
+
+        Date oneHourFromNow = new Date(System.currentTimeMillis() + 3600_000L);
+        JWK notYetValidKey = keyWithValidityWindow("kid1", oneHourFromNow, null);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet(notYetValidKey));
+
+        // kid1's "nbf" is in the future -> not treated as an active key -> never cached
+        decoder.decode("token1");
+        decoder.decode("token1");
+        assertEquals(2, delegate.count("token1"));
+    }
+
+    @Test
+    void refreshCompletedIgnoresKeyThatHasExpired() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt1 = jwt("token1", "kid1");
+        delegate.returning("token1", jwt1);
+
+        Date oneHourAgo = new Date(System.currentTimeMillis() - 3600_000L);
+        JWK expiredKey = keyWithValidityWindow("kid1", null, oneHourAgo);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet(expiredKey));
+
+        // kid1's "exp" is in the past -> not treated as an active key -> never cached
+        decoder.decode("token1");
+        decoder.decode("token1");
+        assertEquals(2, delegate.count("token1"));
+    }
+
+    @Test
+    void refreshCompletedAcceptsKeyCurrentlyWithinItsValidityWindow() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt1 = jwt("token1", "kid1");
+        delegate.returning("token1", jwt1);
+
+        Date oneHourAgo = new Date(System.currentTimeMillis() - 3600_000L);
+        Date oneHourFromNow = new Date(System.currentTimeMillis() + 3600_000L);
+        JWK currentlyValidKey = keyWithValidityWindow("kid1", oneHourAgo, oneHourFromNow);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet(currentlyValidKey));
+
+        // "now" is within [nbf, exp] -> key is active -> cached as usual
+        decoder.decode("token1");
+        decoder.decode("token1");
+        assertEquals(1, delegate.count("token1"));
+    }
+
+    @Test
+    void refreshCompletedEvictsCachedJwtWhenItsKeyBecomesNotYetValidAgain() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt1 = jwt("token1", "kid1");
+        delegate.returning("token1", jwt1);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1")); // no validity window -> always active
+
+        decoder.decode("token1"); // cached under kid1
+
+        // JWKS refreshes and now advertises kid1 with a future "nbf" (e.g. a
+        // pre-published upcoming key reusing an old kid) -> must be treated as
+        // a different/inactive key, evicting anything cached under that kid
+        Date oneHourFromNow = new Date(System.currentTimeMillis() + 3600_000L);
+        JwkEvents.refresh(jwkEventListener(), jwkSet(keyWithValidityWindow("kid1", oneHourFromNow, null)));
+
+        decoder.decode("token1");
+        assertEquals(2, delegate.count("token1"));
+    }
+
+    // -----------------------------------------------------------------------
+    // notify() using a real-world JWKS (Auth0 tenant partner.dev.entur.org)
+    //
+    // The fixture in src/test/resources/.../auth0-partner-dev-jwks.json is a
+    // frozen snapshot fetched from
+    // https://partner.dev.entur.org/.well-known/jwks.json on 2026-09-09, used
+    // here only as realistic fixture data (real RSA "n"/"e", "x5c" cert chain,
+    // "x5t" thumbprint, "alg"/"use" fields) that the synthetic HMAC JWKs used
+    // elsewhere in this file don't exercise.
+    //
+    // Time-variant fields / caveats for future maintainers:
+    //  - The set of keys itself is time-variant: Auth0 rotates/retires signing
+    //    keys over time, so this snapshot will eventually no longer match the
+    //    live endpoint. Do not assert this JSON is "current" or fetch it live
+    //    in the test (no network calls in unit tests) - it is reference data.
+    //  - Individual JWK entries have no exp/iat-like field of their own, so
+    //    nothing here changes merely with wall-clock time.
+    //  - Each "x5c" certificate embeds its own notBefore/notAfter validity
+    //    window (2018-04-27/2032-01-04 for AUTH0_KID_1, 2020-03-17/2033-11-24
+    //    for AUTH0_KID_2 at fetch time). This decoder does not itself validate
+    //    those certificate timestamps, but they are part of the "x5c" bytes
+    //    that feed into the full-JWK-representation comparison, so
+    //    refreshCompletedWithUnchangedAuth0JwksIncludingCertValidityKeepsCache
+    //    below explicitly re-parses the fixture and checks that notBefore/
+    //    notAfter come out identical across parses, and that such a
+    //    genuinely-unchanged refresh does NOT evict the cache.
+    //  - Note kid conventions are inconsistent even within this one tenant:
+    //    AUTH0_KID_1 happens to equal its own "x5t" (cert SHA-1 thumbprint),
+    //    while AUTH0_KID_2 does not. A future cert renewal could reuse a kid
+    //    while changing "x5c"/"x5t" (or vice versa) - exactly the scenario
+    //    the full-JWK-representation comparison below is meant to catch,
+    //    rather than relying on kid alone.
+    private static final String AUTH0_KID_1 = "N0JDNjBGMUJCQzlDMDVERTE4NTI4MDA0NzU3MUQ0QzJBNTM1MjhCNw";
+    private static final String AUTH0_KID_2 = "DL_LhIMfNWaGymXRjFEWG";
+
+    private static String readClasspathResourceToString(String path) throws java.io.IOException {
+        try (java.io.InputStream in = DecodedJwtCacheJwtDecoderTest.class.getResourceAsStream(path)) {
+            if (in == null) {
+                throw new java.io.FileNotFoundException("Classpath resource not found: " + path);
+            }
+            return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        }
+    }
+
+    private static JWKSet auth0JwkSet() throws Exception {
+        String json = readClasspathResourceToString("auth0-partner-dev-jwks.json");
+        return JWKSet.parse(json);
+    }
+
+    private static java.security.cert.X509Certificate leafCertificate(JWK key) throws Exception {
+        RSAKey rsaKey = (RSAKey) key;
+        return com.nimbusds.jose.util.X509CertChainUtils.parse(rsaKey.getX509CertChain()).get(0);
+    }
+
+    @Test
+    void cachesJwtsSignedWithRealAuth0PublicKeysWhileBothPresent() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt1 = jwt("token1", AUTH0_KID_1);
+        Jwt jwt2 = jwt("token2", AUTH0_KID_2);
+        delegate.returning("token1", jwt1);
+        delegate.returning("token2", jwt2);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), auth0JwkSet());
+
+        decoder.decode("token1");
+        decoder.decode("token2");
+        decoder.decode("token1");
+        decoder.decode("token2");
+
+        // both real kids are known -> both get cached and only decoded once each
+        assertEquals(1, delegate.count("token1"));
+        assertEquals(1, delegate.count("token2"));
+    }
+
+    @Test
+    void refreshCompletedWhenRealAuth0KeyIsRotatedAwayEvictsOnlyThatKeysCachedJwt() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt1 = jwt("token1", AUTH0_KID_1);
+        Jwt jwt2 = jwt("token2", AUTH0_KID_2);
+        delegate.returning("token1", jwt1);
+        delegate.returning("token2", jwt2);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), auth0JwkSet());
+
+        decoder.decode("token1"); // cached under AUTH0_KID_1
+        decoder.decode("token2"); // cached under AUTH0_KID_2
+
+        // Auth0 rotates away the older key (AUTH0_KID_1), keeping only AUTH0_KID_2
+        JWK retainedKey = auth0JwkSet().getKeyByKeyId(AUTH0_KID_2);
+        JwkEvents.refresh(jwkEventListener(), new JWKSet(retainedKey));
+
+        decoder.decode("token1"); // AUTH0_KID_1 no longer known -> re-decoded
+        decoder.decode("token2"); // AUTH0_KID_2 still known -> still cached
+
+        assertEquals(2, delegate.count("token1"));
+        assertEquals(1, delegate.count("token2"));
+    }
+
+    @Test
+    void refreshCompletedWithRealAuth0KeyCertRenewalEvictsCachedJwt() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt1 = jwt("token1", AUTH0_KID_2);
+        delegate.returning("token1", jwt1);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), auth0JwkSet());
+
+        decoder.decode("token1"); // cached under AUTH0_KID_2
+
+        // simulate a certificate renewal that keeps the same kid and RSA key
+        // material (n/e) but replaces the x5c chain / x5t thumbprint, which is
+        // a realistic thing for an IdP to do (e.g. yearly cert reissue against
+        // the same key pair) and is exactly the sort of change a kid-only or
+        // thumbprint-only comparison would miss
+        RSAKey original = (RSAKey) auth0JwkSet().getKeyByKeyId(AUTH0_KID_2);
+        RSAKey renewedCert = new RSAKey.Builder(original)
+                .x509CertChain(null)
+                .x509CertThumbprint(null)
+                .build();
+        JwkEvents.refresh(jwkEventListener(), new JWKSet(renewedCert));
+
+        decoder.decode("token1");
+        assertEquals(2, delegate.count("token1"));
+    }
+
+    @Test
+    void refreshCompletedWithUnchangedAuth0JwksIncludingCertValidityKeepsCache() throws Exception {
+        // parse the same fixture independently twice, as if it had been fetched
+        // on two separate (unrelated) JWKS refreshes with no actual key rotation
+        JWKSet firstRefresh = auth0JwkSet();
+        JWKSet secondRefresh = auth0JwkSet();
+
+        // the embedded x5c certificate's notBefore/notAfter validity window is
+        // taken into account (it is part of the x5c bytes compared as part of
+        // the full JWK representation), but since it genuinely did not change
+        // between the two parses, it must not by itself trigger cache eviction
+        java.security.cert.X509Certificate firstCert = leafCertificate(firstRefresh.getKeyByKeyId(AUTH0_KID_2));
+        java.security.cert.X509Certificate secondCert = leafCertificate(secondRefresh.getKeyByKeyId(AUTH0_KID_2));
+        assertEquals(firstCert.getNotBefore(), secondCert.getNotBefore());
+        assertEquals(firstCert.getNotAfter(), secondCert.getNotAfter());
+
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt1 = jwt("token1", AUTH0_KID_2);
+        delegate.returning("token1", jwt1);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), firstRefresh);
+
+        decoder.decode("token1"); // cached under AUTH0_KID_2
+
+        // refresh completes again with an independently-parsed but content-identical
+        // JWKS (same notBefore/notAfter, same everything else) -> cache is retained
+        JwkEvents.refresh(jwkEventListener(), secondRefresh);
+
+        decoder.decode("token1");
+        assertEquals(1, delegate.count("token1"));
+    }
+
+    // -----------------------------------------------------------------------
+    // Multithreaded: decode() concurrently with JWKS rotation via notify()
+    // -----------------------------------------------------------------------
+
+    @Test
+    void concurrentDecodeAndKeyRotationNeverThrowsOrCorruptsState() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+
+        // delegate always returns a freshly-"decoded" Jwt tagged with whichever kid is
+        // currently active, simulating a real decoder that trusts the current JWKS
+        AtomicInteger activeKid = new AtomicInteger(0);
+        delegate.answering(token -> {
+            return jwt(token, "kid" + (activeKid.get() % 3));
+        });
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid0", "kid1", "kid2"));
+
+        int rotatorThreads = 2;
+        int decoderThreads = Math.min(8, Math.max(1, Runtime.getRuntime().availableProcessors() - rotatorThreads));
+        int iterationsPerDecoderThread = 50000;
+
+        ExecutorService executor = Executors.newFixedThreadPool(decoderThreads + rotatorThreads);
+        try {
+            CountDownLatch start = new CountDownLatch(1);
+            AtomicInteger errors = new AtomicInteger();
+
+            List<Future<?>> futures = new ArrayList<>();
+
+            for (int t = 0; t < decoderThreads; t++) {
+                final int threadIndex = t;
+                futures.add(executor.submit(() -> {
+                    try {
+                        start.await();
+                        for (int i = 0; i < iterationsPerDecoderThread; i++) {
+                            String token = "token-" + threadIndex + "-" + (i % 10);
+                            try {
+                                decoder.decode(token);
+                            } catch (JwtException e) {
+                                errors.incrementAndGet();
+                            }
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }));
+            }
+
+            for (int t = 0; t < rotatorThreads; t++) {
+                futures.add(executor.submit(() -> {
+                    try {
+                        start.await();
+                        for (int i = 0; i < 100; i++) {
+                            int next = activeKid.incrementAndGet() % 3;
+                            try {
+                                JwkEvents.refresh(jwkEventListener(), jwkSet("kid" + next, "kid" + ((next + 1) % 3)));
+                            } catch (Exception e) {
+                                errors.incrementAndGet();
+                            }
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }));
+            }
+
+            start.countDown();
+
+            for (Future<?> future : futures) {
+                future.get(60, TimeUnit.SECONDS);
+            }
+            executor.shutdown();
+            assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+
+            assertEquals(0, errors.get(), "decode()/notify() should never throw unexpectedly under concurrent access");
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void concurrentDecodeReturnsConsistentResultsDuringSingleKeyRotation() throws Exception {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwtKid1 = jwt("token1", "kid1");
+        delegate.returning("token1", jwtKid1);
+
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        JwkEvents.refresh(jwkEventListener(), jwkSet("kid1"));
+
+        // warm the cache
+        decoder.decode("token1");
+
+        int threads = Runtime.getRuntime().availableProcessors() * 4;
+        ExecutorService executor = Executors.newFixedThreadPool(threads + 1);
+        try {
+            CountDownLatch start = new CountDownLatch(1);
+            AtomicInteger errors = new AtomicInteger();
+
+            List<Future<?>> futures = new ArrayList<>();
+            for (int t = 0; t < threads; t++) {
+                futures.add(executor.submit(() -> {
+                    try {
+                        start.await();
+                        for (int i = 0; i < 50000; i++) {
+                            Jwt result = decoder.decode("token1");
+                            if (result == null || !"kid1".equals(result.getHeaders().get("kid"))) {
+                                errors.incrementAndGet();
+                            }
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    } catch (JwtException e) {
+                        errors.incrementAndGet();
+                    }
+                }));
+            }
+
+            // rotate the JWKS once concurrently, keeping kid1 known throughout so the
+            // in-flight decode() calls should never fail
+            futures.add(executor.submit(() -> {
+                try {
+                    start.await();
+                    JwkEvents.refresh(jwkEventListener(), jwkSet("kid1", "kid2"));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }));
+
+            start.countDown();
+
+            for (Future<?> future : futures) {
+                future.get(60, TimeUnit.SECONDS);
+            }
+            executor.shutdown();
+            assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+
+            assertEquals(0, errors.get());
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void testLargeMaxCacheSizeDoesNotOverflowOrPreallocate() {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        Jwt jwt = jwt("token1", "kid1");
+        delegate.returning("token1", jwt);
+
+        // 2 * Integer.MAX_VALUE overflows an int; must neither throw nor allocate a huge table
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, alwaysValid(), CLEANUP_INTERVAL, Integer.MAX_VALUE);
+        assertDoesNotThrow(() -> JwkEvents.refresh(jwkEventListener(), jwkSet("kid1")));
+
+        decoder.decode("token1");
+        assertEquals(1, decoder.getSize());
+    }
+
+    @Test
+    void testConstructorRejectsMaxCacheSizeLessThanNegativeOne() {
+        TestJwtDecoder delegate = new TestJwtDecoder();
+        OAuth2TokenValidator<Jwt> validator = alwaysValid();
+
+        assertThrows(IllegalArgumentException.class, () -> new DecodedJwtCacheJwtDecoder(delegate, validator, CLEANUP_INTERVAL, -2));
+    }
+
+    @Test
+    void testDefaultScheduledExecutorServiceUsesNamedDaemonThread() throws Exception {
+        java.util.concurrent.ScheduledExecutorService executor = DecodedJwtCacheJwtDecoder.createDefaultScheduledExecutorService();
+        try {
+            Thread thread = executor.submit(Thread::currentThread).get(5, TimeUnit.SECONDS);
+            assertTrue(thread.isDaemon());
+            assertEquals("decoded-jwt-cache-cleanup", thread.getName());
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+}
