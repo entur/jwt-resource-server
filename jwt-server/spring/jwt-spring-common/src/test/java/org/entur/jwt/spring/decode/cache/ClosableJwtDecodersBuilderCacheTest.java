@@ -39,9 +39,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * The decoders built by {@link ClosableJwtDecodersBuilder}, with real JWK sources and signed JWTs.
+ * The decoded JWT cache of the decoders built by {@link ClosableJwtDecodersBuilder}, with real JWK sources and signed JWTs.
  */
-class ClosableJwtDecodersBuilderTest {
+class ClosableJwtDecodersBuilderCacheTest {
 
     private static final String ISSUER_A = "https://issuer.a";
     private static final String ISSUER_B = "https://issuer.b";
