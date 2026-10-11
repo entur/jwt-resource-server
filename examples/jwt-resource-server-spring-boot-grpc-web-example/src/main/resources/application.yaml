@@ -6,6 +6,12 @@ entur:
       issued-at-leeway: 5
       audiences:
         - https://my.audience
+    jwk:
+      cache:
+        preemptive:
+          eager:
+            # required for the decoded JWT cache
+            enabled: true
   authorization:
     enabled: true
     permit-all:
