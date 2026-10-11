@@ -17,7 +17,7 @@
 	<properties>
 		<java.version>25</java.version>
 		<os-maven-plugin.version>1.7.1</os-maven-plugin.version>
-		<protobuf-maven-plugin.version>5.1.8</protobuf-maven-plugin.version>
+		<protobuf-maven-plugin.version>5.1.11</protobuf-maven-plugin.version>
 		<rest-assured.version>6.0.1</rest-assured.version>
 	</properties>
 
