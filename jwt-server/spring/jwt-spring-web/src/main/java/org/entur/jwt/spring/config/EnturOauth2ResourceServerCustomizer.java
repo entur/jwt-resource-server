@@ -2,12 +2,7 @@ package org.entur.jwt.spring.config;
 
 import org.entur.jwt.spring.EnrichedJwtGrantedAuthoritiesConverter;
 import org.entur.jwt.spring.JwtAuthorityEnricher;
-import com.nimbusds.jose.jwk.source.JWKSource;
 import org.entur.jwt.spring.decode.ClosableJwtDecoders;
-import org.entur.jwt.spring.decode.ClosableJwtDecodersBuilder;
-import org.entur.jwt.spring.properties.JwtDecodeProperties;
-import org.springframework.security.oauth2.core.OAuth2TokenValidator;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.slf4j.Logger;
@@ -35,34 +30,6 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
     private final JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper;
     private final JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider;
     private final ClosableJwtDecoders decoders;
-
-    /**
-     * @deprecated use {@link #EnturOauth2ResourceServerCustomizer(List, boolean, JwtHeaderToIssuerMapper, JwtHeaderToIssuerMapperDecider, ClosableJwtDecoders)}
-     * with the {@code ClosableJwtDecoders} bean; this constructor builds its own per-issuer decoders, which are not shared with other modules.
-     */
-    @Deprecated
-    public EnturOauth2ResourceServerCustomizer(JwtDecodeProperties properties, Map<String, JWKSource> jwkSources, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators) {
-        this(properties, jwkSources, jwtAuthorityEnrichers, jwtValidators, null, null);
-    }
-
-    /**
-     * @deprecated use {@link #EnturOauth2ResourceServerCustomizer(List, boolean, JwtHeaderToIssuerMapper, JwtHeaderToIssuerMapperDecider, ClosableJwtDecoders)}
-     * with the {@code ClosableJwtDecoders} bean; this constructor builds its own per-issuer decoders, which are not shared with other modules.
-     */
-    @Deprecated
-    public EnturOauth2ResourceServerCustomizer(
-            JwtDecodeProperties properties, Map<String, JWKSource> jwkSources,
-            List<JwtAuthorityEnricher> jwtAuthorityEnrichers,
-            List<OAuth2TokenValidator<Jwt>> jwtValidators,
-            JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper,
-            JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider
-            ) {
-        this(jwtAuthorityEnrichers,
-                properties.getHeader().getMapToIssuer().isEnabled(),
-                jwtHeaderToIssuerMapper,
-                jwtHeaderToIssuerMapperDecider,
-                new ClosableJwtDecodersBuilder().withJwkSources(jwkSources).withJwtValidators(jwtValidators).build());
-    }
 
     public EnturOauth2ResourceServerCustomizer(
             List<JwtAuthorityEnricher> jwtAuthorityEnrichers,

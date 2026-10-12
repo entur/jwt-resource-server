@@ -53,7 +53,8 @@ See documentation contained in each folder to get started. Or skip right to the 
 
  * [5.x](https://github.com/entur/jwt-resource-server/tree/5.x): Spring Boot 3.5.x / Ecosystem gRPC
  * [6.x](https://github.com/entur/jwt-resource-server/tree/6.x): Spring Boot 4.0.x / Spring gRPC (`org.springframework.grpc`)
- * 7.x (latest): Spring Boot 4.1.x / Spring gRPC (`org.springframework.boot`)
+ * 7.x: Spring Boot 4.1.x / Spring gRPC (`org.springframework.boot`)
+ * 8.x (latest): Spring Boot 4.1.x / Spring gRPC (`org.springframework.boot`), decoded JWT cache (see [CHANGELOG](CHANGELOG.md) for breaking changes)
 
 
 # License
