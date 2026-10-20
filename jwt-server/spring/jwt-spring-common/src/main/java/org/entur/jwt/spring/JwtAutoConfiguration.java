@@ -4,6 +4,7 @@ import org.entur.jwt.spring.actuate.ListJwksHealthIndicator;
 import org.entur.jwt.spring.decode.BoundedJwtHeaderToIssuerMapper;
 import org.entur.jwt.spring.decode.ClosableJwtDecoders;
 import org.entur.jwt.spring.decode.ClosableJwtDecodersBuilder;
+import org.entur.jwt.spring.decode.cache.DecodedJwtCacheConfigurationReader;
 import org.entur.jwt.spring.decode.DefaultJwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
@@ -84,7 +85,7 @@ public class JwtAutoConfiguration {
     }
 
     /**
-     * Per-issuer JWT decoders, shared by the web and gRPC modules,
+     * Per-issuer JWT decoders (including any decoded JWT caches), shared by the web and gRPC modules,
      * and closed by Spring on shutdown. Lazy, so that it is only created if used (i.e. not for webflux).
      * Intentionally not a {@link org.springframework.security.oauth2.jwt.JwtDecoder} bean, as that would activate
      * Spring Boot's default resource server security filter chain.
@@ -92,16 +93,18 @@ public class JwtAutoConfiguration {
     @Bean
     @Lazy
     @ConditionalOnMissingBean(ClosableJwtDecoders.class)
-    public ClosableJwtDecoders closableJwtDecoders(JwkSourceMap jwkSourceMap, List<OAuth2TokenValidator<Jwt>> jwtValidators) {
+    public ClosableJwtDecoders closableJwtDecoders(JwkSourceMap jwkSourceMap, List<OAuth2TokenValidator<Jwt>> jwtValidators, SecurityProperties securityProperties) {
         return new ClosableJwtDecodersBuilder()
                 .withJwkSources(jwkSourceMap.getJwkSources())
+                .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
                 .withJwtValidators(jwtValidators)
+                .withDecodedJwtCacheIssuers(DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(securityProperties.getJwt()))
                 .build();
     }
 
     /**
      * Fail startup if there is a JwtDecoder bean, as it would silently be ignored.
-     * Opt-in via {@code entur.jwt.decode.fail-on-jwt-decoder-bean=true} (the default in the next major version).
+     * Disable with {@code entur.jwt.decode.fail-on-jwt-decoder-bean=false}.
      */
     @Bean
     public UnsupportedJwtDecoderGuard unsupportedJwtDecoderGuard(ListableBeanFactory beanFactory, SecurityProperties securityProperties) {

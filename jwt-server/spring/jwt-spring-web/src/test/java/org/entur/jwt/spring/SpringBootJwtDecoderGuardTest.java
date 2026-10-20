@@ -27,16 +27,8 @@ public class SpringBootJwtDecoderGuardTest {
     }
 
     @Test
-    public void testStartsWithSpringBootResourceServerJwtDecoderByDefault() {
+    public void testFailsWithSpringBootResourceServerJwtDecoder() {
         runner.withPropertyValues("spring.security.oauth2.resourceserver.jwt.jwk-set-uri=http://localhost:1/jwks.json")
-                .run(context -> assertThat(context).hasNotFailed());
-    }
-
-    @Test
-    public void testFailsWithSpringBootResourceServerJwtDecoderWhenEnabled() {
-        runner.withPropertyValues(
-                        "spring.security.oauth2.resourceserver.jwt.jwk-set-uri=http://localhost:1/jwks.json",
-                        "entur.jwt.decode.fail-on-jwt-decoder-bean=true")
                 .run(context -> {
                     assertThat(context).hasFailed();
                     assertThat(context.getStartupFailure())
