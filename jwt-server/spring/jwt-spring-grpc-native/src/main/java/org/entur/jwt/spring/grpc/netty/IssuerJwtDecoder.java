@@ -19,7 +19,7 @@ import java.util.Map;
  *
  * @deprecated moved to {@link org.entur.jwt.spring.decode.IssuerJwtDecoder}. The per-issuer decoders are the
  * {@link ClosableJwtDecoders} bean (see {@link ClosableJwtDecodersBuilder} and {@link IssuerJwtDecoderFactory}),
- * which is shared with the web module; this class and its builder build their own decoders. To be removed in the next major version.
+ * which also supports the decoded JWT cache; this class and its builder do not. To be removed in the next major version.
  */
 @Deprecated
 public class IssuerJwtDecoder extends org.entur.jwt.spring.decode.IssuerJwtDecoder {
@@ -66,7 +66,7 @@ public class IssuerJwtDecoder extends org.entur.jwt.spring.decode.IssuerJwtDecod
          * @return as before: the only decoder if there is a single issuer, otherwise a (fast) issuer decoder of this package
          */
         public JwtDecoder build() {
-            // the decoders are not shared with other modules (and have nothing to close)
+            // plain per-issuer decoders, no decoded JWT cache (so nothing to close)
             ClosableJwtDecoders closableJwtDecoders = new ClosableJwtDecodersBuilder()
                     .withJwkSources(jwkSourceMap.getJwkSources())
                     .withJwtValidators(jwtValidators)
