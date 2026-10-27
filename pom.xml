@@ -70,7 +70,7 @@
 		<!-- added due to security issue -->
 		<spring-security.version>7.1.1</spring-security.version>
 		<spring.version>7.0.9</spring.version>
-		<rest-assured.version>6.1.0</rest-assured.version>
+		<rest-assured.version>6.2.0</rest-assured.version>
 		<okhttp.version>5.5.0</okhttp.version>
 
 		<grpc.version>1.81.0</grpc.version>
