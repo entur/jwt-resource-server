@@ -5,13 +5,16 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
+import org.entur.jwt.spring.JwtExpiresAtValidator;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
+import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +28,9 @@ import java.util.Map;
  */
 
 public class ClosableJwtDecodersBuilder {
+
+    // same as the default clock skew of Spring Security (and Nimbus)
+    private static final Duration DEFAULT_EXPIRES_AT_LEEWAY = Duration.ofSeconds(60);
 
     private List<OAuth2TokenValidator<Jwt>> jwtValidators;
     private Map<String, JWKSource> jwkSources;
@@ -52,6 +58,10 @@ public class ClosableJwtDecodersBuilder {
             DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
             JWSVerificationKeySelector keySelector = new JWSVerificationKeySelector(JWSAlgorithm.Family.SIGNATURE, jwkSource);
             jwtProcessor.setJWSKeySelector(keySelector);
+            // the claims (including expiry) are validated by the JWT validators, so disable the Nimbus verifier,
+            // which would otherwise limit the leeway to its own (one minute) clock skew
+            jwtProcessor.setJWTClaimsSetVerifier((claims, context) -> {
+            });
 
             NimbusJwtDecoder nimbusJwtDecoder = new NimbusJwtDecoder(jwtProcessor);
             nimbusJwtDecoder.setJwtValidator(getJwtValidators(entry.getKey()));
@@ -66,6 +76,11 @@ public class ClosableJwtDecodersBuilder {
         List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();
         validators.add(new JwtIssuerValidator(issuer));
         validators.addAll(jwtValidators);
+        if (validators.stream().noneMatch(v -> v instanceof JwtExpiresAtValidator || v instanceof JwtTimestampValidator)) {
+            // the JWT processor does not check the expiry, so never accept expired tokens
+            // (for example if a custom validator bean replaced the default validators)
+            validators.add(new JwtExpiresAtValidator(DEFAULT_EXPIRES_AT_LEEWAY));
+        }
         return new DelegatingOAuth2TokenValidator<>(validators);
     }
 }
