@@ -85,6 +85,8 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorInProcessTest {
         InProcessChannelBuilder builder = InProcessChannelBuilder.forName(serverName).directExecutor();
         if (retry) {
             builder.enableRetry();
+        } else {
+            builder.disableRetry();
         }
         return builder.intercept(new UnauthenticatedAccessTokenRecoveryClientInterceptor(handler)).build();
     }
