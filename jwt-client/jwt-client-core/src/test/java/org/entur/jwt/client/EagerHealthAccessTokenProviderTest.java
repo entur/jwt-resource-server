@@ -4,6 +4,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -176,15 +179,15 @@ public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProvider
     public void shouldNotPublishStaleStatusWhenUnderlyingProviderFailsDuringRefresh() throws Exception {
         when(fallback.getAccessToken(false)).thenThrow(new AccessTokenException());
 
-        java.util.concurrent.CountDownLatch refreshStarted = new java.util.concurrent.CountDownLatch(1);
-        java.util.concurrent.CountDownLatch failureRecorded = new java.util.concurrent.CountDownLatch(1);
+        CountDownLatch refreshStarted = new CountDownLatch(1);
+        CountDownLatch failureRecorded = new CountDownLatch(1);
         when(refreshProvider.getAccessToken(false)).thenAnswer(invocation -> {
             refreshStarted.countDown();
             failureRecorded.await();
             return refreshedAccessToken;
         });
 
-        java.util.concurrent.CompletableFuture<AccessTokenHealth> refresh = java.util.concurrent.CompletableFuture.supplyAsync(() -> provider.getHealth(true));
+        CompletableFuture<AccessTokenHealth> refresh = CompletableFuture.supplyAsync(() -> provider.getHealth(true));
         refreshStarted.await();
 
         // the underlying provider fails while the (good) refresh is in flight
