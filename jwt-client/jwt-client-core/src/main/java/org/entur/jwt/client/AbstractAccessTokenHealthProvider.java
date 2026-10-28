@@ -87,7 +87,7 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
     /**
      * Get the current health. Read this before invoking the top-level provider.
      *
-     * @return current health, to be passed to {@linkplain #publishHealth(AccessTokenHealth, AccessTokenHealth)}
+     * @return current health, to be passed to {@linkplain #publishRefreshedHealth(AccessTokenHealth, AccessTokenHealth)}
      */
 
     protected AccessTokenHealth getCurrentHealth() {
@@ -95,15 +95,25 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
     }
 
     /**
-     * Publish a calculated health, unless the underlying provider has been invoked
-     * since the given health was read, i.e. the calculated health might be outdated.
+     * Publish the outcome of a refresh via the top-level provider.
+     * <br><br>
+     * If the underlying provider was not invoked by the refresh (typically the cache served an access-token),
+     * the underlying outcome stands. Whether the cached access-token is still usable is determined when
+     * the health is read, so that a cache-derived status cannot outlive the access-token.
+     * <br><br>
+     * If the underlying provider was invoked, its outcome is already the current health. Only a failed refresh
+     * is published, i.e. when the top-level provider did not accept what the underlying provider returned.
+     * It is published against the health as of now, so that it does not overwrite a newer outcome.
      *
-     * @param newHealth calculated health
-     * @param previous  health read before the new health was calculated
+     * @param refreshed outcome of the refresh
+     * @param previous  health read before the refresh started
      */
 
-    protected void publishHealth(AccessTokenHealth newHealth, AccessTokenHealth previous) {
-        health.compareAndSet(previous, newHealth);
+    protected void publishRefreshedHealth(AccessTokenHealth refreshed, AccessTokenHealth previous) {
+        AccessTokenHealth latest = health.get();
+        if (latest != previous && !refreshed.isSuccess()) {
+            health.compareAndSet(latest, refreshed);
+        }
     }
 
     public void setRefreshProvider(AccessTokenProvider top) {

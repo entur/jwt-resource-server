@@ -31,7 +31,7 @@ public class EagerAccessTokenHealthProvider extends AbstractAccessTokenHealthPro
         }
         // as long as an access-token was returned, health is good
         AccessTokenHealth status = new AccessTokenHealth(System.currentTimeMillis(), accessToken != null);
-        publishHealth(status, previous);
+        publishRefreshedHealth(status, previous);
         return status;
     }
 

@@ -9,6 +9,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
@@ -144,11 +145,48 @@ public class DefaultHealthAccessTokenProviderTest extends AbstractDelegateProvid
         // the previously refreshed (good) status no longer applies
         assertFalse(health.getHealth(false).isSuccess());
 
-        // a refresh via the top-level provider (served by the cache) recovers the health
+        // a refresh via the top-level provider (served by the cache) is good, but does not change the
+        // underlying outcome, since the cache minimum time to live is not known to the health provider
+        assertTrue(health.getHealth(true).isSuccess());
+        assertFalse(health.getHealth(false).isSuccess());
+
+        Mockito.verify(source, times(3)).getAccessToken(false);
+    }
+
+    @Test
+    public void shouldNotKeepCacheDerivedGoodHealthAfterCachedAccessTokenExpired() throws Exception {
+        AccessTokenProvider source = mock(AccessTokenProvider.class);
+        AccessToken expiring = new AccessToken("a.b.c", "bearer", System.currentTimeMillis() + 300);
+        when(source.getAccessToken(anyBoolean())).thenReturn(expiring).thenThrow(new AccessTokenException());
+        DefaultAccessTokenHealthProvider health = new DefaultAccessTokenHealthProvider(source);
+        health.setCacheMinimumTimeToLive(0);
+        AccessTokenProvider cache = new DefaultCachedAccessTokenProvider(health, 0, 1000);
+        health.setRefreshProvider(cache);
+
+        cache.getAccessToken(false);
+        // a later (preemptive) refresh fails, but the cache still holds the access-token
+        assertThrows(AccessTokenException.class, () -> health.getAccessToken(false));
         assertTrue(health.getHealth(true).isSuccess());
         assertTrue(health.getHealth(false).isSuccess());
 
-        Mockito.verify(source, times(3)).getAccessToken(false);
+        Thread.sleep(400);
+
+        // the access-token has expired and the source is still failing
+        assertFalse(health.getHealth(false).isSuccess());
+        assertFalse(health.getHealth(true).isSuccess());
+    }
+
+    @Test
+    public void shouldPublishBadHealthWhenCacheRejectsAccessTokenFromSource() throws Exception {
+        AccessTokenProvider source = mock(AccessTokenProvider.class);
+        // valid for less than the minimum time to live of the cache
+        when(source.getAccessToken(false)).thenReturn(new AccessToken("a.b.c", "bearer", System.currentTimeMillis() + 5_000));
+        DefaultAccessTokenHealthProvider health = new DefaultAccessTokenHealthProvider(source);
+        health.setCacheMinimumTimeToLive(15_000);
+        health.setRefreshProvider(new DefaultCachedAccessTokenProvider(health, 15_000, 1000));
+
+        assertFalse(health.getHealth(true).isSuccess());
+        assertFalse(health.getHealth(false).isSuccess());
     }
 
     @Test

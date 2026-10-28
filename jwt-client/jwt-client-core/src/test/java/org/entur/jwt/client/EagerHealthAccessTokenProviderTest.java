@@ -51,8 +51,7 @@ public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProvider
         AccessTokenHealth health1 = provider.getHealth(true);
         assertTrue(health1.isSuccess());
 
-        AccessTokenHealth health2 = provider.getHealth(false);
-        assertSame(health1, health2);
+        assertTrue(provider.getHealth(false).isSuccess());
 
         // expected behavior: the health provider attempted to refresh
         // a good health status.

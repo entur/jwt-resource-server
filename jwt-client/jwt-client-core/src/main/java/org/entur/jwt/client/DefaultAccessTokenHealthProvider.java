@@ -49,7 +49,7 @@ public class DefaultAccessTokenHealthProvider extends AbstractAccessTokenHealthP
         } else {
             // promote the latest underlying status as the current top-level status
         }
-        publishHealth(threadSafeStatus, previous);
+        publishRefreshedHealth(threadSafeStatus, previous);
         return threadSafeStatus;
     }
 }
