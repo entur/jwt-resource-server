@@ -171,8 +171,11 @@ public class JwtGrpcAutoConfiguration {
         return jwtAuthorityEnrichers;
     }
 
-    private static Map<String, List<String>> getPermitAllMappings(GrpcServicesConfiguration grpc) {
+    static Map<String, List<String>> getPermitAllMappings(GrpcServicesConfiguration grpc) {
         Map<String, List<String>> serviceNameMethodName = new HashMap<>();
+        if (!grpc.isEnabled()) {
+            return serviceNameMethodName;
+        }
         for (ServiceMatcherConfiguration configuration : grpc.getServices()) {
             if (!configuration.isEnabled()) {
                 continue;
