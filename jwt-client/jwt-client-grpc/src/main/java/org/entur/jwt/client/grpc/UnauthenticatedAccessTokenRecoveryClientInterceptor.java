@@ -10,7 +10,6 @@ import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
 import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicReference;
 import org.entur.jwt.client.recovery.UnauthenticatedAccessTokenRecoveryHandler;
 
 /**
@@ -50,13 +49,14 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptor implements Clie
 	@Override
 	public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
 
-		CallCredentials credentials = callOptions.getCredentials();
-		AtomicReference<String> authorization = new AtomicReference<>();
-		if(credentials instanceof AccessTokenCallCredentials) {
+		CapturingCallCredentials capturing = null;
+		if(callOptions.getCredentials() instanceof AccessTokenCallCredentials credentials) {
 			// capture the header as applied by the credentials; with retries enabled the metadata
 			// is copied per attempt, so the request headers passed to start(..) cannot be relied on
-			callOptions = callOptions.withCallCredentials(new CapturingCallCredentials(credentials, authorization));
+			capturing = new CapturingCallCredentials(credentials);
+			callOptions = callOptions.withCallCredentials(capturing);
 		}
+		CapturingCallCredentials captured = capturing;
 
 		ClientCall<ReqT, RespT> call = next.newCall(method, callOptions);
 
@@ -84,11 +84,8 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptor implements Clie
 					@Override
 					public void onClose(Status status, Metadata trailers) {
 						try {
-							if(status.getCode() == Status.Code.UNAUTHENTICATED) {
-								String authorizationHeader = authorization.get();
-								if(authorizationHeader != null && credentials instanceof AccessTokenCallCredentials jwtCallCredentials) {
-									handler.handle(jwtCallCredentials.getAccessTokenProvider(), authorizationHeader, System.currentTimeMillis());
-								}
+							if(captured != null && status.getCode() == Status.Code.UNAUTHENTICATED && captured.authorization != null) {
+								handler.handle(captured.delegate.getAccessTokenProvider(), captured.authorization, System.currentTimeMillis());
 							}
 						} finally {
 							listener.onClose(status, trailers);
@@ -103,12 +100,11 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptor implements Clie
 
 	private static class CapturingCallCredentials extends CallCredentials {
 
-		private final CallCredentials delegate;
-		private final AtomicReference<String> authorization;
+		private final AccessTokenCallCredentials delegate;
+		private volatile String authorization;
 
-		CapturingCallCredentials(CallCredentials delegate, AtomicReference<String> authorization) {
+		CapturingCallCredentials(AccessTokenCallCredentials delegate) {
 			this.delegate = delegate;
-			this.authorization = authorization;
 		}
 
 		@Override
@@ -116,7 +112,7 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptor implements Clie
 			delegate.applyRequestMetadata(requestInfo, appExecutor, new MetadataApplier() {
 				@Override
 				public void apply(Metadata headers) {
-					authorization.set(headers.get(AccessTokenCallCredentials.KEY_AUTHORIZATION));
+					authorization = headers.get(AccessTokenCallCredentials.KEY_AUTHORIZATION);
 					applier.apply(headers);
 				}
 

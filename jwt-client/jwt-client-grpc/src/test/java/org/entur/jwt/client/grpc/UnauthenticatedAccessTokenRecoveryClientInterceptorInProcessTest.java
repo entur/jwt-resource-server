@@ -79,6 +79,14 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorInProcessTest {
     private UnauthenticatedAccessTokenRecoveryHandler handler;
     private AccessTokenProvider accessTokenProvider;
 
+    private ManagedChannel newChannel(boolean retry) {
+        InProcessChannelBuilder builder = InProcessChannelBuilder.forName(serverName).directExecutor();
+        if (retry) {
+            builder.enableRetry();
+        }
+        return builder.intercept(new UnauthenticatedAccessTokenRecoveryClientInterceptor(handler)).build();
+    }
+
     @BeforeEach
     public void setUp() throws Exception {
         ServerServiceDefinition service = ServerServiceDefinition.builder("test.Greeter")
@@ -101,8 +109,8 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorInProcessTest {
             }
         };
 
-        String name = serverName = InProcessServerBuilder.generateName();
-        server = InProcessServerBuilder.forName(name)
+        serverName = InProcessServerBuilder.generateName();
+        server = InProcessServerBuilder.forName(serverName)
                 .directExecutor()
                 .addService(ServerInterceptors.intercept(service, captureAuthorization))
                 .build()
@@ -110,10 +118,7 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorInProcessTest {
 
         handler = mock(UnauthenticatedAccessTokenRecoveryHandler.class);
 
-        channel = InProcessChannelBuilder.forName(name)
-                .directExecutor()
-                .intercept(new UnauthenticatedAccessTokenRecoveryClientInterceptor(handler))
-                .build();
+        channel = newChannel(false);
 
         accessTokenProvider = mock(AccessTokenProvider.class);
         when(accessTokenProvider.getAccessToken(false)).thenReturn(new AccessToken("a.b.c", "Bearer", System.currentTimeMillis() + 60_000));
@@ -122,11 +127,7 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorInProcessTest {
     @Test
     public void testRecoveryHandlerInvokedWhenRetryIsEnabled() {
         channel.shutdownNow();
-        channel = InProcessChannelBuilder.forName(serverName)
-                .directExecutor()
-                .enableRetry()
-                .intercept(new UnauthenticatedAccessTokenRecoveryClientInterceptor(handler))
-                .build();
+        channel = newChannel(true);
         serverStatus.set(Status.UNAUTHENTICATED);
 
         assertThrows(StatusRuntimeException.class, this::call);
