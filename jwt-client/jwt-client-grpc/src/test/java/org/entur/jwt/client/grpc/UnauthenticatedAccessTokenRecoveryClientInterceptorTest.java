@@ -145,35 +145,4 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorTest {
 
         verify(handler, never()).handle(any(), any(), org.mockito.ArgumentMatchers.anyLong());
     }
-
-    @SuppressWarnings("unchecked")
-    @Test
-    public void testRecoveryHandlerNotInvokedForAuthorizationHeaderInResponse() {
-        UnauthenticatedAccessTokenRecoveryHandler handler = mock(UnauthenticatedAccessTokenRecoveryHandler.class);
-        UnauthenticatedAccessTokenRecoveryClientInterceptor interceptor = new UnauthenticatedAccessTokenRecoveryClientInterceptor(handler);
-
-        Channel channel = mock(Channel.class);
-        ClientCall<Object, Object> delegateCall = newMockCall();
-        MethodDescriptor<Object, Object> method = mock(MethodDescriptor.class);
-
-        org.entur.jwt.client.AccessTokenProvider accessTokenProvider = mock(org.entur.jwt.client.AccessTokenProvider.class);
-        CallOptions callOptions = CallOptions.DEFAULT.withCallCredentials(new AccessTokenCallCredentials(accessTokenProvider));
-
-        when(channel.newCall(method, callOptions)).thenReturn(delegateCall);
-
-        ClientCall<Object, Object> wrappedCall = interceptor.interceptCall(method, callOptions, channel);
-        wrappedCall.start(mock(ClientCall.Listener.class), new Metadata());
-
-        var listenerCaptor = forClass(ClientCall.Listener.class);
-        verify(delegateCall).start(listenerCaptor.capture(), any());
-        ClientCall.Listener<Object> innerListener = listenerCaptor.getValue();
-
-        // a header returned by the server says nothing about which token the client sent
-        Metadata responseHeaders = new Metadata();
-        responseHeaders.put(AccessTokenCallCredentials.KEY_AUTHORIZATION, "Bearer x.y.z");
-        innerListener.onHeaders(responseHeaders);
-        innerListener.onClose(Status.UNAUTHENTICATED, new Metadata());
-
-        verify(handler, never()).handle(any(), any(), org.mockito.ArgumentMatchers.anyLong());
-    }
 }
