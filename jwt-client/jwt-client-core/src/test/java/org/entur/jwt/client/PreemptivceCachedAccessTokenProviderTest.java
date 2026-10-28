@@ -167,6 +167,28 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
     }
 
     @Test
+    public void shouldFirePreemptivelyRefreshCacheAgainIfPreviousPreemptivelyRefreshAttemptFailedWithUncheckedException() throws Exception {
+        when(fallback.getAccessToken(false)).thenReturn(accessToken).thenThrow(new IllegalStateException("TEST!")).thenReturn(refreshedAccessToken);
+
+        assertThat(provider.getAccessToken(false)).isSameInstanceAs(accessToken);
+        verify(fallback, only()).getAccessToken(false);
+
+        long justBeforeExpiry = provider.getExpires(-TimeUnit.SECONDS.toMillis(5));
+
+        assertThat(provider.getAccessToken(justBeforeExpiry, false)).isSameInstanceAs(accessToken); // triggers a preemptive refresh attempt, which fails
+
+        provider.getExecutorService().awaitTermination(1, TimeUnit.SECONDS);
+
+        assertThat(provider.getAccessToken(justBeforeExpiry, false)).isSameInstanceAs(accessToken); // triggers a another preemptive refresh attempt
+
+        provider.getExecutorService().awaitTermination(1, TimeUnit.SECONDS);
+
+        verify(fallback, times(3)).getAccessToken(false);
+
+        assertThat(provider.getAccessToken(false)).isSameInstanceAs(refreshedAccessToken);
+    }
+
+    @Test
     public void shouldAccceptIfAnotherThreadPreemptivelyUpdatesCache() throws Exception {
         provider.getAccessToken(false);
 
