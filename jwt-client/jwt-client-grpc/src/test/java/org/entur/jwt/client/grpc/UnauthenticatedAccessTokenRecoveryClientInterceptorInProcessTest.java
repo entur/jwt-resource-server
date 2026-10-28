@@ -159,8 +159,9 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorInProcessTest {
 
     @Test
     public void testRecoveryHandlerNotInvokedWhenTokenWasRefreshedSinceTheCallStarted() throws Exception {
-        // first lookup is the one used for the call, the next one is the refreshed token
+        // the first two lookups are the interceptor's and the call credentials', then the token is refreshed
         when(accessTokenProvider.getAccessToken(false)).thenReturn(
+                new AccessToken("a.b.c", "Bearer", System.currentTimeMillis() + 60_000),
                 new AccessToken("a.b.c", "Bearer", System.currentTimeMillis() + 60_000),
                 new AccessToken("d.e.f", "Bearer", System.currentTimeMillis() + 60_000));
         serverStatus.set(Status.UNAUTHENTICATED);

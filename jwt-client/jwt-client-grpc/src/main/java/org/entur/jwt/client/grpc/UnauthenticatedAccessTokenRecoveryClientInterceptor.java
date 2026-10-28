@@ -1,6 +1,5 @@
 package org.entur.jwt.client.grpc;
 
-import io.grpc.CallCredentials;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
 import io.grpc.ClientCall;
@@ -9,7 +8,7 @@ import io.grpc.ForwardingClientCall;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
-import java.util.concurrent.Executor;
+import org.entur.jwt.client.AccessToken;
 import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenProvider;
 import org.entur.jwt.client.recovery.UnauthenticatedAccessTokenRecoveryHandler;
@@ -51,14 +50,15 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptor implements Clie
 	@Override
 	public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
 
-		CapturingCallCredentials capturing = null;
+		AccessTokenProvider provider;
+		String authorizationHeader;
 		if(callOptions.getCredentials() instanceof AccessTokenCallCredentials credentials) {
-			// capture the header as applied by the credentials; with retries enabled the metadata
-			// is copied per attempt, so the request headers passed to start(..) cannot be relied on
-			capturing = new CapturingCallCredentials(credentials);
-			callOptions = callOptions.withCallCredentials(capturing);
+			provider = credentials.getAccessTokenProvider();
+			authorizationHeader = getAuthorizationHeader(provider);
+		} else {
+			provider = null;
+			authorizationHeader = null;
 		}
-		CapturingCallCredentials captured = capturing;
 
 		ClientCall<ReqT, RespT> call = next.newCall(method, callOptions);
 
@@ -86,10 +86,10 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptor implements Clie
 					@Override
 					public void onClose(Status status, Metadata trailers) {
 						try {
-							if(captured != null && status.getCode() == Status.Code.UNAUTHENTICATED && captured.authorization != null) {
-								AccessTokenProvider provider = captured.delegate.getAccessTokenProvider();
-								if(isCurrent(provider, captured.authorization)) {
-									handler.handle(provider, captured.authorization, System.currentTimeMillis());
+							if(authorizationHeader != null && status.getCode() == Status.Code.UNAUTHENTICATED) {
+								// only recover if the token has not been refreshed since the call started
+								if(authorizationHeader.equals(getAuthorizationHeader(provider))) {
+									handler.handle(provider, authorizationHeader, System.currentTimeMillis());
 								}
 							}
 						} finally {
@@ -103,38 +103,12 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptor implements Clie
 		};
 	}
 
-	// only recover if the rejected token is still the current one, i.e. it has not been refreshed since the call started
-	private static boolean isCurrent(AccessTokenProvider provider, String authorizationHeader) {
+	private static String getAuthorizationHeader(AccessTokenProvider provider) {
 		try {
-			return authorizationHeader.equals(AccessTokenCallCredentials.BEARER_PREFIX + provider.getAccessToken(false).getValue());
+			AccessToken accessToken = provider.getAccessToken(false);
+			return accessToken != null ? AccessTokenCallCredentials.BEARER_PREFIX + accessToken.getValue() : null;
 		} catch (AccessTokenException e) {
-			return false;
-		}
-	}
-
-	private static class CapturingCallCredentials extends CallCredentials {
-
-		private final AccessTokenCallCredentials delegate;
-		private volatile String authorization;
-
-		CapturingCallCredentials(AccessTokenCallCredentials delegate) {
-			this.delegate = delegate;
-		}
-
-		@Override
-		public void applyRequestMetadata(RequestInfo requestInfo, Executor appExecutor, MetadataApplier applier) {
-			delegate.applyRequestMetadata(requestInfo, appExecutor, new MetadataApplier() {
-				@Override
-				public void apply(Metadata headers) {
-					authorization = headers.get(AccessTokenCallCredentials.KEY_AUTHORIZATION);
-					applier.apply(headers);
-				}
-
-				@Override
-				public void fail(Status status) {
-					applier.fail(status);
-				}
-			});
+			return null;
 		}
 	}
 }
