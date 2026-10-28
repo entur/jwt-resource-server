@@ -120,30 +120,34 @@ public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProvider
     }
 
     @Test
-    public void shouldLetFailedAccessTokenFetchSupersedeRefreshedGoodHealth() throws Exception {
-        // the access-token expires before the failure, so no valid access-token is available
+    public void shouldReturnBadHealthWhenAccessTokenFetchFailsAndCachedAccessTokenHasExpired() throws Exception {
+        // the first two fetches return a short-lived access-token, the third fails and the fourth recovers
         AccessTokenProvider source = mock(AccessTokenProvider.class);
         AccessToken expiring = new AccessToken("a.b.c", "bearer", System.currentTimeMillis() + 50);
         when(source.getAccessToken(false)).thenReturn(expiring, expiring).thenThrow(new AccessTokenException()).thenReturn(accessToken);
         EagerAccessTokenHealthProvider health = new EagerAccessTokenHealthProvider(source);
+        // the cache is populated by the health refresh below
         health.setRefreshProvider(new DefaultCachedAccessTokenProvider(health, 0, 1000));
 
-        // health is refreshed by the indicator before any access-token has been requested
+        // health is refreshed by the indicator before any access-token has been requested,
+        // this puts the first (short-lived) access-token in the cache
         assertTrue(health.getHealth(true).isSuccess());
         assertTrue(health.getHealth(false).isSuccess());
 
         health.getAccessToken(false);
         assertTrue(health.getHealth(false).isSuccess());
 
+        // the access-token, which is also the one held by the cache, is now expired
         Thread.sleep(100);
 
         assertThrows(AccessTokenException.class, () -> health.getAccessToken(false));
 
-        // expected behavior: the latest call to the underlying provider failed, so
-        // the previously refreshed (good) status no longer applies
+        // expected behavior: the latest call to the underlying provider failed and the
+        // cached access-token is expired, so the previously refreshed (good) status no longer applies
         assertFalse(health.getHealth(false).isSuccess());
 
-        // a refresh via the top-level provider recovers the health
+        // a refresh via the top-level provider recovers the health: the cache is expired,
+        // so a new access-token is fetched from the underlying provider
         assertTrue(health.getHealth(true).isSuccess());
         assertTrue(health.getHealth(false).isSuccess());
 

@@ -122,11 +122,14 @@ public class DefaultHealthAccessTokenProviderTest extends AbstractDelegateProvid
     }
 
     @Test
-    public void shouldLetFailedAccessTokenFetchSupersedeRefreshedGoodHealth() throws Exception {
+    public void shouldReturnBadHealthWhenAccessTokenFetchFailsAfterRefreshedGoodHealth() throws Exception {
         AccessTokenProvider source = mock(AccessTokenProvider.class);
         when(source.getAccessToken(false)).thenReturn(accessToken, accessToken).thenThrow(new AccessTokenException());
         DefaultAccessTokenHealthProvider health = new DefaultAccessTokenHealthProvider(source);
         health.setRefreshProvider(new DefaultCachedAccessTokenProvider(health, 0, 1000));
+
+        // note: the cache minimum time to live is not configured on the health provider,
+        // so a still-valid cached access-token does not make up for the failed fetch
 
         // health is refreshed by the indicator before any access-token has been requested
         assertTrue(health.getHealth(true).isSuccess());
