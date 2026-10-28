@@ -20,19 +20,22 @@ public class EagerAccessTokenHealthProvider extends AbstractAccessTokenHealthPro
 
     @Override
     protected AccessTokenHealth getRefreshHealth() {
-        AccessTokenHealth status = null;
-        // get a fresh status
+        long version = getProviderVersion();
+        AccessTokenHealth last = this.providerStatus;
+        // if the last underlying call failed, a cache hit proves nothing:
+        // force a real fetch so that recovery requires an actual success
+        boolean force = last != null && !last.isSuccess();
+
         AccessToken accessToken = null;
         try {
-            accessToken = refreshProvider.getAccessToken(false);
+            accessToken = refreshProvider.getAccessToken(force);
         } catch (Exception e) {
             // ignore
             logger.warn("Exception refreshing health status.", e);
-        } finally {
-            // as long as an access-token was returned, health is good
-            status = new AccessTokenHealth(System.currentTimeMillis(), accessToken != null);
         }
-        this.status = status;
+        // as long as an access-token was returned, health is good
+        AccessTokenHealth status = new AccessTokenHealth(System.currentTimeMillis(), accessToken != null);
+        publishStatus(status, version);
         return status;
     }
 
