@@ -80,6 +80,7 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorInProcessTest {
     private ManagedChannel channel;
     private UnauthenticatedAccessTokenRecoveryHandler handler;
     private AccessTokenProvider accessTokenProvider;
+    private AccessTokenCallCredentials credentials;
 
     private ManagedChannel newChannel(boolean retry) {
         InProcessChannelBuilder builder = InProcessChannelBuilder.forName(serverName).directExecutor();
@@ -127,12 +128,14 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorInProcessTest {
 
         accessTokenProvider = mock(AccessTokenProvider.class);
         when(accessTokenProvider.getAccessToken(false)).thenReturn(new AccessToken("a.b.c", "Bearer", System.currentTimeMillis() + 60_000));
+        credentials = new AccessTokenCallCredentials(accessTokenProvider);
     }
 
     @Test
     public void testRecoveryHandlerInvokedWhenRetryIsEnabled() {
         channel.shutdownNow();
         channel = newChannel(true);
+        applyCredentials();
         serverStatus.set(Status.UNAUTHENTICATED);
 
         assertThrows(StatusRuntimeException.class, this::call);
@@ -147,12 +150,18 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorInProcessTest {
     }
 
     private String call() {
-        CallOptions callOptions = CallOptions.DEFAULT.withCallCredentials(new AccessTokenCallCredentials(accessTokenProvider));
+        CallOptions callOptions = CallOptions.DEFAULT.withCallCredentials(credentials);
         return ClientCalls.blockingUnaryCall(channel, METHOD, callOptions, "world");
+    }
+
+    // let the credentials obtain a token, as an earlier call would have
+    private void applyCredentials() {
+        credentials.applyRequestMetadata(mock(CallCredentials.RequestInfo.class), Runnable::run, mock(CallCredentials.MetadataApplier.class));
     }
 
     @Test
     public void testRecoveryHandlerInvokedWithTheRejectedAuthorizationHeader() {
+        applyCredentials();
         serverStatus.set(Status.UNAUTHENTICATED);
 
         StatusRuntimeException e = assertThrows(StatusRuntimeException.class, this::call);
@@ -165,7 +174,6 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorInProcessTest {
     @Test
     public void testRecoveryHandlerNotInvokedWhenTokenWasRefreshedSinceTheCallStarted() throws Exception {
         serverStatus.set(Status.UNAUTHENTICATED);
-        AccessTokenCallCredentials credentials = new AccessTokenCallCredentials(accessTokenProvider);
         // a concurrent call hands the credentials a new token while this call is in flight
         duringServerCall.set(() -> {
             try {
@@ -173,14 +181,20 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorInProcessTest {
             } catch (Exception e) {
                 throw new IllegalStateException(e);
             }
-            credentials.applyRequestMetadata(mock(CallCredentials.RequestInfo.class), Runnable::run, mock(CallCredentials.MetadataApplier.class));
+            applyCredentials();
         });
+        applyCredentials();
 
-        // prime the credentials, so that there is a token when the call starts
-        credentials.applyRequestMetadata(mock(CallCredentials.RequestInfo.class), Runnable::run, mock(CallCredentials.MetadataApplier.class));
+        assertThrows(StatusRuntimeException.class, this::call);
 
-        CallOptions callOptions = CallOptions.DEFAULT.withCallCredentials(credentials);
-        assertThrows(StatusRuntimeException.class, () -> ClientCalls.blockingUnaryCall(channel, METHOD, callOptions, "world"));
+        verify(handler, never()).handle(any(), any(), anyLong());
+    }
+
+    @Test
+    public void testRecoveryHandlerNotInvokedOnTheFirstCall() {
+        serverStatus.set(Status.UNAUTHENTICATED);
+
+        assertThrows(StatusRuntimeException.class, this::call);
 
         verify(handler, never()).handle(any(), any(), anyLong());
     }

@@ -78,10 +78,10 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptor implements Clie
 					public void onClose(Status status, Metadata trailers) {
 						try {
 							if(credentials != null && status.getCode() == Status.Code.UNAUTHENTICATED) {
-								AccessToken accessToken = credentials.getLastAccessToken();
-								// only recover if the credentials have not been given a new token since the call started
-								if(accessToken != null && (accessTokenAtStart == null || accessTokenAtStart.equals(accessToken))) {
-									handler.handle(credentials.getAccessTokenProvider(), AccessTokenCallCredentials.BEARER_PREFIX + accessToken.getValue(), System.currentTimeMillis());
+								// no token at the start means the token was just created, so refreshing it again would not help
+								// if the token changed since the call started, it has already been refreshed
+								if(accessTokenAtStart != null && accessTokenAtStart.equals(credentials.getLastAccessToken())) {
+									handler.handle(credentials.getAccessTokenProvider(), AccessTokenCallCredentials.BEARER_PREFIX + accessTokenAtStart.getValue(), System.currentTimeMillis());
 								}
 							}
 						} finally {
