@@ -38,7 +38,7 @@ public class JwtClientAutoConfiguration {
     private static final Logger LOGGER = LoggerFactory.getLogger(JwtClientAutoConfiguration.class);
 
     protected Long getTimeout(JwtClientProperties properties) {
-        return getTimeout(properties.getAuth0(), getTimeout(properties.getKeycloak(), null));
+        return getTimeout(properties.getGeneric(), getTimeout(properties.getAuth0(), getTimeout(properties.getKeycloak(), null)));
     }
 
     protected Long getTimeout(Map<String, ? extends AbstractJwtClientProperties> map, Long timeout) {
@@ -169,8 +169,12 @@ public class JwtClientAutoConfiguration {
     public EagerContextStartedListener eagerContextRefreshedListener(Map<String, AccessTokenProvider> providersById, JwtClientProperties springJwtClientProperties) {
         Map<String, AccessTokenProvider> eagerAccessTokenProvidersById = new HashMap<>();
 
-        for (Map<String, ? extends AbstractJwtClientProperties> map : Arrays.asList(springJwtClientProperties.getKeycloak(), springJwtClientProperties.getAuth0())) {
+        for (Map<String, ? extends AbstractJwtClientProperties> map : Arrays.asList(springJwtClientProperties.getKeycloak(), springJwtClientProperties.getAuth0(), springJwtClientProperties.getGeneric())) {
             for (Entry<String, ? extends AbstractJwtClientProperties> entry : map.entrySet()) {
+                if (!entry.getValue().isEnabled()) {
+                    // no provider bean is registered for disabled clients
+                    continue;
+                }
                 JwtClientCache cache = entry.getValue().getCache();
                 if (cache != null && cache.isEnabled()) {
                     JwtPreemptiveRefresh preemptiveRefresh = cache.getPreemptiveRefresh();
