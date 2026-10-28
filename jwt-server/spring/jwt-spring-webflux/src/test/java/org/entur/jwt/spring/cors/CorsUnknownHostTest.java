@@ -35,14 +35,14 @@ public class CorsUnknownHostTest {
     public void cors_options_is_not_allowed() {
         methods.forEach(method -> {
             given().header("Origin", "https://ukjent.swagger.io").header("Access-Control-Request-Method", method).when().log().all().options("http://localhost:" + port + "/unprotected").then().log().all().assertThat()
-                    .statusCode(HttpStatus.UNAUTHORIZED.value());
+                    .statusCode(HttpStatus.FORBIDDEN.value());
         });
     }
 
     @Test
     public void cors_request_is_not_allowed() {
         methods.forEach(method -> {
-            given().header("Origin", "https://ukjent.swagger.io").when().log().all().get("http://localhost:" + port + "/unprotected").then().log().all().assertThat().statusCode(HttpStatus.UNAUTHORIZED.value());
+            given().header("Origin", "https://ukjent.swagger.io").when().log().all().get("http://localhost:" + port + "/unprotected").then().log().all().assertThat().statusCode(HttpStatus.FORBIDDEN.value());
         });
     }
 }

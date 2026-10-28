@@ -8,6 +8,7 @@ import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
@@ -23,7 +24,12 @@ public class JwtWebFluxAutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(JwtWebFluxAutoConfiguration.class);
 
+    // run before the spring security web filter chain (order -100), so that CORS requests are handled
+    // before authentication, as preflight requests do not carry credentials
+    private static final int CORS_FILTER_ORDER = -101;
+
     @Bean("corsConfigurationSource")
+    @Order(CORS_FILTER_ORDER)
     public CorsWebFilter corsConfigurationSource(SecurityProperties oidcAuthProperties) {
         CorsProperties cors = oidcAuthProperties.getCors();
 
