@@ -117,7 +117,7 @@ public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProvider
     }
 
     @Test
-    public void shouldReturnBadHealthIfAccessTokenCouldNotBeObtainedAfterGoodHealth() throws Exception {
+    public void shouldLetFailedAccessTokenFetchSupersedeRefreshedGoodHealth() throws Exception {
         // the access-token expires before the failure, so no valid access-token is available
         AccessToken expiring = new AccessToken("a.b.c", "bearer", System.currentTimeMillis() + 50);
         when(fallback.getAccessToken(false)).thenReturn(expiring).thenThrow(new AccessTokenException());

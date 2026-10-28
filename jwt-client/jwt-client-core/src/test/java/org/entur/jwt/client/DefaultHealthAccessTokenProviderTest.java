@@ -122,7 +122,7 @@ public class DefaultHealthAccessTokenProviderTest extends AbstractDelegateProvid
     }
 
     @Test
-    public void shouldReturnBadHealthIfAccessTokenCouldNotBeObtainedAfterGoodHealth() throws Exception {
+    public void shouldLetFailedAccessTokenFetchSupersedeRefreshedGoodHealth() throws Exception {
         when(fallback.getAccessToken(false)).thenReturn(accessToken).thenThrow(new AccessTokenException());
 
         // health is refreshed by the indicator before any access-token has been requested
