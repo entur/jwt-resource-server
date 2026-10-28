@@ -19,6 +19,21 @@ public class EagerAccessTokenHealthProvider extends AbstractAccessTokenHealthPro
     }
 
     @Override
+    public AccessTokenHealth getHealth(boolean refresh) {
+        if (!refresh && this.status == null) {
+            // the latest call to the underlying provider failed (typically a scheduled
+            // refresh), but as long as the latest access-token is still valid, a
+            // valid access-token is available from the cache.
+            AccessTokenHealth last = this.providerStatus;
+            long time = System.currentTimeMillis();
+            if (last != null && !last.isSuccess() && lastAccessTokenExpires > time) {
+                return new AccessTokenHealth(time, true);
+            }
+        }
+        return super.getHealth(refresh);
+    }
+
+    @Override
     protected AccessTokenHealth getRefreshHealth() {
         long version = getProviderVersion();
 

@@ -118,7 +118,9 @@ public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProvider
 
     @Test
     public void shouldReturnBadHealthIfAccessTokenCouldNotBeObtainedAfterGoodHealth() throws Exception {
-        when(fallback.getAccessToken(false)).thenReturn(accessToken).thenThrow(new AccessTokenException());
+        // the access-token expires before the failure, so no valid access-token is available
+        AccessToken expiring = new AccessToken("a.b.c", "bearer", System.currentTimeMillis() + 50);
+        when(fallback.getAccessToken(false)).thenReturn(expiring).thenThrow(new AccessTokenException());
 
         // health is refreshed by the indicator before any access-token has been requested
         assertTrue(provider.getHealth(true).isSuccess());
@@ -126,6 +128,8 @@ public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProvider
 
         provider.getAccessToken(false);
         assertTrue(provider.getHealth(false).isSuccess());
+
+        Thread.sleep(100);
 
         assertThrows(AccessTokenException.class, () -> {
             provider.getAccessToken(false);
@@ -160,6 +164,8 @@ public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProvider
             Thread.sleep(100);
 
             // a valid access-token is available from the cache, so health is good
+            // even before health is refreshed
+            assertTrue(health.getHealth(false).isSuccess());
             assertTrue(health.getHealth(true).isSuccess());
             assertTrue(health.getHealth(false).isSuccess());
         }

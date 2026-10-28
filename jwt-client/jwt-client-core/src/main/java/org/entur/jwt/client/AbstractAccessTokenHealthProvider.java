@@ -11,6 +11,9 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
     /** Incremented on every invocation of the underlying provider, guarded by {@linkplain #stateLock} on write */
     private volatile long providerVersion;
 
+    /** Expiry time of the latest access-token returned by the underlying provider */
+    protected volatile long lastAccessTokenExpires;
+
     private final Object stateLock = new Object();
 
     /**
@@ -39,6 +42,9 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
                 // any previously calculated top-level status
                 this.status = null;
                 this.providerVersion++;
+                if (accessToken != null) {
+                    this.lastAccessTokenExpires = accessToken.getExpires();
+                }
             }
         }
 
