@@ -54,16 +54,14 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptor implements Clie
 
 			@Override
 			public void start(Listener<RespT> listener, Metadata headers) {
-				Listener<RespT> responseListener = new Listener<RespT>() {
+				// note: the call credentials add the Authorization header to these (request) headers
+				// after this interceptor has started the call, so read it only once the call is closed
+				Metadata requestHeaders = headers;
 
-					private String authorizationHeader;
+				Listener<RespT> responseListener = new Listener<RespT>() {
 
 					@Override
 					public void onHeaders(Metadata headers) {
-						super.onHeaders(headers);
-
-						authorizationHeader = headers.get(AccessTokenCallCredentials.KEY_AUTHORIZATION);
-
 						listener.onHeaders(headers);
 					}
 
@@ -81,6 +79,7 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptor implements Clie
 					public void onClose(Status status, Metadata trailers) {
 						try {
 							if(status.getCode() == Status.Code.UNAUTHENTICATED) {
+								String authorizationHeader = requestHeaders.get(AccessTokenCallCredentials.KEY_AUTHORIZATION);
 								if(authorizationHeader != null) {
 									CallCredentials credentials = callOptions.getCredentials();
 									if(credentials instanceof AccessTokenCallCredentials jwtCallCredentials) {

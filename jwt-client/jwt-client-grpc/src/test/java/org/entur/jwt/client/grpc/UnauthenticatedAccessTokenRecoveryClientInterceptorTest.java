@@ -67,10 +67,10 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorTest {
         verify(delegateCall).start(listenerCaptor.capture(), org.mockito.ArgumentMatchers.eq(startHeaders));
         ClientCall.Listener<Object> innerListener = listenerCaptor.getValue();
 
-        Metadata responseHeaders = new Metadata();
-        responseHeaders.put(AccessTokenCallCredentials.KEY_AUTHORIZATION, "Bearer a.b.c");
-        innerListener.onHeaders(responseHeaders);
+        // the call credentials add the Authorization header to the request headers once the call has started
+        startHeaders.put(AccessTokenCallCredentials.KEY_AUTHORIZATION, "Bearer a.b.c");
 
+        // the server typically rejects unauthenticated calls with a trailers-only response, i.e. without headers
         Metadata trailers = new Metadata();
         innerListener.onClose(Status.UNAUTHENTICATED, trailers);
 
@@ -97,15 +97,18 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorTest {
         ClientCall<Object, Object> wrappedCall = interceptor.interceptCall(method, callOptions, channel);
 
         ClientCall.Listener<Object> outerListener = mock(ClientCall.Listener.class);
-        wrappedCall.start(outerListener, new Metadata());
+        Metadata startHeaders = new Metadata();
+        wrappedCall.start(outerListener, startHeaders);
 
         var listenerCaptor = forClass(ClientCall.Listener.class);
         verify(delegateCall).start(listenerCaptor.capture(), any());
         ClientCall.Listener<Object> innerListener = listenerCaptor.getValue();
 
+        startHeaders.put(AccessTokenCallCredentials.KEY_AUTHORIZATION, "Bearer a.b.c");
+
         Metadata responseHeaders = new Metadata();
-        responseHeaders.put(AccessTokenCallCredentials.KEY_AUTHORIZATION, "Bearer a.b.c");
         innerListener.onHeaders(responseHeaders);
+        verify(outerListener).onHeaders(responseHeaders);
 
         innerListener.onClose(Status.OK, new Metadata());
 
@@ -137,7 +140,38 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorTest {
         verify(delegateCall).start(listenerCaptor.capture(), any());
         ClientCall.Listener<Object> innerListener = listenerCaptor.getValue();
 
-        // no onHeaders call, so no authorization header was ever captured
+        // no authorization header was added to the request
+        innerListener.onClose(Status.UNAUTHENTICATED, new Metadata());
+
+        verify(handler, never()).handle(any(), any(), org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testRecoveryHandlerNotInvokedForAuthorizationHeaderInResponse() {
+        UnauthenticatedAccessTokenRecoveryHandler handler = mock(UnauthenticatedAccessTokenRecoveryHandler.class);
+        UnauthenticatedAccessTokenRecoveryClientInterceptor interceptor = new UnauthenticatedAccessTokenRecoveryClientInterceptor(handler);
+
+        Channel channel = mock(Channel.class);
+        ClientCall<Object, Object> delegateCall = newMockCall();
+        MethodDescriptor<Object, Object> method = mock(MethodDescriptor.class);
+
+        org.entur.jwt.client.AccessTokenProvider accessTokenProvider = mock(org.entur.jwt.client.AccessTokenProvider.class);
+        CallOptions callOptions = CallOptions.DEFAULT.withCallCredentials(new AccessTokenCallCredentials(accessTokenProvider));
+
+        when(channel.newCall(method, callOptions)).thenReturn(delegateCall);
+
+        ClientCall<Object, Object> wrappedCall = interceptor.interceptCall(method, callOptions, channel);
+        wrappedCall.start(mock(ClientCall.Listener.class), new Metadata());
+
+        var listenerCaptor = forClass(ClientCall.Listener.class);
+        verify(delegateCall).start(listenerCaptor.capture(), any());
+        ClientCall.Listener<Object> innerListener = listenerCaptor.getValue();
+
+        // a header returned by the server says nothing about which token the client sent
+        Metadata responseHeaders = new Metadata();
+        responseHeaders.put(AccessTokenCallCredentials.KEY_AUTHORIZATION, "Bearer x.y.z");
+        innerListener.onHeaders(responseHeaders);
         innerListener.onClose(Status.UNAUTHENTICATED, new Metadata());
 
         verify(handler, never()).handle(any(), any(), org.mockito.ArgumentMatchers.anyLong());
