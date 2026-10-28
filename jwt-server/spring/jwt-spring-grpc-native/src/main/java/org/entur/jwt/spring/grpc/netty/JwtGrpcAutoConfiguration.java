@@ -172,10 +172,10 @@ public class JwtGrpcAutoConfiguration {
     }
 
     static Map<String, List<String>> getPermitAllMappings(GrpcServicesConfiguration grpc) {
-        Map<String, List<String>> serviceNameMethodName = new HashMap<>();
         if (!grpc.isEnabled()) {
-            return serviceNameMethodName;
+            return Collections.emptyMap();
         }
+        Map<String, List<String>> serviceNameMethodName = new HashMap<>();
         for (ServiceMatcherConfiguration configuration : grpc.getServices()) {
             if (!configuration.isEnabled()) {
                 continue;
