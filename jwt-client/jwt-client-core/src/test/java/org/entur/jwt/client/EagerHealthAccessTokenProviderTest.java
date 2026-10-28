@@ -69,16 +69,16 @@ public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProvider
         AccessTokenHealth health = provider.getHealth(true);
         assertTrue(health.isSuccess());
 
-        // expected behavior: the health provider forced a refresh
-        // of a bad health status.
+        // expected behavior: the health provider refreshed
+        // a bad health status.
         Mockito.verify(fallback, times(1)).getAccessToken(false);
-        Mockito.verify(refreshProvider, times(1)).getAccessToken(true);
+        Mockito.verify(refreshProvider, times(1)).getAccessToken(false);
     }    
 
     @Test
     public void shouldReturnBadHealthIfAccessTokenCouldNotBeRefreshedAfterBadStatus() throws Exception {
         when(fallback.getAccessToken(false)).thenThrow(new AccessTokenException());
-        when(refreshProvider.getAccessToken(true)).thenThrow(new AccessTokenException());
+        when(refreshProvider.getAccessToken(false)).thenThrow(new AccessTokenException());
 
         // attempt to get access-token
         assertThrows(AccessTokenException.class, () -> {
@@ -88,10 +88,10 @@ public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProvider
         AccessTokenHealth health = provider.getHealth(true);
         assertFalse(health.isSuccess());
 
-        // expected behavior: the health provider forced a refresh
-        // of a bad health status.
+        // expected behavior: the health provider refreshed
+        // a bad health status.
         Mockito.verify(fallback, times(1)).getAccessToken(false);
-        Mockito.verify(refreshProvider, times(1)).getAccessToken(true);
+        Mockito.verify(refreshProvider, times(1)).getAccessToken(false);
     }    
   
 
@@ -140,12 +140,11 @@ public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProvider
         assertTrue(provider.getHealth(false).isSuccess());
 
         Mockito.verify(fallback, times(2)).getAccessToken(false);
-        Mockito.verify(refreshProvider, times(1)).getAccessToken(false);
-        Mockito.verify(refreshProvider, times(1)).getAccessToken(true);
+        Mockito.verify(refreshProvider, times(2)).getAccessToken(false);
     }
 
     @Test
-    public void shouldNotReportGoodHealthWhenScheduledEagerRefreshFailedAndCachedTokenIsStillValid() throws Exception {
+    public void shouldReportGoodHealthWhenScheduledEagerRefreshFailedButCachedTokenIsStillValid() throws Exception {
         when(fallback.getAccessToken(false)).thenReturn(new AccessToken("a.b.c", "bearer", System.currentTimeMillis() + 2000)).thenThrow(new AccessTokenException());
 
         EagerAccessTokenHealthProvider health = new EagerAccessTokenHealthProvider(fallback);
@@ -160,11 +159,9 @@ public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProvider
             Mockito.verify(fallback, Mockito.timeout(3000).times(2)).getAccessToken(false);
             Thread.sleep(100);
 
-            assertFalse(health.getHealth(false).isSuccess());
-
-            // the cached token is still valid, but must not hide the failed refresh
-            assertFalse(health.getHealth(true).isSuccess());
-            assertFalse(health.getHealth(false).isSuccess());
+            // a valid access-token is available from the cache, so health is good
+            assertTrue(health.getHealth(true).isSuccess());
+            assertTrue(health.getHealth(false).isSuccess());
         }
     }
 
