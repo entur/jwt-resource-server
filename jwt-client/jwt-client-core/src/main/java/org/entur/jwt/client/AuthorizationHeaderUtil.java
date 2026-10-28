@@ -8,7 +8,7 @@ public class AuthorizationHeaderUtil {
         StringBuilder buf = new StringBuilder(clientId);
         buf.append(':').append(secret);
 
-        // encode with padding
-        return "Basic " + java.util.Base64.getUrlEncoder().encodeToString(buf.toString().getBytes(StandardCharsets.UTF_8));
+        // basic authentication uses the standard (not url-safe) alphabet, with padding
+        return "Basic " + java.util.Base64.getEncoder().encodeToString(buf.toString().getBytes(StandardCharsets.UTF_8));
     }
 }
