@@ -5,6 +5,7 @@ import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.entur.jwt.client.ClientCredentialsResponse;
 import org.entur.jwt.client.RefreshToken;
+import org.entur.jwt.client.RefreshTokenException;
 import org.entur.jwt.client.UrlAccessTokenProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -110,7 +111,8 @@ public class RestClientStatefulUrlAccessTokenProvider extends AbstractStatefulUr
                 // see for example https://auth0.com/docs/policies/rate-limits
                 throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests when refreshing token. " + printResponseEntityHeadersIfPresent(e.getResponseHeaders(), "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
             }
-            throw new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode + " when refreshing token");
+            // assume current session has been revoked or expired
+            throw new RefreshTokenException("Authorization server responded with HTTP unexpected response code " + responseCode + " when refreshing token", e);
         } catch(RestClientException e) {
             throw new AccessTokenUnavailableException(e);
         }
