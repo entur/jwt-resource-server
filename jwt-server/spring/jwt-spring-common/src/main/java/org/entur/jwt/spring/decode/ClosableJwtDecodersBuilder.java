@@ -6,6 +6,7 @@ import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import org.entur.jwt.spring.JwtExpiresAtValidator;
+import org.entur.jwt.spring.JwtNotBeforeValidator;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -30,7 +31,7 @@ import java.util.Map;
 public class ClosableJwtDecodersBuilder {
 
     // same as the default clock skew of Spring Security (and Nimbus)
-    private static final Duration DEFAULT_EXPIRES_AT_LEEWAY = Duration.ofSeconds(60);
+    private static final Duration DEFAULT_LEEWAY = Duration.ofSeconds(60);
 
     private List<OAuth2TokenValidator<Jwt>> jwtValidators;
     private Map<String, JWKSource> jwkSources;
@@ -76,10 +77,13 @@ public class ClosableJwtDecodersBuilder {
         List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();
         validators.add(new JwtIssuerValidator(issuer));
         validators.addAll(jwtValidators);
+        // the JWT processor does not check the expiry and not-before claims, so make sure they are always validated
+        // (for example if a custom validator bean replaced the default validators)
         if (validators.stream().noneMatch(v -> v instanceof JwtExpiresAtValidator || v instanceof JwtTimestampValidator)) {
-            // the JWT processor does not check the expiry, so never accept expired tokens
-            // (for example if a custom validator bean replaced the default validators)
-            validators.add(new JwtExpiresAtValidator(DEFAULT_EXPIRES_AT_LEEWAY));
+            validators.add(new JwtExpiresAtValidator(DEFAULT_LEEWAY));
+        }
+        if (validators.stream().noneMatch(v -> v instanceof JwtNotBeforeValidator || v instanceof JwtTimestampValidator)) {
+            validators.add(new JwtNotBeforeValidator(DEFAULT_LEEWAY));
         }
         return new DelegatingOAuth2TokenValidator<>(validators);
     }

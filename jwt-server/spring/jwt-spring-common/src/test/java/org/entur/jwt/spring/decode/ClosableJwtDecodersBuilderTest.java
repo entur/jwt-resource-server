@@ -188,4 +188,28 @@ class ClosableJwtDecodersBuilderTest {
         // within the default leeway
         assertThat(decoder.decode(token(keyA, ISSUER_A, new Date(System.currentTimeMillis() - 30_000), null)).getSubject()).isEqualTo("subject");
     }
+
+    @Test
+    void testRejectsNotYetValidTokenWithoutNotBeforeValidator() throws Exception {
+        // i.e. a custom validator bean has replaced the default validators
+        build(List.of(claimValidator));
+        JwtDecoder decoder = decoders.getJwtDecoders().get(ISSUER_A);
+
+        Date expirationTime = new Date(System.currentTimeMillis() + 3_600_000);
+        assertThrows(JwtException.class, () -> decoder.decode(token(keyA, ISSUER_A, expirationTime, new Date(System.currentTimeMillis() + 90_000))));
+
+        // within the default leeway
+        assertThat(decoder.decode(token(keyA, ISSUER_A, expirationTime, new Date(System.currentTimeMillis() + 30_000))).getSubject()).isEqualTo("subject");
+    }
+
+    @Test
+    void testRejectsNotYetValidTokenWithOnlyExpiresAtValidator() throws Exception {
+        // the not-before default does not depend on the expiry validator
+        build(List.of(new JwtExpiresAtValidator(Duration.ofSeconds(120))));
+        JwtDecoder decoder = decoders.getJwtDecoders().get(ISSUER_A);
+
+        String token = token(keyA, ISSUER_A, new Date(System.currentTimeMillis() + 3_600_000), new Date(System.currentTimeMillis() + 90_000));
+
+        assertThrows(JwtException.class, () -> decoder.decode(token));
+    }
 }
