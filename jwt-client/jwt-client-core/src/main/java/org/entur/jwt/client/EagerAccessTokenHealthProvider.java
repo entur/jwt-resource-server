@@ -20,7 +20,7 @@ public class EagerAccessTokenHealthProvider extends AbstractAccessTokenHealthPro
 
     @Override
     protected AccessTokenHealth getRefreshHealth() {
-        State snapshot = getState();
+        AccessTokenHealth previous = getCurrentHealth();
 
         AccessToken accessToken = null;
         try {
@@ -31,7 +31,7 @@ public class EagerAccessTokenHealthProvider extends AbstractAccessTokenHealthPro
         }
         // as long as an access-token was returned, health is good
         AccessTokenHealth status = new AccessTokenHealth(System.currentTimeMillis(), accessToken != null);
-        publishStatus(status, snapshot);
+        publishHealth(status, previous);
         return status;
     }
 

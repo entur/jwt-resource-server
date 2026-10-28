@@ -5,18 +5,14 @@ import java.util.concurrent.atomic.AtomicReference;
 public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenProvider {
 
     /**
-     * Immutable snapshot of the health state. All state is replaced atomically,
-     * so readers never see a partial update.
-     *
-     * @param providerStatus      state of the below provider
-     * @param status              state of the top level provider, calculated by a refresh. Null if
-     *                            superseded by a newer invocation of the below provider.
-     * @param accessTokenExpires  expiry time of the latest access-token returned by the below provider
+     * The latest health, which is either the outcome of the latest invocation of the below
+     * provider or the outcome of a later refresh via the top level provider.
+     * A new invocation of the below provider supersedes any previously refreshed status.
      */
-    protected record State(AccessTokenHealth providerStatus, AccessTokenHealth status, long accessTokenExpires) {
-    }
+    private final AtomicReference<AccessTokenHealth> health = new AtomicReference<>();
 
-    private final AtomicReference<State> state = new AtomicReference<>(new State(null, null, 0));
+    /** Expiry time of the latest access-token returned by the below provider */
+    private volatile long accessTokenExpires;
 
     /** The minimum time to live of the cache above this provider (in milliseconds), or negative if there is no cache */
     protected volatile long cacheMinimumTimeToLive = -1;
@@ -40,11 +36,11 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
         try {
             accessToken = provider.getAccessToken(forceRefresh);
         } finally {
-            AccessTokenHealth health = new AccessTokenHealth(time, accessToken != null);
-            AccessToken latest = accessToken;
-            // the latest invocation of the underlying provider supersedes
-            // any previously calculated top-level status
-            state.updateAndGet(previous -> new State(health, null, latest != null ? latest.getExpires() : previous.accessTokenExpires()));
+            if (accessToken != null) {
+                // note: set before the health, so that readers of good health see this expiry
+                this.accessTokenExpires = accessToken.getExpires();
+            }
+            this.health.set(new AccessTokenHealth(time, accessToken != null));
         }
 
         return accessToken;
@@ -53,22 +49,17 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
     @Override
     public AccessTokenHealth getHealth(boolean refresh) {
         if(!refresh) {
-            State snapshot = state.get();
-            if(snapshot.status() != null) {
-                return snapshot.status();
-            }
-            // not allowed to refresh
-            // use the latest underlying provider status, if available
-            AccessTokenHealth providerStatus = snapshot.providerStatus();
-            if(providerStatus != null && !providerStatus.isSuccess()) {
-                // the latest call to the underlying provider failed (typically a preemptive refresh),
-                // but the cache still holds an access-token which it will return
+            // not allowed to refresh, use whatever is available
+            AccessTokenHealth current = health.get();
+            if(current != null && !current.isSuccess()) {
+                // the latest call failed (typically a preemptive refresh),
+                // but the cache might still hold an access-token which it will return
                 long time = System.currentTimeMillis();
-                if(hasCachedAccessToken(snapshot, time)) {
+                if(hasCachedAccessToken(time)) {
                     return new AccessTokenHealth(time, true);
                 }
             }
-            return providerStatus;
+            return current;
         }
 
         return getRefreshHealth();
@@ -76,10 +67,10 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
 
     protected abstract AccessTokenHealth getRefreshHealth();
 
-    private boolean hasCachedAccessToken(State snapshot, long time) {
+    private boolean hasCachedAccessToken(long time) {
         long minimumTimeToLive = this.cacheMinimumTimeToLive;
         // a cache serves the latest access-token until minimum time to live is reached
-        return minimumTimeToLive >= 0 && time <= snapshot.accessTokenExpires() - minimumTimeToLive;
+        return minimumTimeToLive >= 0 && time <= accessTokenExpires - minimumTimeToLive;
     }
 
     /**
@@ -94,25 +85,25 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
     }
 
     /**
-     * Get the current state. Read this before inspecting the state or invoking the top-level provider.
+     * Get the current health. Read this before invoking the top-level provider.
      *
-     * @return snapshot, to be passed to {@linkplain #publishStatus(AccessTokenHealth, State)}
+     * @return current health, to be passed to {@linkplain #publishHealth(AccessTokenHealth, AccessTokenHealth)}
      */
 
-    protected State getState() {
-        return state.get();
+    protected AccessTokenHealth getCurrentHealth() {
+        return health.get();
     }
 
     /**
-     * Publish a calculated top-level status, unless the underlying provider has been invoked
-     * since the given snapshot was read, i.e. the calculated status might be outdated.
+     * Publish a calculated health, unless the underlying provider has been invoked
+     * since the given health was read, i.e. the calculated health might be outdated.
      *
-     * @param newStatus calculated status
-     * @param snapshot  state read before the status was calculated
+     * @param newHealth calculated health
+     * @param previous  health read before the new health was calculated
      */
 
-    protected void publishStatus(AccessTokenHealth newStatus, State snapshot) {
-        state.compareAndSet(snapshot, new State(snapshot.providerStatus(), newStatus, snapshot.accessTokenExpires()));
+    protected void publishHealth(AccessTokenHealth newHealth, AccessTokenHealth previous) {
+        health.compareAndSet(previous, newHealth);
     }
 
     public void setRefreshProvider(AccessTokenProvider top) {
