@@ -10,6 +10,8 @@ import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
 import java.util.concurrent.Executor;
+import org.entur.jwt.client.AccessTokenException;
+import org.entur.jwt.client.AccessTokenProvider;
 import org.entur.jwt.client.recovery.UnauthenticatedAccessTokenRecoveryHandler;
 
 /**
@@ -85,7 +87,10 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptor implements Clie
 					public void onClose(Status status, Metadata trailers) {
 						try {
 							if(captured != null && status.getCode() == Status.Code.UNAUTHENTICATED && captured.authorization != null) {
-								handler.handle(captured.delegate.getAccessTokenProvider(), captured.authorization, System.currentTimeMillis());
+								AccessTokenProvider provider = captured.delegate.getAccessTokenProvider();
+								if(isCurrent(provider, captured.authorization)) {
+									handler.handle(provider, captured.authorization, System.currentTimeMillis());
+								}
 							}
 						} finally {
 							listener.onClose(status, trailers);
@@ -96,6 +101,15 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptor implements Clie
 			}
 
 		};
+	}
+
+	// only recover if the rejected token is still the current one, i.e. it has not been refreshed since the call started
+	private static boolean isCurrent(AccessTokenProvider provider, String authorizationHeader) {
+		try {
+			return authorizationHeader.equals(AccessTokenCallCredentials.BEARER_PREFIX + provider.getAccessToken(false).getValue());
+		} catch (AccessTokenException e) {
+			return false;
+		}
 	}
 
 	private static class CapturingCallCredentials extends CallCredentials {
