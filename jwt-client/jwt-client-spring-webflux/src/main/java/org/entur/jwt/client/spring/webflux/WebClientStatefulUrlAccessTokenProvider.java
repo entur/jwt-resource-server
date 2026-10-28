@@ -5,6 +5,7 @@ import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.entur.jwt.client.ClientCredentialsResponse;
 import org.entur.jwt.client.RefreshToken;
+import org.entur.jwt.client.RefreshTokenException;
 import org.entur.jwt.client.UrlAccessTokenProvider;
 import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
 import org.slf4j.Logger;
@@ -136,8 +137,12 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
             throw new AccessTokenUnavailableException(e);
         } catch (ExecutionException e) {
             Throwable cause = e.getCause();
-            if(cause instanceof AccessTokenException a) {
+            if(cause instanceof AccessTokenUnavailableException a) {
                 throw a;
+            }
+            if(cause instanceof AccessTokenException a) {
+                // assume current session has been revoked or expired
+                throw new RefreshTokenException(a.getMessage() + " when refreshing token", a);
             }
             throw new AccessTokenUnavailableException(e);
         }
