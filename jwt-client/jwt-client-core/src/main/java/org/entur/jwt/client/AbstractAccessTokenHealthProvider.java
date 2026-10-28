@@ -14,6 +14,9 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
     /** Expiry time of the latest access-token returned by the underlying provider */
     protected volatile long lastAccessTokenExpires;
 
+    /** The minimum time to live of the cache above this provider (in milliseconds), or negative if there is no cache */
+    protected volatile long cacheMinimumTimeToLive = -1;
+
     private final Object stateLock = new Object();
 
     /**
@@ -60,13 +63,39 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
             }
             // not allowed to refresh
             // use the latest underlying provider status, if available
-            return providerStatus;
+            AccessTokenHealth threadSafeProviderStatus = this.providerStatus;
+            if(threadSafeProviderStatus != null && !threadSafeProviderStatus.isSuccess()) {
+                // the latest call to the underlying provider failed (typically a preemptive refresh),
+                // but the cache still holds an access-token which it will return
+                long time = System.currentTimeMillis();
+                if(hasCachedAccessToken(time)) {
+                    return new AccessTokenHealth(time, true);
+                }
+            }
+            return threadSafeProviderStatus;
         }
 
         return getRefreshHealth();
     }
 
     protected abstract AccessTokenHealth getRefreshHealth();
+
+    private boolean hasCachedAccessToken(long time) {
+        long minimumTimeToLive = this.cacheMinimumTimeToLive;
+        // a cache serves the latest access-token until minimum time to live is reached
+        return minimumTimeToLive >= 0 && time <= lastAccessTokenExpires - minimumTimeToLive;
+    }
+
+    /**
+     * Set the minimum time to live of the cache above this provider. If set, a failure
+     * to refresh does not result in bad health while the cache still holds a valid access-token.
+     *
+     * @param minimumTimeToLive minimum time to live in milliseconds
+     */
+
+    public void setCacheMinimumTimeToLive(long minimumTimeToLive) {
+        this.cacheMinimumTimeToLive = minimumTimeToLive;
+    }
 
     /**
      * Get the current version of the underlying provider state. Read this before

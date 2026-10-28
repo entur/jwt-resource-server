@@ -148,4 +148,21 @@ public class DefaultHealthAccessTokenProviderTest extends AbstractDelegateProvid
         Mockito.verify(refreshProvider, times(2)).getAccessToken(false);
     }
 
+    @Test
+    public void shouldReturnGoodHealthIfRefreshFailedButCacheStillHoldsValidAccessToken() throws Exception {
+        // the cache serves the access-token until 100ms before it expires
+        provider.setCacheMinimumTimeToLive(100);
+        AccessToken expiring = new AccessToken("a.b.c", "bearer", System.currentTimeMillis() + 500);
+        when(fallback.getAccessToken(false)).thenReturn(expiring).thenThrow(new AccessTokenException());
+
+        provider.getAccessToken(false);
+        assertThrows(AccessTokenException.class, () -> provider.getAccessToken(false));
+
+        assertTrue(provider.getHealth(false).isSuccess());
+
+        // the cache would no longer return the access-token
+        Thread.sleep(450);
+        assertFalse(provider.getHealth(false).isSuccess());
+    }
+
 }

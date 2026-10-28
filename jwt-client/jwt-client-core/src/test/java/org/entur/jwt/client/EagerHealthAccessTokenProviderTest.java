@@ -155,6 +155,7 @@ public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProvider
         // real cache with eager (scheduled) refresh in front of the health provider
         try (PreemptiveCachedAccessTokenProvider cache = new PreemptiveCachedAccessTokenProvider(health, 100, 100, 1000, 0, true)) {
             health.setRefreshProvider(cache);
+            health.setCacheMinimumTimeToLive(100);
 
             cache.getAccessToken(false);
             assertTrue(health.getHealth(true).isSuccess());
