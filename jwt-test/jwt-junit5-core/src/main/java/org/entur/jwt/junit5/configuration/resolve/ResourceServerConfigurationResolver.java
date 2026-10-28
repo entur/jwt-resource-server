@@ -12,6 +12,14 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 
 public interface ResourceServerConfigurationResolver {
 
+    /**
+     * Resolve resource server configuration.
+     *
+     * @param context extension context
+     * @return configuration, or null if not applicable for the current test
+     * @throws Exception if the configuration could not be resolved
+     */
+
     ResourceServerConfiguration resolve(ExtensionContext context) throws Exception;
 
 }

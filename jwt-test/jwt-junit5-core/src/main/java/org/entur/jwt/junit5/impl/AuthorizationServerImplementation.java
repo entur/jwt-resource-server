@@ -22,7 +22,7 @@ public class AuthorizationServerImplementation {
         try {
             return (AuthorizationServerEncoder) encoder.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
-            throw new IllegalArgumentException("Unable to initialize encoder type " + encoder.getClass().getName(), e);
+            throw new IllegalArgumentException("Unable to initialize encoder type " + encoder.getName(), e);
         }
     }
 

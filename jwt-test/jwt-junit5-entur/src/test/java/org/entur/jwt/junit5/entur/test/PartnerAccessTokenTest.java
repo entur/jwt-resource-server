@@ -4,6 +4,7 @@ import com.nimbusds.jose.Header;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.JWTParser;
+import org.entur.jwt.junit5.claim.AuthorizedParty;
 import org.entur.jwt.junit5.claim.MissingClaim;
 import org.entur.jwt.junit5.entur.test.auth0.ExpiredPartnerAuth0Token;
 import org.entur.jwt.junit5.entur.test.auth0.InvalidSignaturePartnerAuth0Token;
@@ -54,12 +55,30 @@ public class PartnerAccessTokenTest {
     }
 
     @Test
+    public void testTokenWithScopes(@PartnerAuth0Token(organisationId = 5, scopes = {"read", "write"}) String token) throws Exception {
+        JWTClaimsSet decodedJWT = decode(token);
+
+        // not namespaced, like in Auth0 access-tokens
+        assertThat(decodedJWT.getStringClaim("scope")).isEqualTo("read write");
+        assertThat(decodedJWT.getClaim("https://entur.io/scope")).isNull();
+    }
+
+    @Test
+    public void testTokenWithAuthorizedParty(@PartnerAuth0Token(organisationId = 5) @AuthorizedParty("myClient") String token) throws Exception {
+        JWTClaimsSet decodedJWT = decode(token);
+
+        assertThat(decodedJWT.getStringClaim("azp")).isEqualTo("myClient");
+        assertThat(decodedJWT.getClaim("https://entur.io/azp")).isNull();
+    }
+
+    @Test
     public void testTokenIsExpired(@ExpiredPartnerAuth0Token String token) throws Exception {
         JWTClaimsSet decodedJWT = decode(token);
 
-        long claim = decodedJWT.getDateClaim("exp").getTime(); // in seconds
+        long claim = decodedJWT.getDateClaim("exp").getTime(); // in milliseconds
 
-        assertThat(claim).isLessThan(System.currentTimeMillis());
+        // well outside any reasonable leeway
+        assertThat(claim).isLessThan(System.currentTimeMillis() - 60 * 60 * 1000);
     }
 
     @Test

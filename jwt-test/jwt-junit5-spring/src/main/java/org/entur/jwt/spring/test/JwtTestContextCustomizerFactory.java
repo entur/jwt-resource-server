@@ -132,6 +132,27 @@ public class JwtTestContextCustomizerFactory implements ContextCustomizerFactory
             }
         }
 
+		// note: customizers are part of the key of the Spring test context cache,
+		// so equal customizers are required for application contexts to be reused across test classes.
+		// The factory returns the same implementation instances for the same authorization servers.
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj) {
+				return true;
+			}
+			if (obj == null || getClass() != obj.getClass()) {
+				return false;
+			}
+			TestDatabaseContextCustomizer other = (TestDatabaseContextCustomizer) obj;
+			return authorizationServerImplementations.equals(other.authorizationServerImplementations);
+		}
+
+		@Override
+		public int hashCode() {
+			return authorizationServerImplementations.hashCode();
+		}
+
 
 		private Set<String> extractTenants(Map<String, Object> junit5Properties) {
 			Set<String> tenant = new HashSet<>();

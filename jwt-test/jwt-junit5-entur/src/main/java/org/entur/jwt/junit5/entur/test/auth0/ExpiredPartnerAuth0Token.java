@@ -12,6 +12,6 @@ import java.lang.annotation.Target;
 @Target({ ElementType.PARAMETER, ElementType.TYPE })
 @Inherited
 @PartnerAuth0Token(organisationId = 0)
-@ExpiresAt(Long.MIN_VALUE)
+@ExpiresAt(-24 * 60 * 60) // one day ago; note: extreme values overflow when converted to milliseconds
 public @interface ExpiredPartnerAuth0Token {
 }
