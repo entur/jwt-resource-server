@@ -5,10 +5,13 @@ import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -47,5 +50,31 @@ class DataTypesClaimOauth2TokenValidatorTest {
 
         OAuth2TokenValidatorResult result = validator.validate(jwtWithClaims(Collections.singletonMap("scope", 123)));
         assertTrue(result.hasErrors());
+    }
+
+    @Test
+    void succeedsWhenClaimIsSubtypeOfExpectedType() {
+        Map<String, Class<?>> types = new HashMap<>();
+        types.put("number", Number.class);
+        types.put("list", List.class);
+        DataTypesClaimOauth2TokenValidator validator = new DataTypesClaimOauth2TokenValidator(types);
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("number", 123L);
+        claims.put("list", new ArrayList<>(List.of("a")));
+
+        OAuth2TokenValidatorResult result = validator.validate(jwtWithClaims(claims));
+        assertFalse(result.hasErrors());
+    }
+
+    @Test
+    void reportsAllInvalidClaims() {
+        Map<String, Class<?>> types = new HashMap<>();
+        types.put("scope", String.class);
+        types.put("permissions", List.class);
+        DataTypesClaimOauth2TokenValidator validator = new DataTypesClaimOauth2TokenValidator(types);
+
+        OAuth2TokenValidatorResult result = validator.validate(jwtWithClaims(Collections.emptyMap()));
+        assertEquals(2, result.getErrors().size());
     }
 }
