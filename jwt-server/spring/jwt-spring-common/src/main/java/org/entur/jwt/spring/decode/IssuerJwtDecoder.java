@@ -1,6 +1,7 @@
 package org.entur.jwt.spring.decode;
 
 import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.JWTParser;
 import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -33,12 +34,18 @@ public class IssuerJwtDecoder implements JwtDecoder, Closeable {
         try {
             JWT parse = JWTParser.parse(token);
 
-            JwtDecoder decoder = decoders.get(parse.getJWTClaimsSet().getIssuer());
+            JWTClaimsSet claims = parse.getJWTClaimsSet();
+            if (claims == null) {
+                // i.e. an encrypted JWT
+                throw new BadJwtException("Unsupported token type " + parse.getClass().getSimpleName());
+            }
+
+            JwtDecoder decoder = decoders.get(claims.getIssuer());
             if (decoder != null) {
                 return decoder.decode(token);
             }
 
-            throw new BadJwtException("Unknown issuer " + parse.getJWTClaimsSet().getIssuer());
+            throw new BadJwtException("Unknown issuer " + claims.getIssuer());
         } catch (ParseException ex) {
             throw new InvalidBearerTokenException(JwtDecodingErrors.decodingErrorMessage(ex.getMessage()), ex);
         }
