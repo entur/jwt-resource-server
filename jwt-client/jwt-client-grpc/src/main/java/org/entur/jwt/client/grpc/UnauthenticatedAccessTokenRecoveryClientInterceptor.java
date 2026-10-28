@@ -9,8 +9,6 @@ import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
 import org.entur.jwt.client.AccessToken;
-import org.entur.jwt.client.AccessTokenException;
-import org.entur.jwt.client.AccessTokenProvider;
 import org.entur.jwt.client.recovery.UnauthenticatedAccessTokenRecoveryHandler;
 
 /**
@@ -50,15 +48,8 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptor implements Clie
 	@Override
 	public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
 
-		AccessTokenProvider provider;
-		String authorizationHeader;
-		if(callOptions.getCredentials() instanceof AccessTokenCallCredentials credentials) {
-			provider = credentials.getAccessTokenProvider();
-			authorizationHeader = getAuthorizationHeader(provider);
-		} else {
-			provider = null;
-			authorizationHeader = null;
-		}
+		AccessTokenCallCredentials credentials = callOptions.getCredentials() instanceof AccessTokenCallCredentials c ? c : null;
+		AccessToken accessTokenAtStart = credentials != null ? credentials.getLastAccessToken() : null;
 
 		ClientCall<ReqT, RespT> call = next.newCall(method, callOptions);
 
@@ -86,10 +77,11 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptor implements Clie
 					@Override
 					public void onClose(Status status, Metadata trailers) {
 						try {
-							if(authorizationHeader != null && status.getCode() == Status.Code.UNAUTHENTICATED) {
-								// only recover if the token has not been refreshed since the call started
-								if(authorizationHeader.equals(getAuthorizationHeader(provider))) {
-									handler.handle(provider, authorizationHeader, System.currentTimeMillis());
+							if(credentials != null && status.getCode() == Status.Code.UNAUTHENTICATED) {
+								AccessToken accessToken = credentials.getLastAccessToken();
+								// only recover if the credentials have not been given a new token since the call started
+								if(accessToken != null && (accessTokenAtStart == null || accessTokenAtStart.equals(accessToken))) {
+									handler.handle(credentials.getAccessTokenProvider(), AccessTokenCallCredentials.BEARER_PREFIX + accessToken.getValue(), System.currentTimeMillis());
 								}
 							}
 						} finally {
@@ -101,14 +93,5 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptor implements Clie
 			}
 
 		};
-	}
-
-	private static String getAuthorizationHeader(AccessTokenProvider provider) {
-		try {
-			AccessToken accessToken = provider.getAccessToken(false);
-			return accessToken != null ? AccessTokenCallCredentials.BEARER_PREFIX + accessToken.getValue() : null;
-		} catch (AccessTokenException e) {
-			return null;
-		}
 	}
 }

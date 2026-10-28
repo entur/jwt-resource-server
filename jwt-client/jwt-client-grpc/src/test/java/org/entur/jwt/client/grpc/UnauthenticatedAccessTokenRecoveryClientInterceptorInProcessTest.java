@@ -1,5 +1,6 @@
 package org.entur.jwt.client.grpc;
 
+import io.grpc.CallCredentials;
 import io.grpc.CallOptions;
 import io.grpc.ManagedChannel;
 import io.grpc.Metadata;
@@ -71,6 +72,7 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorInProcessTest {
             .build();
 
     private final AtomicReference<Status> serverStatus = new AtomicReference<>();
+    private final AtomicReference<Runnable> duringServerCall = new AtomicReference<>(() -> { });
     private final AtomicReference<String> receivedAuthorization = new AtomicReference<>();
 
     private String serverName;
@@ -91,6 +93,7 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorInProcessTest {
     public void setUp() throws Exception {
         ServerServiceDefinition service = ServerServiceDefinition.builder("test.Greeter")
                 .addMethod(METHOD, ServerCalls.asyncUnaryCall((request, responseObserver) -> {
+                    duringServerCall.get().run();
                     Status status = serverStatus.get();
                     if (status.isOk()) {
                         responseObserver.onNext("Hello " + request);
@@ -159,14 +162,23 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorInProcessTest {
 
     @Test
     public void testRecoveryHandlerNotInvokedWhenTokenWasRefreshedSinceTheCallStarted() throws Exception {
-        // the first two lookups are the interceptor's and the call credentials', then the token is refreshed
-        when(accessTokenProvider.getAccessToken(false)).thenReturn(
-                new AccessToken("a.b.c", "Bearer", System.currentTimeMillis() + 60_000),
-                new AccessToken("a.b.c", "Bearer", System.currentTimeMillis() + 60_000),
-                new AccessToken("d.e.f", "Bearer", System.currentTimeMillis() + 60_000));
         serverStatus.set(Status.UNAUTHENTICATED);
+        AccessTokenCallCredentials credentials = new AccessTokenCallCredentials(accessTokenProvider);
+        // a concurrent call hands the credentials a new token while this call is in flight
+        duringServerCall.set(() -> {
+            try {
+                when(accessTokenProvider.getAccessToken(false)).thenReturn(new AccessToken("d.e.f", "Bearer", System.currentTimeMillis() + 60_000));
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+            credentials.applyRequestMetadata(mock(CallCredentials.RequestInfo.class), Runnable::run, mock(CallCredentials.MetadataApplier.class));
+        });
 
-        assertThrows(StatusRuntimeException.class, this::call);
+        // prime the credentials, so that there is a token when the call starts
+        credentials.applyRequestMetadata(mock(CallCredentials.RequestInfo.class), Runnable::run, mock(CallCredentials.MetadataApplier.class));
+
+        CallOptions callOptions = CallOptions.DEFAULT.withCallCredentials(credentials);
+        assertThrows(StatusRuntimeException.class, () -> ClientCalls.blockingUnaryCall(channel, METHOD, callOptions, "world"));
 
         verify(handler, never()).handle(any(), any(), anyLong());
     }
