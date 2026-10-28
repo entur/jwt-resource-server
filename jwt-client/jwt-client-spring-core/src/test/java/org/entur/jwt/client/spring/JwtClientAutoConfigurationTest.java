@@ -15,6 +15,7 @@ import java.util.Map;
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 public class JwtClientAutoConfigurationTest {
@@ -77,10 +78,11 @@ public class JwtClientAutoConfigurationTest {
         disabled.setEnabled(false);
         properties.getGeneric().put("disabled", disabled);
 
-        Map<String, AccessTokenProvider> providers = new HashMap<>();
+        Map<String, AccessTokenProvider> registered = new HashMap<>();
         for (String key : new String[] {"auth0", "keycloak", "generic", "withoutCache"}) {
-            providers.put(key, mock(AccessTokenProvider.class));
+            registered.put(key, mock(AccessTokenProvider.class));
         }
+        Map<String, AccessTokenProvider> providers = spy(registered);
 
         EagerContextStartedListener listener = configuration.eagerContextRefreshedListener(providers, properties);
         listener.onApplicationEvent(new ContextStartedEvent(mock(ApplicationContext.class)));
@@ -89,5 +91,8 @@ public class JwtClientAutoConfigurationTest {
         verify(providers.get("keycloak")).getAccessToken(false);
         verify(providers.get("generic")).getAccessToken(false);
         verify(providers.get("withoutCache"), never()).getAccessToken(false);
+
+        // the listener catches (and logs) exceptions, so make sure a disabled client is not even looked up
+        verify(providers, never()).get("disabled");
     }
 }
