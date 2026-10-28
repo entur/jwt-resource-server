@@ -147,7 +147,7 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
                 validate(clientCredentialsResponse);
                 return clientCredentialsResponse;
             }
-        } catch (IOException e) {
+        } catch (IOException | JacksonException e) {
             throw new AccessTokenUnavailableException(e);
         }
     }
