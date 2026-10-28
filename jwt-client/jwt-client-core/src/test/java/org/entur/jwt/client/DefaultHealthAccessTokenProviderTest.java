@@ -121,4 +121,31 @@ public class DefaultHealthAccessTokenProviderTest extends AbstractDelegateProvid
         Mockito.verify(refreshProvider, times(0)).getAccessToken(false);
     }
 
+    @Test
+    public void shouldReturnBadHealthIfAccessTokenCouldNotBeObtainedAfterGoodHealth() throws Exception {
+        when(fallback.getAccessToken(false)).thenReturn(accessToken).thenThrow(new AccessTokenException());
+
+        // health is refreshed by the indicator before any access-token has been requested
+        assertTrue(provider.getHealth(true).isSuccess());
+        assertTrue(provider.getHealth(false).isSuccess());
+
+        provider.getAccessToken(false);
+        assertTrue(provider.getHealth(false).isSuccess());
+
+        assertThrows(AccessTokenException.class, () -> {
+            provider.getAccessToken(false);
+        });
+
+        // expected behavior: the latest call to the underlying provider failed, so
+        // the previously refreshed (good) status no longer applies
+        assertFalse(provider.getHealth(false).isSuccess());
+
+        // a refresh via the top-level provider recovers the health
+        assertTrue(provider.getHealth(true).isSuccess());
+        assertTrue(provider.getHealth(false).isSuccess());
+
+        Mockito.verify(fallback, times(2)).getAccessToken(false);
+        Mockito.verify(refreshProvider, times(2)).getAccessToken(false);
+    }
+
 }

@@ -28,6 +28,9 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
             accessToken = provider.getAccessToken(forceRefresh);
         } finally {
             this.providerStatus = new AccessTokenHealth(time, accessToken != null);
+            // the latest invocation of the underlying provider supersedes
+            // any previously calculated top-level status
+            this.status = null;
         }
 
         return accessToken;
