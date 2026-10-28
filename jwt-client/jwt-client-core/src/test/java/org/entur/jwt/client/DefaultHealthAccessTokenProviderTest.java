@@ -4,14 +4,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.entur.jwt.client.ScriptedAccessTokenProvider.failure;
-import static org.entur.jwt.client.ScriptedAccessTokenProvider.tokenExpiringIn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
@@ -126,7 +123,8 @@ public class DefaultHealthAccessTokenProviderTest extends AbstractDelegateProvid
 
     @Test
     public void shouldLetFailedAccessTokenFetchSupersedeRefreshedGoodHealth() throws Exception {
-        ScriptedAccessTokenProvider source = new ScriptedAccessTokenProvider(tokenExpiringIn(600_000), tokenExpiringIn(600_000), failure());
+        AccessTokenProvider source = mock(AccessTokenProvider.class);
+        when(source.getAccessToken(false)).thenReturn(accessToken, accessToken).thenThrow(new AccessTokenException());
         DefaultAccessTokenHealthProvider health = new DefaultAccessTokenHealthProvider(source);
         health.setRefreshProvider(new DefaultCachedAccessTokenProvider(health, 0, 1000));
 
@@ -147,12 +145,14 @@ public class DefaultHealthAccessTokenProviderTest extends AbstractDelegateProvid
         assertTrue(health.getHealth(true).isSuccess());
         assertTrue(health.getHealth(false).isSuccess());
 
-        assertEquals(3, source.getCalls());
+        Mockito.verify(source, times(3)).getAccessToken(false);
     }
 
     @Test
     public void shouldReturnGoodHealthIfRefreshFailedButCacheStillHoldsValidAccessToken() throws Exception {
-        ScriptedAccessTokenProvider source = new ScriptedAccessTokenProvider(tokenExpiringIn(500), failure());
+        AccessTokenProvider source = mock(AccessTokenProvider.class);
+        AccessToken expiring = new AccessToken("a.b.c", "bearer", System.currentTimeMillis() + 500);
+        when(source.getAccessToken(false)).thenReturn(expiring).thenThrow(new AccessTokenException());
         DefaultAccessTokenHealthProvider health = new DefaultAccessTokenHealthProvider(source);
         // the cache serves the access-token until 100ms before it expires
         health.setCacheMinimumTimeToLive(100);
