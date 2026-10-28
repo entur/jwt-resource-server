@@ -6,10 +6,12 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import org.entur.jwt.junit5.AuthorizationServerEncoder;
 
 import java.lang.annotation.Annotation;
+import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPublicKey;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashSet;
 import java.util.Map;
@@ -78,10 +80,26 @@ public class DefaultAuthorizationServerEncoder implements AuthorizationServerEnc
     @Override
     public String getJsonWebKeys(Annotation annotation) {
         RSAPublicKey pk = (RSAPublicKey) keyPair.getPublic();
-        String n = Base64.getUrlEncoder().encodeToString(pk.getModulus().toByteArray());
-        String e = Base64.getUrlEncoder().encodeToString(pk.getPublicExponent().toByteArray());
+        String n = toBase64UrlUInt(pk.getModulus());
+        String e = toBase64UrlUInt(pk.getPublicExponent());
 
         return String.format("{\"keys\":[{\"kid\":\"%s\",\"kty\":\"RSA\",\"alg\":\"RS256\",\"use\":\"sig\",\"n\":\"%s\",\"e\":\"%s\"}]}", Integer.toString(pk.hashCode()), n, e);
+    }
+
+    /**
+     * Encode as Base64urlUInt, i.e. unsigned, without leading zero bytes and without padding (RFC 7518 section 2).
+     *
+     * @param value positive value
+     * @return encoded value
+     */
+
+    protected static String toBase64UrlUInt(BigInteger value) {
+        byte[] bytes = value.toByteArray();
+        if (bytes.length > 1 && bytes[0] == 0) {
+            // remove the sign byte
+            bytes = Arrays.copyOfRange(bytes, 1, bytes.length);
+        }
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     @Override

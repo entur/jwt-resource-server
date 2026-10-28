@@ -32,7 +32,8 @@ public class PartnerAuth0AuthorizationServerEncoder extends DefaultAuthorization
 
     @Override
     public boolean isStandardClaim(String name) {
-        return super.isStandardClaim(name) || name.equals("permissions");
+        // Auth0 does not namespace these access-token claims
+        return super.isStandardClaim(name) || name.equals("permissions") || name.equals("scope") || name.equals("azp");
     }
 
 }
