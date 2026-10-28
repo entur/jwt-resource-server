@@ -24,7 +24,7 @@ public class DefaultJwtMappedDiagnosticContextMapper implements JwtMappedDiagnos
     	Map<String, String> context = new HashMap<>();
     	
         for (int i = 0; i < from.length; i++) {
-            String value = token.getClaim(from[i]);
+            String value = getClaimAsString(token, from[i]);
             if (value != null) {
                 context.put(to[i], value);
             }
@@ -34,11 +34,20 @@ public class DefaultJwtMappedDiagnosticContextMapper implements JwtMappedDiagnos
     
     public void addContext(Jwt token) {
         for (int i = 0; i < from.length; i++) {
-            String value = token.getClaim(from[i]);
+            String value = getClaimAsString(token, from[i]);
             if (value != null) {
                 MDC.put(to[i], value);
             }
         }
+    }
+
+    protected String getClaimAsString(Jwt token, String claim) {
+        // claims are not necessarily strings, e.g. numbers, lists or timestamps
+        Object value = token.getClaim(claim);
+        if (value != null) {
+            return value.toString();
+        }
+        return null;
     }
 
     public void removeContext(Jwt token) {
