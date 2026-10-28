@@ -7,11 +7,14 @@ import org.mockito.Mockito;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.entur.jwt.client.ScriptedAccessTokenProvider.failure;
+import static org.entur.jwt.client.ScriptedAccessTokenProvider.tokenExpiringIn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
@@ -122,39 +125,36 @@ public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProvider
     @Test
     public void shouldLetFailedAccessTokenFetchSupersedeRefreshedGoodHealth() throws Exception {
         // the access-token expires before the failure, so no valid access-token is available
-        AccessToken expiring = new AccessToken("a.b.c", "bearer", System.currentTimeMillis() + 50);
-        when(fallback.getAccessToken(false)).thenReturn(expiring).thenThrow(new AccessTokenException());
+        ScriptedAccessTokenProvider source = new ScriptedAccessTokenProvider(tokenExpiringIn(50), tokenExpiringIn(50), failure(), tokenExpiringIn(600_000));
+        EagerAccessTokenHealthProvider health = new EagerAccessTokenHealthProvider(source);
+        health.setRefreshProvider(new DefaultCachedAccessTokenProvider(health, 0, 1000));
 
         // health is refreshed by the indicator before any access-token has been requested
-        assertTrue(provider.getHealth(true).isSuccess());
-        assertTrue(provider.getHealth(false).isSuccess());
+        assertTrue(health.getHealth(true).isSuccess());
+        assertTrue(health.getHealth(false).isSuccess());
 
-        provider.getAccessToken(false);
-        assertTrue(provider.getHealth(false).isSuccess());
+        health.getAccessToken(false);
+        assertTrue(health.getHealth(false).isSuccess());
 
         Thread.sleep(100);
 
-        assertThrows(AccessTokenException.class, () -> {
-            provider.getAccessToken(false);
-        });
+        assertThrows(AccessTokenException.class, () -> health.getAccessToken(false));
 
         // expected behavior: the latest call to the underlying provider failed, so
         // the previously refreshed (good) status no longer applies
-        assertFalse(provider.getHealth(false).isSuccess());
+        assertFalse(health.getHealth(false).isSuccess());
 
         // a refresh via the top-level provider recovers the health
-        assertTrue(provider.getHealth(true).isSuccess());
-        assertTrue(provider.getHealth(false).isSuccess());
+        assertTrue(health.getHealth(true).isSuccess());
+        assertTrue(health.getHealth(false).isSuccess());
 
-        Mockito.verify(fallback, times(2)).getAccessToken(false);
-        Mockito.verify(refreshProvider, times(2)).getAccessToken(false);
+        assertEquals(4, source.getCalls());
     }
 
     @Test
     public void shouldReportGoodHealthWhenScheduledEagerRefreshFailedButCachedTokenIsStillValid() throws Exception {
-        when(fallback.getAccessToken(false)).thenReturn(new AccessToken("a.b.c", "bearer", System.currentTimeMillis() + 2000)).thenThrow(new AccessTokenException());
-
-        EagerAccessTokenHealthProvider health = new EagerAccessTokenHealthProvider(fallback);
+        ScriptedAccessTokenProvider source = new ScriptedAccessTokenProvider(tokenExpiringIn(2000), failure());
+        EagerAccessTokenHealthProvider health = new EagerAccessTokenHealthProvider(source);
         // real cache with eager (scheduled) refresh in front of the health provider
         try (PreemptiveCachedAccessTokenProvider cache = new PreemptiveCachedAccessTokenProvider(health, 100, 100, 1000, 0, true)) {
             health.setRefreshProvider(cache);
@@ -164,7 +164,11 @@ public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProvider
             assertTrue(health.getHealth(true).isSuccess());
 
             // the scheduled refresh fires after roughly 900ms, and fails
-            Mockito.verify(fallback, Mockito.timeout(3000).times(2)).getAccessToken(false);
+            long deadline = System.currentTimeMillis() + 3000;
+            while (source.getCalls() < 2 && System.currentTimeMillis() < deadline) {
+                Thread.sleep(10);
+            }
+            assertEquals(2, source.getCalls());
             Thread.sleep(100);
 
             // a valid access-token is available from the cache, so health is good
@@ -177,27 +181,30 @@ public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProvider
 
     @Test
     public void shouldNotPublishStaleStatusWhenUnderlyingProviderFailsDuringRefresh() throws Exception {
-        when(fallback.getAccessToken(false)).thenThrow(new AccessTokenException());
-
         CountDownLatch refreshStarted = new CountDownLatch(1);
         CountDownLatch failureRecorded = new CountDownLatch(1);
-        when(refreshProvider.getAccessToken(false)).thenAnswer(invocation -> {
-            refreshStarted.countDown();
-            failureRecorded.await();
-            return refreshedAccessToken;
-        });
 
-        CompletableFuture<AccessTokenHealth> refresh = CompletableFuture.supplyAsync(() -> provider.getHealth(true));
+        EagerAccessTokenHealthProvider health = new EagerAccessTokenHealthProvider(new ScriptedAccessTokenProvider(failure()));
+        health.setRefreshProvider(new ScriptedAccessTokenProvider(tokenExpiringIn(600_000)).beforeEachCall(() -> {
+            refreshStarted.countDown();
+            try {
+                failureRecorded.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }));
+
+        CompletableFuture<AccessTokenHealth> refresh = CompletableFuture.supplyAsync(() -> health.getHealth(true));
         refreshStarted.await();
 
         // the underlying provider fails while the (good) refresh is in flight
-        assertThrows(AccessTokenException.class, () -> provider.getAccessToken(false));
+        assertThrows(AccessTokenException.class, () -> health.getAccessToken(false));
         failureRecorded.countDown();
 
         assertTrue(refresh.get().isSuccess());
 
         // the outdated good result must not shadow the newer failure
-        assertFalse(provider.getHealth(false).isSuccess());
+        assertFalse(health.getHealth(false).isSuccess());
     }
 
 }
