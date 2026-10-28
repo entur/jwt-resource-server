@@ -34,15 +34,15 @@ public class KeycloakJwtAuthorityEnricher implements JwtAuthorityEnricher {
         //    }
         //}
 
+        // note: this enricher sees the tokens of all tenants, so ignore claims which are not on the expected form
         Object resourceAccess = jwt.getClaim("resource_access");
-        if (resourceAccess != null) {
-            Map<String, Object> map = (Map<String, Object>) resourceAccess;
-            for (Map.Entry<String, Object> entry : map.entrySet()) {
+        if (resourceAccess instanceof Map<?, ?> map) {
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
 
                 // skip account permissions
                 // see
                 // https://github.com/keycloak/keycloak/blob/master/adapters/oidc/adapter-core/src/main/java/org/keycloak/adapters/AdapterUtils.java#L39
-                if (entry.getKey().equals("account")) {
+                if ("account".equals(entry.getKey())) {
                     continue;
                 }
                 Object value = entry.getValue();
@@ -51,10 +51,12 @@ public class KeycloakJwtAuthorityEnricher implements JwtAuthorityEnricher {
                     Object rolesObject = ((Map) value).get("roles");
 
                     if (rolesObject instanceof List) {
-                        List<String> roles = (List<String>) rolesObject;
+                        List<?> roles = (List<?>) rolesObject;
 
-                        for (String role : roles) {
-                            current.add(new SimpleGrantedAuthority(asRole(role)));
+                        for (Object role : roles) {
+                            if (role instanceof String s) {
+                                current.add(new SimpleGrantedAuthority(asRole(s)));
+                            }
                         }
                     } else if (rolesObject instanceof String[]) {
                         String[] roles = (String[]) rolesObject;
@@ -62,7 +64,7 @@ public class KeycloakJwtAuthorityEnricher implements JwtAuthorityEnricher {
                         for (String role : roles) {
                             current.add(new SimpleGrantedAuthority(asRole(role)));
                         }
-                    } else {
+                    } else if (rolesObject != null) {
                         logger.warn("Unable to map roles {} of type {} to an authority; expected List or array", rolesObject, rolesObject.getClass().getName());
                     }
                 }
