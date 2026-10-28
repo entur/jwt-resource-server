@@ -55,7 +55,7 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorTest {
         AccessTokenCallCredentials credentials = new AccessTokenCallCredentials(accessTokenProvider);
         CallOptions callOptions = CallOptions.DEFAULT.withCallCredentials(credentials);
 
-        when(channel.newCall(method, callOptions)).thenReturn(delegateCall);
+        when(channel.newCall(org.mockito.ArgumentMatchers.eq(method), any(CallOptions.class))).thenReturn(delegateCall);
 
         ClientCall<Object, Object> wrappedCall = interceptor.interceptCall(method, callOptions, channel);
 
@@ -67,8 +67,24 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorTest {
         verify(delegateCall).start(listenerCaptor.capture(), org.mockito.ArgumentMatchers.eq(startHeaders));
         ClientCall.Listener<Object> innerListener = listenerCaptor.getValue();
 
-        // the call credentials add the Authorization header to the request headers once the call has started
-        startHeaders.put(AccessTokenCallCredentials.KEY_AUTHORIZATION, "Bearer a.b.c");
+        // the call credentials apply the Authorization header (to a per-attempt copy of the headers) once the call has started
+        var optionsCaptor = forClass(CallOptions.class);
+        verify(channel).newCall(org.mockito.ArgumentMatchers.eq(method), optionsCaptor.capture());
+        try {
+            when(accessTokenProvider.getAccessToken(false)).thenReturn(new org.entur.jwt.client.AccessToken("a.b.c", "Bearer", System.currentTimeMillis() + 60_000));
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+        optionsCaptor.getValue().getCredentials().applyRequestMetadata(mock(io.grpc.CallCredentials.RequestInfo.class), Runnable::run, new io.grpc.CallCredentials.MetadataApplier() {
+            @Override
+            public void apply(Metadata headers) {
+            }
+
+            @Override
+            public void fail(Status status) {
+                throw new AssertionError(status.getCause());
+            }
+        });
 
         // the server typically rejects unauthenticated calls with a trailers-only response, i.e. without headers
         Metadata trailers = new Metadata();
@@ -92,7 +108,7 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorTest {
         AccessTokenCallCredentials credentials = new AccessTokenCallCredentials(accessTokenProvider);
         CallOptions callOptions = CallOptions.DEFAULT.withCallCredentials(credentials);
 
-        when(channel.newCall(method, callOptions)).thenReturn(delegateCall);
+        when(channel.newCall(org.mockito.ArgumentMatchers.eq(method), any(CallOptions.class))).thenReturn(delegateCall);
 
         ClientCall<Object, Object> wrappedCall = interceptor.interceptCall(method, callOptions, channel);
 
@@ -129,7 +145,7 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorTest {
         AccessTokenCallCredentials credentials = new AccessTokenCallCredentials(accessTokenProvider);
         CallOptions callOptions = CallOptions.DEFAULT.withCallCredentials(credentials);
 
-        when(channel.newCall(method, callOptions)).thenReturn(delegateCall);
+        when(channel.newCall(org.mockito.ArgumentMatchers.eq(method), any(CallOptions.class))).thenReturn(delegateCall);
 
         ClientCall<Object, Object> wrappedCall = interceptor.interceptCall(method, callOptions, channel);
 

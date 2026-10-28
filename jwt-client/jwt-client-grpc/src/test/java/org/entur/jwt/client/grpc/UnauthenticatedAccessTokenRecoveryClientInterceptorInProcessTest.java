@@ -73,6 +73,7 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorInProcessTest {
     private final AtomicReference<Status> serverStatus = new AtomicReference<>();
     private final AtomicReference<String> receivedAuthorization = new AtomicReference<>();
 
+    private String serverName;
     private Server server;
     private ManagedChannel channel;
     private UnauthenticatedAccessTokenRecoveryHandler handler;
@@ -100,7 +101,7 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorInProcessTest {
             }
         };
 
-        String name = InProcessServerBuilder.generateName();
+        String name = serverName = InProcessServerBuilder.generateName();
         server = InProcessServerBuilder.forName(name)
                 .directExecutor()
                 .addService(ServerInterceptors.intercept(service, captureAuthorization))
@@ -116,6 +117,21 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorInProcessTest {
 
         accessTokenProvider = mock(AccessTokenProvider.class);
         when(accessTokenProvider.getAccessToken(false)).thenReturn(new AccessToken("a.b.c", "Bearer", System.currentTimeMillis() + 60_000));
+    }
+
+    @Test
+    public void testRecoveryHandlerInvokedWhenRetryIsEnabled() {
+        channel.shutdownNow();
+        channel = InProcessChannelBuilder.forName(serverName)
+                .directExecutor()
+                .enableRetry()
+                .intercept(new UnauthenticatedAccessTokenRecoveryClientInterceptor(handler))
+                .build();
+        serverStatus.set(Status.UNAUTHENTICATED);
+
+        assertThrows(StatusRuntimeException.class, this::call);
+
+        verify(handler).handle(eq(accessTokenProvider), eq(receivedAuthorization.get()), anyLong());
     }
 
     @AfterEach
