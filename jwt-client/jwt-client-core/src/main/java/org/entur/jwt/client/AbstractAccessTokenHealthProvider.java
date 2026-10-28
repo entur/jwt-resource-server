@@ -1,23 +1,25 @@
 package org.entur.jwt.client;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenProvider {
 
-    /** The state of the below provider */
-    protected volatile AccessTokenHealth providerStatus;
-    
-    /** The state of the top level provider */
-    protected volatile AccessTokenHealth status;
+    /**
+     * Immutable snapshot of the health state. All state is replaced atomically,
+     * so readers never see a partial update.
+     *
+     * @param providerStatus      state of the below provider
+     * @param status              state of the top level provider, calculated by a refresh. Null if
+     *                            superseded by a newer invocation of the below provider.
+     * @param accessTokenExpires  expiry time of the latest access-token returned by the below provider
+     */
+    protected record State(AccessTokenHealth providerStatus, AccessTokenHealth status, long accessTokenExpires) {
+    }
 
-    /** Incremented on every invocation of the underlying provider, guarded by {@linkplain #stateLock} on write */
-    private volatile long providerVersion;
-
-    /** Expiry time of the latest access-token returned by the underlying provider */
-    protected volatile long lastAccessTokenExpires;
+    private final AtomicReference<State> state = new AtomicReference<>(new State(null, null, 0));
 
     /** The minimum time to live of the cache above this provider (in milliseconds), or negative if there is no cache */
     protected volatile long cacheMinimumTimeToLive = -1;
-
-    private final Object stateLock = new Object();
 
     /**
      * Provider to invoke when refreshing state. This should be the top level
@@ -39,16 +41,10 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
             accessToken = provider.getAccessToken(forceRefresh);
         } finally {
             AccessTokenHealth health = new AccessTokenHealth(time, accessToken != null);
-            synchronized (stateLock) {
-                this.providerStatus = health;
-                // the latest invocation of the underlying provider supersedes
-                // any previously calculated top-level status
-                this.status = null;
-                this.providerVersion++;
-                if (accessToken != null) {
-                    this.lastAccessTokenExpires = accessToken.getExpires();
-                }
-            }
+            AccessToken latest = accessToken;
+            // the latest invocation of the underlying provider supersedes
+            // any previously calculated top-level status
+            state.updateAndGet(previous -> new State(health, null, latest != null ? latest.getExpires() : previous.accessTokenExpires()));
         }
 
         return accessToken;
@@ -57,22 +53,22 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
     @Override
     public AccessTokenHealth getHealth(boolean refresh) {
         if(!refresh) {
-            AccessTokenHealth threadSafeStatus = this.status; // defensive copy
-            if(threadSafeStatus != null) {
-                return threadSafeStatus;
+            State snapshot = state.get();
+            if(snapshot.status() != null) {
+                return snapshot.status();
             }
             // not allowed to refresh
             // use the latest underlying provider status, if available
-            AccessTokenHealth threadSafeProviderStatus = this.providerStatus;
-            if(threadSafeProviderStatus != null && !threadSafeProviderStatus.isSuccess()) {
+            AccessTokenHealth providerStatus = snapshot.providerStatus();
+            if(providerStatus != null && !providerStatus.isSuccess()) {
                 // the latest call to the underlying provider failed (typically a preemptive refresh),
                 // but the cache still holds an access-token which it will return
                 long time = System.currentTimeMillis();
-                if(hasCachedAccessToken(time)) {
+                if(hasCachedAccessToken(snapshot, time)) {
                     return new AccessTokenHealth(time, true);
                 }
             }
-            return threadSafeProviderStatus;
+            return providerStatus;
         }
 
         return getRefreshHealth();
@@ -80,10 +76,10 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
 
     protected abstract AccessTokenHealth getRefreshHealth();
 
-    private boolean hasCachedAccessToken(long time) {
+    private boolean hasCachedAccessToken(State snapshot, long time) {
         long minimumTimeToLive = this.cacheMinimumTimeToLive;
         // a cache serves the latest access-token until minimum time to live is reached
-        return minimumTimeToLive >= 0 && time <= lastAccessTokenExpires - minimumTimeToLive;
+        return minimumTimeToLive >= 0 && time <= snapshot.accessTokenExpires() - minimumTimeToLive;
     }
 
     /**
@@ -98,30 +94,25 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
     }
 
     /**
-     * Get the current version of the underlying provider state. Read this before
-     * inspecting {@linkplain #providerStatus} or invoking the top-level provider.
+     * Get the current state. Read this before inspecting the state or invoking the top-level provider.
      *
-     * @return version, to be passed to {@linkplain #publishStatus(AccessTokenHealth, long)}
+     * @return snapshot, to be passed to {@linkplain #publishStatus(AccessTokenHealth, State)}
      */
 
-    protected long getProviderVersion() {
-        return providerVersion;
+    protected State getState() {
+        return state.get();
     }
 
     /**
      * Publish a calculated top-level status, unless the underlying provider has been invoked
-     * since the given version was read, i.e. the calculated status might be outdated.
+     * since the given snapshot was read, i.e. the calculated status might be outdated.
      *
      * @param newStatus calculated status
-     * @param version   version read before the status was calculated
+     * @param snapshot  state read before the status was calculated
      */
 
-    protected void publishStatus(AccessTokenHealth newStatus, long version) {
-        synchronized (stateLock) {
-            if (version == providerVersion) {
-                this.status = newStatus;
-            }
-        }
+    protected void publishStatus(AccessTokenHealth newStatus, State snapshot) {
+        state.compareAndSet(snapshot, new State(snapshot.providerStatus(), newStatus, snapshot.accessTokenExpires()));
     }
 
     public void setRefreshProvider(AccessTokenProvider top) {

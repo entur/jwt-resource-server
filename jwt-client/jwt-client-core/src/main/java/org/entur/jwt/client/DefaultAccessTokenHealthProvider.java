@@ -32,8 +32,8 @@ public class DefaultAccessTokenHealthProvider extends AbstractAccessTokenHealthP
         // 
         // Thus an unhealthy status can turn to a healthy status just by checking the health
 
-        long version = getProviderVersion();
-        AccessTokenHealth threadSafeStatus = this.providerStatus; // defensive copy
+        State snapshot = getState();
+        AccessTokenHealth threadSafeStatus = snapshot.providerStatus();
         if (threadSafeStatus == null || !threadSafeStatus.isSuccess()) {
             // get a fresh status
             AccessToken accessToken = null;
@@ -49,7 +49,7 @@ public class DefaultAccessTokenHealthProvider extends AbstractAccessTokenHealthP
         } else {
             // promote the latest underlying status as the current top-level status
         }
-        publishStatus(threadSafeStatus, version);
+        publishStatus(threadSafeStatus, snapshot);
         return threadSafeStatus;
     }
 }
