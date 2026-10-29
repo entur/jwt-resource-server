@@ -34,7 +34,7 @@ import java.util.concurrent.Executors;
 
 @Configuration
 @EnableConfigurationProperties({SecurityProperties.class})
-@ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true")
+@ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
 public class JwtAutoConfiguration {
 
     private static final Logger LOG = LoggerFactory.getLogger(JwtAutoConfiguration.class);
