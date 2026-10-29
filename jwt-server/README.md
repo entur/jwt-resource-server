@@ -51,6 +51,27 @@ entur:
         - https://my.audience
 ```
 
+### Custom claim validation
+To validate additional claims, add one or more `OAuth2TokenValidator<Jwt>` beans. These are used in addition to the validators configured above:
+
+```java
+@Bean
+public OAuth2TokenValidator<Jwt> myClaimValidator() {
+    return new JwtClaimValidator<String>("my-claim", "my-value"::equals);
+}
+```
+
+To replace the configured validators, provide an `EnturJwtValidators` bean:
+
+```java
+@Bean
+public EnturJwtValidators enturJwtValidators() {
+    return new EnturJwtValidators(List.of(new MyValidator()));
+}
+```
+
+The expiry (`exp`) and not-before (`nbf`) claims are always validated: if the replacement does not validate them, validators with the configured `expires-at-leeway` and `issued-at-leeway` are added.
+
 ## Authorization configuration
 
 By default, all requests must be so-called _fully authenticated_. In other words all requests must have a valid JWT
@@ -308,7 +329,7 @@ OPTIONS calls, can be sent backwards to the Spring application.
 See [jwt-spring-web] for a concrete implementation example.
 
 ## Custom JWT decoders
-JWTs are decoded by per-issuer decoders built from the `entur.jwt.tenants` configuration. A `JwtDecoder` or `ReactiveJwtDecoder` bean in the application context is ignored, including one created by Spring Boot from `spring.security.oauth2.resourceserver.jwt.*` properties. To customize JWT decoding for the web and gRPC modules, provide a `ClosableJwtDecoders` bean (a map of issuer to `JwtDecoder`) instead.
+JWTs are decoded by per-issuer decoders built from the `entur.jwt.tenants` configuration. A `JwtDecoder` or `ReactiveJwtDecoder` bean in the application context is ignored, including one created by Spring Boot from `spring.security.oauth2.resourceserver.jwt.*` properties. To customize JWT decoding for the web and gRPC modules, provide a `ClosableJwtDecoders` bean (a map of issuer to `JwtDecoder`) instead. To keep the [claim validation](#custom-claim-validation), build it using `ClosableJwtDecodersBuilder` with the validators from `JwtDecoderValidators.combine(..)`.
 
 To fail startup if there is such a bean (recommended; the default in the next major version), enable the check:
 
