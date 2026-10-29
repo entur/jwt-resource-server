@@ -32,6 +32,12 @@ public void myTest(@AccessToken @NumberClaim(name="https://my.organisation", val
 }
 ```
 
+Tokens are always signed using the authorization server's RSA key, which is published in the JSON Web Keys with algorithm `RS256`. The `@AlgorithmHeader` annotation only changes the `alg` header, so when tokens are validated by the resource server modules of this project (which require the algorithm of the key to match the header):
+
+ * `RS256` (the default) tokens are accepted.
+ * `RS384`, `RS512`, `PS256`, `PS384` and `PS512` tokens are signed, but rejected.
+ * Other algorithms (`ES256`, `HS256`, `EdDSA`, `none` and so on) are not supported; creating the token fails.
+
 Note that the `@AuthorizationServer` annotation must run be before other annotations which are responsible for bootstrapping the application; in other words this annotation should usually be the first (highest) annotation on the test class.
 
 See [jwt-junit5-entur] for Entur-specific `@AccessToken` annotations like `PartnerAuth0Token`.
