@@ -177,16 +177,23 @@ public class DefaultHealthAccessTokenProviderTest extends AbstractDelegateProvid
     }
 
     @Test
-    public void shouldPublishBadHealthWhenCacheRejectsAccessTokenFromSource() throws Exception {
+    public void shouldReturnBadHealthWhenCacheRejectsAccessTokenFromSource() throws Exception {
         AccessTokenProvider source = mock(AccessTokenProvider.class);
         // valid for less than the minimum time to live of the cache
         when(source.getAccessToken(false)).thenReturn(new AccessToken("a.b.c", "bearer", System.currentTimeMillis() + 5_000));
         DefaultAccessTokenHealthProvider health = new DefaultAccessTokenHealthProvider(source);
         health.setCacheMinimumTimeToLive(15_000);
-        health.setRefreshProvider(new DefaultCachedAccessTokenProvider(health, 15_000, 1000));
+        AccessTokenProvider cache = new DefaultCachedAccessTokenProvider(health, 15_000, 1000);
+        health.setRefreshProvider(cache);
+
+        // the source returns an access-token, but the cache (top-level provider) fails
+        assertThrows(AccessTokenException.class, () -> cache.getAccessToken(false));
+        assertFalse(health.getHealth(false).isSuccess());
 
         assertFalse(health.getHealth(true).isSuccess());
         assertFalse(health.getHealth(false).isSuccess());
+
+        Mockito.verify(source, times(2)).getAccessToken(false);
     }
 
     @Test

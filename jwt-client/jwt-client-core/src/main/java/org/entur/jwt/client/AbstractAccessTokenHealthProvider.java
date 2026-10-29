@@ -1,15 +1,12 @@
 package org.entur.jwt.client;
 
-import java.util.concurrent.atomic.AtomicReference;
-
 public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenProvider {
 
     /**
-     * The latest health, which is either the outcome of the latest invocation of the below
-     * provider or the outcome of a later refresh via the top level provider.
-     * A new invocation of the below provider supersedes any previously refreshed status.
+     * The outcome of the latest invocation of the below provider. Refreshing the health via
+     * the top level provider only changes this if the below provider is invoked.
      */
-    private final AtomicReference<AccessTokenHealth> health = new AtomicReference<>();
+    private volatile AccessTokenHealth health;
 
     /** Expiry time of the latest access-token returned by the below provider */
     private volatile long accessTokenExpires;
@@ -36,11 +33,17 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
         try {
             accessToken = provider.getAccessToken(forceRefresh);
         } finally {
+            boolean success = false;
             if (accessToken != null) {
                 // note: set before the health, so that readers of good health see this expiry
                 this.accessTokenExpires = accessToken.getExpires();
+
+                // the cache rejects an access-token with less than its minimum time to live,
+                // in which case the top level provider fails although the below provider did not
+                long minimumTimeToLive = this.cacheMinimumTimeToLive;
+                success = minimumTimeToLive < 0 || time <= accessToken.getExpires() - minimumTimeToLive;
             }
-            this.health.set(new AccessTokenHealth(time, accessToken != null));
+            this.health = new AccessTokenHealth(time, success);
         }
 
         return accessToken;
@@ -50,7 +53,7 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
     public AccessTokenHealth getHealth(boolean refresh) {
         if(!refresh) {
             // not allowed to refresh, use whatever is available
-            AccessTokenHealth current = health.get();
+            AccessTokenHealth current = this.health; // defensive copy
             if(current != null && !current.isSuccess()) {
                 // the latest call failed (typically a preemptive refresh),
                 // but the cache might still hold an access-token which it will return
@@ -74,8 +77,9 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
     }
 
     /**
-     * Set the minimum time to live of the cache above this provider. If set, a failure
-     * to refresh does not result in bad health while the cache still holds a valid access-token.
+     * Set the minimum time to live of the cache above this provider. If set, an access-token
+     * which the cache does not accept results in bad health, and a failure to refresh does not
+     * result in bad health while the cache still holds a valid access-token.
      *
      * @param minimumTimeToLive minimum time to live in milliseconds
      */
@@ -85,35 +89,13 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
     }
 
     /**
-     * Get the current health. Read this before invoking the top-level provider.
+     * Get the outcome of the latest invocation of the below provider.
      *
-     * @return current health, to be passed to {@linkplain #publishRefreshedHealth(AccessTokenHealth, AccessTokenHealth)}
+     * @return current health, or null if the below provider has not been invoked
      */
 
     protected AccessTokenHealth getCurrentHealth() {
-        return health.get();
-    }
-
-    /**
-     * Publish the outcome of a refresh via the top-level provider.
-     * <br><br>
-     * If the underlying provider was not invoked by the refresh (typically the cache served an access-token),
-     * the underlying outcome stands. Whether the cached access-token is still usable is determined when
-     * the health is read, so that a cache-derived status cannot outlive the access-token.
-     * <br><br>
-     * If the underlying provider was invoked, its outcome is already the current health. Only a failed refresh
-     * is published, i.e. when the top-level provider did not accept what the underlying provider returned.
-     * It is published against the health as of now, so that it does not overwrite a newer outcome.
-     *
-     * @param refreshed outcome of the refresh
-     * @param previous  health read before the refresh started
-     */
-
-    protected void publishRefreshedHealth(AccessTokenHealth refreshed, AccessTokenHealth previous) {
-        AccessTokenHealth latest = health.get();
-        if (latest != previous && !refreshed.isSuccess()) {
-            health.compareAndSet(latest, refreshed);
-        }
+        return health;
     }
 
     public void setRefreshProvider(AccessTokenProvider top) {
