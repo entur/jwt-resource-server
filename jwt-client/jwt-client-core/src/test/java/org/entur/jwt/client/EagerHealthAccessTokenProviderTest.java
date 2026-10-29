@@ -122,7 +122,7 @@ public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProvider
     public void shouldReturnBadHealthWhenAccessTokenFetchFailsAndCachedAccessTokenHasExpired() throws Exception {
         // the first two fetches return a short-lived access-token, the third fails and the fourth recovers
         AccessTokenProvider source = mock(AccessTokenProvider.class);
-        AccessToken expiring = new AccessToken("a.b.c", "bearer", System.currentTimeMillis() + 50);
+        AccessToken expiring = new AccessToken("a.b.c", "bearer", System.currentTimeMillis() + 1000);
         when(source.getAccessToken(false)).thenReturn(expiring, expiring).thenThrow(new AccessTokenException()).thenReturn(accessToken);
         EagerAccessTokenHealthProvider health = new EagerAccessTokenHealthProvider(source);
         // the cache is populated by the health refresh below
@@ -137,7 +137,7 @@ public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProvider
         assertTrue(health.getHealth(false).isSuccess());
 
         // the access-token, which is also the one held by the cache, is now expired
-        Thread.sleep(100);
+        sleepUntil(expiring.getExpires() + 100);
 
         assertThrows(AccessTokenException.class, () -> health.getAccessToken(false));
 
@@ -156,11 +156,11 @@ public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProvider
     @Test
     public void shouldReportGoodHealthWhenScheduledEagerRefreshFailedButCachedTokenIsStillValid() throws Exception {
         AccessTokenProvider source = mock(AccessTokenProvider.class);
-        AccessToken shortLived = new AccessToken("a.b.c", "bearer", System.currentTimeMillis() + 2000);
+        AccessToken shortLived = new AccessToken("a.b.c", "bearer", System.currentTimeMillis() + 3000);
         when(source.getAccessToken(false)).thenReturn(shortLived).thenThrow(new AccessTokenException());
         EagerAccessTokenHealthProvider health = new EagerAccessTokenHealthProvider(source);
         // real cache with eager (scheduled) refresh in front of the health provider
-        try (PreemptiveCachedAccessTokenProvider cache = new PreemptiveCachedAccessTokenProvider(health, 100, 100, 1000, 0, true)) {
+        try (PreemptiveCachedAccessTokenProvider cache = new PreemptiveCachedAccessTokenProvider(health, 100, 100, 2000, 0, true)) {
             health.setRefreshProvider(cache);
             health.setCacheMinimumTimeToLive(100);
 
@@ -170,6 +170,7 @@ public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProvider
             // the scheduled refresh fires after roughly 900ms, and fails
             Mockito.verify(source, Mockito.timeout(3000).times(2)).getAccessToken(false);
             Thread.sleep(100);
+            assertFalse(health.getCurrentHealth().isSuccess());
 
             // a valid access-token is available from the cache, so health is good
             // even before health is refreshed

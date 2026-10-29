@@ -156,7 +156,7 @@ public class DefaultHealthAccessTokenProviderTest extends AbstractDelegateProvid
     @Test
     public void shouldNotKeepCacheDerivedGoodHealthAfterCachedAccessTokenExpired() throws Exception {
         AccessTokenProvider source = mock(AccessTokenProvider.class);
-        AccessToken expiring = new AccessToken("a.b.c", "bearer", System.currentTimeMillis() + 300);
+        AccessToken expiring = new AccessToken("a.b.c", "bearer", System.currentTimeMillis() + 1000);
         when(source.getAccessToken(anyBoolean())).thenReturn(expiring).thenThrow(new AccessTokenException());
         DefaultAccessTokenHealthProvider health = new DefaultAccessTokenHealthProvider(source);
         health.setCacheMinimumTimeToLive(0);
@@ -169,7 +169,7 @@ public class DefaultHealthAccessTokenProviderTest extends AbstractDelegateProvid
         assertTrue(health.getHealth(true).isSuccess());
         assertTrue(health.getHealth(false).isSuccess());
 
-        Thread.sleep(400);
+        sleepUntil(expiring.getExpires() + 100);
 
         // the access-token has expired and the source is still failing
         assertFalse(health.getHealth(false).isSuccess());
@@ -199,7 +199,7 @@ public class DefaultHealthAccessTokenProviderTest extends AbstractDelegateProvid
     @Test
     public void shouldReturnGoodHealthIfRefreshFailedButCacheStillHoldsValidAccessToken() throws Exception {
         AccessTokenProvider source = mock(AccessTokenProvider.class);
-        AccessToken expiring = new AccessToken("a.b.c", "bearer", System.currentTimeMillis() + 500);
+        AccessToken expiring = new AccessToken("a.b.c", "bearer", System.currentTimeMillis() + 1100);
         when(source.getAccessToken(false)).thenReturn(expiring).thenThrow(new AccessTokenException());
         DefaultAccessTokenHealthProvider health = new DefaultAccessTokenHealthProvider(source);
         // the cache serves the access-token until 100ms before it expires
@@ -211,7 +211,7 @@ public class DefaultHealthAccessTokenProviderTest extends AbstractDelegateProvid
         assertTrue(health.getHealth(false).isSuccess());
 
         // the cache would no longer return the access-token
-        Thread.sleep(450);
+        sleepUntil(expiring.getExpires());
         assertFalse(health.getHealth(false).isSuccess());
     }
 

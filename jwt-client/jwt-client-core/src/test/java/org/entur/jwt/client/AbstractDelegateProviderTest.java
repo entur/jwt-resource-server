@@ -25,4 +25,11 @@ public abstract class AbstractDelegateProviderTest {
         when(fallback.getAccessToken(false)).thenReturn(accessToken);
     }
 
+    protected static void sleepUntil(long time) throws InterruptedException {
+        long delay = time - System.currentTimeMillis();
+        if (delay > 0) {
+            Thread.sleep(delay);
+        }
+    }
+
 }

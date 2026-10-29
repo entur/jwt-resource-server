@@ -194,6 +194,8 @@ The health indicator looks at __the last attempt to get credentials__. It will t
  * no previous attempt was made
  * last attempt was unsuccessful
 
+An unsuccessful attempt (for example a failed preemptive refresh) does not result in a negative result as long as the cache still holds a valid access-token. An attempt which returns an access-token with less than `minimum-time-to-live` left does result in a negative result, as the cache rejects such an access-token.
+
 In other words, the health check will not refresh expired tokens, but repeated calls to the health-check will result in a positive result once downstream services are back up. As a positive side-effect, on startup, calling the health-check before opening for traffic will result in the cache being populated (read: warmed up).
 
 [client credentials]: https://auth0.com/docs/flows/concepts/client-credentials
