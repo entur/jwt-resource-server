@@ -2,25 +2,17 @@ package org.entur.jwt.junit5.configuration.enrich;
 
 import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfiguration;
 import org.entur.jwt.junit5.extention.AuthorizationServerExtension;
-import org.entur.jwt.junit5.impl.AtomicFiles;
 import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-
-/**
- * 
- * Write authorization server properties to a file, by default jwt.junit5.properties in the build directory.
- * <br>
- * The file is replaced atomically, but it is shared by all test classes; so test classes with different
- * authorization servers must not run concurrently.
- *
- */
 
 public class PropertiesFileResourceServerConfigurationEnricher extends AbstractPropertiesResourceServerConfigurationEnricher {
 
@@ -48,11 +40,9 @@ public class PropertiesFileResourceServerConfigurationEnricher extends AbstractP
             p.put(e.getKey(), e.getValue());
         }
 
-        StringWriter writer = new StringWriter();
-        p.store(writer, null);
-
-        // replace the file atomically, so that it can be read while (other) tests are running
-        AtomicFiles.write(output, writer.toString());
+        try (BufferedWriter writer = Files.newBufferedWriter(output, StandardCharsets.UTF_8)) {
+            p.store(writer, null);
+        }
     }
 
     @Override
