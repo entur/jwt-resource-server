@@ -8,6 +8,7 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import org.entur.jwt.spring.EnrichedJwtGrantedAuthoritiesConverter;
 import org.entur.jwt.spring.JwtAuthorityEnricher;
 import org.entur.jwt.spring.ReactiveJwtMonoConverter;
+import org.entur.jwt.spring.decode.JwtDecoderValidators;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.entur.jwt.spring.properties.JwtDecodeProperties;
@@ -16,10 +17,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtIssuerReactiveAuthenticationManagerResolver;
@@ -27,7 +26,6 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtRea
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import reactor.core.publisher.Mono;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +72,7 @@ public class ReactiveEnturOauth2ResourceServerCustomizer implements Customizer<S
 
             DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
             jwtProcessor.setJWSKeySelector(verificationKeySelector);
+            // the claims (including expiry) are validated by the JWT validators
             jwtProcessor.setJWTClaimsSetVerifier((claims, context) -> {
             });
 
@@ -81,7 +80,7 @@ public class ReactiveEnturOauth2ResourceServerCustomizer implements Customizer<S
 
             NimbusReactiveJwtDecoder decoder = new NimbusReactiveJwtDecoder(reactiveConverter);
 
-            decoder.setJwtValidator(getJwtValidators(entry));
+            decoder.setJwtValidator(JwtDecoderValidators.create(entry.getKey(), jwtValidators));
 
             JwtReactiveAuthenticationManager jwtReactiveAuthenticationManager = new JwtReactiveAuthenticationManager(decoder);
 
@@ -116,13 +115,5 @@ public class ReactiveEnturOauth2ResourceServerCustomizer implements Customizer<S
                 configurer.authenticationManagerResolver(jwtIssuerAuthenticationManagerResolver);
             }
         }
-    }
-
-    private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(Map.Entry<String, JWKSource> entry) {
-        List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();
-        validators.add(new JwtIssuerValidator(entry.getKey()));
-        validators.addAll(jwtValidators);
-        DelegatingOAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(validators);
-        return validator;
     }
 }
