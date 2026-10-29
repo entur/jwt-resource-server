@@ -11,8 +11,6 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
      */
     private final AtomicReference<AccessTokenHealth> health = new AtomicReference<>();
 
-    private final ThreadLocal<RefreshInvocation> refreshInvocation = new ThreadLocal<>();
-
     /** Expiry time of the latest access-token returned by the below provider */
     private volatile long accessTokenExpires;
 
@@ -42,12 +40,7 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
                 // note: set before the health, so that readers of good health see this expiry
                 this.accessTokenExpires = accessToken.getExpires();
             }
-            AccessTokenHealth invocationHealth = new AccessTokenHealth(time, accessToken != null);
-            this.health.set(invocationHealth);
-            RefreshInvocation currentRefresh = refreshInvocation.get();
-            if (currentRefresh != null) {
-                currentRefresh.health = invocationHealth;
-            }
+            this.health.set(new AccessTokenHealth(time, accessToken != null));
         }
 
         return accessToken;
@@ -110,41 +103,16 @@ public abstract class AbstractAccessTokenHealthProvider extends BaseAccessTokenP
      * <br><br>
      * If the underlying provider was invoked, its outcome is already the current health. Only a failed refresh
      * is published, i.e. when the top-level provider did not accept what the underlying provider returned.
-     * It is published only if the underlying outcome is still current, so that it does not overwrite a newer outcome.
+     * It is published against the health as of now, so that it does not overwrite a newer outcome.
      *
      * @param refreshed outcome of the refresh
-     * @param invocationHealth health produced by the refresh's underlying invocation
+     * @param previous  health read before the refresh started
      */
 
-    protected void publishRefreshedHealth(AccessTokenHealth refreshed, AccessTokenHealth invocationHealth) {
-        if (invocationHealth != null && !refreshed.isSuccess()) {
-            health.compareAndSet(invocationHealth, refreshed);
-        }
-    }
-
-    protected RefreshInvocation beginRefreshInvocation() {
-        RefreshInvocation invocation = new RefreshInvocation(refreshInvocation.get());
-        refreshInvocation.set(invocation);
-        return invocation;
-    }
-
-    protected AccessTokenHealth endRefreshInvocation(RefreshInvocation invocation) {
-        if (refreshInvocation.get() == invocation) {
-            if (invocation.parent == null) {
-                refreshInvocation.remove();
-            } else {
-                refreshInvocation.set(invocation.parent);
-            }
-        }
-        return invocation.health;
-    }
-
-    protected static class RefreshInvocation {
-        private final RefreshInvocation parent;
-        private AccessTokenHealth health;
-
-        private RefreshInvocation(RefreshInvocation parent) {
-            this.parent = parent;
+    protected void publishRefreshedHealth(AccessTokenHealth refreshed, AccessTokenHealth previous) {
+        AccessTokenHealth latest = health.get();
+        if (latest != previous && !refreshed.isSuccess()) {
+            health.compareAndSet(latest, refreshed);
         }
     }
 

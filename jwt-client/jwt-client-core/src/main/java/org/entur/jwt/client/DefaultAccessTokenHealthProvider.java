@@ -34,25 +34,22 @@ public class DefaultAccessTokenHealthProvider extends AbstractAccessTokenHealthP
 
         AccessTokenHealth previous = getCurrentHealth();
         AccessTokenHealth threadSafeStatus = previous;
-        AccessTokenHealth invocationHealth = null;
         if (threadSafeStatus == null || !threadSafeStatus.isSuccess()) {
             // get a fresh status
             AccessToken accessToken = null;
-            RefreshInvocation invocation = beginRefreshInvocation();
             try {
                 accessToken = refreshProvider.getAccessToken(false);
             } catch (Exception e) {
                 // ignore
                 logger.warn("Exception refreshing health status.", e);
             } finally {
-                invocationHealth = endRefreshInvocation(invocation);
                 // as long as an access-token was returned, health is good
                 threadSafeStatus = new AccessTokenHealth(System.currentTimeMillis(), accessToken != null);
             }
         } else {
             // promote the latest underlying status as the current top-level status
         }
-        publishRefreshedHealth(threadSafeStatus, invocationHealth);
+        publishRefreshedHealth(threadSafeStatus, previous);
         return threadSafeStatus;
     }
 }
