@@ -4,6 +4,8 @@ import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.entur.jwt.junit5.AuthorizationServerEncoder;
+import tools.jackson.databind.cfg.DateTimeFeature;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.lang.annotation.Annotation;
 import java.math.BigInteger;
@@ -14,10 +16,14 @@ import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
 public class DefaultAuthorizationServerEncoder implements AuthorizationServerEncoder {
+
+    // like the JWT library, write dates in non-standard claims as milliseconds
+    private static final JsonMapper JSON_MAPPER = JsonMapper.builder().enable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS).build();
 
     private static final Set<String> standardClaims;
 
@@ -111,7 +117,7 @@ public class DefaultAuthorizationServerEncoder implements AuthorizationServerEnc
             headers.put("kid", Integer.toString(keyPair.getPublic().hashCode()));
         }
 
-        JwtBuilder builder = Jwts.builder().setHeader(headers).setClaims(claims);
+        JwtBuilder builder = Jwts.builder().setHeader(headers).content(toJson(claims));
 
         SignatureAlgorithm algorithm = SignatureAlgorithm.RS256;
         String algorithmName = (String) headers.get("alg");
@@ -121,5 +127,17 @@ public class DefaultAuthorizationServerEncoder implements AuthorizationServerEnc
         }
 
         return builder.signWith(keyPair.getPrivate(), algorithm).compact();
+    }
+
+    private byte[] toJson(Map<String, Object> claims) {
+        // the JWT library drops claims with null values, so let it convert the standard claims (e.g. dates to seconds),
+        // then add back the null values and serialize the claims ourselves
+        Map<String, Object> payload = new LinkedHashMap<>(Jwts.claims().add(claims).build());
+        for (Map.Entry<String, Object> entry : claims.entrySet()) {
+            if (entry.getValue() == null) {
+                payload.put(entry.getKey(), null);
+            }
+        }
+        return JSON_MAPPER.writeValueAsBytes(payload);
     }
 }

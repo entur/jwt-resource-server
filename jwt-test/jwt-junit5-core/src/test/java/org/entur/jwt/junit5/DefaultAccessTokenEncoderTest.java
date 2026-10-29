@@ -9,10 +9,14 @@ import org.entur.jwt.junit5.claim.IssuedAt;
 import org.entur.jwt.junit5.claim.JsonClaim;
 import org.entur.jwt.junit5.claim.MapClaim;
 import org.entur.jwt.junit5.claim.MissingClaim;
+import org.entur.jwt.junit5.claim.NullClaim;
 import org.entur.jwt.junit5.claim.Scope;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.text.ParseException;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -73,6 +77,19 @@ public class DefaultAccessTokenEncoderTest {
 
         assertThat(claims.getIssueTime()).isNull();
         assertThat(claims.getExpirationTime()).isNotNull();
+    }
+
+    @Test
+    public void testNullClaim(@AccessToken @NullClaim("myClaim") @NullClaim("exp") String token) {
+        JsonNode payload = JsonMapper.builder().build().readTree(Base64.getUrlDecoder().decode(token.substring(7).split("\\.")[1]));
+
+        // present, unlike for @MissingClaim
+        assertThat(payload.has("myClaim")).isTrue();
+        assertThat(payload.get("myClaim").isNull()).isTrue();
+        assertThat(payload.has("exp")).isTrue();
+        assertThat(payload.get("exp").isNull()).isTrue();
+
+        assertThat(payload.get("iat").isNumber()).isTrue();
     }
 
     @Test
