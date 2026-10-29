@@ -204,4 +204,30 @@ public class EagerHealthAccessTokenProviderTest extends AbstractDelegateProvider
         assertFalse(provider.getHealth(false).isSuccess());
     }
 
+    @Test
+    public void shouldNotPublishRefreshFailureOverNewerSuccessfulFetch() throws Exception {
+        CountDownLatch failureRecorded = new CountDownLatch(1);
+        CountDownLatch successfulFetchCompleted = new CountDownLatch(1);
+
+        when(fallback.getAccessToken(false)).thenThrow(new AccessTokenException()).thenReturn(accessToken);
+        when(refreshProvider.getAccessToken(false)).thenAnswer(invocation -> {
+            try {
+                return provider.getAccessToken(false);
+            } catch (AccessTokenException e) {
+                failureRecorded.countDown();
+                successfulFetchCompleted.await();
+                throw e;
+            }
+        });
+
+        CompletableFuture<AccessTokenHealth> refresh = CompletableFuture.supplyAsync(() -> provider.getHealth(true));
+        failureRecorded.await();
+
+        provider.getAccessToken(false);
+        successfulFetchCompleted.countDown();
+
+        assertFalse(refresh.get().isSuccess());
+        assertTrue(provider.getHealth(false).isSuccess());
+    }
+
 }
