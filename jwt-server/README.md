@@ -241,6 +241,8 @@ entur:
 
 Note that eager cache refresh (if enabled) does not kick off until first time the cache is populated, which would normally be through health checks or first time a token is to be validated.
 
+Rate limiting requires caching, so disabling the cache also disables rate limiting (with a warning). With both enabled, the cache `time-to-live` must be greater than the rate limit interval (1 / `refill-rate` seconds), otherwise startup fails.
+
 #### Key rotation
 The authorization server might choose to rotate its keys. When that happens, the key id used to sign the access-tokens changes, and a new key id will be noted in the JWT header. This implementation will promptly refresh the keys and normally be able to instantly verify new tokens. Previously issued tokens will be able to verify if the key list still contains the old key.
 
