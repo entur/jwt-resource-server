@@ -25,9 +25,6 @@ public class JwtTestContextCustomizerFactoryTest {
     static class NoAuthorizationServerTest {
     }
 
-    static class OtherNoAuthorizationServerTest {
-    }
-
     private final JwtTestContextCustomizerFactory factory = new JwtTestContextCustomizerFactory();
 
     private ContextCustomizer create(Class<?> testClass) {
@@ -42,13 +39,16 @@ public class JwtTestContextCustomizerFactoryTest {
 
         assertThat(first).isEqualTo(second);
         assertThat(first.hashCode()).isEqualTo(second.hashCode());
-
-        assertThat(create(NoAuthorizationServerTest.class)).isEqualTo(create(OtherNoAuthorizationServerTest.class));
     }
 
     @Test
     public void testCustomizersForDifferentAuthorizationServersAreNotEqual() {
         assertThat(create(FirstTest.class)).isNotEqualTo(create(OtherTest.class));
-        assertThat(create(FirstTest.class)).isNotEqualTo(create(NoAuthorizationServerTest.class));
+    }
+
+    @Test
+    public void testNoCustomizerWithoutAuthorizationServer() {
+        // so that configured tenants are not disabled
+        assertThat(create(NoAuthorizationServerTest.class)).isNull();
     }
 }
