@@ -314,16 +314,33 @@ entur:
     origins:
       - https://myapp.entur.org
       - https://myotherpetstore.swagger.io
+      - https://*.mydomain.org
+    # allow-credentials: false # default automatic, see below
 ```
 
 where `xyz` is from the following list
 
-* `api` - CORS requests from selected sites. Recommended exceptions:
+* `api` (default) - CORS requests from selected sites. Recommended exceptions:
    * Your API development portal 
    * Petstore
 * `webapp` - no CORS requests are accepted 
 
-If no mode is set, no configuration is added by this starter. This allows for adding your own custom implementation.
+Each origin is either
+
+* an exact origin, like `https://myapp.entur.org`,
+* an origin pattern containing `*`, like `https://*.mydomain.org` (see Spring's `CorsConfiguration.setAllowedOriginPatterns(..)`), or
+* `*` for any origin.
+
+The `allow-credentials` property sets the `Access-Control-Allow-Credentials` response header, which browsers require for requests with cookies, HTTP authentication or TLS client certificates. Access-tokens sent as bearer tokens in the `Authorization` header do not need it, so origin `*` without credentials lets scripts on any website call your API with an access-token.
+
+* not set (default) - `true`, unless the origins contain `*`, then `false`
+* `true` - not allowed together with origin `*`, as browsers reject that combination; startup fails
+* `false`
+
+#### Custom CORS configuration
+To use your own CORS configuration, disable the CORS support of this starter with `entur.cors.enabled=false`; otherwise its bean named `corsConfigurationSource` clashes with yours. Then
+
+* for [jwt-spring-web], add a `CorsConfigurationSource` bean. The bean name must be `corsConfigurationSource` in order for Spring Security to pick up the bean.
 
 ```java
 @Bean("corsConfigurationSource")
@@ -332,7 +349,15 @@ public CorsConfigurationSource myCorsConfigurationSource() {
 } 
 ```
 
-Note that the bean name must be as above in order for Spring to pick up the bean.
+* for [jwt-spring-webflux], add a `CorsWebFilter` bean which runs before the Spring Security filter chain (order `-100`), so that preflight requests, which carry no access-token, are not rejected. This starter's own bean named `corsConfigurationSource` is such a `CorsWebFilter` (order `-101`), so the `CorsConfigurationSource` approach above does not apply.
+
+```java
+@Bean
+@Order(-101)
+public CorsWebFilter myCorsWebFilter() {
+    // ...
+} 
+```
 
 #### CORS and API gateway
 
@@ -378,6 +403,7 @@ To guard against unexpected entropy in JWT headers (e.g. random/dynamic values t
 By default, only headers with a non-empty `kid` are considered safe to cache (see `DefaultJwtHeaderToIssuerMapperDecider`); provide your own `JwtHeaderToIssuerMapperDecider` bean to customize this.
 
 [jwt-spring-web]: spring/jwt-spring-web
+[jwt-spring-webflux]: spring/jwt-spring-webflux
 [jwt-test]: ../jwt-test
 [jwt-junit5-spring]: ../jwt-test/jwt-junit5-spring
 [method access-control expressions]: [https://www.baeldung.com/spring-security-method-security](https://www.baeldung.com/spring-security-method-security)

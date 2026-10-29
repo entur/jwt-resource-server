@@ -15,6 +15,8 @@ public class CorsProperties {
 
     private List<String> headers; // null for not set
 
+    private Boolean allowCredentials; // null for automatic
+
     public String getMode() {
         return mode;
     }
@@ -56,6 +58,14 @@ public class CorsProperties {
 
     public void setHeaders(List<String> headers) {
         this.headers = headers;
+    }
+
+    public Boolean getAllowCredentials() {
+        return allowCredentials;
+    }
+
+    public void setAllowCredentials(Boolean allowCredentials) {
+        this.allowCredentials = allowCredentials;
     }
 
     public boolean hasHeaders() {
