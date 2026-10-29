@@ -11,8 +11,6 @@ entur:
       - from: issuer
         to: issuer
     jwk:
-      health-indicator:
-        enabled: true
       cache:
         preemptive:
           eager:

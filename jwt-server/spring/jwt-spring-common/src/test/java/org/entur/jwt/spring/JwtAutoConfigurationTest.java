@@ -5,6 +5,7 @@ import com.nimbusds.jose.jwk.source.JWKSetBasedJWKSource;
 import com.nimbusds.jose.jwk.source.JWKSetSource;
 import com.nimbusds.jose.jwk.source.JWKSetSourceWrapper;
 import com.nimbusds.jose.jwk.source.RateLimitedJWKSetSource;
+import org.entur.jwt.spring.actuate.ListJwksHealthIndicator;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -41,6 +42,20 @@ class JwtAutoConfigurationTest {
         runner.withPropertyValues("entur.jwt.enabled=false").run(context -> {
             assertThat(context).hasNotFailed();
             assertThat(context).doesNotHaveBean(JwkSourceMap.class);
+        });
+    }
+
+    @Test
+    void testHealthIndicatorEnabledByDefault() {
+        runner.run(context -> assertThat(context).hasSingleBean(ListJwksHealthIndicator.class));
+    }
+
+    @Test
+    void testHealthIndicatorDisabled() {
+        runner.withPropertyValues("management.health.jwks.enabled=false").run(context -> {
+            assertThat(context).hasNotFailed();
+            assertThat(context).doesNotHaveBean(ListJwksHealthIndicator.class);
+            assertThat(context).hasSingleBean(JwkSourceMap.class);
         });
     }
 
