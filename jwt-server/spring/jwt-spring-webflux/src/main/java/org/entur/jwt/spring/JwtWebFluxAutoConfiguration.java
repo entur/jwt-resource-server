@@ -4,6 +4,7 @@ import org.entur.jwt.spring.properties.CorsProperties;
 import org.entur.jwt.spring.properties.SecurityProperties;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -14,6 +15,7 @@ import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 @Configuration
 @ConditionalOnProperty(name = {"entur.cors.enabled"}, havingValue = "true", matchIfMissing = true)
 @AutoConfigureAfter(JwtAutoConfiguration.class)
+@EnableConfigurationProperties({SecurityProperties.class})
 public class JwtWebFluxAutoConfiguration {
 
     // run before the spring security web filter chain (order -100), so that CORS requests are handled
