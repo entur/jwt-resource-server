@@ -41,6 +41,21 @@ public class DisabledAuthorizationTest extends AbstractGrpcTest {
     }
 
     @Test
+    public void testResourceWithoutTokenIsAnonymous() {
+        GreetingResponse response = stub().unprotectedWithOptionalTenant(greetingRequest);
+
+        assertThat(response.getMessage()).isEqualTo("Hello unprotected method with tenant not present");
+    }
+
+    @Test
+    public void testResourceWithTokenIsAuthenticated(@AccessToken(audience = "https://my.audience") String header) {
+        GreetingResponse response = stub(header).unprotectedWithOptionalTenant(greetingRequest);
+
+        // the token reaches the service, so that it can be checked manually (i.e. using GrpcAuthorization)
+        assertThat(response.getMessage()).startsWith("Hello unprotected method with tenant present");
+    }
+
+    @Test
     public void testProtectedResourceWithInvalidToken() {
         StatusRuntimeException exception = assertThrows(StatusRuntimeException.class, () -> {
             stub("Bearer invalid").protectedWithPartnerTenant(greetingRequest);
