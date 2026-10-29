@@ -14,17 +14,21 @@ import org.entur.jwt.spring.properties.MdcProperties;
 import org.entur.jwt.spring.properties.SecurityProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
+import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.security.autoconfigure.actuate.web.reactive.ReactiveManagementWebSecurityAutoConfiguration;
+import org.springframework.boot.security.autoconfigure.web.reactive.ReactiveWebSecurityAutoConfiguration;
+import org.springframework.boot.security.oauth2.server.resource.autoconfigure.web.reactive.ReactiveOAuth2ResourceServerWebSecurityAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.BeanIds;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
@@ -38,6 +42,7 @@ import org.springframework.security.web.server.header.XXssProtectionServerHttpHe
 import org.springframework.security.web.server.savedrequest.NoOpServerRequestCache;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
@@ -50,28 +55,29 @@ import java.util.List;
 @ConditionalOnExpression("${entur.authorization.enabled:true} || ${entur.jwt.enabled:true}")
 @EnableConfigurationProperties({SecurityProperties.class})
 @AutoConfigureAfter(value = JwtWebFluxAutoConfiguration.class)
+// before Spring Boot's default chains, so that only chains defined by the application trip the guards below
+@AutoConfigureBefore(value = {ReactiveWebSecurityAutoConfiguration.class, ReactiveManagementWebSecurityAutoConfiguration.class, ReactiveOAuth2ResourceServerWebSecurityAutoConfiguration.class})
 public class JwtWebFluxSecurityAutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(JwtWebFluxSecurityAutoConfiguration.class);
 
-    @Configuration
-    @ConditionalOnBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
-    @ConditionalOnProperty(name = {"entur.authorization.enabled"}, havingValue = "true", matchIfMissing = true)
-    public static class AuthorizationConfigurationGuard {
+    // The guards fail startup if the composite configuration backed off because of a custom chain. They are bean
+    // methods, as these are evaluated after the nested configurations (which in turn can be evaluated in any order).
 
-        public AuthorizationConfigurationGuard() {
-            throw new IllegalStateException("Authorization does not work for custom spring filter chain. Add 'entur.authorization.enabled=false' or disable this starter using @SpringBootApplication(exclude = {JwtWebSecurityConfigurerAdapterAutoConfiguration.class}).");
-        }
+    @Bean
+    @ConditionalOnBean(SecurityWebFilterChain.class)
+    @ConditionalOnMissingBean(CompositeWebSecurityConfigurerAdapter.class)
+    @ConditionalOnProperty(name = {"entur.authorization.enabled"}, havingValue = "true", matchIfMissing = true)
+    public Object authorizationConfigurationGuard(ListableBeanFactory beanFactory) {
+        throw new IllegalStateException("Authorization does not work with custom spring filter chain " + Arrays.toString(beanFactory.getBeanNamesForType(SecurityWebFilterChain.class)) + ". Add 'entur.authorization.enabled=false' or disable this starter using @SpringBootApplication(exclude = {" + JwtWebFluxSecurityAutoConfiguration.class.getSimpleName() + ".class}).");
     }
 
-    @Configuration
-    @ConditionalOnBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
+    @Bean
+    @ConditionalOnBean(SecurityWebFilterChain.class)
+    @ConditionalOnMissingBean(CompositeWebSecurityConfigurerAdapter.class)
     @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
-    public static class JwtConfigurationGuard {
-
-        public JwtConfigurationGuard() {
-            throw new IllegalStateException("JWT authentication does not work for custom spring filter chain. Add 'entur.jwt.enabled=false' or disable this starter using @SpringBootApplication(exclude = {JwtWebSecurityConfigurerAdapterAutoConfiguration.class}).");
-        }
+    public Object jwtConfigurationGuard(ListableBeanFactory beanFactory) {
+        throw new IllegalStateException("JWT authentication does not work with custom spring filter chain " + Arrays.toString(beanFactory.getBeanNamesForType(SecurityWebFilterChain.class)) + ". Add 'entur.jwt.enabled=false' or disable this starter using @SpringBootApplication(exclude = {" + JwtWebFluxSecurityAutoConfiguration.class.getSimpleName() + ".class}).");
     }
 
     @Bean
@@ -82,7 +88,7 @@ public class JwtWebFluxSecurityAutoConfiguration {
     }
 
     @Configuration
-    @ConditionalOnMissingBean(name = BeanIds.SPRING_SECURITY_FILTER_CHAIN)
+    @ConditionalOnMissingBean(SecurityWebFilterChain.class)
     @ConditionalOnExpression("${entur.authorization.enabled:true} || ${entur.jwt.enabled:true}")
     @EnableWebFluxSecurity
     @EnableReactiveMethodSecurity
@@ -159,8 +165,8 @@ public class JwtWebFluxSecurityAutoConfiguration {
             }
 
             MdcProperties mdc = jwt.getMdc();
-            if (mdc.isEnabled()) {
-                throw new IllegalStateException("MDC not supported for webflux yet");
+            if (mdc.isEnabled() && !mdc.getMappings().isEmpty()) {
+                throw new IllegalStateException("MDC mappings are not supported for WebFlux. Remove 'entur.jwt.mdc.mappings' or set 'entur.jwt.mdc.enabled=false'.");
             }
 
             // https://www.baeldung.com/spring-prevent-xss
