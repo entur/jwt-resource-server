@@ -189,6 +189,17 @@ which could negatively affect the authorization server.
 ### Health indicator configuration
 The library supports a Spring [HealthIndicator](https://docs.spring.io/spring-boot/docs/current/api/org/springframework/boot/actuate/health/HealthIndicator.html) via the enabling `jwts` health indicator.
 
+The health indicator is enabled by default. Disable it using the standard Spring Boot property:
+
+```yaml
+management:
+  health:
+    jwts:
+      enabled: false
+```
+
+Individual clients can be left out of the health indicator using `health: false` in the client configuration, for example `entur.jwt.clients.auth0.myClient.health=false`. Note that the former `entur.jwt.clients.health-indicator.enabled` property has no effect.
+
 The health indicator looks at __the last attempt to get credentials__. It will trigger a refresh if
 
  * no previous attempt was made
