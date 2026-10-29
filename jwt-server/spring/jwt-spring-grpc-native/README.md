@@ -30,6 +30,17 @@ entur:
               - unprotectedWithOptionalTenant
 ```
 
+### Disabling authorization
+Setting `entur.authorization.enabled=false` allows anonymous access to all gRPC methods (the permit-all configuration above is then ignored). Tokens which are present are still validated, so calls with an invalid token are rejected with `UNAUTHENTICATED`. Enforce authorization manually using `GrpcAuthorization` where needed.
+
+```
+entur:
+  authorization:
+    enabled: false
+```
+
+Note that this property also applies to the Spring Web / WebFlux modules, if present.
+
 ### MDC logging
 If you have added MDC log mappings, 
 
