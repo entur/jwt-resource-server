@@ -28,7 +28,7 @@ public class CustomSecurityWebFilterChainGuardTest {
                     "entur.jwt.tenants.a.jwk.location=http://localhost:1/jwks.json"
             );
 
-    @Configuration
+    @org.springframework.boot.test.context.TestConfiguration
     @EnableWebFluxSecurity
     static class SecurityWebFilterChainConfiguration {
         @Bean
