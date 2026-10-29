@@ -52,14 +52,19 @@ public class JwtTestContextCustomizerFactory implements ContextCustomizerFactory
 
 	@Override
 	public ContextCustomizer createContextCustomizer(Class<?> testClass, List<ContextConfigurationAttributes> configAttributes) {
-		return new TestDatabaseContextCustomizer(testClass);
+		List<AuthorizationServerImplementation> authorizationServerImplementations = FACTORY.create(testClass);
+		if (authorizationServerImplementations.isEmpty()) {
+			// no mocked tenants, so leave the configured tenants alone
+			return null;
+		}
+		return new TestDatabaseContextCustomizer(authorizationServerImplementations);
 	}
 
 	static class TestDatabaseContextCustomizer implements ContextCustomizer {
 		private final List<AuthorizationServerImplementation> authorizationServerImplementations;
 
-		public TestDatabaseContextCustomizer(Class<?> testClass) {
-			authorizationServerImplementations = FACTORY.create(testClass);
+		public TestDatabaseContextCustomizer(List<AuthorizationServerImplementation> authorizationServerImplementations) {
+			this.authorizationServerImplementations = authorizationServerImplementations;
 		}
 
 		@Override
