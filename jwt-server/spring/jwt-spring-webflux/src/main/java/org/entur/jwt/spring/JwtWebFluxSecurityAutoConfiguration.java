@@ -153,8 +153,8 @@ public class JwtWebFluxSecurityAutoConfiguration {
             }
 
             MdcProperties mdc = jwt.getMdc();
-            if (mdc.isEnabled()) {
-                throw new IllegalStateException("MDC not supported for webflux yet");
+            if (mdc.isEnabled() && !mdc.getMappings().isEmpty()) {
+                throw new IllegalStateException("MDC mappings are not supported for WebFlux. Remove 'entur.jwt.mdc.mappings' or set 'entur.jwt.mdc.enabled=false'.");
             }
 
             // https://www.baeldung.com/spring-prevent-xss
