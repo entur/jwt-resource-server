@@ -38,7 +38,7 @@ For YAML, this amounts to something like
 ```yaml
 entur:
   jwt:
-    enabled: true # note: false is the default value
+    enabled: true # note: this is the default value
     tenants:
       myKeycloak: # i.e. tenant id
         issuer: https://myRealm.keycloak.com
@@ -262,6 +262,8 @@ entur:
 
 Note that eager cache refresh (if enabled) does not kick off until first time the cache is populated, which would normally be through health checks or first time a token is to be validated.
 
+Rate limiting requires caching, so disabling the cache also disables rate limiting (with a warning). With both enabled, the cache `time-to-live` must be greater than the rate limit interval (1 / `refill-rate` seconds), otherwise startup fails.
+
 #### Key rotation
 The authorization server might choose to rotate its keys. When that happens, the key id used to sign the access-tokens changes, and a new key id will be noted in the JWT header. This implementation will promptly refresh the keys and normally be able to instantly verify new tokens. Previously issued tokens will be able to verify if the key list still contains the old key.
 
@@ -272,6 +274,17 @@ The library supports a Spring [HealthIndicator](https://docs.spring.io/spring-bo
  * last attempt was unsuccessful
 
 In other words, the health check will not refresh expired keys, but repeated calls to the health-check __will result in a positive result once downstream services are back up__. As a positive side-effect, on startup, calling the health-check before opening for traffic will result in the cache being populated (read: warmed up).
+
+The health indicator is enabled by default. Disable it using the standard Spring Boot property:
+
+```yaml
+management:
+  health:
+    jwks:
+      enabled: false
+```
+
+Note that the former `entur.jwt.jwk.health-indicator.enabled` property has no effect.
 
 ### Context logging
 For copying interesting JWT fields through to the MDC logging context, configure mappings:
