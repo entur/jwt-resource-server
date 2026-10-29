@@ -22,6 +22,7 @@ public class EagerAccessTokenHealthProvider extends AbstractAccessTokenHealthPro
     protected AccessTokenHealth getRefreshHealth() {
         AccessTokenHealth status = null;
         // get a fresh status
+        // note: if the underlying provider is invoked, it records its outcome as the current health
         AccessToken accessToken = null;
         try {
             accessToken = refreshProvider.getAccessToken(false);
@@ -32,7 +33,6 @@ public class EagerAccessTokenHealthProvider extends AbstractAccessTokenHealthPro
             // as long as an access-token was returned, health is good
             status = new AccessTokenHealth(System.currentTimeMillis(), accessToken != null);
         }
-        this.status = status;
         return status;
     }
 
