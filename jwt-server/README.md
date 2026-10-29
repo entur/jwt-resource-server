@@ -321,6 +321,9 @@ entur:
       fail-on-jwt-decoder-bean: true # default false
 ```
 
+## Custom security filter chain
+For WebFlux, startup fails if the application defines its own `SecurityWebFilterChain` bean, as it would shadow the chain of this starter. To use a custom chain, set `entur.jwt.enabled=false` and `entur.authorization.enabled=false`, or exclude the starter's chain using `@SpringBootApplication(exclude = {JwtWebFluxSecurityAutoConfiguration.class})`.
+
 ## Advanced features
 An optional, opt-in performance feature is available. It defaults to disabled and is safe to leave off.
 
