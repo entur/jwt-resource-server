@@ -13,7 +13,6 @@ import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
 import java.util.ArrayList;
@@ -73,9 +72,13 @@ public class ClosableJwtDecodersBuilder {
             DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
             JWSVerificationKeySelector keySelector = new JWSVerificationKeySelector(JWSAlgorithm.Family.SIGNATURE, jwkSource);
             jwtProcessor.setJWSKeySelector(keySelector);
+            // the claims (including expiry) are validated by the JWT validators, so disable the Nimbus verifier,
+            // which would otherwise limit the leeway to its own (one minute) clock skew
+            jwtProcessor.setJWTClaimsSetVerifier((claims, context) -> {
+            });
 
             NimbusJwtDecoder nimbusJwtDecoder = new NimbusJwtDecoder(jwtProcessor);
-            DelegatingOAuth2TokenValidator<Jwt> validators = getJwtValidators(entry.getKey());
+            DelegatingOAuth2TokenValidator<Jwt> validators = JwtDecoderValidators.create(entry.getKey(), jwtValidators);
             nimbusJwtDecoder.setJwtValidator(validators);
 
             JwtDecoder decoder = nimbusJwtDecoder;
@@ -117,12 +120,5 @@ public class ClosableJwtDecodersBuilder {
             }
         }
         return cacheEventListeners;
-    }
-
-    private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(String issuer) {
-        List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();
-        validators.add(new JwtIssuerValidator(issuer));
-        validators.addAll(jwtValidators);
-        return new DelegatingOAuth2TokenValidator<>(validators);
     }
 }

@@ -52,14 +52,19 @@ public class JwtTestContextCustomizerFactory implements ContextCustomizerFactory
 
 	@Override
 	public ContextCustomizer createContextCustomizer(Class<?> testClass, List<ContextConfigurationAttributes> configAttributes) {
-		return new TestDatabaseContextCustomizer(testClass);
+		List<AuthorizationServerImplementation> authorizationServerImplementations = FACTORY.create(testClass);
+		if (authorizationServerImplementations.isEmpty()) {
+			// no mocked tenants, so leave the configured tenants alone
+			return null;
+		}
+		return new TestDatabaseContextCustomizer(authorizationServerImplementations);
 	}
 
 	static class TestDatabaseContextCustomizer implements ContextCustomizer {
 		private final List<AuthorizationServerImplementation> authorizationServerImplementations;
 
-		public TestDatabaseContextCustomizer(Class<?> testClass) {
-			authorizationServerImplementations = FACTORY.create(testClass);
+		public TestDatabaseContextCustomizer(List<AuthorizationServerImplementation> authorizationServerImplementations) {
+			this.authorizationServerImplementations = authorizationServerImplementations;
 		}
 
 		@Override
@@ -131,6 +136,27 @@ public class JwtTestContextCustomizerFactory implements ContextCustomizerFactory
                 throw new RuntimeException(e);
             }
         }
+
+		// note: customizers are part of the key of the Spring test context cache,
+		// so equal customizers are required for application contexts to be reused across test classes.
+		// The factory returns the same implementation instances for the same authorization servers.
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj) {
+				return true;
+			}
+			if (obj == null || getClass() != obj.getClass()) {
+				return false;
+			}
+			TestDatabaseContextCustomizer other = (TestDatabaseContextCustomizer) obj;
+			return authorizationServerImplementations.equals(other.authorizationServerImplementations);
+		}
+
+		@Override
+		public int hashCode() {
+			return authorizationServerImplementations.hashCode();
+		}
 
 
 		private Set<String> extractTenants(Map<String, Object> junit5Properties) {

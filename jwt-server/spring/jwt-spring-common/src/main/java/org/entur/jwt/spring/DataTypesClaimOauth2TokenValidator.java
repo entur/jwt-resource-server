@@ -26,13 +26,12 @@ public class DataTypesClaimOauth2TokenValidator implements OAuth2TokenValidator<
         for (Map.Entry<String, Class<?>> stringClassEntry : types.entrySet()) {
             Object o = claims.get(stringClassEntry.getKey());
 
-            if (o == null || !o.getClass().isAssignableFrom(stringClassEntry.getValue())) {
+            if (o == null || !stringClassEntry.getValue().isInstance(o)) {
                 if (errors == null) {
                     errors = new ArrayList<>();
-
-                    OAuth2Error error = new OAuth2Error("invalid_token", "The " + stringClassEntry.getKey() + " claim is " + (o == null ? "required" : "invalid"), "https://tools.ietf.org/html/rfc6750#section-3.1");
-                    errors.add(error);
                 }
+                OAuth2Error error = new OAuth2Error("invalid_token", "The " + stringClassEntry.getKey() + " claim is " + (o == null ? "required" : "invalid"), "https://tools.ietf.org/html/rfc6750#section-3.1");
+                errors.add(error);
             }
         }
 

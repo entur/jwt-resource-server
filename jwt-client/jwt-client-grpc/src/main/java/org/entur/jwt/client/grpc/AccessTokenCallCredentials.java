@@ -20,6 +20,8 @@ public class AccessTokenCallCredentials extends CallCredentials {
 
 	private final AccessTokenProvider accessTokenProvider;
 
+	private volatile AccessToken lastAccessToken;
+
 	public AccessTokenCallCredentials(AccessTokenProvider accessTokenProvider) {
 		this.accessTokenProvider = accessTokenProvider;
 	}
@@ -30,6 +32,7 @@ public class AccessTokenCallCredentials extends CallCredentials {
 			try {
 				Metadata headers = new Metadata();
 				AccessToken accessToken = accessTokenProvider.getAccessToken(false);
+				lastAccessToken = accessToken;
 				headers.put(KEY_AUTHORIZATION, BEARER_PREFIX + accessToken.getValue());
 				metadataApplier.apply(headers);
 			} catch (Throwable e) {
@@ -47,6 +50,14 @@ public class AccessTokenCallCredentials extends CallCredentials {
 
 	public AccessTokenProvider getAccessTokenProvider() {
 		return accessTokenProvider;
+	}
+
+	/**
+	 * @return the access-token most recently applied to a request, or null if none yet.
+	 */
+
+	public AccessToken getLastAccessToken() {
+		return lastAccessToken;
 	}
 
 	public static String extractJwt(String header) {

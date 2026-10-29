@@ -27,8 +27,8 @@ public class JwtMappedDiagnosticContextFilter extends OncePerRequestFilter {
     	Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     	if(authentication instanceof JwtAuthenticationToken jwtAuthenticationToken) {
     		Jwt token = jwtAuthenticationToken.getToken();
-            mdcMapper.addContext(token);
             try {
+                mdcMapper.addContext(token);
                 chain.doFilter(request, response);
             } finally {
                 mdcMapper.removeContext(token);

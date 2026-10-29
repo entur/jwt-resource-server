@@ -4,8 +4,8 @@ package org.entur.jwt.spring.properties.jwk;
  * Configuration of (remote) Json Web Keys client. <br>
  * <br>
  * 
- * note: properties should be using dashes, not camelCase. So healthIndicator
- * field is property 'health-indicator'
+ * note: properties should be using dashes, not camelCase. So outageCache
+ * field is property 'outage-cache'
  */
 
 public class JwkProperties {

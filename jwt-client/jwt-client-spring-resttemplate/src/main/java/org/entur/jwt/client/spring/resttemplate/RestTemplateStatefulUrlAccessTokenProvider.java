@@ -14,6 +14,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -122,6 +123,14 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
             return clientCredentialsResponse;
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException(e);
+        } catch (HttpStatusCodeException e) {
+            int responseCode = e.getStatusCode().value();
+            if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to refresh token at {}", responseCode, refreshUrl);
+            if (responseCode == 503 || responseCode == 429) { // service unavailable or too many calls
+                throw new AccessTokenUnavailableException("Authorization server responded with HTTP code " + responseCode + " when refreshing token", e);
+            }
+            // assume current session has been revoked or expired
+            throw new RefreshTokenException("Authorization server responded with HTTP unexpected response code " + responseCode + " when refreshing token", e);
         } catch (RestClientException e) {
             throw new AccessTokenUnavailableException(e);
         }
@@ -148,6 +157,8 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
             return clientCredentialsResponse;
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException(e);
+        } catch (RestClientException e) {
+            throw new AccessTokenUnavailableException(e);
         }
     }
 

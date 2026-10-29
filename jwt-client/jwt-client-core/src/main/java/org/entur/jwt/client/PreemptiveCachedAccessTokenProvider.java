@@ -208,7 +208,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
                      try {
                          PreemptiveCachedAccessTokenProvider.super.getAccessTokenBlocking(time, cache);
                          // so next time this method is invoked, it'll be with the updated cache item expiry time
-                     } catch (AccessTokenException e) {
+                     } catch (Exception e) {
                          // update failed, but another thread can retry
                          cacheExpires = -1L;
                          // ignore, unable to update

@@ -86,6 +86,9 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
     }
 
     protected void validate(ClientCredentialsResponse clientCredentialsResponse) throws AccessTokenUnavailableException {
+        if (clientCredentialsResponse == null) {
+            throw new AccessTokenUnavailableException("Response body is empty");
+        }
         if (clientCredentialsResponse.getExpiresIn() == null) {
             throw new AccessTokenUnavailableException("Expires-in is not specified");
         }

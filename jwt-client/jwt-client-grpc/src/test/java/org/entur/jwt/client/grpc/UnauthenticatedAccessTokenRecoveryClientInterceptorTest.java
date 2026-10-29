@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -43,103 +44,22 @@ public class UnauthenticatedAccessTokenRecoveryClientInterceptorTest {
 
     @SuppressWarnings("unchecked")
     @Test
-    public void testRecoveryHandlerInvokedOnUnauthenticatedCloseWithCredentials() {
+    public void testRecoveryHandlerNotInvokedWithoutAccessTokenCredentials() {
         UnauthenticatedAccessTokenRecoveryHandler handler = mock(UnauthenticatedAccessTokenRecoveryHandler.class);
         UnauthenticatedAccessTokenRecoveryClientInterceptor interceptor = new UnauthenticatedAccessTokenRecoveryClientInterceptor(handler);
 
         Channel channel = mock(Channel.class);
         ClientCall<Object, Object> delegateCall = newMockCall();
         MethodDescriptor<Object, Object> method = mock(MethodDescriptor.class);
+        when(channel.newCall(method, CallOptions.DEFAULT)).thenReturn(delegateCall);
 
-        org.entur.jwt.client.AccessTokenProvider accessTokenProvider = mock(org.entur.jwt.client.AccessTokenProvider.class);
-        AccessTokenCallCredentials credentials = new AccessTokenCallCredentials(accessTokenProvider);
-        CallOptions callOptions = CallOptions.DEFAULT.withCallCredentials(credentials);
-
-        when(channel.newCall(method, callOptions)).thenReturn(delegateCall);
-
-        ClientCall<Object, Object> wrappedCall = interceptor.interceptCall(method, callOptions, channel);
-
-        ClientCall.Listener<Object> outerListener = mock(ClientCall.Listener.class);
-        Metadata startHeaders = new Metadata();
-        wrappedCall.start(outerListener, startHeaders);
-
-        var listenerCaptor = forClass(ClientCall.Listener.class);
-        verify(delegateCall).start(listenerCaptor.capture(), org.mockito.ArgumentMatchers.eq(startHeaders));
-        ClientCall.Listener<Object> innerListener = listenerCaptor.getValue();
-
-        Metadata responseHeaders = new Metadata();
-        responseHeaders.put(AccessTokenCallCredentials.KEY_AUTHORIZATION, "Bearer a.b.c");
-        innerListener.onHeaders(responseHeaders);
-
-        Metadata trailers = new Metadata();
-        innerListener.onClose(Status.UNAUTHENTICATED, trailers);
-
-        verify(handler).handle(org.mockito.ArgumentMatchers.eq(accessTokenProvider), org.mockito.ArgumentMatchers.eq("Bearer a.b.c"), org.mockito.ArgumentMatchers.anyLong());
-        verify(outerListener).onClose(Status.UNAUTHENTICATED, trailers);
-    }
-
-    @SuppressWarnings("unchecked")
-    @Test
-    public void testRecoveryHandlerNotInvokedWhenStatusOk() {
-        UnauthenticatedAccessTokenRecoveryHandler handler = mock(UnauthenticatedAccessTokenRecoveryHandler.class);
-        UnauthenticatedAccessTokenRecoveryClientInterceptor interceptor = new UnauthenticatedAccessTokenRecoveryClientInterceptor(handler);
-
-        Channel channel = mock(Channel.class);
-        ClientCall<Object, Object> delegateCall = newMockCall();
-        MethodDescriptor<Object, Object> method = mock(MethodDescriptor.class);
-
-        org.entur.jwt.client.AccessTokenProvider accessTokenProvider = mock(org.entur.jwt.client.AccessTokenProvider.class);
-        AccessTokenCallCredentials credentials = new AccessTokenCallCredentials(accessTokenProvider);
-        CallOptions callOptions = CallOptions.DEFAULT.withCallCredentials(credentials);
-
-        when(channel.newCall(method, callOptions)).thenReturn(delegateCall);
-
-        ClientCall<Object, Object> wrappedCall = interceptor.interceptCall(method, callOptions, channel);
-
-        ClientCall.Listener<Object> outerListener = mock(ClientCall.Listener.class);
-        wrappedCall.start(outerListener, new Metadata());
+        ClientCall<Object, Object> wrappedCall = interceptor.interceptCall(method, CallOptions.DEFAULT, channel);
+        wrappedCall.start(mock(ClientCall.Listener.class), new Metadata());
 
         var listenerCaptor = forClass(ClientCall.Listener.class);
         verify(delegateCall).start(listenerCaptor.capture(), any());
-        ClientCall.Listener<Object> innerListener = listenerCaptor.getValue();
+        listenerCaptor.getValue().onClose(Status.UNAUTHENTICATED, new Metadata());
 
-        Metadata responseHeaders = new Metadata();
-        responseHeaders.put(AccessTokenCallCredentials.KEY_AUTHORIZATION, "Bearer a.b.c");
-        innerListener.onHeaders(responseHeaders);
-
-        innerListener.onClose(Status.OK, new Metadata());
-
-        verify(handler, never()).handle(any(), any(), org.mockito.ArgumentMatchers.anyLong());
-    }
-
-    @SuppressWarnings("unchecked")
-    @Test
-    public void testRecoveryHandlerNotInvokedWithoutCapturedAuthorizationHeader() {
-        UnauthenticatedAccessTokenRecoveryHandler handler = mock(UnauthenticatedAccessTokenRecoveryHandler.class);
-        UnauthenticatedAccessTokenRecoveryClientInterceptor interceptor = new UnauthenticatedAccessTokenRecoveryClientInterceptor(handler);
-
-        Channel channel = mock(Channel.class);
-        ClientCall<Object, Object> delegateCall = newMockCall();
-        MethodDescriptor<Object, Object> method = mock(MethodDescriptor.class);
-
-        org.entur.jwt.client.AccessTokenProvider accessTokenProvider = mock(org.entur.jwt.client.AccessTokenProvider.class);
-        AccessTokenCallCredentials credentials = new AccessTokenCallCredentials(accessTokenProvider);
-        CallOptions callOptions = CallOptions.DEFAULT.withCallCredentials(credentials);
-
-        when(channel.newCall(method, callOptions)).thenReturn(delegateCall);
-
-        ClientCall<Object, Object> wrappedCall = interceptor.interceptCall(method, callOptions, channel);
-
-        ClientCall.Listener<Object> outerListener = mock(ClientCall.Listener.class);
-        wrappedCall.start(outerListener, new Metadata());
-
-        var listenerCaptor = forClass(ClientCall.Listener.class);
-        verify(delegateCall).start(listenerCaptor.capture(), any());
-        ClientCall.Listener<Object> innerListener = listenerCaptor.getValue();
-
-        // no onHeaders call, so no authorization header was ever captured
-        innerListener.onClose(Status.UNAUTHENTICATED, new Metadata());
-
-        verify(handler, never()).handle(any(), any(), org.mockito.ArgumentMatchers.anyLong());
+        verify(handler, never()).handle(any(), any(), anyLong());
     }
 }

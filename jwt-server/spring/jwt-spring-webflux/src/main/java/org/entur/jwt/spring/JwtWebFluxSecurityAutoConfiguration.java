@@ -2,6 +2,7 @@ package org.entur.jwt.spring;
 
 import org.entur.jwt.spring.config.ReactiveEnturAuthorizeHttpRequestsCustomizer;
 import org.entur.jwt.spring.config.ReactiveEnturOauth2ResourceServerCustomizer;
+import org.entur.jwt.spring.decode.JwtDecoderValidators;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.cache.DecodedJwtCacheConfigurationReader;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
@@ -14,6 +15,7 @@ import org.entur.jwt.spring.properties.MdcProperties;
 import org.entur.jwt.spring.properties.SecurityProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -120,7 +122,8 @@ public class JwtWebFluxSecurityAutoConfiguration {
                 ServerHttpSecurity http,
                 JwkSourceMap jwkSourceMap,
                 List<JwtAuthorityEnricher> jwtAuthorityEnrichers,
-                List<OAuth2TokenValidator<Jwt>> jwtValidators
+                EnturJwtValidators enturJwtValidators,
+                ObjectProvider<OAuth2TokenValidator<Jwt>> jwtValidators
         ) throws Exception {
 
             log.info("Configure with JWT");
@@ -155,7 +158,10 @@ public class JwtWebFluxSecurityAutoConfiguration {
                     log.warn("Tenant '{}' has decoder-cache.enabled=true, but the decoded JWT cache is not supported for webflux; the setting is ignored", tenant);
                 }
 
-                http.oauth2ResourceServer(new ReactiveEnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers, jwtValidators, securityProperties.getJwt().getDecode(), jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider));
+                // validator beans are used in addition to (not instead of) the library validators
+                List<OAuth2TokenValidator<Jwt>> validators = JwtDecoderValidators.combine(enturJwtValidators, jwtValidators.orderedStream(), jwt.getClaims());
+
+                http.oauth2ResourceServer(new ReactiveEnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers, validators, securityProperties.getJwt().getDecode(), jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider));
             }
 
             MdcProperties mdc = jwt.getMdc();

@@ -28,7 +28,12 @@ public class SpringTestResourceServerConfigurationResolver implements ResourceSe
 
     @Override
     public ResourceServerConfiguration resolve(ExtensionContext context) throws Exception {
-        ApplicationContext applicationContext = getApplicationContext(context);
+        TestContextManager testContextManager = getTestContextManager(context);
+        if (testContextManager == null) {
+            // not a Spring test
+            return null;
+        }
+        ApplicationContext applicationContext = testContextManager.getTestContext().getApplicationContext();
 
         Environment environment = applicationContext.getEnvironment();
 

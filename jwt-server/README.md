@@ -38,7 +38,7 @@ For YAML, this amounts to something like
 ```yaml
 entur:
   jwt:
-    enabled: true # note: false is the default value
+    enabled: true # note: this is the default value
     tenants:
       myKeycloak: # i.e. tenant id
         issuer: https://myRealm.keycloak.com
@@ -50,6 +50,27 @@ entur:
       audiences: # at least one
         - https://my.audience
 ```
+
+### Custom claim validation
+To validate additional claims, add one or more `OAuth2TokenValidator<Jwt>` beans. These are used in addition to the validators configured above:
+
+```java
+@Bean
+public OAuth2TokenValidator<Jwt> myClaimValidator() {
+    return new JwtClaimValidator<String>("my-claim", "my-value"::equals);
+}
+```
+
+To replace the configured validators, provide an `EnturJwtValidators` bean:
+
+```java
+@Bean
+public EnturJwtValidators enturJwtValidators() {
+    return new EnturJwtValidators(List.of(new MyValidator()));
+}
+```
+
+The expiry (`exp`) and not-before (`nbf`) claims are always validated: if the replacement does not validate them, validators with the configured `expires-at-leeway` and `issued-at-leeway` are added.
 
 ## Authorization configuration
 
@@ -241,6 +262,8 @@ entur:
 
 Note that eager cache refresh (if enabled) does not kick off until first time the cache is populated, which would normally be through health checks or first time a token is to be validated.
 
+Rate limiting requires caching, so disabling the cache also disables rate limiting (with a warning). With both enabled, the cache `time-to-live` must be greater than the rate limit interval (1 / `refill-rate` seconds), otherwise startup fails.
+
 #### Key rotation
 The authorization server might choose to rotate its keys. When that happens, the key id used to sign the access-tokens changes, and a new key id will be noted in the JWT header. This implementation will promptly refresh the keys and normally be able to instantly verify new tokens. Previously issued tokens will be able to verify if the key list still contains the old key.
 
@@ -251,6 +274,17 @@ The library supports a Spring [HealthIndicator](https://docs.spring.io/spring-bo
  * last attempt was unsuccessful
 
 In other words, the health check will not refresh expired keys, but repeated calls to the health-check __will result in a positive result once downstream services are back up__. As a positive side-effect, on startup, calling the health-check before opening for traffic will result in the cache being populated (read: warmed up).
+
+The health indicator is enabled by default. Disable it using the standard Spring Boot property:
+
+```yaml
+management:
+  health:
+    jwks:
+      enabled: false
+```
+
+Note that the former `entur.jwt.jwk.health-indicator.enabled` property has no effect.
 
 ### Context logging
 For copying interesting JWT fields through to the MDC logging context, configure mappings:
@@ -280,16 +314,33 @@ entur:
     origins:
       - https://myapp.entur.org
       - https://myotherpetstore.swagger.io
+      - https://*.mydomain.org
+    # allow-credentials: false # default automatic, see below
 ```
 
 where `xyz` is from the following list
 
-* `api` - CORS requests from selected sites. Recommended exceptions:
+* `api` (default) - CORS requests from selected sites. Recommended exceptions:
    * Your API development portal 
    * Petstore
 * `webapp` - no CORS requests are accepted 
 
-If no mode is set, no configuration is added by this starter. This allows for adding your own custom implementation.
+Each origin is either
+
+* an exact origin, like `https://myapp.entur.org`,
+* an origin pattern containing `*`, like `https://*.mydomain.org` (see Spring's `CorsConfiguration.setAllowedOriginPatterns(..)`), or
+* `*` for any origin.
+
+The `allow-credentials` property sets the `Access-Control-Allow-Credentials` response header, which browsers require for requests with cookies, HTTP authentication or TLS client certificates. Access-tokens sent as bearer tokens in the `Authorization` header do not need it, so origin `*` without credentials lets scripts on any website call your API with an access-token.
+
+* not set (default) - `true`, unless the origins contain `*`, then `false`
+* `true` - not allowed together with origin `*`, as browsers reject that combination; startup fails
+* `false`
+
+#### Custom CORS configuration
+To use your own CORS configuration, disable the CORS support of this starter with `entur.cors.enabled=false`; otherwise its bean named `corsConfigurationSource` clashes with yours. Then
+
+* for [jwt-spring-web], add a `CorsConfigurationSource` bean. The bean name must be `corsConfigurationSource` in order for Spring Security to pick up the bean.
 
 ```java
 @Bean("corsConfigurationSource")
@@ -298,7 +349,15 @@ public CorsConfigurationSource myCorsConfigurationSource() {
 } 
 ```
 
-Note that the bean name must be as above in order for Spring to pick up the bean.
+* for [jwt-spring-webflux], add a `CorsWebFilter` bean which runs before the Spring Security filter chain (order `-100`), so that preflight requests, which carry no access-token, are not rejected. This starter's own bean named `corsConfigurationSource` is such a `CorsWebFilter` (order `-101`), so the `CorsConfigurationSource` approach above does not apply.
+
+```java
+@Bean
+@Order(-101)
+public CorsWebFilter myCorsWebFilter() {
+    // ...
+} 
+```
 
 #### CORS and API gateway
 
@@ -308,7 +367,7 @@ OPTIONS calls, can be sent backwards to the Spring application.
 See [jwt-spring-web] for a concrete implementation example.
 
 ## Custom JWT decoders
-JWTs are decoded by per-issuer decoders built from the `entur.jwt.tenants` configuration. A `JwtDecoder` or `ReactiveJwtDecoder` bean in the application context is ignored, including one created by Spring Boot from `spring.security.oauth2.resourceserver.jwt.*` properties. To customize JWT decoding for the web and gRPC modules, provide a `ClosableJwtDecoders` bean (a map of issuer to `JwtDecoder`) instead.
+JWTs are decoded by per-issuer decoders built from the `entur.jwt.tenants` configuration. A `JwtDecoder` or `ReactiveJwtDecoder` bean in the application context is ignored, including one created by Spring Boot from `spring.security.oauth2.resourceserver.jwt.*` properties. To customize JWT decoding for the web and gRPC modules, provide a `ClosableJwtDecoders` bean (a map of issuer to `JwtDecoder`) instead. To keep the [claim validation](#custom-claim-validation), build it using `ClosableJwtDecodersBuilder` with the validators from `JwtDecoderValidators.combine(..)`.
 
 To fail startup if there is such a bean (recommended; the default in the next major version), enable the check:
 
@@ -389,6 +448,7 @@ For `lru` and `fifo`, eviction runs on a background thread: once the cache is fu
 During a JWK set refresh outage, the decoded JWT cache follows the JWK set's own outage cache (see above): cached JWTs are trusted for as long as the JWK set served from the outage cache is, i.e. until `entur.jwt.jwk.outage-cache.time-to-live` has passed since the JWK set was last refreshed. Then the cache is cleared and not used, i.e. JWTs are decoded as if no JWT was cached, until the JWK set is successfully refreshed again. If the JWK outage cache is disabled (or has expired), this happens as soon as a refresh fails. Independently of refresh events, cached JWTs are never trusted for longer than the JWK set itself, i.e. `entur.jwt.jwk.cache.time-to-live` since the last successful refresh (each successful preemptive refresh extends this). This is checked when decoding JWTs, so no background thread is needed.
 
 [jwt-spring-web]: spring/jwt-spring-web
+[jwt-spring-webflux]: spring/jwt-spring-webflux
 [jwt-test]: ../jwt-test
 [jwt-junit5-spring]: ../jwt-test/jwt-junit5-spring
 [method access-control expressions]: [https://www.baeldung.com/spring-security-method-security](https://www.baeldung.com/spring-security-method-security)

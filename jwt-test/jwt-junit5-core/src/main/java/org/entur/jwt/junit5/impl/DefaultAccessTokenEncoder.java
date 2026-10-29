@@ -30,10 +30,11 @@ import org.entur.jwt.junit5.headers.TypeHeader;
 import org.entur.jwt.junit5.sabotage.Signature;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
-import tools.jackson.databind.util.RawValue;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,8 +56,14 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
     protected static final String AZP = "azp";
     protected static final String SCOPE = "scope";
 
+    // note: the JWT library serializes using its own JSON library, so parse JSON claims to plain maps and lists
+    private static final JsonMapper JSON_MAPPER = JsonMapper.builder().build();
+
     @SuppressWarnings("unchecked")
-    private static final Class<? extends Annotation>[] fixedClaims = new Class[] { Audience.class, AuthorizedParty.class, ExpiresAt.class, IssuedAt.class, Issuer.class, Scope.class, Subject.class };
+    private static final Class<? extends Annotation>[] fixedClaims = new Class[] { AuthorizedParty.class, ExpiresAt.class, IssuedAt.class, Issuer.class, Subject.class };
+
+    @SuppressWarnings("unchecked")
+    private static final Class<? extends Annotation>[] fixedRepeatableClaims = new Class[] { Audience.class, Scope.class };
 
     @SuppressWarnings("unchecked")
     private static final Class<? extends Annotation>[] customClaims = new Class[] { MapClaim.class, BooleanClaim.class, IntegerClaim.class, StringClaim.class, DoubleClaim.class, BooleanArrayClaim.class, IntegerArrayClaim.class,
@@ -145,20 +152,31 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
     }
 
     protected void transformParameters(Map<String, Object> result) {
-        Long issuedAt = (Long) result.get(IAT);
-        result.put(IAT, System.currentTimeMillis() / 1000 + issuedAt);
+        // relative times (in seconds) to absolute times (in seconds); the claims might have been removed
+        long now = System.currentTimeMillis() / 1000;
 
-        Long expiresAt = (Long) result.get(EXP);
-        result.put(EXP, System.currentTimeMillis() / 1000 + expiresAt);
+        if (result.get(IAT) instanceof Long issuedAt) {
+            result.put(IAT, now + issuedAt);
+        }
+
+        if (result.get(EXP) instanceof Long expiresAt) {
+            result.put(EXP, now + expiresAt);
+        }
     }
 
     protected void encodeKnownAnnotationClaims(ParameterContext parameterContext, Map<String, Object> result, ResourceServerConfiguration resolver) {
         List<Object> parameters = extractKnownClaims(parameterContext);
         if (!parameters.isEmpty()) {
+            // audience and scope are repeatable
+            List<String> audience = null;
+            List<String> scope = null;
             for (Object c : parameters) {
                 if (c instanceof Audience) {
                     Audience b = (Audience) c;
-                    result.put(AUD, b.value());
+                    if (audience == null) {
+                        audience = new ArrayList<>();
+                    }
+                    audience.addAll(Arrays.asList(b.value()));
                 } else if (c instanceof AuthorizedParty) {
                     AuthorizedParty b = (AuthorizedParty) c;
                     result.put(AZP, b.value());
@@ -173,13 +191,22 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
                     result.put(ISS, b.value());
                 } else if (c instanceof Scope) {
                     Scope b = (Scope) c;
-                    result.put(SCOPE, String.join(" ", b.value()));
+                    if (scope == null) {
+                        scope = new ArrayList<>();
+                    }
+                    scope.addAll(Arrays.asList(b.value()));
                 } else if (c instanceof Subject) {
                     Subject b = (Subject) c;
                     result.put(SUB, b.value());
                 } else {
                     throw new IllegalArgumentException("Unsupported claim type " + c);
                 }
+            }
+            if (audience != null) {
+                result.put(AUD, audience.toArray(new String[audience.size()]));
+            }
+            if (scope != null) {
+                result.put(SCOPE, String.join(" ", scope));
             }
         }
     }
@@ -218,18 +245,16 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
 
                     String[] paths = mapClaim.path();
 
+                    // an empty path adds the entries to the root
                     Map<String, Object> mapForPath = result;
-                    int i = 0;
-                    do {
-                        Map<String, Object> nextMapForPath = (Map<String, Object>) mapForPath.get(paths[i]);
+                    for (String path : paths) {
+                        Map<String, Object> nextMapForPath = (Map<String, Object>) mapForPath.get(path);
                         if (nextMapForPath == null) {
                             nextMapForPath = new HashMap<>();
-                            mapForPath.put(paths[i], nextMapForPath);
+                            mapForPath.put(path, nextMapForPath);
                         }
                         mapForPath = nextMapForPath;
-
-                        i++;
-                    } while (i < paths.length);
+                    }
 
                     // start adding entries
                     for (Entry entry : mapClaim.entries()) {
@@ -251,7 +276,7 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
                 } else if (c instanceof JsonClaim) {
                     JsonClaim jsonClaim = (JsonClaim) c;
 
-                    result.put(jsonClaim.name(), new RawValue(jsonClaim.value()));
+                    result.put(jsonClaim.name(), JSON_MAPPER.readValue(jsonClaim.value(), Object.class));
                 } else if (c instanceof NullClaim) {
                     NullClaim b = (NullClaim) c;
                     result.put(b.value(), null);
@@ -305,7 +330,11 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
     }
 
     protected List<Object> extractKnownClaims(ParameterContext parameterContext) {
-        return extractAnnotations(parameterContext, fixedClaims);
+        List<Object> parameters = extractAnnotations(parameterContext, fixedClaims);
+        for (Class<? extends Annotation> c : fixedRepeatableClaims) {
+            parameters.addAll(parameterContext.findRepeatableAnnotations(c));
+        }
+        return parameters;
     }
 
     protected List<Object> extractKnownHeaders(ParameterContext parameterContext) {
@@ -333,16 +362,18 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
             }
         }
 
+        // relative time in seconds
         if (!result.containsKey(IAT)) {
-            result.put(IAT, token.issuedAt() * 1000);
+            result.put(IAT, token.issuedAt());
         }
         if (!result.containsKey(EXP)) {
-            result.put(EXP, token.expiresAt() * 1000);
+            result.put(EXP, token.expiresAt());
         }
 
         if (!result.containsKey(SCOPE)) {
             if (!isBlank(token.scope())) {
-                result.put(SCOPE, token.scope());
+                // space-delimited, like the scope annotation
+                result.put(SCOPE, String.join(" ", token.scope()));
             }
         }
 

@@ -2,6 +2,7 @@ package org.entur.jwt.spring.decode;
 
 import com.nimbusds.jose.util.JSONObjectUtils;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
@@ -59,6 +60,33 @@ public class IssuerJwtDecoderTest {
         assertThatThrownBy(() -> decoder.decode(invalidToken)).isInstanceOf(InvalidBearerTokenException.class);
         assertThat(mapper.getHeaderToIssuer()).isEmpty();
         assertThat(decoded).isEmpty();
+    }
+
+    @Test
+    public void testDecoderRejectsEncryptedToken() {
+        // i.e. a JWE, whose claims are not readable without decryption
+        String encryptedToken = base64Json(Map.of("alg", "RSA-OAEP-256", "enc", "A128GCM")) + ".AAAA.AAAA.AAAA.AAAA";
+
+        JwtDecoder issuerDecoder = token -> {
+            throw new IllegalStateException("Not expected");
+        };
+        IssuerJwtDecoder decoder = new IssuerJwtDecoder(Map.of("https://issuer-a", issuerDecoder));
+
+        assertThatThrownBy(() -> decoder.decode(encryptedToken)).isInstanceOf(BadJwtException.class);
+    }
+
+    @Test
+    public void testFastDecoderRejectsEncryptedToken() {
+        String encryptedToken = base64Json(Map.of("alg", "RSA-OAEP-256", "enc", "A128GCM")) + ".AAAA.AAAA.AAAA.AAAA";
+
+        JwtDecoder issuerDecoder = token -> {
+            throw new IllegalStateException("Not expected");
+        };
+        JwtHeaderToIssuerMapper mapper = new JwtHeaderToIssuerMapper();
+        FastIssuerJwtDecoder decoder = new FastIssuerJwtDecoder(Map.of("https://issuer-a", issuerDecoder), mapper, new DefaultJwtHeaderToIssuerMapperDecider());
+
+        assertThatThrownBy(() -> decoder.decode(encryptedToken)).isInstanceOf(BadJwtException.class);
+        assertThat(mapper.getHeaderToIssuer()).isEmpty();
     }
 
     private static Jwt jwt(String token, String issuer, String kid) {
