@@ -1,0 +1,14 @@
+{
+  "properties": [
+    {
+      "name": "entur.jwt.clients.health-indicator.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable the access-token health indicator.",
+      "deprecation": {
+        "level": "error",
+        "reason": "The access-token health indicator is a standard Spring Boot health indicator.",
+        "replacement": "management.health.jwts.enabled"
+      }
+    }
+  ]
+}

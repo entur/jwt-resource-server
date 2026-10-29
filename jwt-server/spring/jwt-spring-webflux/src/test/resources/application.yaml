@@ -6,8 +6,6 @@ entur:
       issued-at-leeway: 5
 
     jwk:
-      health-indicator:
-        enabled: true
       cache:
         preemptive:
           eager:

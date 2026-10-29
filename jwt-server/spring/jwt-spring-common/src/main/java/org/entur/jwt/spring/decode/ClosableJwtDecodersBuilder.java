@@ -5,18 +5,11 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
-import org.entur.jwt.spring.JwtExpiresAtValidator;
-import org.entur.jwt.spring.JwtNotBeforeValidator;
-import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
-import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
-import java.time.Duration;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,9 +22,6 @@ import java.util.Map;
  */
 
 public class ClosableJwtDecodersBuilder {
-
-    // same as the default clock skew of Spring Security (and Nimbus)
-    private static final Duration DEFAULT_LEEWAY = Duration.ofSeconds(60);
 
     private List<OAuth2TokenValidator<Jwt>> jwtValidators;
     private Map<String, JWKSource> jwkSources;
@@ -65,26 +55,11 @@ public class ClosableJwtDecodersBuilder {
             });
 
             NimbusJwtDecoder nimbusJwtDecoder = new NimbusJwtDecoder(jwtProcessor);
-            nimbusJwtDecoder.setJwtValidator(getJwtValidators(entry.getKey()));
+            nimbusJwtDecoder.setJwtValidator(JwtDecoderValidators.create(entry.getKey(), jwtValidators));
 
             map.put(entry.getKey(), nimbusJwtDecoder);
         }
 
         return new ClosableJwtDecoders(map);
-    }
-
-    private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(String issuer) {
-        List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();
-        validators.add(new JwtIssuerValidator(issuer));
-        validators.addAll(jwtValidators);
-        // the JWT processor does not check the expiry and not-before claims, so make sure they are always validated
-        // (for example if a custom validator bean replaced the default validators)
-        if (validators.stream().noneMatch(v -> v instanceof JwtExpiresAtValidator || v instanceof JwtTimestampValidator)) {
-            validators.add(new JwtExpiresAtValidator(DEFAULT_LEEWAY));
-        }
-        if (validators.stream().noneMatch(v -> v instanceof JwtNotBeforeValidator || v instanceof JwtTimestampValidator)) {
-            validators.add(new JwtNotBeforeValidator(DEFAULT_LEEWAY));
-        }
-        return new DelegatingOAuth2TokenValidator<>(validators);
     }
 }
