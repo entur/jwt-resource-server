@@ -9,6 +9,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * 
+ * Set authorization server properties as system properties before all tests, and clear them after all tests.
+ * <br>
+ * System properties are global, so this enricher is not safe with concurrently running test classes.
+ *
+ */
+
 public class SystemPropertiesResourceServerConfigurationEnricher extends AbstractPropertiesResourceServerConfigurationEnricher {
 
     private Set<String> propertyNames;

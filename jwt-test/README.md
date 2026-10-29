@@ -119,6 +119,14 @@ Implementations included in this library:
 
  * [jwt-junit5-spring]
 
+### Parallel test execution
+Test classes with the same `@AuthorizationServer` configuration share keys. The JSON Web Keys of each authorization server are written once (atomically) to a file in the temp directory, which concurrently running test classes can read safely.
+
+[jwt-junit5-spring] adds the configuration to the environment of each Spring application context. The other included enrichers use global state:
+
+ * `PropertiesFileResourceServerConfigurationEnricher` writes a single properties file, shared by all test classes. The file is replaced atomically, but test classes with different authorization servers must not run concurrently.
+ * `SystemPropertiesResourceServerConfigurationEnricher` sets and clears system properties, so it is not safe with concurrently running test classes.
+
 [jwt-junit5-spring]: ../jwt-junit5-spring
 [jwt-junit5-entur]: ../jwt-junit5-entur
 [JUnit 5]: https://junit.org/junit5/

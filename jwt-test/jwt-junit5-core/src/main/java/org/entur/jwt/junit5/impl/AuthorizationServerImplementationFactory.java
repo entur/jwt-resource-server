@@ -2,12 +2,8 @@ package org.entur.jwt.junit5.impl;
 
 import org.entur.jwt.junit5.AuthorizationServer;
 
-import java.io.BufferedWriter;
-import java.io.File;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -100,24 +96,11 @@ public class AuthorizationServerImplementationFactory {
 
             AuthorizationServer authorizationServer = implementation.getAuthorizationServer();
 
-            // write certificates to temp file; get as an URI.
+            // write certificates to temp file (once); get as an URI.
             // TODO do this right before the test method is called, so that
             // additional configuration parameters can be included
+            Path path = implementation.getJsonWebKeysPath();
 
-            // also, delete on exit, do not delete after use.
-            // for certain frameworks (i.e. spring), context is reused and this
-            // file might come in handy later
-
-            String tempDir = System.getProperty("java.io.tmpdir");
-
-            String jsonWebKeys = implementation.getJsonWebKeys();
-
-            File tempFile = new File(tempDir, jsonWebKeys.hashCode() + ".jwk.json");
-            tempFile.deleteOnExit(); // https://stackoverflow.com/questions/28752006/alternative-to-file-deleteonexit-in-java-nio
-            Path path = tempFile.toPath();
-            try (BufferedWriter writer = Files.newBufferedWriter(tempFile.toPath(), StandardCharsets.UTF_8)) {
-                writer.write(implementation.getJsonWebKeys());
-            }
             String key = authorizationServer.value();
             if (key.isEmpty()) {
                 if (implementations.size() > 1) {
