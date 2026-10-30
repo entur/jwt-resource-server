@@ -14,9 +14,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public class AuthorizationServerImplementationFactory {
 
@@ -29,25 +31,55 @@ public class AuthorizationServerImplementationFactory {
 
     public List<AuthorizationServerImplementation> create(Class<?> testClass) {
         List<AuthorizationServerImplementation> results = new ArrayList<>();
-        Annotation[] annotations = testClass.getAnnotations();
 
-        for (Annotation annotation : annotations) {
-            createFromAnnotation(annotation, results);
-        }
+        createFromClass(testClass, results);
 
         // check for @Nested unit tests
         // note: like for JUnit and Spring, static nested classes do not inherit the configuration of the enclosing class
         Class<?> nestedClass = testClass;
         while(isNested(nestedClass)) {
             Class<?> enclosingClass = nestedClass.getEnclosingClass();
-            Annotation[] enclosingClassAnnotations = enclosingClass.getAnnotations();
-            for (Annotation annotation : enclosingClassAnnotations) {
-                createFromAnnotation(annotation, results);
-            }
+            createFromClass(enclosingClass, results);
             nestedClass = enclosingClass;
         }
 
         return results;
+    }
+
+    private void createFromClass(Class<?> testClass, List<AuthorizationServerImplementation> results) {
+        List<AuthorizationServerImplementation> implementations = new ArrayList<>();
+        for (Annotation annotation : testClass.getAnnotations()) {
+            createFromAnnotation(annotation, implementations);
+        }
+
+        // an authorization server of an inner (@Nested) class overrides the one of an enclosing class with the same id,
+        // so that tokens are signed by the same authorization server which publishes its keys
+        Set<String> overridden = new HashSet<>();
+        for (AuthorizationServerImplementation result : results) {
+            overridden.add(result.getId());
+        }
+
+        for (AuthorizationServerImplementation implementation : implementations) {
+            String id = implementation.getId();
+            if (overridden.contains(id)) {
+                continue;
+            }
+            AuthorizationServerImplementation existing = getById(results, id);
+            if (existing == null) {
+                results.add(implementation);
+            } else if (existing != implementation) {
+                throw new IllegalArgumentException("Multiple authorization servers with id '" + id + "' on " + testClass.getName() + ", please specify a unique id for each authorization server");
+            }
+        }
+    }
+
+    private static AuthorizationServerImplementation getById(List<AuthorizationServerImplementation> implementations, String id) {
+        for (AuthorizationServerImplementation implementation : implementations) {
+            if (implementation.getId().equals(id)) {
+                return implementation;
+            }
+        }
+        return null;
     }
 
     private static boolean isNested(Class<?> testClass) {
