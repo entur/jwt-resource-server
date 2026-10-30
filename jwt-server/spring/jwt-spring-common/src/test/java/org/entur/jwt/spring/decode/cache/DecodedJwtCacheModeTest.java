@@ -1,0 +1,362 @@
+package org.entur.jwt.spring.decode.cache;
+
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import com.nimbusds.jose.jwk.Curve;
+import com.nimbusds.jose.jwk.ECKey;
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jose.util.Base64URL;
+import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheMode;
+import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheProperties;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+
+import java.util.ArrayList;
+import java.time.Instant;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class DecodedJwtCacheModeTest {
+
+    private static final long CLEANUP_INTERVAL = 24L * 60L * 60L * 1000L; // does not run during the tests
+
+    // JWS header of the test tokens, so that the cache can look up their key
+    private static final String HEADER = Base64URL.encode("{\"alg\":\"ES256\",\"kid\":\"kid1\"}").toString();
+
+    private static JWKSource<SecurityContext> jwkSource;
+
+    @BeforeAll
+    static void createJwkSource() throws Exception {
+        ECKey key = new ECKeyGenerator(Curve.P_256).keyID("kid1").generate();
+        jwkSource = new ImmutableJWKSet<>(new JWKSet(key.toPublicJWK()));
+    }
+
+    // a token signed with key kid1 (the signature is not verified by the test delegate)
+    private static String token(String name) {
+        return HEADER + "." + Base64URL.encode(name) + ".signature";
+    }
+
+    private final AtomicInteger decodes = new AtomicInteger();
+
+    private final JwtDecoder delegate = token -> {
+        decodes.incrementAndGet();
+        return Jwt.withTokenValue(token)
+                .header("kid", "kid1")
+                .header("alg", "ES256")
+                .claim("sub", token)
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+    };
+
+    private DecodedJwtCacheJwtDecoder decoder;
+
+    private ListAppender<ILoggingEvent> logAppender;
+
+    @BeforeEach
+    void setUpLogCapture() {
+        logAppender = new ListAppender<>();
+        logAppender.start();
+        ((Logger) LoggerFactory.getLogger(DecodedJwtCacheJwtDecoder.class)).addAppender(logAppender);
+    }
+
+    @AfterEach
+    void tearDown() {
+        ((Logger) LoggerFactory.getLogger(DecodedJwtCacheJwtDecoder.class)).detachAppender(logAppender);
+        if (decoder != null) {
+            decoder.close();
+        }
+    }
+
+    private DecodedJwtCacheJwtDecoder decoder(int maxSize, JwtDecoderCacheMode mode) {
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, jwkSource, jwt -> OAuth2TokenValidatorResult.success(), CLEANUP_INTERVAL, maxSize, mode);
+        return decoder;
+    }
+
+    private void fill(int count) {
+        for (int i = 0; i < count; i++) {
+            decoder.decode(token("token" + i));
+        }
+    }
+
+    private void awaitSize(int size) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + 10_000;
+        while (decoder.getSize() != size) {
+            if (System.currentTimeMillis() > deadline) {
+                throw new AssertionError("Expected size " + size + ", was " + decoder.getSize());
+            }
+            Thread.sleep(1);
+        }
+    }
+
+    private boolean isCached(String name) {
+        return decoder.cache.map.containsKey(token(name));
+    }
+
+    @Test
+    void testFixedDoesNotCacheNewJwtsWhenFullAndWarnsOnce() {
+        decoder(10, JwtDecoderCacheMode.FIXED);
+        fill(10);
+
+        decoder.decode(token("new1"));
+        decoder.decode(token("new2"));
+
+        assertEquals(10, decoder.getSize());
+        assertFalse(isCached("new1"));
+        assertTrue(isCached("token0"));
+        assertEquals(1, logAppender.list.stream().filter(e -> e.getFormattedMessage().startsWith("Decoded JWT cache is full")).count());
+    }
+
+    @Test
+    void testFifoEvictsFirstCachedJwtsEvenIfRecentlyUsed() throws Exception {
+        decoder(10, JwtDecoderCacheMode.FIFO);
+        fill(10);
+
+        decoder.decode(token("token0")); // cache hit, does not affect FIFO order
+        decoder.decode(token("new"));
+
+        // max size temporarily exceeded, then evicted down to 90%
+        awaitSize(9);
+        assertTrue(isCached("new"));
+        assertFalse(isCached("token0"));
+        assertFalse(isCached("token1"));
+        assertTrue(isCached("token2"));
+    }
+
+    @Test
+    void testLruEvictsLeastRecentlyUsedJwts() throws Exception {
+        decoder(10, JwtDecoderCacheMode.LRU);
+        fill(10);
+
+        // deterministic access times, one second apart; token0 is the least recently used
+        long now = DecodedJwtCacheJwtDecoder.currentTimeMillis();
+        for (int i = 0; i < 10; i++) {
+            decoder.cache.map.get(token("token" + i)).accessed = now - (10 - i) * 1000L;
+        }
+        decoder.decode(token("token0")); // cache hit, now the most recently used
+
+        decoder.decode(token("new"));
+
+        awaitSize(9);
+        assertTrue(isCached("new"));
+        assertTrue(isCached("token0"));
+        assertFalse(isCached("token1"));
+        assertFalse(isCached("token2"));
+        assertTrue(isCached("token3"));
+    }
+
+    @Test
+    void testCacheHitDoesNotDecode() {
+        decoder(10, JwtDecoderCacheMode.LRU);
+        decoder.decode(token("token"));
+        decoder.decode(token("token"));
+        decoder.decode(token("token"));
+
+        assertEquals(1, decodes.get());
+    }
+
+    @Test
+    void testEvictsDownToNinetyPercentInBackground() throws Exception {
+        decoder(100, JwtDecoderCacheMode.FIFO);
+        fill(100);
+
+        decoder.decode(token("new"));
+
+        awaitSize(90);
+        for (int i = 0; i < 11; i++) {
+            assertFalse(isCached("token" + i));
+        }
+        assertTrue(isCached("token11"));
+        assertTrue(isCached("new"));
+    }
+
+    @Test
+    void testDoesNotCacheBeyondTwiceMaxSizeWhenEvictionDoesNotKeepUp() {
+        decoder(10, JwtDecoderCacheMode.LRU);
+        decoder.cache.evictionScheduled.set(true); // simulate eviction not running
+        fill(30);
+
+        assertEquals(20, decoder.getSize());
+        assertEquals(1, logAppender.list.stream().filter(e -> e.getFormattedMessage().startsWith("Decoded JWT cache eviction does not keep up")).count());
+    }
+
+    @Test
+    void testNothingCachedAfterClose() {
+        decoder(10, JwtDecoderCacheMode.LRU);
+        fill(10);
+        decoder.close();
+        assertEquals(0, decoder.getSize());
+
+        decoder.decode(token("new"));
+        decoder.decode(token("new"));
+
+        assertEquals(0, decoder.getSize());
+        assertEquals(12, decodes.get());
+    }
+
+    @Test
+    void testSizeOneKeepsTheNewestJwt() throws Exception {
+        decoder(1, JwtDecoderCacheMode.FIFO);
+
+        decoder.decode(token("first"));
+        decoder.decode(token("second"));
+
+        // evicted down to (at least) one entry, not emptied
+        awaitSize(1);
+        assertTrue(isCached("second"));
+
+        decoder.decode(token("second"));
+        assertEquals(2, decodes.get());
+    }
+
+    @Test
+    void testMaxSizeZeroCachesNothing() {
+        decoder(0, JwtDecoderCacheMode.LRU);
+        fill(3);
+        assertEquals(0, decoder.getSize());
+    }
+
+    @Test
+    void testConcurrentAddsStayCloseToMaxSize() throws Exception {
+        int maxSize = 50;
+        int threads = 8;
+        decoder(maxSize, JwtDecoderCacheMode.LRU);
+
+        ExecutorService executor = Executors.newFixedThreadPool(threads);
+        try {
+            List<Future<?>> futures = new ArrayList<>();
+            for (int t = 0; t < threads; t++) {
+                int thread = t;
+                futures.add(executor.submit(() -> {
+                    for (int i = 0; i < 5_000; i++) {
+                        decoder.decode(token("t" + thread + "-" + i));
+                        decoder.decode(token("t" + thread + "-" + (i / 2)));
+                        // note: the size is not checked here, as ConcurrentHashMap.size() is not a snapshot
+                        // and might over-count substantially while (batch) eviction runs concurrently with
+                        // additions. See testDoesNotCacheBeyondTwiceMaxSizeWhenEvictionDoesNotKeepUp.
+                    }
+                }));
+            }
+            for (Future<?> future : futures) {
+                future.get(60, TimeUnit.SECONDS);
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+        long deadline = System.currentTimeMillis() + 10_000;
+        while (decoder.getSize() > maxSize && System.currentTimeMillis() < deadline) {
+            Thread.sleep(1);
+        }
+        assertTrue(decoder.getSize() <= maxSize);
+    }
+
+    private static DecodedJwtCacheJwtDecoder.Cache cacheWithOrders(long... sequences) {
+        DecodedJwtCacheJwtDecoder.Cache cache = new DecodedJwtCacheJwtDecoder.Cache(1000, JwtDecoderCacheMode.FIFO, Runnable::run);
+        for (int i = 0; i < sequences.length; i++) {
+            Jwt jwt = Jwt.withTokenValue("t" + i).header("alg", "none").claim("sub", "s").build();
+            cache.map.put("t" + i, new DecodedJwtCacheJwtDecoder.Entry(jwt, null, List.of(), sequences[i], 0));
+        }
+        return cache;
+    }
+
+    @Test
+    void testEvictRemovesLowestOrdersByHistogram() {
+        java.util.Random random = new java.util.Random(1);
+        for (int run = 0; run < 200; run++) {
+            int n = 1 + random.nextInt(500);
+            long[] sequences = new long[n];
+            for (int i = 0; i < n; i++) {
+                sequences[i] = random.nextInt(1_000_000);
+            }
+            DecodedJwtCacheJwtDecoder.Cache cache = cacheWithOrders(sequences);
+            int count = random.nextInt(n + 1);
+
+            long min = java.util.Arrays.stream(sequences).min().getAsLong();
+            long max = java.util.Arrays.stream(sequences).max().getAsLong();
+            int buckets = Math.min(n, DecodedJwtCacheJwtDecoder.Cache.HISTOGRAM_BUCKETS);
+            long width = (max - min) / buckets + 1;
+
+            cache.evict(count);
+
+            assertEquals(n - count, cache.size());
+
+            // everything kept is in the same or a higher bucket than everything evicted
+            java.util.Set<String> kept = cache.map.keySet();
+            int maxEvictedBucket = -1;
+            int minKeptBucket = Integer.MAX_VALUE;
+            for (int i = 0; i < n; i++) {
+                int bucket = DecodedJwtCacheJwtDecoder.Cache.bucket(sequences[i], min, width, buckets);
+                if (kept.contains("t" + i)) {
+                    minKeptBucket = Math.min(minKeptBucket, bucket);
+                } else {
+                    maxEvictedBucket = Math.max(maxEvictedBucket, bucket);
+                }
+            }
+            assertTrue(maxEvictedBucket <= minKeptBucket);
+        }
+    }
+
+    @Test
+    void testEvictTooFullBucketTakesWhicheverFirst() {
+        // skewed: an outlier puts all other entries in the first bucket
+        DecodedJwtCacheJwtDecoder.Cache cache = cacheWithOrders(1, 2, 3, 4, 5, 6, 7, 8, 9, 1_000_000);
+
+        cache.evict(3);
+
+        assertEquals(7, cache.size());
+        assertTrue(cache.map.containsKey("t9"));
+    }
+
+    @Test
+    void testDefaultConstructorUsesLru() {
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, jwkSource, jwt -> OAuth2TokenValidatorResult.success(), CLEANUP_INTERVAL, 10);
+        assertEquals(JwtDecoderCacheMode.LRU, decoder.cache.mode);
+    }
+
+    @Test
+    void testCountsEvictions() throws Exception {
+        decoder(10, JwtDecoderCacheMode.FIFO);
+        fill(10);
+        assertEquals(0, decoder.getEvictionCount());
+
+        decoder.decode(token("new"));
+
+        // 11 entries evicted down to 90% of max size; the count is updated right after the entries are removed
+        awaitSize(9);
+        long deadline = System.currentTimeMillis() + 10_000;
+        while (decoder.getEvictionCount() != 2 && System.currentTimeMillis() < deadline) {
+            Thread.sleep(1);
+        }
+        assertEquals(2, decoder.getEvictionCount());
+    }
+
+    @Test
+    void testRejectsNullMode() {
+        assertThrows(IllegalArgumentException.class, () -> new DecodedJwtCacheJwtDecoder(delegate, jwkSource, jwt -> OAuth2TokenValidatorResult.success(), CLEANUP_INTERVAL, 10, null));
+        assertThrows(IllegalArgumentException.class, () -> new JwtDecoderCacheProperties().setMode(null));
+    }
+
+    @Test
+    void testDefaultModeIsLru() {
+        assertEquals(JwtDecoderCacheMode.LRU, new JwtDecoderCacheProperties().getMode());
+    }
+}

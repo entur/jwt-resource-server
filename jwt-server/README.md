@@ -384,7 +384,7 @@ entur:
 For WebFlux, startup fails if the application defines its own `SecurityWebFilterChain` bean, as it would shadow the chain of this starter. To use a custom chain, set `entur.jwt.enabled=false` and `entur.authorization.enabled=false`, or exclude the starter's chain using `@SpringBootApplication(exclude = {JwtWebFluxSecurityAutoConfiguration.class})`.
 
 ## Advanced features
-An optional, opt-in performance feature is available. It defaults to disabled and is safe to leave off.
+A couple of optional, opt-in performance features are available. Both default to disabled and are safe to leave off.
 
 ### Header-to-issuer mapping
 In a multi-tenant setup (more than one configured issuer), figuring out which tenant a token belongs to normally requires fully parsing the JWT (to read the `iss` claim) before the matching per-issuer `JwtDecoder` can be selected.
@@ -406,6 +406,51 @@ entur:
 To guard against unexpected entropy in JWT headers (e.g. random/dynamic values that would otherwise grow the cache unbounded), the cache is capped at `max-size` distinct headers; if the cap is exceeded, the optimization is disabled entirely (logged as a warning) rather than left partially populated. Use `max-size: -1` to disable the cap.
 
 By default, only headers with a non-empty `kid` are considered safe to cache (see `DefaultJwtHeaderToIssuerMapperDecider`); provide your own `JwtHeaderToIssuerMapperDecider` bean to customize this.
+
+### Decoded JWT cache
+Verifying a JWT's signature on every request has a real CPU cost, especially for PKI-based signatures. The decoded JWT cache avoids repeating that work for tokens that have already been seen and validated.
+
+Intended for services:
+ * with a relatively limited set of clients,
+ * with a reasonably long JWT time-to-live, and
+ * using CPU-intensive signatures / PKI.
+
+Services outside this profile (e.g. many distinct, short-lived clients/tokens, or already-cheap verification such as HMAC) are unlikely to see a meaningful benefit.
+
+Only the decoding/signature verification step is cached - claim validators (audience, expiry etc.) still run on every request, so an expired or otherwise invalid cached token is never served as valid.
+
+A cached token is only used while the JWK set still holds the key(s) it was verified with: on every cache hit, the keys matching the token's header are looked up in the (cached) JWK set, and compared with the keys from when the token was verified. This is a lookup, not a signature verification. So the cache follows the JWK set like decoding without the cache does: a rotated or revoked key is detected as soon as the JWK set is refreshed, and during a JWK set outage cached tokens are accepted for as long as the JWK set is served from the JWK outage cache.
+
+The cache is opt-in per tenant, and requires the JWK set cache (enabled by default; startup fails without it):
+
+```yaml
+entur:
+  jwt:
+    jwk:
+      cache:
+        enabled: true # default; required for the decoded JWT cache
+    tenants:
+      myKeycloak:
+        decoder-cache:
+          enabled: true # opt-in per issuer, default false
+          size: 250 # target size; default; -1 for unlimited
+          mode: lru # default; what to do when full: lru, fifo or fixed
+          cleanup-interval: 60 # seconds; how often expired JWTs are removed; default; must be positive
+```
+
+`size` is the target size, i.e. the number of JWTs the cache normally holds at most. In extreme cases (see below) the cache holds up to double the target size.
+
+When the cache holds `size` JWTs, `mode` decides what happens to new JWTs:
+
+ * `lru` (default): evict the least recently used JWTs, i.e. tokens from clients (pods) which have stopped calling.
+ * `fifo`: evict the JWTs which were cached first.
+ * `fixed`: do not cache new JWTs until cached JWTs are removed by the cleanup (i.e. expire). A warning is logged when the cache first fills up.
+
+For `lru` and `fifo`, eviction runs on a background thread: once the cache is full, new JWTs are still cached (temporarily exceeding `size`) and eviction is triggered straight away, reducing the cache to 90% of `size`. So the cost of eviction is spread over many cache misses, and neither cache hits nor misses wait for it. Should eviction not keep up, new JWTs are not cached once the cache holds double the target size. With `fixed`, the cache does not grow beyond `size` (approximately: concurrent additions might overshoot by a few JWTs). A `size` of 0 disables the cache.
+
+Eviction and the removal of expired JWTs run on a single background thread, shared by the caches of all tenants. Removing expired JWTs only checks their expiry (`exp` claim), it does not run the claim validators. JWTs without expiry are not cached.
+
+With more than one tenant, also enable [header-to-issuer mapping](#header-to-issuer-mapping), as otherwise every JWT, cached or not, is first parsed to read its issuer (`iss` claim) before the tenant's cache is consulted.
 
 [jwt-spring-web]: spring/jwt-spring-web
 [jwt-spring-webflux]: spring/jwt-spring-webflux

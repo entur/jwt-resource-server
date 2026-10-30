@@ -4,6 +4,7 @@ import org.entur.jwt.spring.actuate.ListJwksHealthIndicator;
 import org.entur.jwt.spring.decode.BoundedJwtHeaderToIssuerMapper;
 import org.entur.jwt.spring.decode.ClosableJwtDecoders;
 import org.entur.jwt.spring.decode.ClosableJwtDecodersBuilder;
+import org.entur.jwt.spring.decode.cache.DecodedJwtCacheConfigurationReader;
 import org.entur.jwt.spring.decode.DefaultJwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtDecoderValidators;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
@@ -101,7 +102,7 @@ public class JwtAutoConfiguration {
     }
 
     /**
-     * Per-issuer JWT decoders, shared by the web and gRPC modules,
+     * Per-issuer JWT decoders (including any decoded JWT caches), shared by the web and gRPC modules,
      * and closed by Spring on shutdown. Lazy, so that it is only created if used (i.e. not for webflux).
      * Tokens are validated by the {@link EnturJwtValidators} plus any {@link OAuth2TokenValidator} beans.
      * Intentionally not a {@link org.springframework.security.oauth2.jwt.JwtDecoder} bean, as that would activate
@@ -114,6 +115,7 @@ public class JwtAutoConfiguration {
         return new ClosableJwtDecodersBuilder()
                 .withJwkSources(jwkSourceMap.getJwkSources())
                 .withJwtValidators(JwtDecoderValidators.combine(enturJwtValidators, jwtValidators.orderedStream(), properties.getJwt().getClaims()))
+                .withDecodedJwtCacheIssuers(DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(properties.getJwt()))
                 .build();
     }
 

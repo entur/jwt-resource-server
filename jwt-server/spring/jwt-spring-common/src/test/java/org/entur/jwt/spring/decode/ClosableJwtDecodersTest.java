@@ -5,6 +5,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -104,5 +105,31 @@ public class ClosableJwtDecodersTest {
 
         assertThatCode(closableJwtDecoders::close).doesNotThrowAnyException();
         assertThat(closeableDecoder.closed.get()).isEqualTo(1);
+    }
+
+    @Test
+    public void testCloseClosesResourcesAfterDecoders() throws Exception {
+        List<String> closed = new java.util.concurrent.CopyOnWriteArrayList<>();
+        class RecordingJwtDecoder implements JwtDecoder, AutoCloseable {
+            @Override
+            public Jwt decode(String token) {
+                throw new IllegalStateException("Not used");
+            }
+
+            @Override
+            public void close() {
+                closed.add("decoder");
+            }
+        }
+        JwtDecoder decoder = new RecordingJwtDecoder();
+        AutoCloseable failing = () -> {
+            closed.add("failing resource");
+            throw new IllegalStateException("TEST");
+        };
+        AutoCloseable resource = () -> closed.add("resource");
+
+        new ClosableJwtDecoders(Map.of("a", decoder), List.of(failing, resource)).close();
+
+        assertThat(closed).containsExactly("decoder", "failing resource", "resource");
     }
 }

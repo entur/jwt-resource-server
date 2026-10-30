@@ -6,6 +6,8 @@ import org.entur.jwt.spring.decode.ClosableJwtDecodersBuilder;
 import org.entur.jwt.spring.decode.IssuerJwtDecoderFactory;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -19,10 +21,12 @@ import java.util.Map;
  *
  * @deprecated moved to {@link org.entur.jwt.spring.decode.IssuerJwtDecoder}. The per-issuer decoders are the
  * {@link ClosableJwtDecoders} bean (see {@link ClosableJwtDecodersBuilder} and {@link IssuerJwtDecoderFactory}),
- * which is shared with the web module; this class and its builder build their own decoders. To be removed in the next major version.
+ * which also supports the decoded JWT cache; this class and its builder do not. To be removed in the next major version.
  */
 @Deprecated
 public class IssuerJwtDecoder extends org.entur.jwt.spring.decode.IssuerJwtDecoder {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(IssuerJwtDecoder.class);
 
     public static Builder newBuilder() {
         return new Builder();
@@ -66,7 +70,8 @@ public class IssuerJwtDecoder extends org.entur.jwt.spring.decode.IssuerJwtDecod
          * @return as before: the only decoder if there is a single issuer, otherwise a (fast) issuer decoder of this package
          */
         public JwtDecoder build() {
-            // the decoders are not shared with other modules (and have nothing to close)
+            // plain per-issuer decoders, no decoded JWT cache (so nothing to close)
+            LOGGER.warn("Deprecated IssuerJwtDecoder builder: JWT decoders are built without the decoded JWT cache, any decoder-cache settings are ignored. Use the ClosableJwtDecoders bean.");
             ClosableJwtDecoders closableJwtDecoders = new ClosableJwtDecodersBuilder()
                     .withJwkSources(jwkSourceMap.getJwkSources())
                     .withJwtValidators(jwtValidators)

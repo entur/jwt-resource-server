@@ -38,7 +38,7 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
 
     /**
      * @deprecated use {@link #EnturOauth2ResourceServerCustomizer(List, boolean, JwtHeaderToIssuerMapper, JwtHeaderToIssuerMapperDecider, ClosableJwtDecoders)}
-     * with the {@code ClosableJwtDecoders} bean; this constructor builds its own per-issuer decoders, which are not shared with other modules.
+     * with the {@code ClosableJwtDecoders} bean; this constructor builds plain per-issuer decoders without the decoded JWT cache.
      */
     @Deprecated
     public EnturOauth2ResourceServerCustomizer(JwtDecodeProperties properties, Map<String, JWKSource> jwkSources, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators) {
@@ -47,7 +47,7 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
 
     /**
      * @deprecated use {@link #EnturOauth2ResourceServerCustomizer(List, boolean, JwtHeaderToIssuerMapper, JwtHeaderToIssuerMapperDecider, ClosableJwtDecoders)}
-     * with the {@code ClosableJwtDecoders} bean; this constructor builds its own per-issuer decoders, which are not shared with other modules.
+     * with the {@code ClosableJwtDecoders} bean; this constructor builds plain per-issuer decoders without the decoded JWT cache.
      */
     @Deprecated
     public EnturOauth2ResourceServerCustomizer(
@@ -62,6 +62,8 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
                 jwtHeaderToIssuerMapper,
                 jwtHeaderToIssuerMapperDecider,
                 new ClosableJwtDecodersBuilder().withJwkSources(jwkSources).withJwtValidators(jwtValidators).build());
+        // the decoded JWT cache is not supported here; do not ignore its settings silently
+        LOGGER.warn("Deprecated EnturOauth2ResourceServerCustomizer constructor: JWT decoders are built without the decoded JWT cache, any decoder-cache settings are ignored. Use the constructor taking the ClosableJwtDecoders bean.");
     }
 
     public EnturOauth2ResourceServerCustomizer(
