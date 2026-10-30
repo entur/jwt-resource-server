@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -180,9 +181,10 @@ public class PropertiesFileResourceServerConfigurationEnricherTest {
         PropertiesFileResourceServerConfigurationEnricher enricher = new PropertiesFileResourceServerConfigurationEnricher(PREFIX, output) {
             @Override
             protected Map<String, Object> getProperties(List<AuthorizationServerImplementation> implementations) throws IOException {
-                Map<String, Object> properties = super.getProperties(implementations);
+                Map<String, Object> properties = new HashMap<>(super.getProperties(implementations));
                 properties.put("my.custom.property", "value");
-                return properties;
+                // i.e. an immutable map
+                return Map.copyOf(properties);
             }
         };
         enricher.write(AuthorizationServerExtension.getFactory().create(TenantA.class), TenantA.class);

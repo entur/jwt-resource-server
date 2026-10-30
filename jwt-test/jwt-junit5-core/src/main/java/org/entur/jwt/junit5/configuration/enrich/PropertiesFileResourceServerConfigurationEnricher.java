@@ -81,8 +81,8 @@ public class PropertiesFileResourceServerConfigurationEnricher extends AbstractP
      */
 
     protected void write(List<AuthorizationServerImplementation> authorizationServers, Class<?> topLevelTestClass) throws IOException {
-        // the JWK locations, and any properties added by subclasses
-        Map<String, Object> properties = getProperties(authorizationServers);
+        // the JWK locations, and any properties added by subclasses (copied, as it might be immutable)
+        Map<String, Object> properties = new HashMap<>(getProperties(authorizationServers));
 
         synchronized (LOCK) {
             Path path = output.toAbsolutePath().normalize();
