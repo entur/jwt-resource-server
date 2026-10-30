@@ -1,11 +1,14 @@
 package org.entur.jwt.junit5.impl;
 
 import org.entur.jwt.junit5.AuthorizationServer;
+import org.junit.jupiter.api.Nested;
+import org.junit.platform.commons.support.AnnotationSupport;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,16 +36,23 @@ public class AuthorizationServerImplementationFactory {
         }
 
         // check for @Nested unit tests
-        Class<?> enclosingClass = testClass.getEnclosingClass();
-        while(enclosingClass != null) {
+        // note: like for JUnit and Spring, static nested classes do not inherit the configuration of the enclosing class
+        Class<?> nestedClass = testClass;
+        while(isNested(nestedClass)) {
+            Class<?> enclosingClass = nestedClass.getEnclosingClass();
             Annotation[] enclosingClassAnnotations = enclosingClass.getAnnotations();
             for (Annotation annotation : enclosingClassAnnotations) {
                 createFromAnnotation(annotation, results);
             }
-            enclosingClass = enclosingClass.getEnclosingClass();
+            nestedClass = enclosingClass;
         }
 
         return results;
+    }
+
+    private static boolean isNested(Class<?> testClass) {
+        // i.e. an inner (non-static) class annotated with @Nested, like JUnit
+        return testClass.isMemberClass() && !Modifier.isStatic(testClass.getModifiers()) && AnnotationSupport.isAnnotated(testClass, Nested.class);
     }
 
     private void createFromAnnotation(Annotation annotation, List<AuthorizationServerImplementation> results) {

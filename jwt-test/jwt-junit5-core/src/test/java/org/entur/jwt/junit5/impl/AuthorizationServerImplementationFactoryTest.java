@@ -1,6 +1,7 @@
 package org.entur.jwt.junit5.impl;
 
 import org.entur.jwt.junit5.AuthorizationServer;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.lang.annotation.Annotation;
@@ -46,6 +47,25 @@ public class AuthorizationServerImplementationFactoryTest {
     static class ComposedListTest {
     }
 
+    @AuthorizationServer("outer")
+    static class OuterTest {
+
+        static class StaticNestedTest {
+        }
+
+        @AuthorizationServer("inner")
+        static class StaticNestedWithAuthorizationServerTest {
+        }
+
+        @Nested
+        class NestedTest {
+
+            @Nested
+            class NestedNestedTest {
+            }
+        }
+    }
+
     private final AuthorizationServerImplementationFactory factory = new AuthorizationServerImplementationFactory();
 
     private static List<String> getIds(List<AuthorizationServerImplementation> servers) {
@@ -81,5 +101,18 @@ public class AuthorizationServerImplementationFactoryTest {
         for (AuthorizationServerImplementation server : servers) {
             assertThat(server.getAnnotation()).isInstanceOf(MyAuthorizationServers.class);
         }
+    }
+
+    @Test
+    public void testNestedClassesInheritEnclosingAuthorizationServers() {
+        assertThat(getIds(factory.create(OuterTest.NestedTest.class))).containsExactly("outer");
+        assertThat(getIds(factory.create(OuterTest.NestedTest.NestedNestedTest.class))).containsExactly("outer");
+    }
+
+    @Test
+    public void testStaticNestedClassesDoNotInheritEnclosingAuthorizationServers() {
+        // like JUnit and Spring
+        assertThat(factory.create(OuterTest.StaticNestedTest.class)).isEmpty();
+        assertThat(getIds(factory.create(OuterTest.StaticNestedWithAuthorizationServerTest.class))).containsExactly("inner");
     }
 }
