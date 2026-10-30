@@ -28,6 +28,13 @@ entur:
         patterns:
           - /actuator/health
 
+spring:
+  grpc:
+    server:
+      servlet:
+        # the gRPC servlet is on the test classpath, use the native gRPC server
+        enabled: false
+
 logging:
   level:
     root: DEBUG

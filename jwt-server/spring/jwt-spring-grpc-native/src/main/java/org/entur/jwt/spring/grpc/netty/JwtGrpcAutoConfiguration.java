@@ -29,7 +29,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.grpc.server.GrpcServletRegistration;
+import org.springframework.boot.grpc.server.autoconfigure.GrpcServerAutoConfiguration;
 import org.springframework.boot.grpc.server.autoconfigure.security.GrpcServerOAuth2ResourceServerAutoConfiguration;
+import org.springframework.boot.grpc.server.autoconfigure.security.GrpcServerSecurityAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.grpc.server.GlobalServerInterceptor;
@@ -49,7 +51,8 @@ import java.util.Map;
 
 @Configuration
 @EnableConfigurationProperties({GrpcPermitAll.class, SecurityProperties.class})
-@AutoConfigureAfter(value = {JwtAutoConfiguration.class})
+// after the gRPC server (and its security), so that the conditions on their beans work
+@AutoConfigureAfter(value = {JwtAutoConfiguration.class, GrpcServerAutoConfiguration.class, GrpcServerSecurityAutoConfiguration.class})
 @AutoConfigureBefore(value = {GrpcServerOAuth2ResourceServerAutoConfiguration.class})
 @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
 public class JwtGrpcAutoConfiguration {
@@ -73,13 +76,13 @@ public class JwtGrpcAutoConfiguration {
         }
     }
 
-    @Configuration
+    // Without the native gRPC server, there is no GrpcSecurity and so no authentication interceptor. A bean method
+    // (not a nested configuration, which could be picked up by component scanning) so that it is evaluated after the
+    // gRPC server auto-configuration.
+    @Bean
     @ConditionalOnBean(GrpcServletRegistration.class)
-    public static class GrpcServletServerGuard {
-
-        public GrpcServletServerGuard() {
-            throw new IllegalStateException("Servlet gRPC not supported by this module");
-        }
+    public Object grpcServletServerGuard() {
+        throw new IllegalStateException("Servlet gRPC not supported by this module, use the native gRPC server. Add 'spring.grpc.server.servlet.enabled=false' or remove the gRPC servlet dependency.");
     }
 
     @Bean
@@ -111,6 +114,7 @@ public class JwtGrpcAutoConfiguration {
 
     @Bean
     @GlobalServerInterceptor
+    @ConditionalOnBean(GrpcSecurity.class) // i.e. not if there is no gRPC server
     public AuthenticationProcessInterceptor authenticationProcessInterceptor(
             GrpcSecurity grpcSecurity, List<JwtAuthorityEnricher> jwtAuthorityEnrichers,
             GrpcJwtDecoderHolder grpcJwtDecoderHolder
