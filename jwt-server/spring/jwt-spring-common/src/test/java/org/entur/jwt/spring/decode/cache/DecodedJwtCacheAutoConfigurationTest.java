@@ -23,8 +23,7 @@ class DecodedJwtCacheAutoConfigurationTest {
                     "entur.jwt.enabled=true",
                     "entur.jwt.tenants.a.issuer=" + ISSUER,
                     "entur.jwt.tenants.a.jwk.location=http://localhost:1/jwks.json",
-                    "entur.jwt.tenants.a.decoder-cache.enabled=true",
-                    "entur.jwt.jwk.cache.preemptive.eager.enabled=true"
+                    "entur.jwt.tenants.a.decoder-cache.enabled=true"
             );
 
     @Test

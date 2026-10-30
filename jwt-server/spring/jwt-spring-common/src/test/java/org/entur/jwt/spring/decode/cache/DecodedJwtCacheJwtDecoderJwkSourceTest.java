@@ -2,11 +2,13 @@ package org.entur.jwt.spring.decode.cache;
 
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jose.jwk.JWKMatcher;
+import com.nimbusds.jose.jwk.JWKSelector;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
-import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
 import com.nimbusds.jose.jwk.source.JWKSetSource;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.jwk.source.JWKSourceBuilder;
@@ -35,11 +37,10 @@ import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Tests the decoded JWT cache against JWK sources built by {@link JWKSourceBuilder}, i.e. with the events
- * a real JWK source chain actually fires.
+ * Tests the decoded JWT cache against JWK sources built by {@link JWKSourceBuilder}, i.e. a real JWK source chain
+ * with caching, refresh-ahead and outage tolerance, and JWTs verified by a {@link NimbusJwtDecoder}.
  */
 class DecodedJwtCacheJwtDecoderJwkSourceTest {
 
@@ -51,18 +52,6 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
     private static RSAKey key;
 
     private DecodedJwtCacheJwtDecoder decoder;
-
-    private DecodedJwtCacheJwkEventListener jwkEventListener;
-
-    // the JWK event listener for the current decoder
-    private DecodedJwtCacheJwkEventListener jwkEventListener() {
-        DecodedJwtCacheJwkEventListener l = jwkEventListener;
-        if (l == null || l.getDecoder() != decoder) {
-            l = new DecodedJwtCacheJwkEventListener(decoder);
-            jwkEventListener = l;
-        }
-        return l;
-    }
 
     @BeforeAll
     static void createKey() throws Exception {
@@ -109,6 +98,16 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
         return builder.build();
     }
 
+    // counts the decodes by the (verifying) delegate decoder
+    private DecodedJwtCacheJwtDecoder decoder(JWKSource<SecurityContext> jwkSource, AtomicInteger decodes) {
+        NimbusJwtDecoder nimbusJwtDecoder = nimbusJwtDecoder(jwkSource);
+        decoder = new DecodedJwtCacheJwtDecoder(t -> {
+            decodes.incrementAndGet();
+            return nimbusJwtDecoder.decode(t);
+        }, jwkSource, jwt -> OAuth2TokenValidatorResult.success(), 0, 100);
+        return decoder;
+    }
+
     private static void await(BooleanSupplier condition) throws InterruptedException {
         long deadline = System.currentTimeMillis() + 10_000;
         while (!condition.getAsBoolean()) {
@@ -119,76 +118,78 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
         }
     }
 
+    private static boolean isAvailable(JWKSource<SecurityContext> jwkSource) {
+        try {
+            jwkSource.get(new JWKSelector(new JWKMatcher.Builder().build()), null);
+            return true;
+        } catch (KeySourceException e) {
+            return false;
+        }
+    }
+
+    private static void sleepUntil(long time) throws InterruptedException {
+        Thread.sleep(Math.max(0, time - System.currentTimeMillis()));
+    }
+
     @Test
-    void testCacheIsUsedUntilJwkOutageCacheExpires() throws Exception {
+    void testCacheIsUsedWhileJwkSetIsServedFromJwkOutageCache() throws Exception {
         TestJWKSetSource source = new TestJWKSetSource(new JWKSet(key.toPublicJWK()));
-        ListEventListener listener = new ListEventListener();
         long outageCacheTimeToLive = 3000;
-        JWKSource<SecurityContext> jwkSource = jwkSource(source, listener, outageCacheTimeToLive);
+        JWKSource<SecurityContext> jwkSource = jwkSource(source, new ListEventListener(), outageCacheTimeToLive);
 
         AtomicInteger decodes = new AtomicInteger();
-        NimbusJwtDecoder nimbusJwtDecoder = nimbusJwtDecoder(jwkSource);
-        decoder = new DecodedJwtCacheJwtDecoder(t -> {
-            decodes.incrementAndGet();
-            return nimbusJwtDecoder.decode(t);
-        }, jwt -> OAuth2TokenValidatorResult.success(), 0, 100);
-        listener.addEventListener(jwkEventListener());
+        decoder(jwkSource, decodes);
 
         String token = token(key, "a");
-        decoder.decode(token); // loads the JWK set, not cached since the keys changed during decode
+        decoder.decode(token); // loads the JWK set
         long loadedAt = System.currentTimeMillis();
         decoder.decode(token);
-        assertEquals(2, decodes.get());
+        assertEquals(1, decodes.get());
         assertEquals(1, decoder.getSize());
 
-        // the JWK outage cache masks the failure as a completed refresh, but also fires an OutageEvent,
-        // which extends the time cached JWTs are trusted from the JWK set's to the JWK outage cache's time to live
+        // outage: the JWK set expires, but is served from the JWK outage cache, so is the cached JWT
         source.setFail(true);
-        await(() -> decoder.suspendedAt > loadedAt + JWK_CACHE_TIME_TO_LIVE);
-
-        // while the JWK outage cache is valid, the cache is used
+        sleepUntil(loadedAt + JWK_CACHE_TIME_TO_LIVE + 200);
         decoder.decode(token);
-        assertEquals(2, decodes.get());
+        assertEquals(1, decodes.get());
 
-        Thread.sleep(Math.max(0, loadedAt + outageCacheTimeToLive + 100 - System.currentTimeMillis()));
-
-        // JWK outage cache expired: decoded as if not cached
-        decoder.decode(token);
-        decoder.decode(token);
-        assertEquals(4, decodes.get());
+        // the JWK outage cache expires: once the JWK source no longer serves the JWK set, the JWT is rejected
+        sleepUntil(loadedAt + outageCacheTimeToLive);
+        await(() -> !isAvailable(jwkSource));
+        assertThrows(JwtException.class, () -> decoder.decode(token));
         assertEquals(0, decoder.getSize());
     }
 
     @Test
-    void testCacheIsNotUsedAfterFailedRefreshWithoutJwkOutageCache() throws Exception {
+    void testCachedJwtIsRejectedOnceJwkSetExpiresWithoutJwkOutageCache() throws Exception {
         TestJWKSetSource source = new TestJWKSetSource(new JWKSet(key.toPublicJWK()));
         List<Object> events = new CopyOnWriteArrayList<>();
         ListEventListener listener = new ListEventListener();
         listener.addEventListener(events::add);
         JWKSource<SecurityContext> jwkSource = jwkSource(source, listener, 0);
 
-        decoder = new DecodedJwtCacheJwtDecoder(nimbusJwtDecoder(jwkSource), jwt -> OAuth2TokenValidatorResult.success(), 0, 100);
-        listener.addEventListener(jwkEventListener());
+        AtomicInteger decodes = new AtomicInteger();
+        decoder(jwkSource, decodes);
 
         String token = token(key, "a");
         decoder.decode(token);
+        long loadedAt = System.currentTimeMillis();
         decoder.decode(token);
         assertEquals(1, decoder.getSize());
 
         source.setFail(true);
 
-        // the scheduled refresh-ahead fails (once, it is not rescheduled)
+        // the scheduled refresh-ahead fails, but the JWK set is still cached by the JWK source for a while
         await(() -> events.stream().anyMatch(e -> e instanceof RefreshAheadCachingJWKSetSource.UnableToRefreshAheadOfExpirationEvent));
-
-        // decoded as if not cached; the JWK set is still cached by the JWK source for a while
         decoder.decode(token);
-        assertEquals(0, decoder.getSize());
+        assertEquals(1, decodes.get());
 
         // once the JWK source cache expires, the JWT is rejected
-        Thread.sleep(JWK_CACHE_TIME_TO_LIVE);
+        sleepUntil(loadedAt + JWK_CACHE_TIME_TO_LIVE + 200);
         assertThrows(JwtException.class, () -> decoder.decode(token));
+        assertEquals(0, decoder.getSize());
 
-        // recovery: successful refresh resumes caching
+        // recovery: the JWT is verified and cached again
         source.setFail(false);
         decoder.decode(token);
         decoder.decode(token);
@@ -196,7 +197,7 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
     }
 
     @Test
-    void testJwtVerifiedWithReplacedKeyIsNotCachedWhenRefreshCompletesDuringDecode() throws Exception {
+    void testJwtVerifiedWithReplacedKeyIsNotCachedWhenJwkSetChangesDuringDecode() throws Exception {
         RSAKey oldKey = new RSAKeyGenerator(2048).keyID("a").generate();
         RSAKey newKey = new RSAKeyGenerator(2048).keyID("a").generate(); // same kid, different key
 
@@ -204,21 +205,20 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
         JWKSet newJwkSet = new JWKSet(newKey.toPublicJWK());
 
         AtomicBoolean rotated = new AtomicBoolean();
-        NimbusJwtDecoder nimbusJwtDecoder = nimbusJwtDecoder((selector, context) -> selector.select(rotated.get() ? newJwkSet : oldJwkSet));
+        JWKSource<SecurityContext> jwkSource = (selector, context) -> selector.select(rotated.get() ? newJwkSet : oldJwkSet);
+        NimbusJwtDecoder nimbusJwtDecoder = nimbusJwtDecoder(jwkSource);
 
-        // the JWK set refresh completes after the JWT was verified with the old key, but before it is cached
+        // the JWK set is reloaded after the JWT was verified with the old key, but before it is cached
         AtomicBoolean rotateDuringDecode = new AtomicBoolean(true);
         JwtDecoder delegate = token -> {
             Jwt jwt = nimbusJwtDecoder.decode(token);
             if (rotateDuringDecode.getAndSet(false)) {
                 rotated.set(true);
-                JwkEvents.refresh(jwkEventListener(), newJwkSet);
             }
             return jwt;
         };
 
-        decoder = new DecodedJwtCacheJwtDecoder(delegate, jwt -> OAuth2TokenValidatorResult.success(), 0, 100);
-        JwkEvents.refresh(jwkEventListener(), oldJwkSet);
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, jwkSource, jwt -> OAuth2TokenValidatorResult.success(), 0, 100);
 
         String token = token(oldKey, "a");
         decoder.decode(token);
@@ -228,7 +228,7 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
     }
 
     @Test
-    void testKeyRotationIsDetectedByBackgroundRefreshWithoutRequests() throws Exception {
+    void testKeyRotationIsDetectedOnceJwkSetIsRefreshed() throws Exception {
         RSAKey rotatedKey = new RSAKeyGenerator(2048).keyID("k2").generate();
 
         TestJWKSetSource source = new TestJWKSetSource(new JWKSet(key.toPublicJWK()));
@@ -237,8 +237,8 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
         listener.addEventListener(events::add);
         JWKSource<SecurityContext> jwkSource = jwkSource(source, listener, 0);
 
-        decoder = new DecodedJwtCacheJwtDecoder(nimbusJwtDecoder(jwkSource), jwt -> OAuth2TokenValidatorResult.success(), 0, 100);
-        listener.addEventListener(jwkEventListener());
+        AtomicInteger decodes = new AtomicInteger();
+        decoder(jwkSource, decodes);
 
         String token = token(key, "a");
         decoder.decode(token);
@@ -248,12 +248,12 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
         // the authorization server rotates its key: only the new key is published
         source.setJwkSet(new JWKSet(rotatedKey.toPublicJWK()));
 
-        // no requests: the scheduled (eager) refresh-ahead picks up the new JWK set and evicts the cached JWT
+        // the scheduled (eager) refresh-ahead picks up the new JWK set
         await(() -> events.stream().anyMatch(e -> e instanceof RefreshAheadCachingJWKSetSource.ScheduledRefreshCompletedEvent));
-        assertEquals(0, decoder.getSize());
 
         // the JWT signed with the rotated-away key is no longer accepted
         assertThrows(JwtException.class, () -> decoder.decode(token));
+        assertEquals(0, decoder.getSize());
 
         // JWTs signed with the new key are verified and cached
         String rotatedToken = token(rotatedKey, "b");
@@ -264,22 +264,16 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
     @Test
     void testTamperedJwtIsNotServedFromCache() throws Exception {
         TestJWKSetSource source = new TestJWKSetSource(new JWKSet(key.toPublicJWK()));
-        ListEventListener listener = new ListEventListener();
-        JWKSource<SecurityContext> jwkSource = jwkSource(source, listener, 0);
+        JWKSource<SecurityContext> jwkSource = jwkSource(source, new ListEventListener(), 0);
 
         AtomicInteger decodes = new AtomicInteger();
-        NimbusJwtDecoder nimbusJwtDecoder = nimbusJwtDecoder(jwkSource);
-        decoder = new DecodedJwtCacheJwtDecoder(t -> {
-            decodes.incrementAndGet();
-            return nimbusJwtDecoder.decode(t);
-        }, jwt -> OAuth2TokenValidatorResult.success(), 0, 100);
-        listener.addEventListener(jwkEventListener());
+        decoder(jwkSource, decodes);
 
         String token = token(key, "a");
         decoder.decode(token);
         decoder.decode(token);
         assertEquals(1, decoder.getSize());
-        assertEquals(2, decodes.get());
+        assertEquals(1, decodes.get());
 
         // same header and claims as the cached JWT, but another signature
         int signatureStart = token.lastIndexOf('.') + 1;
@@ -289,11 +283,11 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
 
         // the signature is verified, i.e. the cache is keyed by the complete JWT
         assertThrows(JwtException.class, () -> decoder.decode(tampered));
-        assertEquals(3, decodes.get());
+        assertEquals(2, decodes.get());
         assertEquals(1, decoder.getSize());
 
         // the valid JWT is still served from the cache
         decoder.decode(token);
-        assertEquals(3, decodes.get());
+        assertEquals(2, decodes.get());
     }
 }

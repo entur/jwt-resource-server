@@ -13,7 +13,6 @@ import com.nimbusds.jose.jwk.source.JWKSourceBuilder;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import org.entur.jwt.spring.actuate.ListEventListener;
 import org.entur.jwt.spring.decode.ClosableJwtDecoders;
 import org.entur.jwt.spring.decode.ClosableJwtDecodersBuilder;
 import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheProperties;
@@ -29,14 +28,12 @@ import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
 import java.util.Date;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -49,6 +46,7 @@ class ClosableJwtDecodersBuilderCacheTest {
 
     private static RSAKey keyA;
     private static RSAKey keyB;
+    private static RSAKey rotatedKeyA;
 
     private final AtomicBoolean claimsValid = new AtomicBoolean(true);
 
@@ -57,9 +55,7 @@ class ClosableJwtDecodersBuilderCacheTest {
             ? OAuth2TokenValidatorResult.success()
             : OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Simulated invalid claims", null));
 
-    private final ListEventListener listenerA = new ListEventListener();
-    private final ListEventListener listenerB = new ListEventListener();
-
+    private TestJWKSetSource jwkSetSourceA;
     private JWKSource<SecurityContext> jwkSourceA;
     private ClosableJwtDecoders decoders;
 
@@ -67,6 +63,7 @@ class ClosableJwtDecodersBuilderCacheTest {
     static void createKeys() throws Exception {
         keyA = new RSAKeyGenerator(2048).keyID("a").generate();
         keyB = new RSAKeyGenerator(2048).keyID("b").generate();
+        rotatedKeyA = new RSAKeyGenerator(2048).keyID("a2").generate();
     }
 
     @AfterEach
@@ -76,10 +73,10 @@ class ClosableJwtDecodersBuilderCacheTest {
         }
     }
 
-    private static JWKSource<SecurityContext> jwkSource(RSAKey key, ListEventListener listener) {
-        return JWKSourceBuilder.create(new TestJWKSetSource(new JWKSet(key.toPublicJWK())))
+    private static JWKSource<SecurityContext> jwkSource(TestJWKSetSource jwkSetSource) {
+        return JWKSourceBuilder.create(jwkSetSource)
                 .rateLimited(false)
-                .cache(60_000, 1_000, listener)
+                .cache(60_000, 1_000)
                 .refreshAheadCache(false)
                 .retrying(false)
                 .outageTolerant(false)
@@ -98,7 +95,8 @@ class ClosableJwtDecodersBuilderCacheTest {
     }
 
     private ClosableJwtDecoders build(int cleanupIntervalSeconds) throws Exception {
-        jwkSourceA = jwkSource(keyA, listenerA);
+        jwkSetSourceA = new TestJWKSetSource(new JWKSet(keyA.toPublicJWK()));
+        jwkSourceA = jwkSource(jwkSetSourceA);
 
         JwtDecoderCacheProperties cache = new JwtDecoderCacheProperties();
         cache.setEnabled(true);
@@ -106,8 +104,7 @@ class ClosableJwtDecodersBuilderCacheTest {
         cache.setCleanupInterval(cleanupIntervalSeconds);
 
         decoders = new ClosableJwtDecodersBuilder()
-                .withJwkSources(Map.of(ISSUER_A, jwkSourceA, ISSUER_B, jwkSource(keyB, listenerB)))
-                .withJwkEventListeners(Map.of(ISSUER_A, listenerA, ISSUER_B, listenerB))
+                .withJwkSources(Map.of(ISSUER_A, jwkSourceA, ISSUER_B, jwkSource(new TestJWKSetSource(new JWKSet(keyB.toPublicJWK())))))
                 .withJwtValidators(List.of(claimValidator))
                 .withDecodedJwtCacheIssuers(Map.of(ISSUER_A, cache))
                 .build();
@@ -116,61 +113,6 @@ class ClosableJwtDecodersBuilderCacheTest {
         jwkSourceA.get(new JWKSelector(new JWKMatcher.Builder().build()), null);
 
         return decoders;
-    }
-
-    @Test
-    void testCacheWithoutJwkEventListenerFailsBuild() {
-        JwtDecoderCacheProperties cache = new JwtDecoderCacheProperties();
-        cache.setEnabled(true);
-        cache.setSize(10);
-        cache.setCleanupInterval(-1);
-
-        // listener for another issuer only
-        ClosableJwtDecodersBuilder builder = new ClosableJwtDecodersBuilder()
-                .withJwkSources(Map.of(ISSUER_A, jwkSource(keyA, listenerA)))
-                .withJwkEventListeners(Map.of(ISSUER_B, listenerB))
-                .withJwtValidators(List.of(claimValidator))
-                .withDecodedJwtCacheIssuers(Map.of(ISSUER_A, cache));
-
-        assertThatThrownBy(builder::build)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining(ISSUER_A)
-                .hasMessageContaining("withJwkEventListeners");
-
-        // no listeners at all
-        ClosableJwtDecodersBuilder builderWithoutListeners = new ClosableJwtDecodersBuilder()
-                .withJwkSources(Map.of(ISSUER_A, jwkSource(keyA, listenerA)))
-                .withJwtValidators(List.of(claimValidator))
-                .withDecodedJwtCacheIssuers(Map.of(ISSUER_A, cache));
-
-        assertThatThrownBy(builderWithoutListeners::build)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining(ISSUER_A);
-    }
-
-    @Test
-    void testFailedBuildCreatesNoResources() {
-        JwtDecoderCacheProperties cache = new JwtDecoderCacheProperties();
-        cache.setEnabled(true);
-        cache.setSize(10);
-
-        // linked map: issuer A (valid) is processed before issuer B (no JWK event listener)
-        Map<String, JWKSource> jwkSources = new LinkedHashMap<>();
-        jwkSources.put(ISSUER_A, jwkSource(keyA, listenerA));
-        jwkSources.put(ISSUER_B, jwkSource(keyB, listenerB));
-
-        ClosableJwtDecodersBuilder builder = new ClosableJwtDecodersBuilder()
-                .withJwkSources(jwkSources)
-                .withJwkEventListeners(Map.of(ISSUER_A, listenerA))
-                .withJwtValidators(List.of(claimValidator))
-                .withDecodedJwtCacheIssuers(Map.of(ISSUER_A, cache, ISSUER_B, cache));
-
-        assertThatThrownBy(builder::build)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining(ISSUER_B);
-
-        // the build failed, so there is no ClosableJwtDecoders to close what was created: nothing must have been
-        assertThat(listenerA.getEventListeners()).noneMatch(DecodedJwtCacheJwkEventListener.class::isInstance);
     }
 
     @Test
@@ -209,29 +151,20 @@ class ClosableJwtDecodersBuilderCacheTest {
     }
 
     @Test
-    void testCachedDecoderFollowsJwkEvents() throws Exception {
+    void testCachedDecoderFollowsJwkSource() throws Exception {
         build(-1);
         DecodedJwtCacheJwtDecoder decoder = (DecodedJwtCacheJwtDecoder) decoders.getJwtDecoders().get(ISSUER_A);
+        String token = token(keyA, ISSUER_A);
 
-        // the builder registered the decoder with the tenant's JWK event listener, which got the JWK set load
-        assertThat(decoder.cache.keyRepresentations.contains("a")).isTrue();
-    }
+        decoder.decode(token);
+        assertThat(decoder.getSize()).isEqualTo(1);
 
-    @Test
-    void testCloseDeregistersJwkEventListener() throws Exception {
-        build(-1);
-        DecodedJwtCacheJwtDecoder decoder = (DecodedJwtCacheJwtDecoder) decoders.getJwtDecoders().get(ISSUER_A);
+        // key rotation: the JWK set is reloaded on the first JWT signed with the new key
+        jwkSetSourceA.setJwkSet(new JWKSet(rotatedKeyA.toPublicJWK()));
+        decoder.decode(token(rotatedKeyA, ISSUER_A));
 
-        assertThat(listenerA.getEventListeners())
-                .filteredOn(DecodedJwtCacheJwkEventListener.class::isInstance)
-                .map(l -> ((DecodedJwtCacheJwkEventListener) l).getDecoder())
-                .containsExactly(decoder);
-
-        decoders.close();
-        decoders = null;
-
-        // the JWK source (and its listener list) outlives the decoders; the closed decoder must not be retained or updated
-        assertThat(listenerA.getEventListeners()).noneMatch(DecodedJwtCacheJwkEventListener.class::isInstance);
+        // the cache checks against the decoder's JWK source, which no longer has the key of the cached JWT
+        assertThrows(JwtException.class, () -> decoder.decode(token));
     }
 
     @Test

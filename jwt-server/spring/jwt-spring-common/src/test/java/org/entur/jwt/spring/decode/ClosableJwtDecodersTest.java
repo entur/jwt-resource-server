@@ -4,9 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -19,7 +17,7 @@ public class ClosableJwtDecodersTest {
         throw new IllegalStateException("Not used");
     };
 
-    // a decoder which can be closed, i.e. like the decoded JWT cache decoder
+    // a decoder which holds resources, which can be closed
     private static class CloseableJwtDecoder implements JwtDecoder, AutoCloseable {
 
         private final AtomicInteger closed = new AtomicInteger();
@@ -70,24 +68,6 @@ public class ClosableJwtDecodersTest {
     }
 
     @Test
-    public void testCloseClosesResourcesBeforeDecoders() throws Exception {
-        List<String> order = new ArrayList<>();
-        JwtDecoder decoder = new CloseableJwtDecoder() {
-            @Override
-            public void close() {
-                order.add("decoder");
-            }
-        };
-        AutoCloseable resource = () -> order.add("resource");
-
-        ClosableJwtDecoders closableJwtDecoders = new ClosableJwtDecoders(Map.of("https://issuer-a", decoder), List.of(resource));
-
-        closableJwtDecoders.close();
-
-        assertThat(order).containsExactly("resource", "decoder");
-    }
-
-    @Test
     public void testCloseIsNoOpForEmptyMap() {
         ClosableJwtDecoders closableJwtDecoders = new ClosableJwtDecoders(Map.of());
 
@@ -114,20 +94,6 @@ public class ClosableJwtDecodersTest {
         assertThat(failingA.closed.get()).isEqualTo(1);
         assertThat(healthy.closed.get()).isEqualTo(1);
         assertThat(failingB.closed.get()).isEqualTo(1);
-    }
-
-    @Test
-    public void testCloseClosesDecodersEvenIfResourceThrows() {
-        IllegalStateException boom = new IllegalStateException("boom");
-        AutoCloseable failingResource = () -> {
-            throw boom;
-        };
-        CloseableJwtDecoder decoder = new CloseableJwtDecoder();
-
-        ClosableJwtDecoders closableJwtDecoders = new ClosableJwtDecoders(Map.of("https://issuer-a", decoder), List.of(failingResource));
-
-        assertThatCode(closableJwtDecoders::close).doesNotThrowAnyException();
-        assertThat(decoder.closed.get()).isEqualTo(1);
     }
 
     @Test

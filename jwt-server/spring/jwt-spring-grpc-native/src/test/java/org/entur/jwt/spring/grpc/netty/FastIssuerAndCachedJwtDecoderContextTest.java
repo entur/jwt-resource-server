@@ -36,7 +36,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
         "entur.jwt.decode.header.map-to-issuer.enabled=true",
         "entur.jwt.tenants.a.decoder-cache.enabled=true",
         "entur.jwt.tenants.a.decoder-cache.size=123",
-        "entur.jwt.jwk.cache.preemptive.eager.enabled=true",
 })
 @DirtiesContext
 public class FastIssuerAndCachedJwtDecoderContextTest extends AbstractGrpcTest {

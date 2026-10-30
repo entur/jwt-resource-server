@@ -22,7 +22,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(properties = {
         "entur.jwt.tenants.a.decoder-cache.enabled=true",
-        "entur.jwt.jwk.cache.preemptive.eager.enabled=true",
 })
 @DirtiesContext
 public class DecoderCacheNotSupportedWarningTest {

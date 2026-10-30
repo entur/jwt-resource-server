@@ -114,7 +114,6 @@ public class JwtAutoConfiguration {
     public ClosableJwtDecoders closableJwtDecoders(JwkSourceMap jwkSourceMap, EnturJwtValidators enturJwtValidators, ObjectProvider<OAuth2TokenValidator<Jwt>> jwtValidators, SecurityProperties properties) {
         return new ClosableJwtDecodersBuilder()
                 .withJwkSources(jwkSourceMap.getJwkSources())
-                .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
                 .withJwtValidators(JwtDecoderValidators.combine(enturJwtValidators, jwtValidators.orderedStream(), properties.getJwt().getClaims()))
                 .withDecodedJwtCacheIssuers(DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(properties.getJwt()))
                 .build();

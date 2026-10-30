@@ -50,40 +50,8 @@ public class DecodedJwtCacheConfigurationReaderTest {
     }
 
     @Test
-    public void testEmptyWhenPreemptiveDisabled() {
-        JwtProperties jwt = jwtProperties();
-        jwt.getJwk().getCache().setEnabled(true);
-        jwt.getJwk().getCache().getPreemptive().setEnabled(false);
-
-        JwtTenantProperties tenant = tenant("https://issuer-a", true, true);
-        jwt.getTenants().put("a", tenant);
-
-        Map<String, JwtDecoderCacheProperties> result = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt);
-
-        assertThat(result).isEmpty();
-    }
-
-    @Test
-    public void testEmptyWhenEagerDisabled() {
-        JwtProperties jwt = jwtProperties();
-        jwt.getJwk().getCache().setEnabled(true);
-        jwt.getJwk().getCache().getPreemptive().setEnabled(true);
-        jwt.getJwk().getCache().getPreemptive().getEager().setEnabled(false);
-
-        JwtTenantProperties tenant = tenant("https://issuer-a", true, true);
-        jwt.getTenants().put("a", tenant);
-
-        Map<String, JwtDecoderCacheProperties> result = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt);
-
-        assertThat(result).isEmpty();
-    }
-
-    @Test
     public void testIncludesOnlyEnabledTenantsWithEnabledDecoderCache() {
         JwtProperties jwt = jwtProperties();
-        jwt.getJwk().getCache().setEnabled(true);
-        jwt.getJwk().getCache().getPreemptive().setEnabled(true);
-        jwt.getJwk().getCache().getPreemptive().getEager().setEnabled(true);
 
         JwtTenantProperties enabledWithCache = tenant("https://issuer-a", true, true);
         JwtTenantProperties enabledWithoutCache = tenant("https://issuer-b", true, false);
@@ -101,11 +69,23 @@ public class DecodedJwtCacheConfigurationReaderTest {
     }
 
     @Test
-    public void testWarnsWhenDecoderCacheEnabledButEagerRefreshDisabled() {
+    public void testNoPreemptiveJwkRefreshRequired() {
         JwtProperties jwt = jwtProperties();
-        jwt.getJwk().getCache().setEnabled(true);
-        jwt.getJwk().getCache().getPreemptive().setEnabled(true);
+        jwt.getJwk().getCache().getPreemptive().setEnabled(false);
         jwt.getJwk().getCache().getPreemptive().getEager().setEnabled(false);
+
+        jwt.getTenants().put("a", tenant("https://issuer-a", true, true));
+
+        Map<String, JwtDecoderCacheProperties> result = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt);
+
+        assertThat(result).containsOnlyKeys("https://issuer-a");
+        assertThat(logAppender.list).isEmpty();
+    }
+
+    @Test
+    public void testWarnsWhenDecoderCacheEnabledButJwkCacheDisabled() {
+        JwtProperties jwt = jwtProperties();
+        jwt.getJwk().getCache().setEnabled(false);
 
         jwt.getTenants().put("a", tenant("https://issuer-a", true, true));
         jwt.getTenants().put("b", tenant("https://issuer-b", true, false));
@@ -116,13 +96,13 @@ public class DecodedJwtCacheConfigurationReaderTest {
         assertThat(result).isEmpty();
         List<ILoggingEvent> warnings = logAppender.list;
         assertThat(warnings).hasSize(1);
-        assertThat(warnings.get(0).getFormattedMessage()).contains("'a'", "eager");
+        assertThat(warnings.get(0).getFormattedMessage()).contains("'a'", "entur.jwt.jwk.cache.enabled");
     }
 
     @Test
-    public void testDoesNotWarnWhenDecoderCacheDisabledAndEagerRefreshDisabled() {
+    public void testDoesNotWarnWhenDecoderCacheDisabledAndJwkCacheDisabled() {
         JwtProperties jwt = jwtProperties();
-        jwt.getJwk().getCache().getPreemptive().getEager().setEnabled(false);
+        jwt.getJwk().getCache().setEnabled(false);
 
         jwt.getTenants().put("a", tenant("https://issuer-a", true, false));
 
@@ -134,9 +114,6 @@ public class DecodedJwtCacheConfigurationReaderTest {
     @Test
     public void testSizeZeroDisablesCache() {
         JwtProperties jwt = jwtProperties();
-        jwt.getJwk().getCache().setEnabled(true);
-        jwt.getJwk().getCache().getPreemptive().setEnabled(true);
-        jwt.getJwk().getCache().getPreemptive().getEager().setEnabled(true);
 
         JwtTenantProperties zero = tenant("https://issuer-a", true, true);
         zero.getDecoderCache().setSize(0);

@@ -414,18 +414,16 @@ Services outside this profile (e.g. many distinct, short-lived clients/tokens, o
 
 Only the decoding/signature verification step is cached - claim validators (audience, expiry etc.) still run on every request, so an expired or otherwise invalid cached token is never served as valid.
 
-The cache is opt-in per tenant, and __requires eager, preemptive JWK background refresh to also be enabled__. This is because the cache relies exclusively on JWKS refresh events to detect key rotation/revocation and evict affected entries; without eager background refresh, the JWK set (and therefore this cache) would only refresh on demand, i.e. on a JWK cache miss, so a key rotation could go undetected for as long as there is no such miss:
+A cached token is only used while the JWK set still holds the key(s) it was verified with: on every cache hit, the keys matching the token's header are looked up in the (cached) JWK set, and compared with the keys from when the token was verified. This is a lookup, not a signature verification. So the cache follows the JWK set like decoding without the cache does: a rotated or revoked key is detected as soon as the JWK set is refreshed, and during a JWK set outage cached tokens are accepted for as long as the JWK set is served from the JWK outage cache.
+
+The cache is opt-in per tenant, and requires the JWK set cache (enabled by default):
 
 ```yaml
 entur:
   jwt:
     jwk:
       cache:
-        enabled: true # default
-        preemptive:
-          enabled: true # default
-          eager:
-            enabled: true # required for decoder cache coherence; default false
+        enabled: true # default; required for the decoded JWT cache
     tenants:
       myKeycloak:
         decoder-cache:
@@ -443,9 +441,7 @@ When the cache holds `size` JWTs, `mode` decides what happens to new JWTs:
  * `fifo`: evict the JWTs which were cached first.
  * `fixed`: do not cache new JWTs until cached JWTs are removed by the cleanup (i.e. expire). A warning is logged when the cache first fills up.
 
-For `lru` and `fifo`, eviction runs on a background thread: once the cache is full, new JWTs are still cached (temporarily exceeding `size`) and eviction is triggered straight away, reducing the cache to 90% of `size`. So the cost of eviction is spread over many cache misses, and neither cache hits nor misses wait for it. Should eviction not keep up, new JWTs are not cached once the cache holds double the target size. Likewise, when the JWK set changes, cached JWTs whose key is unchanged are kept (up to double the target size), and the background eviction then reduces the cache to the target size. With `fixed`, the cache does not grow beyond `size` (approximately: concurrent additions might overshoot by a few JWTs). A `size` of 0 disables the cache.
-
-During a JWK set refresh outage, the decoded JWT cache follows the JWK set's own outage cache (see above): cached JWTs are trusted for as long as the JWK set served from the outage cache is, i.e. until `entur.jwt.jwk.outage-cache.time-to-live` has passed since the JWK set was last refreshed. Then the cache is cleared and not used, i.e. JWTs are decoded as if no JWT was cached, until the JWK set is successfully refreshed again. If the JWK outage cache is disabled (or has expired), this happens as soon as a refresh fails. Independently of refresh events, cached JWTs are never trusted for longer than the JWK set itself, i.e. `entur.jwt.jwk.cache.time-to-live` since the last successful refresh (each successful preemptive refresh extends this). This is checked when decoding JWTs, so no background thread is needed.
+For `lru` and `fifo`, eviction runs on a background thread: once the cache is full, new JWTs are still cached (temporarily exceeding `size`) and eviction is triggered straight away, reducing the cache to 90% of `size`. So the cost of eviction is spread over many cache misses, and neither cache hits nor misses wait for it. Should eviction not keep up, new JWTs are not cached once the cache holds double the target size. With `fixed`, the cache does not grow beyond `size` (approximately: concurrent additions might overshoot by a few JWTs). A `size` of 0 disables the cache.
 
 [jwt-spring-web]: spring/jwt-spring-web
 [jwt-spring-webflux]: spring/jwt-spring-webflux
