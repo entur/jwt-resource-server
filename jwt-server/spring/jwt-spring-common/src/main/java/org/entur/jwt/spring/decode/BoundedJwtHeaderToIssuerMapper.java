@@ -37,7 +37,8 @@ public class BoundedJwtHeaderToIssuerMapper extends JwtHeaderToIssuerMapper {
         }
         super.add(issuer, jwtToken);
 
-        int size = headerToIssuer.size();
+        // shared headers were seen too
+        int size = headerToIssuer.size() + sharedHeaders.size();
         if (maxSize != -1 && size > maxSize) {
             setDisabled(true);
             LOGGER.warn("JWT header-to-issuer cache exceeded max size of {}; disabling header-to-issuer optimization", maxSize);

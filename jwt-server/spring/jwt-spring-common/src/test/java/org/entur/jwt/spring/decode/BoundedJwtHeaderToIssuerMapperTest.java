@@ -93,6 +93,19 @@ class BoundedJwtHeaderToIssuerMapperTest {
     }
 
     @Test
+    void sharedHeadersCountTowardsMaxSize() {
+        BoundedJwtHeaderToIssuerMapper mapper = new BoundedJwtHeaderToIssuerMapper(2);
+
+        mapper.add("issuer1", token("h1"));
+        mapper.add("issuer2", token("h1")); // h1 is now shared
+        mapper.add("issuer1", token("h2"));
+        assertFalse(mapper.isDisabled(), "should still be enabled at exactly maxSize");
+
+        mapper.add("issuer1", token("h3"));
+        assertTrue(mapper.isDisabled(), "should be disabled after exceeding maxSize");
+    }
+
+    @Test
     void getReturnsNullAfterAutoDisable() {
         BoundedJwtHeaderToIssuerMapper mapper = new BoundedJwtHeaderToIssuerMapper(1);
         String tok1 = token("h1");
