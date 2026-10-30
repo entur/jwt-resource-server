@@ -1,6 +1,10 @@
 package org.entur.jwt.client.spring.webflux;
 
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
 import org.entur.jwt.client.AccessTokenUnavailableException;
+import org.entur.jwt.client.AuthorizationHeaderUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -16,6 +20,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -86,5 +91,69 @@ public class WebClientStatefulUrlAccessTokenProviderTest {
         assertThat(provider.getRefreshToken().getValue()).isEqualTo("a.b.c");
 
         assertThat(requests).containsExactly(URI.create(ISSUE_URL), URI.create(REFRESH_URL)).inOrder();
+    }
+
+    @Test
+    public void shouldAuthenticateRefreshAndRevokeRequestsUsingAuthorizationHeader() throws Exception {
+        String authorization = AuthorizationHeaderUtil.createHeader("myClientId", "mySecret");
+
+        try (MockWebServer server = new MockWebServer()) {
+            WebClientStatefulUrlAccessTokenProvider provider = newProvider(server, Map.of("grant_type", "client_credentials", "audience", "myAudience"), Map.of(HttpHeaders.AUTHORIZATION, authorization));
+
+            assertThat(provider.getAccessToken(false).getValue()).isEqualTo("x.y.z");
+            assertThat(provider.getAccessToken(true).getValue()).isEqualTo("a1.b1.c1");
+            provider.close();
+
+            RecordedRequest issue = server.takeRequest();
+            assertThat(issue.getPath()).isEqualTo("/token");
+            assertThat(issue.getHeader(HttpHeaders.AUTHORIZATION)).isEqualTo(authorization);
+
+            RecordedRequest refresh = server.takeRequest();
+            assertThat(refresh.getPath()).isEqualTo("/refresh");
+            assertThat(refresh.getHeader(HttpHeaders.AUTHORIZATION)).isEqualTo(authorization);
+            assertThat(refresh.getBody().readUtf8()).isEqualTo("grant_type=refresh_token&refresh_token=a.b.c");
+
+            RecordedRequest revoke = server.takeRequest();
+            assertThat(revoke.getPath()).isEqualTo("/logout");
+            assertThat(revoke.getHeader(HttpHeaders.AUTHORIZATION)).isEqualTo(authorization);
+            assertThat(revoke.getBody().readUtf8()).isEqualTo("refresh_token=a2.b2.c2");
+        }
+    }
+
+    @Test
+    public void shouldAuthenticateRefreshAndRevokeRequestsUsingBodyParameters() throws Exception {
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("grant_type", "client_credentials");
+        parameters.put("audience", "myAudience");
+        parameters.put("client_id", "myClientId");
+        parameters.put("client_secret", "mySecret");
+
+        try (MockWebServer server = new MockWebServer()) {
+            WebClientStatefulUrlAccessTokenProvider provider = newProvider(server, parameters, Collections.emptyMap());
+
+            assertThat(provider.getAccessToken(false).getValue()).isEqualTo("x.y.z");
+            assertThat(provider.getAccessToken(true).getValue()).isEqualTo("a1.b1.c1");
+            provider.close();
+
+            server.takeRequest(); // issue
+
+            RecordedRequest refresh = server.takeRequest();
+            assertThat(refresh.getPath()).isEqualTo("/refresh");
+            assertThat(refresh.getHeader(HttpHeaders.AUTHORIZATION)).isNull();
+            assertThat(refresh.getBody().readUtf8()).isEqualTo("grant_type=refresh_token&refresh_token=a.b.c&client_id=myClientId&client_secret=mySecret");
+
+            RecordedRequest revoke = server.takeRequest();
+            assertThat(revoke.getPath()).isEqualTo("/logout");
+            assertThat(revoke.getHeader(HttpHeaders.AUTHORIZATION)).isNull();
+            assertThat(revoke.getBody().readUtf8()).isEqualTo("refresh_token=a2.b2.c2&client_id=myClientId&client_secret=mySecret");
+        }
+    }
+
+    private static WebClientStatefulUrlAccessTokenProvider newProvider(MockWebServer server, Map<String, Object> parameters, Map<String, Object> headers) {
+        server.enqueue(new MockResponse().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE).setBody(ISSUE_RESPONSE));
+        server.enqueue(new MockResponse().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE).setBody(REISSUE_RESPONSE));
+        server.enqueue(new MockResponse().setResponseCode(204));
+
+        return new WebClientStatefulUrlAccessTokenProvider(WebClient.create(), server.url("/token").url(), parameters, headers, server.url("/refresh").url(), server.url("/logout").url());
     }
 }
