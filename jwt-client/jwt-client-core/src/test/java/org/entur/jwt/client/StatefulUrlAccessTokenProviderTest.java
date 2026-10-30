@@ -15,6 +15,7 @@ import java.util.Map;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -194,6 +195,67 @@ public class StatefulUrlAccessTokenProviderTest extends AbstractUrlAccessTokenPr
         assertThrows(AccessTokenUnavailableException.class, () -> {
             provider.getAccessToken(accessToken.getExpires() + 1);
         });
+    }
+
+    @Test
+    public void shouldDisconnectWhenIssueIsRejected() throws Exception {
+        StatefulUrlAccessTokenProvider provider = providerForResource("/keycloakClientCredentialsResponse.json");
+        when(urlConnection.getResponseCode()).thenReturn(401);
+
+        AccessTokenException e = assertThrows(AccessTokenException.class, () -> {
+            provider.getAccessToken(false);
+        });
+        assertThat(e).isNotInstanceOf(AccessTokenUnavailableException.class);
+
+        // i.e. release the error stream and the underlying socket
+        verify(urlConnection).disconnect();
+    }
+
+    @Test
+    public void shouldDisconnectWhenRefreshIsUnavailable() throws Exception {
+        StatefulUrlAccessTokenProvider provider = providerForResource("/keycloakClientCredentialsResponse.json");
+        AccessToken accessToken = provider.getAccessToken(false);
+        verify(urlConnection).disconnect();
+
+        when(urlConnection.getOutputStream()).thenReturn(new ByteArrayOutputStream());
+        when(urlConnection.getResponseCode()).thenReturn(503);
+
+        assertThrows(AccessTokenUnavailableException.class, () -> {
+            provider.getAccessToken(accessToken.getExpires() + 1);
+        });
+
+        verify(urlConnection, times(2)).disconnect();
+    }
+
+    @Test
+    public void shouldDisconnectWhenRevokingRefreshToken() throws Exception {
+        StatefulUrlAccessTokenProvider provider = providerForResource("/keycloakClientCredentialsResponse.json");
+        provider.getAccessToken(false);
+        assertThat(provider.getRefreshToken()).isNotNull();
+        verify(urlConnection).disconnect();
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        when(urlConnection.getOutputStream()).thenReturn(output);
+
+        provider.close();
+
+        assertThat(output.toString()).contains(StatefulUrlAccessTokenProvider.KEY_REFRESH_TOKEN);
+        // also when the response is 200
+        verify(urlConnection, times(2)).disconnect();
+    }
+
+    @Test
+    public void shouldDisconnectWhenRevokeIsRejected() throws Exception {
+        StatefulUrlAccessTokenProvider provider = providerForResource("/keycloakClientCredentialsResponse.json");
+        provider.getAccessToken(false);
+        assertThat(provider.getRefreshToken()).isNotNull();
+
+        when(urlConnection.getOutputStream()).thenReturn(new ByteArrayOutputStream());
+        when(urlConnection.getResponseCode()).thenReturn(400);
+
+        provider.close();
+
+        verify(urlConnection, times(2)).disconnect();
     }
 
     @Test

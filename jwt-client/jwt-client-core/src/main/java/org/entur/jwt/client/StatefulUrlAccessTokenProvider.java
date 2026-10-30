@@ -52,8 +52,9 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
 
     @Override
     protected ClientCredentialsResponse getToken() throws AccessTokenException {
+        HttpURLConnection response = null;
         try {
-            HttpURLConnection response = request(issueUrl, issueBody, issueHeaders);
+            response = request(issueUrl, issueBody, issueHeaders);
 
             int responseCode = response.getResponseCode();
             if (responseCode != 200) {
@@ -73,6 +74,8 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
             }
         } catch (IOException | JacksonException e) {
             throw new AccessTokenUnavailableException(e);
+        } finally {
+            UrlAccessTokenProvider.disconnect(response);
         }
     }
 
@@ -91,6 +94,9 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
 
         try (OutputStream os = c.getOutputStream()) {
             os.write(body);
+        } catch (IOException e) {
+            UrlAccessTokenProvider.disconnect(c);
+            throw e;
         }
 
         return c;
@@ -104,8 +110,9 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
 
             byte[] revokeBody = createRevokeBody(threadSafeRefreshToken);
 
+            HttpURLConnection request = null;
             try {
-                HttpURLConnection request = request(revokeUrl, revokeBody, Collections.emptyMap());
+                request = request(revokeUrl, revokeBody, Collections.emptyMap());
                 int responseCode = request.getResponseCode();
                 if (responseCode != 200) {
                     if (responseCode == 503) { // service unavailable
@@ -119,6 +126,8 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
                 }
             } catch (IOException e) {
                 LOGGER.warn("Unable to revoke token", e);
+            } finally {
+                UrlAccessTokenProvider.disconnect(request);
             }
         }
     }
@@ -127,8 +136,9 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
     protected ClientCredentialsResponse getToken(RefreshToken response) throws AccessTokenException {
         byte[] refreshBody = createRefreshBody(response);
 
+        HttpURLConnection request = null;
         try {
-            HttpURLConnection request = request(refreshUrl, refreshBody, Collections.emptyMap());
+            request = request(refreshUrl, refreshBody, Collections.emptyMap());
 
             int responseCode = request.getResponseCode();
             if (responseCode != 200) {
@@ -149,6 +159,8 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
             }
         } catch (IOException | JacksonException e) {
             throw new AccessTokenUnavailableException(e);
+        } finally {
+            UrlAccessTokenProvider.disconnect(request);
         }
     }
 
