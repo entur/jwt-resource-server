@@ -49,6 +49,8 @@ Async is not yet supported.
 
 See documentation contained in each folder to get started. Or skip right to the [examples](examples). 
 
+Upgrading to 8.0.0? See [MIGRATION.md](MIGRATION.md).
+
 ## Spring Boot compatibility matrix
 
  * [5.x](https://github.com/entur/jwt-resource-server/tree/5.x): Spring Boot 3.5.x / Ecosystem gRPC
