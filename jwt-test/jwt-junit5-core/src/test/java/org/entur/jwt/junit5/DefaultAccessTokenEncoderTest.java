@@ -4,16 +4,22 @@ import com.google.common.collect.Range;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.JWTParser;
 import org.entur.jwt.junit5.claim.Audience;
+import org.entur.jwt.junit5.claim.BooleanClaim;
+import org.entur.jwt.junit5.claim.DoubleClaim;
 import org.entur.jwt.junit5.claim.ExpiresAt;
+import org.entur.jwt.junit5.claim.IntegerClaim;
 import org.entur.jwt.junit5.claim.IssuedAt;
 import org.entur.jwt.junit5.claim.JsonClaim;
 import org.entur.jwt.junit5.claim.MapClaim;
 import org.entur.jwt.junit5.claim.MissingClaim;
 import org.entur.jwt.junit5.claim.NullClaim;
 import org.entur.jwt.junit5.claim.Scope;
+import org.entur.jwt.junit5.claim.StringArrayClaim;
+import org.entur.jwt.junit5.claim.StringClaim;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.JsonNodeType;
 
 import java.text.ParseException;
 import java.util.Base64;
@@ -28,6 +34,11 @@ public class DefaultAccessTokenEncoderTest {
 
     private static JWTClaimsSet decode(String token) throws ParseException {
         return JWTParser.parse(token.substring(7)).getJWTClaimsSet();
+    }
+
+    // note: the claims set parser rejects standard claims of unexpected types
+    private static JsonNode payload(String token) {
+        return JsonMapper.builder().build().readTree(Base64.getUrlDecoder().decode(token.substring(7).split("\\.")[1]));
     }
 
     private static long now() {
@@ -64,6 +75,98 @@ public class DefaultAccessTokenEncoderTest {
     }
 
     @Test
+    public void testIntegerClaimExpiresAtAndIssuedAtAreAbsolute(@AccessToken @IntegerClaim(name = "exp", value = 1) @IntegerClaim(name = "iat", value = 2) String token) throws ParseException {
+        JWTClaimsSet claims = decode(token);
+
+        // as given, not relative to now
+        assertThat(seconds(claims.getExpirationTime())).isEqualTo(1L);
+        assertThat(seconds(claims.getIssueTime())).isEqualTo(2L);
+    }
+
+    @Test
+    public void testJsonClaimExpiresAtAndIssuedAtAreAbsolute(@AccessToken @JsonClaim(name = "exp", value = "4102444800") @JsonClaim(name = "iat", value = "1700000000") String token) throws ParseException {
+        JWTClaimsSet claims = decode(token);
+
+        // parsed as long and int respectively, both as given
+        assertThat(seconds(claims.getExpirationTime())).isEqualTo(4102444800L);
+        assertThat(seconds(claims.getIssueTime())).isEqualTo(1700000000L);
+    }
+
+    @Test
+    public void testMapClaimExpiresAtIsAbsolute(@AccessToken @MapClaim(path = {}, entries = @MapClaim.Entry(name = "exp", type = Long.class, value = "1")) String token) throws ParseException {
+        JWTClaimsSet claims = decode(token);
+
+        assertThat(seconds(claims.getExpirationTime())).isEqualTo(1L);
+    }
+
+    @Test
+    public void testGenericClaimOverridesExpiresAtAnnotation(@AccessToken @ExpiresAt(60) @IntegerClaim(name = "exp", value = 1) String token) throws ParseException {
+        JWTClaimsSet claims = decode(token);
+
+        assertThat(seconds(claims.getExpirationTime())).isEqualTo(1L);
+        assertThat(seconds(claims.getIssueTime())).isIn(Range.closed(now() - 5, now()));
+    }
+
+    @Test
+    public void testStandardClaimTypes(@AccessToken(audience = "myAudience", scope = "read", authorizedParty = "myParty") String token) {
+        JsonNode payload = payload(token);
+
+        assertThat(payload.get("iss").getNodeType()).isEqualTo(JsonNodeType.STRING);
+        assertThat(payload.get("sub").getNodeType()).isEqualTo(JsonNodeType.STRING);
+        assertThat(payload.get("aud").getNodeType()).isEqualTo(JsonNodeType.ARRAY);
+        assertThat(payload.get("aud").get(0).stringValue()).isEqualTo("myAudience");
+        assertThat(payload.get("exp").isIntegralNumber()).isTrue();
+        assertThat(payload.get("iat").isIntegralNumber()).isTrue();
+        assertThat(payload.get("scope").getNodeType()).isEqualTo(JsonNodeType.STRING);
+        assertThat(payload.get("azp").getNodeType()).isEqualTo(JsonNodeType.STRING);
+    }
+
+    @Test
+    public void testDateClaimsOfOtherTypesAreWrittenAsGiven(@AccessToken @JsonClaim(name = "exp", value = "\"1700000000\"") @DoubleClaim(name = "iat", value = 1700000000.5) @StringClaim(name = "nbf", value = "soon") String token) {
+        JsonNode payload = payload(token);
+
+        assertThat(payload.get("exp").getNodeType()).isEqualTo(JsonNodeType.STRING);
+        assertThat(payload.get("exp").stringValue()).isEqualTo("1700000000");
+        assertThat(payload.get("iat").doubleValue()).isEqualTo(1700000000.5);
+        assertThat(payload.get("nbf").stringValue()).isEqualTo("soon");
+    }
+
+    @Test
+    public void testBooleanNotBeforeIsWrittenAsGiven(@AccessToken @BooleanClaim(name = "nbf", value = true) String token) {
+        JsonNode payload = payload(token);
+
+        assertThat(payload.get("nbf").getNodeType()).isEqualTo(JsonNodeType.BOOLEAN);
+    }
+
+    @Test
+    public void testStringClaimsOfOtherTypesAreWrittenAsGiven(@AccessToken @IntegerClaim(name = "iss", value = 5) @StringArrayClaim(name = "sub", value = {"a", "b"}) @JsonClaim(name = "jti", value = "{\"a\":1}") @BooleanClaim(name = "aud", value = true) String token) {
+        JsonNode payload = payload(token);
+
+        assertThat(payload.get("iss").getNodeType()).isEqualTo(JsonNodeType.NUMBER);
+        assertThat(payload.get("iss").intValue()).isEqualTo(5);
+        assertThat(payload.get("sub").getNodeType()).isEqualTo(JsonNodeType.ARRAY);
+        assertThat(payload.get("sub").size()).isEqualTo(2);
+        assertThat(payload.get("jti").getNodeType()).isEqualTo(JsonNodeType.OBJECT);
+        assertThat(payload.get("aud").getNodeType()).isEqualTo(JsonNodeType.BOOLEAN);
+    }
+
+    @Test
+    public void testJsonClaimIssuerIsWrittenAsGiven(@AccessToken @JsonClaim(name = "iss", value = "5") String token) {
+        JsonNode payload = payload(token);
+
+        assertThat(payload.get("iss").getNodeType()).isEqualTo(JsonNodeType.NUMBER);
+    }
+
+    @Test
+    public void testEmptyStandardClaimsAreWrittenAsGiven(@AccessToken @StringClaim(name = "sub", value = "") @StringArrayClaim(name = "aud", value = {}) String token) {
+        JsonNode payload = payload(token);
+
+        assertThat(payload.get("sub").stringValue()).isEmpty();
+        assertThat(payload.get("aud").getNodeType()).isEqualTo(JsonNodeType.ARRAY);
+        assertThat(payload.get("aud").size()).isEqualTo(0);
+    }
+
+    @Test
     public void testMissingExpiresAt(@AccessToken @MissingClaim("exp") String token) throws ParseException {
         JWTClaimsSet claims = decode(token);
 
@@ -81,7 +184,7 @@ public class DefaultAccessTokenEncoderTest {
 
     @Test
     public void testNullClaim(@AccessToken @NullClaim("myClaim") @NullClaim("exp") String token) {
-        JsonNode payload = JsonMapper.builder().build().readTree(Base64.getUrlDecoder().decode(token.substring(7).split("\\.")[1]));
+        JsonNode payload = payload(token);
 
         // present, unlike for @MissingClaim
         assertThat(payload.has("myClaim")).isTrue();

@@ -15,9 +15,14 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.JsonNodeType;
 
 import java.math.BigInteger;
 import java.util.Base64;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -25,6 +30,8 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class DefaultAuthorizationServerEncoderTest {
+
+    private static final JsonMapper JSON_MAPPER = JsonMapper.builder().build();
 
     private final DefaultAuthorizationServerEncoder encoder = new DefaultAuthorizationServerEncoder();
 
@@ -56,6 +63,54 @@ public class DefaultAuthorizationServerEncoderTest {
         assertThat(jwt.getHeader().getKeyID()).isEqualTo(key.getKeyID());
         assertThat(jwt.verify(new RSASSAVerifier(key))).isTrue();
         assertThat(jwt.getJWTClaimsSet().getSubject()).isEqualTo("mySubject");
+    }
+
+    @Test
+    public void testClaimsAreWrittenAsGiven() throws Exception {
+        RSAKey key = (RSAKey) JWKSet.parse(encoder.getJsonWebKeys(null)).getKeys().get(0);
+
+        // standard claims of unexpected types
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("iss", 5);
+        claims.put("sub", new String[] { "a", "b" });
+        claims.put("aud", "myAudience");
+        claims.put("exp", "1700000000");
+        claims.put("nbf", true);
+        claims.put("iat", 1.5);
+        claims.put("jti", null);
+
+        SignedJWT jwt = SignedJWT.parse(encoder.getToken(null, claims, new HashMap<>()));
+        assertThat(jwt.verify(new RSASSAVerifier(key))).isTrue();
+
+        JsonNode payload = JSON_MAPPER.readTree(jwt.getPayload().toString());
+        assertThat(payload.get("iss").getNodeType()).isEqualTo(JsonNodeType.NUMBER);
+        assertThat(payload.get("sub").getNodeType()).isEqualTo(JsonNodeType.ARRAY);
+        assertThat(payload.get("aud").getNodeType()).isEqualTo(JsonNodeType.STRING);
+        assertThat(payload.get("exp").getNodeType()).isEqualTo(JsonNodeType.STRING);
+        assertThat(payload.get("nbf").getNodeType()).isEqualTo(JsonNodeType.BOOLEAN);
+        assertThat(payload.get("iat").doubleValue()).isEqualTo(1.5);
+        assertThat(payload.get("jti").isNull()).isTrue();
+    }
+
+    @Test
+    public void testDatesInDateClaimsAreWrittenAsSeconds() throws Exception {
+        Date date = new Date(1700000000123L);
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(date);
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("exp", date);
+        claims.put("nbf", calendar);
+        claims.put("iat", 1700000000L);
+        claims.put("myDate", date);
+
+        JsonNode payload = JSON_MAPPER.readTree(SignedJWT.parse(encoder.getToken(null, claims, new HashMap<>())).getPayload().toString());
+
+        assertThat(payload.get("exp").longValue()).isEqualTo(1700000000L);
+        assertThat(payload.get("nbf").longValue()).isEqualTo(1700000000L);
+        assertThat(payload.get("iat").longValue()).isEqualTo(1700000000L);
+        // like the JWT library, other claims are in milliseconds
+        assertThat(payload.get("myDate").longValue()).isEqualTo(1700000000123L);
     }
 
     @ParameterizedTest

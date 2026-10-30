@@ -11,6 +11,6 @@ import java.lang.annotation.Target;
 @Inherited
 public @interface IssuedAt {
 
-    public long value() default 0;
+    public long value() default 0; // in seconds, relative time
 
 }
