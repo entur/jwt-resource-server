@@ -8,16 +8,18 @@ import com.nimbusds.jose.proc.SecurityContext;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * JWK set source for tests, i.e. the innermost source of a JWK source chain: serves a JWK set,
- * or fails (simulating an outage), optionally blocking until released.
+ * or fails (simulating an outage), optionally blocking until released. Counts the calls which ask for a refresh.
  */
 class TestJWKSetSource implements JWKSetSource<SecurityContext> {
 
     private volatile JWKSet jwkSet;
     private volatile boolean fail;
     private volatile CountDownLatch block;
+    private final AtomicInteger refreshes = new AtomicInteger();
 
     TestJWKSetSource(JWKSet jwkSet) {
         this.jwkSet = jwkSet;
@@ -25,6 +27,17 @@ class TestJWKSetSource implements JWKSetSource<SecurityContext> {
 
     void setJwkSet(JWKSet jwkSet) {
         this.jwkSet = jwkSet;
+    }
+
+    JWKSet getJwkSet() {
+        return jwkSet;
+    }
+
+    /**
+     * @return number of calls which asked for the JWK set to be refreshed, i.e. for a key which was not found
+     */
+    int getRefreshes() {
+        return refreshes.get();
     }
 
     void setFail(boolean fail) {
@@ -54,6 +67,9 @@ class TestJWKSetSource implements JWKSetSource<SecurityContext> {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
+        }
+        if (refreshEvaluator.requiresRefresh(jwkSet)) {
+            refreshes.incrementAndGet();
         }
         if (fail) {
             throw new JWKSetUnavailableException("Simulated outage");

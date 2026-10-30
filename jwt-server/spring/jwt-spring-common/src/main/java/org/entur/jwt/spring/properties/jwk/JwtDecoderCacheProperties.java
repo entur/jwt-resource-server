@@ -13,34 +13,19 @@ package org.entur.jwt.spring.properties.jwk;
  * Services outside this profile - e.g. many distinct, short-lived clients/tokens, or
  * already-cheap signature verification such as HMAC - are unlikely to see a meaningful
  * performance benefit from enabling this cache, while still paying for its memory
- * overhead and the added complexity of staying coherent with JWK rotation.
+ * overhead.
  */
 public class JwtDecoderCacheProperties {
 
     /**
      * Whether the decoded JWT cache is enabled for this tenant. Opt-in, defaults to {@code false}.
      * <p>
-     * Turning this on only has effect if all of the following prerequisites are also met
-     * at the (shared, not per-tenant) JWK set cache level:
-     * <ul>
-     *     <li>{@code entur.jwt.jwk.cache.enabled=true}</li>
-     *     <li>{@code entur.jwt.jwk.cache.preemptive.enabled=true}</li>
-     *     <li>{@code entur.jwt.jwk.cache.preemptive.eager.enabled=true} - defaults to
-     *     {@code false} and must be explicitly enabled</li>
-     * </ul>
-     * Eager preemptive JWK refresh is required because this cache relies entirely on JWKS
-     * refresh events to detect key rotation/revocation and evict affected entries; it never
-     * re-checks key liveness on its own. Without background refresh, the JWK set (and by
-     * extension this cache) would only refresh on demand, i.e. on a JWK cache miss - so a
-     * key rotation could go undetected for as long as traffic keeps hitting the JWK cache,
-     * defeating cache coherence.
-     * <p>
-     * If any prerequisite above is not met, this flag is a no-op (a warning is logged) and no
-     * decoded JWT cache is created for the tenant.
+     * Requires the (shared, not per-tenant) JWK set cache, i.e. {@code entur.jwt.jwk.cache.enabled=true} (the default):
+     * on every cache hit, the keys the JWT was verified with are looked up in the JWK set, so a cached JWT is only
+     * used while the JWK set still holds its keys (i.e. key rotation and revocation are detected as soon as the
+     * JWK set is refreshed). Without the JWK set cache, this flag is a no-op (a warning is logged).
      *
      * @see JwkCacheProperties#isEnabled()
-     * @see JwkPreemptiveCacheProperties#isEnabled()
-     * @see JwtEagerRefresh#isEnabled()
      * @see org.entur.jwt.spring.decode.cache.DecodedJwtCacheConfigurationReader#getActiveJwtDecoderCacheProperties(org.entur.jwt.spring.properties.JwtProperties)
      */
     private boolean enabled = false;
@@ -48,7 +33,7 @@ public class JwtDecoderCacheProperties {
     /**
      * Target size, i.e. the number of JWTs the cache normally holds at most. With {@code LRU} / {@code FIFO} mode, the
      * cache temporarily exceeds the target size until background eviction has run, and in extreme cases (eviction does
-     * not keep up, or a JWK set change) holds up to double the target size. With {@code FIXED} mode, the cache does not
+     * not keep up) holds up to double the target size. With {@code FIXED} mode, the cache does not
      * grow beyond the target size (approximately, concurrent additions might overshoot by a few JWTs).
      * -1 for unlimited size (no cap on the number of cached tokens); 0 (like enabled=false) disables the cache.
      */
@@ -101,6 +86,9 @@ public class JwtDecoderCacheProperties {
     }
 
     public void setCleanupInterval(int cleanupIntervalSeconds) {
+        if (cleanupIntervalSeconds < -1) {
+            throw new IllegalArgumentException("cleanupInterval must be -1 or non-negative");
+        }
         this.cleanupInterval = cleanupIntervalSeconds;
     }
 

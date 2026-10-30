@@ -109,6 +109,16 @@ public class UrlAccessTokenProviderTest extends AbstractUrlAccessTokenProviderTe
     }
 
     @Test
+    public void shouldFailWithAccessTokenUnavailableExceptionWhenEmptyEntity() throws Exception {
+        try (UrlAccessTokenProvider provider = new UrlAccessTokenProvider(mockUrl, Collections.emptyMap(), Collections.emptyMap(), 15000, 15000)) {
+            // i.e. some HTTP clients return null for an empty response body
+            assertThrows(AccessTokenUnavailableException.class, () -> {
+                provider.validate(null);
+            });
+        }
+    }
+
+    @Test
     public void shouldConfigureURLConnection() throws Exception {
         when(urlConnection.getInputStream()).thenReturn(getClass().getResourceAsStream("/auth0ClientCredentialsResponse.json"));
 

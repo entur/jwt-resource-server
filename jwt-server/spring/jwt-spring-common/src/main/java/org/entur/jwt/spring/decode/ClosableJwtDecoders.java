@@ -1,5 +1,7 @@
 package org.entur.jwt.spring.decode;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 
 import java.util.Map;
@@ -12,19 +14,35 @@ import java.util.Map;
 
 public class ClosableJwtDecoders implements AutoCloseable {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ClosableJwtDecoders.class);
+
     private final Map<String, JwtDecoder> decoders;
 
+    /**
+     * @param decoders per-issuer decoders
+     */
     public ClosableJwtDecoders(Map<String, JwtDecoder> decoders) {
         this.decoders = decoders;
     }
 
+    /**
+     * Close all decoders. Never throws: if any of them fails, it is logged and the rest are still closed.
+     */
     @Override
-    public void close() throws Exception {
+    public void close() {
         for (Map.Entry<String, JwtDecoder> stringJwtDecoderEntry : decoders.entrySet()) {
             JwtDecoder jwtDecoder = stringJwtDecoderEntry.getValue();
             if (jwtDecoder instanceof AutoCloseable c) {
-                c.close();
+                close(c, "decoder for issuer " + stringJwtDecoderEntry.getKey());
             }
+        }
+    }
+
+    private static void close(AutoCloseable closeable, String description) {
+        try {
+            closeable.close();
+        } catch (Exception e) {
+            LOGGER.warn("Problem closing {}", description, e);
         }
     }
 

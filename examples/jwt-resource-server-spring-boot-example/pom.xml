@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.1.1</version>
+		<version>4.1.2</version>
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>org.entur.example</groupId>
@@ -17,7 +17,7 @@
 	<properties>
 		<java.version>25</java.version>
 		<truth.version>1.4.5</truth.version>
-        <rest-assured.version>6.0.1</rest-assured.version>
+        <rest-assured.version>6.3.0</rest-assured.version>
 	</properties>
 
 	<dependencies>

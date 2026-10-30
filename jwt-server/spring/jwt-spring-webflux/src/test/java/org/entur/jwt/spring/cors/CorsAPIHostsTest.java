@@ -39,6 +39,17 @@ public class CorsAPIHostsTest {
     }
 
     @Test
+    public void cors_options_is_allowed_for_protected_resource() {
+        // preflight requests carry no credentials, so must be handled before authentication
+        hosts.forEach(host -> {
+            methods.forEach(method -> {
+                given().header("Origin", host).header("Access-Control-Request-Method", method).when().log().all().options("http://localhost:" + port + "/protected").then().log().all().assertThat().statusCode(HttpStatus.OK.value())
+                        .header("Access-Control-Allow-Origin", host);
+            });
+        });
+    }
+
+    @Test
     public void cors_request_is_allowed() {
         hosts.forEach(host -> {
             given().header("Origin", host).when().log().all().get("http://localhost:" + port + "/unprotected").then().log().all().assertThat().statusCode(HttpStatus.OK.value());

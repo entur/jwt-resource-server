@@ -18,31 +18,30 @@ public class DecodedJwtCacheConfigurationReader {
     private static final Logger LOGGER = LoggerFactory.getLogger(DecodedJwtCacheConfigurationReader.class);
 
     public static Map<String, JwtDecoderCacheProperties> getActiveJwtDecoderCacheProperties(JwtProperties jwt) {
-        JwkCacheProperties cache = jwt.getJwk().getCache();
-        boolean preemptiveEagerJwk = cache.isEnabled() && cache.getPreemptive().isEnabled() && cache.getPreemptive().getEager().isEnabled();
+        List<String> tenants = getTenantsWithDecoderCacheEnabled(jwt);
+        if (tenants.isEmpty()) {
+            return Collections.emptyMap();
+        }
 
-        Map<String, JwtDecoderCacheProperties> decodedJwtCacheIssuers;
-        if(preemptiveEagerJwk) {
-            decodedJwtCacheIssuers = new HashMap<>();
-            for (Map.Entry<String, JwtTenantProperties> entry : jwt.getTenants().entrySet()) {
-                JwtTenantProperties value = entry.getValue();
-                if(value.isEnabled() && value.getDecoderCache().isEnabled()) {
-                    if(value.getDecoderCache().getSize() == 0) {
-                        // nothing would ever be cached
-                        LOGGER.info("Tenant '{}' has decoder-cache.size=0, the decoded JWT cache is disabled", entry.getKey());
-                        continue;
-                    }
-                    decodedJwtCacheIssuers.put(value.getIssuer(), value.getDecoderCache());
-                }
+        JwkCacheProperties cache = jwt.getJwk().getCache();
+        if (cache == null || !cache.isEnabled()) {
+            // every cache hit looks up the JWT's keys in the JWK set, which without the JWK cache
+            // would mean loading the JWK set; warn so the misconfiguration is not silent
+            for (String tenant : tenants) {
+                LOGGER.warn("Tenant '{}' has decoder-cache.enabled=true, but the decoded JWT cache requires entur.jwt.jwk.cache.enabled=true; the decoded JWT cache is disabled", tenant);
             }
-        } else {
-            // the decoder cache relies on eager background JWK refresh for cache coherence,
-            // so it is not activated without it; warn so the misconfiguration is not silent
-            for (String tenant : getTenantsWithDecoderCacheEnabled(jwt)) {
-                LOGGER.warn("Tenant '{}' has decoder-cache.enabled=true, but the decoded JWT cache requires entur.jwt.jwk.cache.enabled, " +
-                        "entur.jwt.jwk.cache.preemptive.enabled and entur.jwt.jwk.cache.preemptive.eager.enabled to all be true; the decoded JWT cache is disabled", tenant);
+            return Collections.emptyMap();
+        }
+
+        Map<String, JwtDecoderCacheProperties> decodedJwtCacheIssuers = new HashMap<>();
+        for (String tenant : tenants) {
+            JwtTenantProperties value = jwt.getTenants().get(tenant);
+            if (value.getDecoderCache().getSize() == 0) {
+                // nothing would ever be cached
+                LOGGER.info("Tenant '{}' has decoder-cache.size=0, the decoded JWT cache is disabled", tenant);
+                continue;
             }
-            decodedJwtCacheIssuers = Collections.emptyMap();
+            decodedJwtCacheIssuers.put(value.getIssuer(), value.getDecoderCache());
         }
         return decodedJwtCacheIssuers;
     }

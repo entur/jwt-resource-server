@@ -5,18 +5,14 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
-import org.entur.jwt.spring.actuate.ListEventListener;
-import org.entur.jwt.spring.decode.cache.DecodedJwtCacheJwkEventListener;
 import org.entur.jwt.spring.decode.cache.DecodedJwtCacheJwtDecoder;
 import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheProperties;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,13 +28,7 @@ public class ClosableJwtDecodersBuilder {
 
     private List<OAuth2TokenValidator<Jwt>> jwtValidators;
     private Map<String, JWKSource> jwkSources;
-    private Map<String, ListEventListener> jwkEventListeners;
     private Map<String, JwtDecoderCacheProperties> decodedJwtCacheIssuers;
-
-    public ClosableJwtDecodersBuilder withJwkEventListeners(Map<String, ListEventListener> jwkEventListeners) {
-        this.jwkEventListeners = jwkEventListeners;
-        return this;
-    }
 
     public ClosableJwtDecodersBuilder withJwkSources(Map<String, JWKSource> jwkSources) {
         this.jwkSources = jwkSources;
@@ -68,36 +58,28 @@ public class ClosableJwtDecodersBuilder {
             DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
             JWSVerificationKeySelector keySelector = new JWSVerificationKeySelector(JWSAlgorithm.Family.SIGNATURE, jwkSource);
             jwtProcessor.setJWSKeySelector(keySelector);
+            // the claims (including expiry) are validated by the JWT validators, so disable the Nimbus verifier,
+            // which would otherwise limit the leeway to its own (one minute) clock skew
+            jwtProcessor.setJWTClaimsSetVerifier((claims, context) -> {
+            });
 
             NimbusJwtDecoder nimbusJwtDecoder = new NimbusJwtDecoder(jwtProcessor);
-            DelegatingOAuth2TokenValidator<Jwt> validators = getJwtValidators(entry.getKey());
+            DelegatingOAuth2TokenValidator<Jwt> validators = JwtDecoderValidators.create(entry.getKey(), jwtValidators);
             nimbusJwtDecoder.setJwtValidator(validators);
 
             JwtDecoder decoder = nimbusJwtDecoder;
 
-            if (decodedJwtCacheIssuers != null) {
-                JwtDecoderCacheProperties cacheProperties = decodedJwtCacheIssuers.get(entry.getKey());
-                if (cacheProperties != null) {
-                    ListEventListener eventListener = jwkEventListeners.get(entry.getKey());
-                    if (eventListener != null) {
-                        DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(decoder, validators, cacheProperties.getCleanupInterval() * 1000L, cacheProperties.getSize(), cacheProperties.getMode());
-                        cachedDecoder.scheduleCleanup();
-                        eventListener.addEventListener(new DecodedJwtCacheJwkEventListener(cachedDecoder));
-                        decoder = cachedDecoder;
-                    }
-                }
+            JwtDecoderCacheProperties cacheProperties = decodedJwtCacheIssuers != null ? decodedJwtCacheIssuers.get(entry.getKey()) : null;
+            if (cacheProperties != null) {
+                // checks cached JWTs against the same JWK source as the decoder
+                DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(entry.getKey(), decoder, jwkSource, validators, cacheProperties.getCleanupInterval() * 1000L, cacheProperties.getSize(), cacheProperties.getMode());
+                cachedDecoder.scheduleCleanup();
+                decoder = cachedDecoder;
             }
 
             map.put(entry.getKey(), decoder);
         }
 
         return new ClosableJwtDecoders(map);
-    }
-
-    private DelegatingOAuth2TokenValidator<Jwt> getJwtValidators(String issuer) {
-        List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();
-        validators.add(new JwtIssuerValidator(issuer));
-        validators.addAll(jwtValidators);
-        return new DelegatingOAuth2TokenValidator<>(validators);
     }
 }

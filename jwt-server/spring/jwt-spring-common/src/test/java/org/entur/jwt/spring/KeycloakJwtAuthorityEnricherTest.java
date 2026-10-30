@@ -67,4 +67,49 @@ class KeycloakJwtAuthorityEnricherTest {
 
         assertTrue(current.isEmpty());
     }
+
+    @Test
+    void skipsResourceAccessEntryWithoutRoles() {
+        KeycloakJwtAuthorityEnricher enricher = new KeycloakJwtAuthorityEnricher();
+
+        Map<String, Object> resourceAccess = Map.of(
+                "client-without-roles", Map.of("verify_caller", true),
+                "my-test-client", Map.of("roles", List.of("my-new-client-role"))
+        );
+
+        Collection<GrantedAuthority> current = new ArrayList<>();
+        enricher.enrich(current, jwtWithResourceAccess(resourceAccess));
+
+        Collection<String> authorityNames = current.stream().map(GrantedAuthority::getAuthority).toList();
+        assertEquals(List.of("ROLE_my-new-client-role"), authorityNames);
+    }
+
+    @Test
+    void skipsRolesWhichAreNotStrings() {
+        KeycloakJwtAuthorityEnricher enricher = new KeycloakJwtAuthorityEnricher();
+
+        Map<String, Object> resourceAccess = Map.of(
+                "my-test-client", Map.of("roles", List.of(1L, "my-new-client-role"))
+        );
+
+        Collection<GrantedAuthority> current = new ArrayList<>();
+        enricher.enrich(current, jwtWithResourceAccess(resourceAccess));
+
+        Collection<String> authorityNames = current.stream().map(GrantedAuthority::getAuthority).toList();
+        assertEquals(List.of("ROLE_my-new-client-role"), authorityNames);
+    }
+
+    @Test
+    void doesNothingWhenResourceAccessClaimIsNotAnObject() {
+        KeycloakJwtAuthorityEnricher enricher = new KeycloakJwtAuthorityEnricher();
+
+        Map<String, Object> headers = Collections.singletonMap("alg", "none");
+        Map<String, Object> claims = Map.of("sub", "subject", "resource_access", "my-test-client");
+        Jwt jwt = new Jwt("token", Instant.now(), Instant.now().plusSeconds(60), headers, claims);
+
+        Collection<GrantedAuthority> current = new ArrayList<>();
+        enricher.enrich(current, jwt);
+
+        assertTrue(current.isEmpty());
+    }
 }

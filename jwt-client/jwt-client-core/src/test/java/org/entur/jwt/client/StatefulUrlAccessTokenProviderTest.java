@@ -196,4 +196,17 @@ public class StatefulUrlAccessTokenProviderTest extends AbstractUrlAccessTokenPr
         });
     }
 
+    @Test
+    public void shouldFailWithAccessTokenUnavailableExceptionWhenUnparsableRefreshEntity() throws Exception {
+        StatefulUrlAccessTokenProvider provider = providerForResource("/keycloakClientCredentialsResponse.json");
+        AccessToken accessToken = provider.getAccessToken(false);
+        assertThat(provider.getRefreshToken()).isNotNull();
+
+        when(urlConnection.getInputStream()).thenReturn(new ByteArrayInputStream("{unaparsable}".getBytes(StandardCharsets.UTF_8)));
+
+        assertThrows(AccessTokenUnavailableException.class, () -> {
+            provider.getAccessToken(accessToken.getExpires() + 1);
+        });
+    }
+
 }

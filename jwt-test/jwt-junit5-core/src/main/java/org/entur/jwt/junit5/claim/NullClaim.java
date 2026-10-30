@@ -9,8 +9,8 @@ import java.lang.annotation.Target;
 
 /**
  * 
- * Annotation for deleting one or more claims
- * 
+ * Annotation for setting one or more claims to null. See {@link MissingClaim} for deleting claims.
+ *
  */
 
 @Retention(RetentionPolicy.RUNTIME)

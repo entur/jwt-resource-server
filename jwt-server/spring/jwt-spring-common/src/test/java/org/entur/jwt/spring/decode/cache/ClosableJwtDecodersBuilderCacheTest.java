@@ -13,7 +13,6 @@ import com.nimbusds.jose.jwk.source.JWKSourceBuilder;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import org.entur.jwt.spring.actuate.ListEventListener;
 import org.entur.jwt.spring.decode.ClosableJwtDecoders;
 import org.entur.jwt.spring.decode.ClosableJwtDecodersBuilder;
 import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheProperties;
@@ -31,21 +30,23 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * The decoders built by {@link ClosableJwtDecodersBuilder}, with real JWK sources and signed JWTs.
+ * The decoded JWT cache of the decoders built by {@link ClosableJwtDecodersBuilder}, with real JWK sources and signed JWTs.
  */
-class ClosableJwtDecodersBuilderTest {
+class ClosableJwtDecodersBuilderCacheTest {
 
     private static final String ISSUER_A = "https://issuer.a";
     private static final String ISSUER_B = "https://issuer.b";
 
     private static RSAKey keyA;
     private static RSAKey keyB;
+    private static RSAKey rotatedKeyA;
 
     private final AtomicBoolean claimsValid = new AtomicBoolean(true);
 
@@ -54,9 +55,7 @@ class ClosableJwtDecodersBuilderTest {
             ? OAuth2TokenValidatorResult.success()
             : OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Simulated invalid claims", null));
 
-    private final ListEventListener listenerA = new ListEventListener();
-    private final ListEventListener listenerB = new ListEventListener();
-
+    private TestJWKSetSource jwkSetSourceA;
     private JWKSource<SecurityContext> jwkSourceA;
     private ClosableJwtDecoders decoders;
 
@@ -64,6 +63,7 @@ class ClosableJwtDecodersBuilderTest {
     static void createKeys() throws Exception {
         keyA = new RSAKeyGenerator(2048).keyID("a").generate();
         keyB = new RSAKeyGenerator(2048).keyID("b").generate();
+        rotatedKeyA = new RSAKeyGenerator(2048).keyID("a2").generate();
     }
 
     @AfterEach
@@ -73,10 +73,10 @@ class ClosableJwtDecodersBuilderTest {
         }
     }
 
-    private static JWKSource<SecurityContext> jwkSource(RSAKey key, ListEventListener listener) {
-        return JWKSourceBuilder.create(new TestJWKSetSource(new JWKSet(key.toPublicJWK())))
+    private static JWKSource<SecurityContext> jwkSource(TestJWKSetSource jwkSetSource) {
+        return JWKSourceBuilder.create(jwkSetSource)
                 .rateLimited(false)
-                .cache(60_000, 1_000, listener)
+                .cache(60_000, 1_000)
                 .refreshAheadCache(false)
                 .retrying(false)
                 .outageTolerant(false)
@@ -95,7 +95,8 @@ class ClosableJwtDecodersBuilderTest {
     }
 
     private ClosableJwtDecoders build(int cleanupIntervalSeconds) throws Exception {
-        jwkSourceA = jwkSource(keyA, listenerA);
+        jwkSetSourceA = new TestJWKSetSource(new JWKSet(keyA.toPublicJWK()));
+        jwkSourceA = jwkSource(jwkSetSourceA);
 
         JwtDecoderCacheProperties cache = new JwtDecoderCacheProperties();
         cache.setEnabled(true);
@@ -103,8 +104,7 @@ class ClosableJwtDecodersBuilderTest {
         cache.setCleanupInterval(cleanupIntervalSeconds);
 
         decoders = new ClosableJwtDecodersBuilder()
-                .withJwkSources(Map.of(ISSUER_A, jwkSourceA, ISSUER_B, jwkSource(keyB, listenerB)))
-                .withJwkEventListeners(Map.of(ISSUER_A, listenerA, ISSUER_B, listenerB))
+                .withJwkSources(Map.of(ISSUER_A, jwkSourceA, ISSUER_B, jwkSource(new TestJWKSetSource(new JWKSet(keyB.toPublicJWK())))))
                 .withJwtValidators(List.of(claimValidator))
                 .withDecodedJwtCacheIssuers(Map.of(ISSUER_A, cache))
                 .build();
@@ -151,12 +151,20 @@ class ClosableJwtDecodersBuilderTest {
     }
 
     @Test
-    void testCachedDecoderFollowsJwkEvents() throws Exception {
+    void testCachedDecoderFollowsJwkSource() throws Exception {
         build(-1);
         DecodedJwtCacheJwtDecoder decoder = (DecodedJwtCacheJwtDecoder) decoders.getJwtDecoders().get(ISSUER_A);
+        String token = token(keyA, ISSUER_A);
 
-        // the builder registered the decoder with the tenant's JWK event listener, which got the JWK set load
-        assertThat(decoder.cache.keyRepresentations.contains("a")).isTrue();
+        decoder.decode(token);
+        assertThat(decoder.getSize()).isEqualTo(1);
+
+        // key rotation: the JWK set is reloaded on the first JWT signed with the new key
+        jwkSetSourceA.setJwkSet(new JWKSet(rotatedKeyA.toPublicJWK()));
+        decoder.decode(token(rotatedKeyA, ISSUER_A));
+
+        // the cache checks against the decoder's JWK source, which no longer has the key of the cached JWT
+        assertThrows(JwtException.class, () -> decoder.decode(token));
     }
 
     @Test
@@ -164,6 +172,11 @@ class ClosableJwtDecodersBuilderTest {
         build(60);
         DecodedJwtCacheJwtDecoder decoder = (DecodedJwtCacheJwtDecoder) decoders.getJwtDecoders().get(ISSUER_A);
         assertThat(decoder.scheduledExecutorService).isNotNull();
+
+        // named after the issuer, so that threads of different tenants can be told apart
+        assertThat(decoder.getName()).isEqualTo(ISSUER_A);
+        Thread thread = decoder.scheduledExecutorService.submit(Thread::currentThread).get(5, TimeUnit.SECONDS);
+        assertThat(thread.getName()).isEqualTo("decoded-jwt-cache-cleanup-" + ISSUER_A);
 
         decoders.close();
 

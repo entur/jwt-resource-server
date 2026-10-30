@@ -62,7 +62,6 @@ import static org.mockito.Mockito.when;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(properties = {
         "entur.jwt.tenants.a.decoder-cache.enabled=true",
-        "entur.jwt.jwk.cache.preemptive.eager.enabled=true",
         // suppress per-request log noise so it doesn't distort request timings/output
         "logging.level.org.entur=WARN",
         "logging.level.org.springframework=WARN",

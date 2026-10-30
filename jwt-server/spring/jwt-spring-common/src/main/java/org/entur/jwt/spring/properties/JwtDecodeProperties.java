@@ -6,9 +6,10 @@ public class JwtDecodeProperties {
 
     /**
      * Whether to fail startup if there is a {@code JwtDecoder} or {@code ReactiveJwtDecoder} bean, which would be
-     * ignored, as JWTs are decoded by the per-issuer decoders configured under {@code entur.jwt.tenants}. Default true.
+     * ignored, as JWTs are decoded by the per-issuer decoders configured under {@code entur.jwt.tenants}.
+     * Default false; will default to true in the next major version.
      */
-    private boolean failOnJwtDecoderBean = true;
+    private boolean failOnJwtDecoderBean = false;
 
     public boolean isFailOnJwtDecoderBean() {
         return failOnJwtDecoderBean;

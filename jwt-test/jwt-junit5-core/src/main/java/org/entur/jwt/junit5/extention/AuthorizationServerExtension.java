@@ -71,7 +71,10 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
     public void beforeEach(ExtensionContext context) throws Exception {
         List<ResourceServerConfiguration> values = new ArrayList<>();
         for (ResourceServerConfigurationResolver resolver : resolvers) {
-            values.add(resolver.resolve(context));
+            ResourceServerConfiguration configuration = resolver.resolve(context);
+            if (configuration != null) { // i.e. resolver is not applicable for this test
+                values.add(configuration);
+            }
         }
         this.configurations = values;
 

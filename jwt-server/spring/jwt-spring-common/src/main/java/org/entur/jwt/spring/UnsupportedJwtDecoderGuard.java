@@ -24,13 +24,22 @@ public class UnsupportedJwtDecoderGuard implements SmartInitializingSingleton {
     private static final String MONO = "reactor.core.publisher.Mono";
 
     private final ListableBeanFactory beanFactory;
+    private final boolean enabled;
 
-    public UnsupportedJwtDecoderGuard(ListableBeanFactory beanFactory) {
+    /**
+     * @param beanFactory bean factory to inspect
+     * @param enabled whether to fail startup; if false, the guard does nothing
+     */
+    public UnsupportedJwtDecoderGuard(ListableBeanFactory beanFactory, boolean enabled) {
         this.beanFactory = beanFactory;
+        this.enabled = enabled;
     }
 
     @Override
     public void afterSingletonsInstantiated() {
+        if (!enabled) {
+            return;
+        }
         List<String> beanNames = new ArrayList<>();
         // do not initialize lazy beans / factory beans just to check their type
         beanNames.addAll(Arrays.asList(beanFactory.getBeanNamesForType(JwtDecoder.class, true, false)));
@@ -44,7 +53,7 @@ public class UnsupportedJwtDecoderGuard implements SmartInitializingSingleton {
             throw new IllegalStateException("Unsupported JwtDecoder / ReactiveJwtDecoder bean(s) " + beanNames + ": JWTs are decoded using the per-issuer decoders configured under 'entur.jwt.tenants', so such a bean would be ignored. "
                     + "Remove the bean(s), or provide a " + org.entur.jwt.spring.decode.ClosableJwtDecoders.class.getName() + " bean to customize JWT decoding (web and gRPC). "
                     + "Note that Spring Boot creates a JwtDecoder bean if 'spring.security.oauth2.resourceserver.jwt.*' properties are set. "
-                    + "To ignore the bean(s), set 'entur.jwt.decode.fail-on-jwt-decoder-bean=false'.");
+                    + "To ignore the bean(s), remove 'entur.jwt.decode.fail-on-jwt-decoder-bean=true'.");
         }
     }
 }

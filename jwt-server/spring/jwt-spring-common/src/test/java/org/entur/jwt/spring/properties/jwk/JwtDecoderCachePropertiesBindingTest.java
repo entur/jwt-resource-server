@@ -70,6 +70,20 @@ public class JwtDecoderCachePropertiesBindingTest {
     }
 
     @Test
+    public void testBindsDisabledCleanupInterval() {
+        runner.withPropertyValues("entur.jwt.tenants.a.decoder-cache.cleanup-interval=-1")
+                .run(context -> assertThat(decoderCache(context).getCleanupInterval()).isEqualTo(-1));
+    }
+
+    @Test
+    public void testFailsOnInvalidCleanupInterval() {
+        runner.withPropertyValues("entur.jwt.tenants.a.decoder-cache.cleanup-interval=-2").run(context -> {
+            assertThat(context).hasFailed();
+            assertThat(context.getStartupFailure()).hasStackTraceContaining("cleanupInterval must be -1 or non-negative");
+        });
+    }
+
+    @Test
     public void testFailsOnUnknownMode() {
         runner.withPropertyValues("entur.jwt.tenants.a.decoder-cache.mode=random").run(context -> {
             assertThat(context).hasFailed();

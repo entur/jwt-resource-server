@@ -33,6 +33,32 @@ public class JwkSourceMapFactory<C> {
         Map<String, JWKSource> jwkSources = new HashMap<>();
         Map<String, ListEventListener> jwkEventListeners = new HashMap<>();
 
+        JwkCacheProperties cache = jwkConfiguration.getCache();
+        boolean caching = cache != null && cache.isEnabled();
+
+        JwkRateLimitProperties rateLimiting = jwkConfiguration.getRateLimit();
+        boolean rateLimited = rateLimiting != null && rateLimiting.isEnabled();
+        if (rateLimited && !caching) {
+            // rate limiting (of cache refreshes) requires caching
+            if(LOGGER.isWarnEnabled()) LOGGER.warn("JWK rate limiting requires caching, so it is disabled since entur.jwt.jwk.cache.enabled=false. Set entur.jwt.jwk.rate-limit.enabled=false to remove this warning.");
+            rateLimited = false;
+        }
+
+        int millisecondsPerToken = 0;
+        if (rateLimited) {
+            double tokensPerSecond = rateLimiting.getRefillRate();
+
+            double secondsPerToken = 1d / tokensPerSecond;
+
+            millisecondsPerToken = (int) (secondsPerToken * 1000); // note quantization, ms precision is sufficient
+
+            if (cache.getTimeToLive() * 1000 <= millisecondsPerToken) {
+                throw new IllegalStateException("JWK cache time-to-live must be greater than the rate limit interval: entur.jwt.jwk.cache.time-to-live is " + cache.getTimeToLive() + " seconds, "
+                        + "while entur.jwt.jwk.rate-limit.refill-rate " + tokensPerSecond + " per second gives an interval of " + (millisecondsPerToken / 1000d) + " seconds. "
+                        + "Increase entur.jwt.jwk.cache.time-to-live or entur.jwt.jwk.rate-limit.refill-rate, or set entur.jwt.jwk.rate-limit.enabled=false.");
+            }
+        }
+
         for (Map.Entry<String, JwtTenantProperties> entry : tenants.entrySet()) {
             JwtTenantProperties tenantConfiguration = entry.getValue();
             if (!tenantConfiguration.isEnabled()) {
@@ -66,21 +92,13 @@ public class JwkSourceMapFactory<C> {
 
             JWKSourceBuilder<SecurityContext> builder = JWKSourceBuilder.create(url, retriever);
 
-            JwkRateLimitProperties rateLimiting = jwkConfiguration.getRateLimit();
-            if (rateLimiting != null && rateLimiting.isEnabled()) {
-                double tokensPerSecond = rateLimiting.getRefillRate();
-
-                double secondsPerToken = 1d / tokensPerSecond;
-
-                int millisecondsPerToken = (int) (secondsPerToken * 1000); // note quantization, ms precision is sufficient
-
+            if (rateLimited) {
                 builder.rateLimited(millisecondsPerToken, eventListener);
             } else {
                 builder.rateLimited(false);
             }
 
-            JwkCacheProperties cache = jwkConfiguration.getCache();
-            if (cache != null && cache.isEnabled()) {
+            if (caching) {
                 builder.cache(cache.getTimeToLive() * 1000, cache.getRefreshTimeout() * 1000, eventListener);
 
                 JwkPreemptiveCacheProperties preemptive = cache.getPreemptive();

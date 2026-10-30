@@ -5,7 +5,14 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
-import com.nimbusds.jose.jwk.source.CachingJWKSetSource;
+import com.nimbusds.jose.jwk.JWKMatcher;
+import com.nimbusds.jose.jwk.JWKSelector;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.jwk.source.JWKSourceBuilder;
+import com.nimbusds.jose.proc.JWSVerificationKeySelector;
+import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jwt.proc.DefaultJWTProcessor;
+import org.entur.jwt.spring.actuate.ListEventListener;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import org.junit.jupiter.api.Disabled;
@@ -24,8 +31,6 @@ import java.util.Date;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Back-to-back-request benchmark of {@link DecodedJwtCacheJwtDecoder}, run manually (not
@@ -59,7 +64,9 @@ public class DecodedJwtCacheJwtDecoderBenchmarkTest {
     @Test
     public void baselineNoCache() throws Exception {
         RSAKey signingKey = generateRsaKey("kid-0");
-        JwtDecoder delegate = nimbusDecoder(signingKey);
+        ListEventListener listener = new ListEventListener();
+        JWKSource<SecurityContext> jwkSource = jwkSource(signingKey, listener);
+        JwtDecoder delegate = nimbusDecoder(jwkSource);
         String token = signedToken(signingKey);
 
         Stats stats = measure("baseline (no cache, every request fully verified)",
@@ -71,10 +78,12 @@ public class DecodedJwtCacheJwtDecoderBenchmarkTest {
     @Test
     public void singleTokenReused() throws Exception {
         RSAKey signingKey = generateRsaKey("kid-0");
-        JwtDecoder delegate = nimbusDecoder(signingKey);
+        ListEventListener listener = new ListEventListener();
+        JWKSource<SecurityContext> jwkSource = jwkSource(signingKey, listener);
+        JwtDecoder delegate = nimbusDecoder(jwkSource);
         String token = signedToken(signingKey);
 
-        DecodedJwtCacheJwtDecoder cachedDecoder = cachedDecoder(delegate, signingKey);
+        DecodedJwtCacheJwtDecoder cachedDecoder = cachedDecoder(delegate, jwkSource, listener);
         cachedDecoder.decode(token); // populate cache (first call is necessarily a miss)
 
         Stats baseline = measure("baseline (no cache, every request fully verified)",
@@ -92,14 +101,16 @@ public class DecodedJwtCacheJwtDecoderBenchmarkTest {
     @Test
     public void tokenPoolReused() throws Exception {
         RSAKey signingKey = generateRsaKey("kid-0");
-        JwtDecoder delegate = nimbusDecoder(signingKey);
+        ListEventListener listener = new ListEventListener();
+        JWKSource<SecurityContext> jwkSource = jwkSource(signingKey, listener);
+        JwtDecoder delegate = nimbusDecoder(jwkSource);
 
         List<String> tokens = new ArrayList<>(TOKEN_POOL_SIZE);
         for (int i = 0; i < TOKEN_POOL_SIZE; i++) {
             tokens.add(signedToken(signingKey));
         }
 
-        DecodedJwtCacheJwtDecoder cachedDecoder = cachedDecoder(delegate, signingKey);
+        DecodedJwtCacheJwtDecoder cachedDecoder = cachedDecoder(delegate, jwkSource, listener);
         for (String token : tokens) {
             cachedDecoder.decode(token); // populate cache for each token in the pool
         }
@@ -156,8 +167,27 @@ public class DecodedJwtCacheJwtDecoderBenchmarkTest {
                 cached.opsPerSecond / baseline.opsPerSecond);
     }
 
-    private JwtDecoder nimbusDecoder(RSAKey signingKey) throws Exception {
-        return NimbusJwtDecoder.withPublicKey((RSAPublicKey) signingKey.toRSAPublicKey()).build();
+    // like JwkSourceMapFactory: cached, refresh-ahead, rate limited
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private JWKSource<SecurityContext> jwkSource(RSAKey signingKey, ListEventListener listener) {
+        return JWKSourceBuilder.create(new TestJWKSetSource(new JWKSet(signingKey.toPublicJWK())))
+                .cache(3_600_000, 15_000, (com.nimbusds.jose.util.events.EventListener) listener)
+                .refreshAheadCache(30_000, false, (com.nimbusds.jose.util.events.EventListener) listener)
+                .rateLimited(30_000, (com.nimbusds.jose.util.events.EventListener) listener)
+                .build();
+    }
+
+    // like ClosableJwtDecodersBuilder
+    private JwtDecoder nimbusDecoder(JWKSource<SecurityContext> jwkSource) throws Exception {
+        DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
+        jwtProcessor.setJWSKeySelector(new JWSVerificationKeySelector<>(JWSAlgorithm.Family.SIGNATURE, jwkSource));
+        jwtProcessor.setJWTClaimsSetVerifier((claims, context) -> {
+        });
+        NimbusJwtDecoder nimbusJwtDecoder = new NimbusJwtDecoder(jwtProcessor);
+        nimbusJwtDecoder.setJwtValidator(jwt -> OAuth2TokenValidatorResult.success());
+        // load the JWK set
+        jwkSource.get(new JWKSelector(new JWKMatcher.Builder().build()), null);
+        return nimbusJwtDecoder;
     }
 
     private String signedToken(RSAKey signingKey) throws Exception {
@@ -176,21 +206,10 @@ public class DecodedJwtCacheJwtDecoderBenchmarkTest {
     }
 
     /**
-     * Wraps {@code delegate} with a {@link DecodedJwtCacheJwtDecoder}, and feeds it a
-     * simulated JWKS refresh so it treats {@code signingKey}'s key id as an active
-     * signing key (required before it will actually cache any decoded JWT).
+     * Wraps {@code delegate} with a {@link DecodedJwtCacheJwtDecoder}, which checks cache hits against the JWK source.
      */
-    @SuppressWarnings("unchecked")
-    private DecodedJwtCacheJwtDecoder cachedDecoder(JwtDecoder delegate, RSAKey signingKey) {
-        DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(
-                delegate, jwt -> OAuth2TokenValidatorResult.success(), 0L, -1);
-
-        JWKSet jwkSet = new JWKSet(List.of(signingKey.toPublicJWK()));
-        CachingJWKSetSource.RefreshCompletedEvent<?> event = mock(CachingJWKSetSource.RefreshCompletedEvent.class);
-        when(event.getJWKSet()).thenReturn(jwkSet);
-        new DecodedJwtCacheJwkEventListener(cachedDecoder).notify(event);
-
-        return cachedDecoder;
+    private DecodedJwtCacheJwtDecoder cachedDecoder(JwtDecoder delegate, JWKSource<SecurityContext> jwkSource, ListEventListener listener) {
+        return new DecodedJwtCacheJwtDecoder(delegate, jwkSource, jwt -> OAuth2TokenValidatorResult.success(), 0L, -1);
     }
 
     private RSAKey generateRsaKey(String kid) throws Exception {

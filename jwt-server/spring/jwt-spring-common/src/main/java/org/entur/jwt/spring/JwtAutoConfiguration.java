@@ -6,6 +6,7 @@ import org.entur.jwt.spring.decode.ClosableJwtDecoders;
 import org.entur.jwt.spring.decode.ClosableJwtDecodersBuilder;
 import org.entur.jwt.spring.decode.cache.DecodedJwtCacheConfigurationReader;
 import org.entur.jwt.spring.decode.DefaultJwtHeaderToIssuerMapperDecider;
+import org.entur.jwt.spring.decode.JwtDecoderValidators;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapperDecider;
 import org.entur.jwt.spring.decode.JwtHeaderToIssuerMapper;
 import org.entur.jwt.spring.properties.JwtProperties;
@@ -14,6 +15,7 @@ import org.entur.jwt.spring.properties.jwk.JwtTenantProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ListableBeanFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -35,7 +37,7 @@ import java.util.concurrent.Executors;
 
 @Configuration
 @EnableConfigurationProperties({SecurityProperties.class})
-@ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true")
+@ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
 public class JwtAutoConfiguration {
 
     private static final Logger LOG = LoggerFactory.getLogger(JwtAutoConfiguration.class);
@@ -69,11 +71,26 @@ public class JwtAutoConfiguration {
         return factory.getJwkSourceMap(enabledTenants, jwtProperties.getJwk(), listJwksHealthIndicator);
     }
 
+    /**
+     * The library's JWT validators. {@link OAuth2TokenValidator} beans are used in addition to these;
+     * provide a bean of this type to replace them.
+     */
     @Bean
-    public List<OAuth2TokenValidator<Jwt>> claimConstraints(SecurityProperties properties) {
+    @ConditionalOnMissingBean(EnturJwtValidators.class)
+    public EnturJwtValidators enturJwtValidators(SecurityProperties properties) {
         OAuth2TokenValidatorFactory oAuth2TokenValidatorFactory = new OAuth2TokenValidatorFactory();
 
-        return oAuth2TokenValidatorFactory.create(properties.getJwt().getClaims());
+        return new EnturJwtValidators(oAuth2TokenValidatorFactory.create(properties.getJwt().getClaims()));
+    }
+
+    /**
+     * @deprecated not used by this library; inject {@link EnturJwtValidators} and any {@link OAuth2TokenValidator} beans instead
+     * (as a list of validators, this bean is not injected if there are {@link OAuth2TokenValidator} beans). To be removed in the next major version.
+     */
+    @Bean
+    @Deprecated
+    public List<OAuth2TokenValidator<Jwt>> claimConstraints(EnturJwtValidators enturJwtValidators) {
+        return enturJwtValidators.getValidators();
     }
 
     @Bean
@@ -87,29 +104,28 @@ public class JwtAutoConfiguration {
     /**
      * Per-issuer JWT decoders (including any decoded JWT caches), shared by the web and gRPC modules,
      * and closed by Spring on shutdown. Lazy, so that it is only created if used (i.e. not for webflux).
+     * Tokens are validated by the {@link EnturJwtValidators} plus any {@link OAuth2TokenValidator} beans.
      * Intentionally not a {@link org.springframework.security.oauth2.jwt.JwtDecoder} bean, as that would activate
      * Spring Boot's default resource server security filter chain.
      */
     @Bean
     @Lazy
     @ConditionalOnMissingBean(ClosableJwtDecoders.class)
-    public ClosableJwtDecoders closableJwtDecoders(JwkSourceMap jwkSourceMap, List<OAuth2TokenValidator<Jwt>> jwtValidators, SecurityProperties securityProperties) {
+    public ClosableJwtDecoders closableJwtDecoders(JwkSourceMap jwkSourceMap, EnturJwtValidators enturJwtValidators, ObjectProvider<OAuth2TokenValidator<Jwt>> jwtValidators, SecurityProperties properties) {
         return new ClosableJwtDecodersBuilder()
                 .withJwkSources(jwkSourceMap.getJwkSources())
-                .withJwkEventListeners(jwkSourceMap.getJwkEventListeners())
-                .withJwtValidators(jwtValidators)
-                .withDecodedJwtCacheIssuers(DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(securityProperties.getJwt()))
+                .withJwtValidators(JwtDecoderValidators.combine(enturJwtValidators, jwtValidators.orderedStream(), properties.getJwt().getClaims()))
+                .withDecodedJwtCacheIssuers(DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(properties.getJwt()))
                 .build();
     }
 
     /**
      * Fail startup if there is a JwtDecoder bean, as it would silently be ignored.
-     * Disable with {@code entur.jwt.decode.fail-on-jwt-decoder-bean=false}.
+     * Opt-in via {@code entur.jwt.decode.fail-on-jwt-decoder-bean=true} (the default in the next major version).
      */
     @Bean
-    @ConditionalOnProperty(name = "entur.jwt.decode.fail-on-jwt-decoder-bean", havingValue = "true", matchIfMissing = true)
-    public static UnsupportedJwtDecoderGuard unsupportedJwtDecoderGuard(ListableBeanFactory beanFactory) {
-        return new UnsupportedJwtDecoderGuard(beanFactory);
+    public UnsupportedJwtDecoderGuard unsupportedJwtDecoderGuard(ListableBeanFactory beanFactory, SecurityProperties securityProperties) {
+        return new UnsupportedJwtDecoderGuard(beanFactory, securityProperties.getJwt().getDecode().isFailOnJwtDecoderBean());
     }
 
     @Bean

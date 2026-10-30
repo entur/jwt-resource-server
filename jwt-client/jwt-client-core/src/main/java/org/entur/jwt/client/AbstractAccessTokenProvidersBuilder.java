@@ -162,6 +162,9 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
         }
         if (healthProvider != null) {
             healthProvider.setRefreshProvider(provider);
+            if (cached) {
+                healthProvider.setCacheMinimumTimeToLive(minimumTimeToLiveUnit.toMillis(minimumTimeToLiveUnits));
+            }
         }
         return provider;
     }
