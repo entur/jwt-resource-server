@@ -112,7 +112,7 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
                 ResponseEntity<Void> response = mono.block();
 
                 int responseStatusCode = response.getStatusCode().value();
-                if (responseStatusCode != 200) {
+                if (!response.getStatusCode().is2xxSuccessful()) { // i.e. Keycloak responds with 204
                     if(LOGGER.isInfoEnabled()) LOGGER.info("Unexpected response code {} when revoking refresh token", responseStatusCode);
                 }
             } catch (URISyntaxException e) {

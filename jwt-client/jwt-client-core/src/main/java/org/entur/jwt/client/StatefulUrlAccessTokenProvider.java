@@ -114,7 +114,7 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
             try {
                 request = request(revokeUrl, revokeBody, Collections.emptyMap());
                 int responseCode = request.getResponseCode();
-                if (responseCode != 200) {
+                if (responseCode < 200 || responseCode > 299) { // i.e. Keycloak responds with 204
                     if (responseCode == 503) { // service unavailable
                         if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when revoking refresh token at {}. {}", responseCode, revokeUrl, printHeadersIfPresent(request, "Retry-After"));
                     } else if (responseCode == 429) { // too many calls

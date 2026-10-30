@@ -4,6 +4,9 @@ import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -21,6 +24,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withBadRequest;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withNoContent;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServiceUnavailable;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withUnauthorizedRequest;
@@ -79,6 +83,22 @@ public class RestTemplateStatefulUrlAccessTokenProviderTest {
         });
         // keep the session for the next attempt
         assertThat(provider.getRefreshToken().getValue()).isEqualTo("a.b.c");
+
+        mockServer.verify();
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    public void shouldAcceptHttp204WhenRevokingRefreshToken(CapturedOutput output) throws Exception {
+        expect(ISSUE_URL, withSuccess(ISSUE_RESPONSE, MediaType.APPLICATION_JSON));
+        // i.e. Keycloak
+        expect(REVOKE_URL, withNoContent());
+
+        provider.getAccessToken(false);
+        provider.close();
+
+        assertThat(provider.getRefreshToken()).isNull();
+        assertThat(output.getAll()).doesNotContain("response code 204");
 
         mockServer.verify();
     }

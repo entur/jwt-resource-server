@@ -82,7 +82,7 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
                 ResponseEntity<Void> response = restTemplate.exchange(uri, HttpMethod.POST, request, Void.class);
 
                 int responseCode = response.getStatusCode().value();
-                if (responseCode != 200) {
+                if (!response.getStatusCode().is2xxSuccessful()) { // i.e. Keycloak responds with 204
                     if (responseCode == 503) { // service unavailable
                         if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when revoking refresh token at {}. {}", responseCode, revokeUrl, printHeadersIfPresent(response, "Retry-After"));
                     } else if (responseCode == 429) { // too many calls

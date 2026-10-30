@@ -5,6 +5,7 @@ import org.mockito.ArgumentCaptor;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -256,6 +257,35 @@ public class StatefulUrlAccessTokenProviderTest extends AbstractUrlAccessTokenPr
         provider.close();
 
         verify(urlConnection, times(2)).disconnect();
+    }
+
+    private String revokeAndCaptureLog(int responseCode) throws Exception {
+        when(urlConnection.getResponseCode()).thenReturn(200);
+        StatefulUrlAccessTokenProvider provider = providerForResource("/keycloakClientCredentialsResponse.json");
+        provider.getAccessToken(false);
+        assertThat(provider.getRefreshToken()).isNotNull();
+
+        when(urlConnection.getOutputStream()).thenReturn(new ByteArrayOutputStream());
+        when(urlConnection.getResponseCode()).thenReturn(responseCode);
+
+        // slf4j-simple logs to System.err
+        PrintStream err = System.err;
+        ByteArrayOutputStream log = new ByteArrayOutputStream();
+        System.setErr(new PrintStream(log, true, StandardCharsets.UTF_8));
+        try {
+            provider.close();
+        } finally {
+            System.setErr(err);
+        }
+        return log.toString(StandardCharsets.UTF_8);
+    }
+
+    @Test
+    public void shouldAcceptHttp204WhenRevokingRefreshToken() throws Exception {
+        // i.e. Keycloak
+        assertThat(revokeAndCaptureLog(204)).doesNotContain("unexpected response code");
+
+        assertThat(revokeAndCaptureLog(400)).contains("unexpected response code 400");
     }
 
     @Test
