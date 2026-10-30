@@ -119,7 +119,7 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
 
         TestClassState state = getTestClassState(context);
         if (state != null) {
-            ResourceServerConfiguration configuration = (id, propertyName) -> getProperty(values, id, propertyName);
+            ResourceServerConfiguration configuration = getConfiguration(context);
             for (ResourceServerConfigurationEnricher enricher : state.enrichers()) {
                 enricher.beforeEach(configuration, context);
             }
@@ -159,7 +159,7 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
             AuthorizationServerImplementation authorizationServerImplementation;
             String authorizationServer = accessToken.by();
             if (authorizationServer != null && !authorizationServer.isEmpty()) {
-                authorizationServerImplementation = getAuthorizationServerImplementation(implementations, authorizationServer);
+                authorizationServerImplementation = getAuthorizationServerImplementation(extensionContext, authorizationServer);
                 if(authorizationServerImplementation == null) {
                     throw new IllegalArgumentException("Unknown authorization server " + authorizationServer);
                 }
@@ -199,7 +199,7 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
                 throw new IllegalArgumentException("Please specify AccessToken authorization-server 'by' attribute when using multiple authorization servers");
             }
             if (!authorizationServer.isEmpty()) {
-                if (getAuthorizationServerImplementation(implementations, authorizationServer) == null) {
+                if (getAuthorizationServerImplementation(extensionContext, authorizationServer) == null) {
                     throw new IllegalArgumentException("Unknown authorization server " + authorizationServer);
                 }
                 return true;
@@ -223,6 +223,26 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
         return FACTORY.create(context.getRequiredTestClass());
     }
 
+    /**
+     * Get an authorization server of the test class.
+     *
+     * @param context extension context of the test (or test class)
+     * @param id authorization server id
+     * @return the authorization server, or null if not found
+     */
+
+    protected AuthorizationServerImplementation getAuthorizationServerImplementation(ExtensionContext context, String id) {
+        return getAuthorizationServerImplementation(getServers(context), id);
+    }
+
+    /**
+     * @param id authorization server id
+     * @return the authorization server of the last initialized test class
+     * @deprecated not safe for {@literal @}Nested test classes or test classes running in parallel,
+     * use (and override) {@link #getAuthorizationServerImplementation(ExtensionContext, String)}
+     */
+
+    @Deprecated
     protected AuthorizationServerImplementation getAuthorizationServerImplementation(String id) {
         return getAuthorizationServerImplementation(servers, id);
     }
@@ -237,8 +257,9 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
     }
 
     /**
-     * Get the configuration for resolving a parameter. The configuration is resolved in beforeEach, but parameters
-     * might also be resolved before that, i.e. for constructors and {@literal @}BeforeAll methods.
+     * Get the configuration for resolving a parameter (i.e. the issuer of an access-token), and for the enrichers.
+     * The configuration is resolved in beforeEach, but parameters might also be resolved before that, i.e. for
+     * constructors and {@literal @}BeforeAll methods. Override to customize the configuration of a test.
      *
      * @param context extension context
      * @return configuration
@@ -260,6 +281,12 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
         return (id, propertyName) -> getProperty(resolved, id, propertyName);
     }
 
+    /**
+     * @deprecated returns the configuration of the last test, which is not safe for test classes running in parallel,
+     * use (and override) {@link #getConfiguration(ExtensionContext)}
+     */
+
+    @Deprecated
     @Override
     public String getProperty(String id, String propertyName) {
         return getProperty(configurations, id, propertyName);

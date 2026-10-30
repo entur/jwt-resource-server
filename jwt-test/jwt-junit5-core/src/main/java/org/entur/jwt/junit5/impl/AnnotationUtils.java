@@ -3,7 +3,9 @@ package org.entur.jwt.junit5.impl;
 import java.lang.annotation.Annotation;
 import java.lang.annotation.Inherited;
 import java.lang.reflect.AnnotatedElement;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -83,24 +85,36 @@ public class AnnotationUtils {
      */
 
     public static Optional<Annotation> findMetaAnnotatedAnnotation(Annotation annotation, Class<? extends Annotation> metaAnnotationType) {
-        return findMetaAnnotatedAnnotation(annotation, metaAnnotationType, new HashSet<>());
+        List<Annotation> annotations = findMetaAnnotatedAnnotations(annotation, metaAnnotationType);
+        return annotations.isEmpty() ? Optional.empty() : Optional.of(annotations.get(0));
     }
 
-    private static Optional<Annotation> findMetaAnnotatedAnnotation(Annotation annotation, Class<? extends Annotation> metaAnnotationType, Set<Class<? extends Annotation>> visited) {
+    /**
+     * Find all annotations which carry the given meta-annotation: the annotation itself, or (recursively) its meta-annotations.
+     *
+     * @param annotation the annotation
+     * @param metaAnnotationType the meta-annotation type
+     * @return the annotations which are annotated with the meta-annotation
+     */
+
+    public static List<Annotation> findMetaAnnotatedAnnotations(Annotation annotation, Class<? extends Annotation> metaAnnotationType) {
+        List<Annotation> results = new ArrayList<>();
+        findMetaAnnotatedAnnotations(annotation, metaAnnotationType, new HashSet<>(), results);
+        return results;
+    }
+
+    private static void findMetaAnnotatedAnnotations(Annotation annotation, Class<? extends Annotation> metaAnnotationType, Set<Annotation> visited, List<Annotation> results) {
         Class<? extends Annotation> annotationType = annotation.annotationType();
-        if (isInJavaLangAnnotationPackage(annotationType) || !visited.add(annotationType)) {
-            return Optional.empty();
+        // note: visit annotations (not annotation types), as the same annotation type might be used with different attributes
+        if (isInJavaLangAnnotationPackage(annotationType) || !visited.add(annotation)) {
+            return;
         }
         if (annotationType.getDeclaredAnnotation(metaAnnotationType) != null) {
-            return Optional.of(annotation);
+            results.add(annotation);
         }
         for (Annotation candidate : annotationType.getDeclaredAnnotations()) {
-            Optional<Annotation> metaAnnotated = findMetaAnnotatedAnnotation(candidate, metaAnnotationType, visited);
-            if (metaAnnotated.isPresent()) {
-                return metaAnnotated;
-            }
+            findMetaAnnotatedAnnotations(candidate, metaAnnotationType, visited, results);
         }
-        return Optional.empty();
     }
 
     private static <A extends Annotation> Optional<A> findMetaAnnotation(Class<A> annotationType, Annotation[] candidates, boolean inherited, Set<Annotation> visited) {

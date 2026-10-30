@@ -86,6 +86,19 @@ public class AuthorizationServerImplementationFactory {
         return null;
     }
 
+    /**
+     * @param testClass a test class
+     * @return the test class itself, or the outermost enclosing class of a {@literal @}Nested test class
+     */
+
+    public static Class<?> getTopLevelTestClass(Class<?> testClass) {
+        Class<?> topLevelTestClass = testClass;
+        while (isNested(topLevelTestClass)) {
+            topLevelTestClass = topLevelTestClass.getEnclosingClass();
+        }
+        return topLevelTestClass;
+    }
+
     private static boolean isNested(Class<?> testClass) {
         // i.e. an inner (non-static) class annotated with @Nested, like JUnit
         return testClass.isMemberClass() && !Modifier.isStatic(testClass.getModifiers()) && AnnotationSupport.isAnnotated(testClass, Nested.class);
@@ -99,7 +112,8 @@ public class AuthorizationServerImplementationFactory {
         } else if (annotation instanceof AuthorizationServer.List) {
             AuthorizationServer.List l = (AuthorizationServer.List) annotation;
             for (AuthorizationServer authorizationServer : l.value()) {
-                results.add(add(annotation, authorizationServer));
+                // like a directly declared authorization server (i.e. one inherited within a container, one declared directly)
+                results.add(add(authorizationServer, authorizationServer));
             }
         } else {
             createFromMetaAnnotation(annotation, results);
@@ -122,16 +136,13 @@ public class AuthorizationServerImplementationFactory {
         // copy approach from junit AnnotationUtils
         // note: the source is the annotation which carries the meta-annotation (i.e. not necessarily the annotation on the test class),
         // so that its attributes are available to the encoder also when used within a composed annotation
-        Optional<Annotation> single = AnnotationUtils.findMetaAnnotatedAnnotation(annotation, AuthorizationServer.class);
-        if (single.isPresent()) {
-            Annotation source = single.get();
+        // a composed annotation might carry several authorization servers
+        for (Annotation source : AnnotationUtils.findMetaAnnotatedAnnotations(annotation, AuthorizationServer.class)) {
             AuthorizationServer authorizationServer = source.annotationType().getDeclaredAnnotation(AuthorizationServer.class);
 
             results.add(add(source, authorizationServer));
         }
-        Optional<Annotation> list = AnnotationUtils.findMetaAnnotatedAnnotation(annotation, AuthorizationServer.List.class);
-        if (list.isPresent()) {
-            Annotation source = list.get();
+        for (Annotation source : AnnotationUtils.findMetaAnnotatedAnnotations(annotation, AuthorizationServer.List.class)) {
             for (AuthorizationServer authorizationServer : source.annotationType().getDeclaredAnnotation(AuthorizationServer.List.class).value()) {
                 results.add(add(source, authorizationServer));
             }
@@ -190,10 +201,22 @@ public class AuthorizationServerImplementationFactory {
      */
 
     public static void writeAtomically(Path path, String content) throws IOException {
+        writeAtomically(path, content.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Write a file so that concurrent readers never see a partially written file.
+     *
+     * @param path file to write
+     * @param content file content
+     * @throws IOException if the file could not be written
+     */
+
+    public static void writeAtomically(Path path, byte[] content) throws IOException {
         Path absolutePath = path.toAbsolutePath();
         Path temp = Files.createTempFile(absolutePath.getParent(), absolutePath.getFileName().toString(), ".tmp");
         try {
-            Files.writeString(temp, content, StandardCharsets.UTF_8);
+            Files.write(temp, content);
             try {
                 Files.move(temp, absolutePath, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
             } catch (AtomicMoveNotSupportedException e) {

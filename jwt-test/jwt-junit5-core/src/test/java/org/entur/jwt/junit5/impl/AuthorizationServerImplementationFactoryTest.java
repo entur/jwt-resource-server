@@ -97,6 +97,52 @@ public class AuthorizationServerImplementationFactoryTest {
     static class DuplicateIdTest {
     }
 
+    @AuthorizationServer("a")
+    @AuthorizationServer("b")
+    static class BaseTest {
+    }
+
+    // repeats an authorization server inherited within a container
+    @AuthorizationServer("a")
+    static class SubTest extends BaseTest {
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.TYPE)
+    @AuthorizationServer("x")
+    @interface ServerX {
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.TYPE)
+    @AuthorizationServer("y")
+    @interface ServerY {
+    }
+
+    // a composed annotation with two authorization servers
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.TYPE)
+    @ServerX
+    @ServerY
+    @interface ServersXY {
+    }
+
+    @ServersXY
+    static class ComposedServersTest {
+    }
+
+    // a composed annotation with two different authorization servers with the same id
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.TYPE)
+    @MyAuthorizationServer
+    @MyComposedAnnotation
+    @interface ConflictingServers {
+    }
+
+    @ConflictingServers
+    static class ComposedDuplicateIdTest {
+    }
+
     private final AuthorizationServerImplementationFactory factory = new AuthorizationServerImplementationFactory();
 
     private static List<String> getIds(List<AuthorizationServerImplementation> servers) {
@@ -173,6 +219,27 @@ public class AuthorizationServerImplementationFactoryTest {
     @Test
     public void testDuplicateIdOnSameClassFails() {
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> factory.create(DuplicateIdTest.class));
+
+        assertThat(e).hasMessageThat().contains("'myServer'");
+    }
+
+    @Test
+    public void testRepeatedInheritedAuthorizationServer() {
+        List<AuthorizationServerImplementation> servers = factory.create(SubTest.class);
+
+        assertThat(getIds(servers)).containsExactly("a", "b");
+    }
+
+    @Test
+    public void testComposedAnnotationWithSeveralAuthorizationServers() {
+        List<AuthorizationServerImplementation> servers = factory.create(ComposedServersTest.class);
+
+        assertThat(getIds(servers)).containsExactly("x", "y");
+    }
+
+    @Test
+    public void testDuplicateIdWithinComposedAnnotationFails() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> factory.create(ComposedDuplicateIdTest.class));
 
         assertThat(e).hasMessageThat().contains("'myServer'");
     }
