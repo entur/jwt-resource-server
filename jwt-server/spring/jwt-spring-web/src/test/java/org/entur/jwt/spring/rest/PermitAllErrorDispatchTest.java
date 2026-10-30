@@ -15,6 +15,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -31,6 +32,8 @@ import static com.google.common.truth.Truth.assertThat;
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
 @TestPropertySource(properties = {"entur.authorization.permit-all.matcher.patterns=/actuator/health,/unprotected/**"})
+// the authenticated requests load the JWKs, so do not share the context with tests which expect the JWKs not to be loaded yet
+@DirtiesContext
 public class PermitAllErrorDispatchTest {
 
     @LocalServerPort
