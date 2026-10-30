@@ -78,6 +78,9 @@ public class DecodedJwtCacheConfigurationReaderTest {
         jwt.getTenants().put("a", tenant("https://issuer-a", true, true));
         jwt.getTenants().put("b", tenant("https://issuer-b", true, false));
         jwt.getTenants().put("c", tenant("https://issuer-c", false, true));
+        JwtTenantProperties zero = tenant("https://issuer-d", true, true);
+        zero.getDecoderCache().setSize(0);
+        jwt.getTenants().put("d", zero);
 
         assertThatThrownBy(() -> DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt))
                 .isInstanceOf(IllegalStateException.class)
@@ -93,6 +96,20 @@ public class DecodedJwtCacheConfigurationReaderTest {
 
         assertThat(DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt)).isEmpty();
         assertThat(logAppender.list).isEmpty();
+    }
+
+    @Test
+    public void testDoesNotFailWhenDecoderCacheSizeIsZeroAndJwkCacheDisabled() {
+        // size 0 is like enabled=false
+        JwtProperties jwt = jwtProperties();
+        jwt.getJwk().getCache().setEnabled(false);
+
+        JwtTenantProperties zero = tenant("https://issuer-a", true, true);
+        zero.getDecoderCache().setSize(0);
+        jwt.getTenants().put("a", zero);
+
+        assertThat(DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt)).isEmpty();
+        assertThat(logAppender.list).anyMatch(e -> e.getFormattedMessage().contains("'a' has decoder-cache.size=0"));
     }
 
     @Test

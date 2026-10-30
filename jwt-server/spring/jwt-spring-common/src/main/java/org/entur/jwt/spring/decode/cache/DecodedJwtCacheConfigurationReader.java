@@ -18,7 +18,15 @@ public class DecodedJwtCacheConfigurationReader {
     private static final Logger LOGGER = LoggerFactory.getLogger(DecodedJwtCacheConfigurationReader.class);
 
     public static Map<String, JwtDecoderCacheProperties> getActiveJwtDecoderCacheProperties(JwtProperties jwt) {
-        List<String> tenants = getTenantsWithDecoderCacheEnabled(jwt);
+        List<String> tenants = new ArrayList<>();
+        for (String tenant : getTenantsWithDecoderCacheEnabled(jwt)) {
+            if (jwt.getTenants().get(tenant).getDecoderCache().getSize() == 0) {
+                // nothing would ever be cached
+                LOGGER.info("Tenant '{}' has decoder-cache.size=0, the decoded JWT cache is disabled", tenant);
+                continue;
+            }
+            tenants.add(tenant);
+        }
         if (tenants.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -33,11 +41,6 @@ public class DecodedJwtCacheConfigurationReader {
         Map<String, JwtDecoderCacheProperties> decodedJwtCacheIssuers = new HashMap<>();
         for (String tenant : tenants) {
             JwtTenantProperties value = jwt.getTenants().get(tenant);
-            if (value.getDecoderCache().getSize() == 0) {
-                // nothing would ever be cached
-                LOGGER.info("Tenant '{}' has decoder-cache.size=0, the decoded JWT cache is disabled", tenant);
-                continue;
-            }
             decodedJwtCacheIssuers.put(value.getIssuer(), value.getDecoderCache());
         }
         return decodedJwtCacheIssuers;
