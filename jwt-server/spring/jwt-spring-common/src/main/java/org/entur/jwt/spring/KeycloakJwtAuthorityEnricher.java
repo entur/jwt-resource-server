@@ -106,7 +106,10 @@ public class KeycloakJwtAuthorityEnricher implements JwtAuthorityEnricher {
             if ("account".equals(entry.getKey())) {
                 continue;
             }
-            if (entry.getValue() instanceof Map<?, ?> client && client.get("roles") != null) {
+            if (entry.getValue() instanceof Map<?, ?> client
+                    && ((client.get("roles") instanceof List<?> roles && roles.stream().anyMatch(String.class::isInstance))
+                    || (client.get("roles") instanceof String[] rolesArray
+                            && java.util.Arrays.stream(rolesArray).anyMatch(String.class::isInstance)))) {
                 if (warnedAboutMissingClientId.compareAndSet(false, true)) {
                     logger.warn("Ignoring client roles in the 'resource_access' claim, as no client id is configured. Set 'entur.jwt.flavours.keycloak.client-id' to map the roles of a client to authorities.");
                 }
