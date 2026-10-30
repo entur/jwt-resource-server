@@ -5,6 +5,7 @@ import com.nimbusds.jose.jwk.JWKSet;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.junit5.configuration.resolve.PropertiesAuthorizationServerConfiguration;
 import org.entur.jwt.junit5.extention.AuthorizationServerExtension;
+import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
 import org.entur.jwt.junit5.impl.DefaultAuthorizationServerEncoder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -12,11 +13,13 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -25,9 +28,11 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The properties file is shared by test classes.
@@ -166,6 +171,38 @@ public class PropertiesFileResourceServerConfigurationEnricherTest {
         Properties properties = load(output);
         assertNotNull(properties.getProperty(PREFIX + ".a.issuer"));
         assertNotNull(properties.getProperty(PREFIX + ".b.issuer"));
+    }
+
+    @Test
+    public void testKeepsPropertiesOfSubclasses() throws Exception {
+        Path output = directory.resolve("jwt.junit5.properties");
+
+        PropertiesFileResourceServerConfigurationEnricher enricher = new PropertiesFileResourceServerConfigurationEnricher(PREFIX, output) {
+            @Override
+            protected Map<String, Object> getProperties(List<AuthorizationServerImplementation> implementations) throws IOException {
+                Map<String, Object> properties = super.getProperties(implementations);
+                properties.put("my.custom.property", "value");
+                return properties;
+            }
+        };
+        enricher.write(AuthorizationServerExtension.getFactory().create(TenantA.class), TenantA.class);
+
+        Properties properties = load(output);
+        assertEquals("value", properties.getProperty("my.custom.property"));
+        assertNotNull(properties.getProperty(PREFIX + ".a.jwk.location"));
+    }
+
+    @Test
+    public void testBoundedJsonWebKeysFileName() {
+        Path output = directory.resolve("jwt.junit5.properties");
+        PropertiesFileResourceServerConfigurationEnricher enricher = new PropertiesFileResourceServerConfigurationEnricher(PREFIX, output);
+
+        String tenant = "租户".repeat(100);
+        Path path = enricher.getJsonWebKeysPath(output, tenant);
+
+        assertTrue(path.getFileName().toString().getBytes(StandardCharsets.UTF_8).length < 255);
+        assertEquals(path, enricher.getJsonWebKeysPath(output, tenant));
+        assertNotEquals(path, enricher.getJsonWebKeysPath(output, "other"));
     }
 
     @Test

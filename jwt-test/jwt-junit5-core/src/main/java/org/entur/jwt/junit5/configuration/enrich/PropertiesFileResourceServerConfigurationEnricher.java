@@ -13,11 +13,15 @@ import tools.jackson.databind.node.ObjectNode;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URLEncoder;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -77,11 +81,8 @@ public class PropertiesFileResourceServerConfigurationEnricher extends AbstractP
      */
 
     protected void write(List<AuthorizationServerImplementation> authorizationServers, Class<?> topLevelTestClass) throws IOException {
-        for (AuthorizationServerImplementation authorizationServer : authorizationServers) {
-            if (authorizationServer.getId().isEmpty() && authorizationServers.size() > 1) {
-                throw new IllegalArgumentException("Specify authorization server id in multi-tenant tests.");
-            }
-        }
+        // the JWK locations, and any properties added by subclasses
+        Map<String, Object> properties = getProperties(authorizationServers);
 
         synchronized (LOCK) {
             Path path = output.toAbsolutePath().normalize();
@@ -102,25 +103,31 @@ public class PropertiesFileResourceServerConfigurationEnricher extends AbstractP
                 String key = prefix + "." + tenant;
 
                 // as read by PropertiesFileAuthorizationServerConfigurationResolver
-                String issuer = AuthorizationServerExtension.toIssuer(authorizationServer.getAuthorizationServer());
+                String issuer = properties.computeIfAbsent(key + ".issuer", k -> AuthorizationServerExtension.toIssuer(authorizationServer.getAuthorizationServer())).toString();
                 String existingIssuer = p.getProperty(key + ".issuer");
                 if (existingIssuer != null && !existingIssuer.equals(issuer)) {
                     throw new IllegalArgumentException("Authorization servers with different issuers " + existingIssuer + " and " + issuer + " for tenant '" + tenant + "' (an authorization server without id uses tenant '" + AuthorizationServerImplementationFactory.ON_THE_FLY_TENANT + "')");
                 }
-                p.put(key + ".issuer", issuer);
-                if (authorizationServer.getId().isEmpty()) {
-                    p.put(key + AuthorizationServerImplementationFactory.ON_THE_FLY_PROPERTY, "true");
-                }
 
-                // the same location for the tenant, so that a resource server which reloads the keys
-                // also gets the keys added by a @Nested test class
-                Path jwks = getJsonWebKeysPath(path, tenant);
-                String content = authorizationServer.getJsonWebKeys();
-                if (merge && p.getProperty(key + JWK_LOCATION_PROPERTY) != null && Files.exists(jwks)) {
-                    content = mergeJsonWebKeys(Files.readString(jwks, StandardCharsets.UTF_8), content);
+                // publish the keys at the same location for the tenant, so that a resource server which reloads
+                // the keys also gets the keys added by a @Nested test class
+                Object location = properties.get(key + JWK_LOCATION_PROPERTY);
+                if (location != null) {
+                    URI uri = URI.create(location.toString());
+                    if ("file".equals(uri.getScheme())) {
+                        Path jwks = getJsonWebKeysPath(path, tenant);
+                        String content = Files.readString(Paths.get(uri), StandardCharsets.UTF_8);
+                        if (merge && p.getProperty(key + JWK_LOCATION_PROPERTY) != null && Files.exists(jwks)) {
+                            content = mergeJsonWebKeys(Files.readString(jwks, StandardCharsets.UTF_8), content);
+                        }
+                        AuthorizationServerImplementationFactory.writeAtomically(jwks, content);
+                        properties.put(key + JWK_LOCATION_PROPERTY, jwks.toUri().toString());
+                    }
                 }
-                AuthorizationServerImplementationFactory.writeAtomically(jwks, content);
-                p.put(key + JWK_LOCATION_PROPERTY, jwks.toUri().toString());
+            }
+
+            for (Map.Entry<String, Object> e : properties.entrySet()) {
+                p.put(e.getKey(), e.getValue().toString());
             }
 
             // the byte stream variant escapes non-ASCII characters, as expected by Properties.load(InputStream)
@@ -130,8 +137,19 @@ public class PropertiesFileResourceServerConfigurationEnricher extends AbstractP
         }
     }
 
+    /**
+     * @param path the properties file
+     * @param tenant the tenant id
+     * @return the JWKs file of the tenant, named using a digest of the tenant id (so that the file name is valid and bounded)
+     */
+
     protected Path getJsonWebKeysPath(Path path, String tenant) {
-        return path.resolveSibling(path.getFileName() + "." + URLEncoder.encode(tenant, StandardCharsets.UTF_8) + ".jwk.json");
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(tenant.getBytes(StandardCharsets.UTF_8));
+            return path.resolveSibling(path.getFileName() + "." + HexFormat.of().formatHex(digest) + ".jwk.json");
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     /**
