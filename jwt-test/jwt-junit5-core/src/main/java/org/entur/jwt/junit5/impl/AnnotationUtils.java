@@ -73,6 +73,36 @@ public class AnnotationUtils {
         return findMetaAnnotation(annotationType, element.getAnnotations(), inherited, visited);
     }
 
+    /**
+     * Find the annotation which is directly annotated with the supplied meta-annotation type, i.e. the supplied
+     * annotation itself or one of its (meta-)annotations.
+     *
+     * @param annotation annotation to search
+     * @param metaAnnotationType meta-annotation type
+     * @return the annotation (not the meta-annotation), or empty if the meta-annotation is not present
+     */
+
+    public static Optional<Annotation> findMetaAnnotatedAnnotation(Annotation annotation, Class<? extends Annotation> metaAnnotationType) {
+        return findMetaAnnotatedAnnotation(annotation, metaAnnotationType, new HashSet<>());
+    }
+
+    private static Optional<Annotation> findMetaAnnotatedAnnotation(Annotation annotation, Class<? extends Annotation> metaAnnotationType, Set<Class<? extends Annotation>> visited) {
+        Class<? extends Annotation> annotationType = annotation.annotationType();
+        if (isInJavaLangAnnotationPackage(annotationType) || !visited.add(annotationType)) {
+            return Optional.empty();
+        }
+        if (annotationType.getDeclaredAnnotation(metaAnnotationType) != null) {
+            return Optional.of(annotation);
+        }
+        for (Annotation candidate : annotationType.getDeclaredAnnotations()) {
+            Optional<Annotation> metaAnnotated = findMetaAnnotatedAnnotation(candidate, metaAnnotationType, visited);
+            if (metaAnnotated.isPresent()) {
+                return metaAnnotated;
+            }
+        }
+        return Optional.empty();
+    }
+
     private static <A extends Annotation> Optional<A> findMetaAnnotation(Class<A> annotationType, Annotation[] candidates, boolean inherited, Set<Annotation> visited) {
 
         for (Annotation candidateAnnotation : candidates) {

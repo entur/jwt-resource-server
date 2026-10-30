@@ -74,16 +74,20 @@ public class AuthorizationServerImplementationFactory {
     private void createFromMetaAnnotation(Annotation annotation, List<AuthorizationServerImplementation> results) {
         // https://dzone.com/articles/what-are-meta-annotations-in-java
         // copy approach from junit AnnotationUtils
-        Optional<AuthorizationServer> single = AnnotationUtils.findAnnotation(annotation.getClass(), AuthorizationServer.class);
+        // note: the source is the annotation which carries the meta-annotation (i.e. not necessarily the annotation on the test class),
+        // so that its attributes are available to the encoder also when used within a composed annotation
+        Optional<Annotation> single = AnnotationUtils.findMetaAnnotatedAnnotation(annotation, AuthorizationServer.class);
         if (single.isPresent()) {
-            AuthorizationServer authorizationServer = single.get();
+            Annotation source = single.get();
+            AuthorizationServer authorizationServer = source.annotationType().getDeclaredAnnotation(AuthorizationServer.class);
 
-            results.add(add(annotation, authorizationServer));
+            results.add(add(source, authorizationServer));
         }
-        Optional<AuthorizationServer.List> list = AnnotationUtils.findAnnotation(annotation.getClass(), AuthorizationServer.List.class);
+        Optional<Annotation> list = AnnotationUtils.findMetaAnnotatedAnnotation(annotation, AuthorizationServer.List.class);
         if (list.isPresent()) {
-            for (AuthorizationServer authorizationServer : list.get().value()) {
-                results.add(add(annotation, authorizationServer));
+            Annotation source = list.get();
+            for (AuthorizationServer authorizationServer : source.annotationType().getDeclaredAnnotation(AuthorizationServer.List.class).value()) {
+                results.add(add(source, authorizationServer));
             }
         }
     }
