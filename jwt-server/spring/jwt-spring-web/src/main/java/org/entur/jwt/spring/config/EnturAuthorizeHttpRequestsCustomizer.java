@@ -1,5 +1,6 @@
 package org.entur.jwt.spring.config;
 
+import jakarta.servlet.DispatcherType;
 import org.entur.jwt.spring.properties.AuthorizationProperties;
 import org.entur.jwt.spring.properties.CustomHttpMethod;
 import org.entur.jwt.spring.properties.HttpMethodMatcher;
@@ -30,12 +31,24 @@ public class EnturAuthorizeHttpRequestsCustomizer implements Customizer<Authoriz
     public void customize(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry registry) {
         if(LOGGER.isDebugEnabled()) LOGGER.debug("Configure authorization filter");
         if (authorizationProperties.isEnabled()) {
+            configureErrorDispatch(registry);
+
             PermitAll permitAll = authorizationProperties.getPermitAll();
             if (permitAll.isActive()) {
                 configurePermitAll(registry, permitAll);
             }
             registry.anyRequest().fullyAuthenticated();
         }
+    }
+
+    /**
+     * Permit error dispatches, i.e. the container forwarding a failed request to the error page (like {@code /error}).
+     * The failed request itself was already authorized (or rejected), so this keeps the status of error responses
+     * from permit-all endpoints for requests without a token (instead of 401). Requests made directly to the
+     * error page are not error dispatches, so they still must be authenticated.
+     */
+    protected void configureErrorDispatch(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry registry) {
+        registry.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll();
     }
 
     protected void configurePermitAll(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry registry, PermitAll permitAll) {
