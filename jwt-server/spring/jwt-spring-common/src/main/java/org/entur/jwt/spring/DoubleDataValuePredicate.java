@@ -23,13 +23,13 @@ public class DoubleDataValuePredicate implements Predicate<Object> {
         }
         if (number instanceof BigDecimal decimal) {
             return Double.isFinite(value) && decimal.compareTo(
-                    value == Math.rint(value) ? new BigDecimal(value) : BigDecimal.valueOf(value)) == 0;
+                    value == Math.rint(value) ? BigDecimal.valueOf(value) : BigDecimal.valueOf(value)) == 0;
         }
         if (number instanceof BigInteger integer) {
-            return Double.isFinite(value) && new BigDecimal(integer).compareTo(new BigDecimal(value)) == 0;
+            return Double.isFinite(value) && new BigDecimal(integer).compareTo(BigDecimal.valueOf(value)) == 0;
         }
         if (number instanceof Byte || number instanceof Short || number instanceof Integer || number instanceof Long) {
-            return Double.isFinite(value) && BigDecimal.valueOf(number.longValue()).compareTo(new BigDecimal(value)) == 0;
+            return Double.isFinite(value) && BigDecimal.valueOf(number.longValue()).compareTo(BigDecimal.valueOf(value)) == 0;
         }
         return number.doubleValue() == value;
     }
