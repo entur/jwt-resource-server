@@ -240,7 +240,7 @@ public class MyTest {
 }
 ```
 
-The `@AuthorizationServer` test extention spawns/overwrites the tenant JWK location with a local file URL. The audiences
+The `@AuthorizationServer` test extension spawns/overwrites the tenant JWK location with a local file URL. The audiences
 are not mocked, so configure `entur.jwt.claims.audiences` for tests as well, and add one of them to the tokens.
 
 #### Multi-tentant testing

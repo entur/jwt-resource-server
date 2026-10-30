@@ -2,7 +2,7 @@ package org.entur.jwt.spring.test;
 
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
-import org.entur.jwt.junit5.extention.AuthorizationServerExtension;
+import org.entur.jwt.junit5.extension.AuthorizationServerExtension;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;

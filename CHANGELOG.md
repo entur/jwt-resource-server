@@ -1,10 +1,11 @@
 # CHANGELOG
- - 8.0.0: Removed the code deprecated in 7.2.x:
+ - 8.0.0 (pending): Removed the code deprecated in 7.2.x:
    - `org.entur.jwt.spring.grpc.netty.IssuerJwtDecoder`, `FastIssuerJwtDecoder` and `IssuerJwtDecoder.newBuilder()`; use `org.entur.jwt.spring.decode.ClosableJwtDecodersBuilder` and `IssuerJwtDecoderFactory`.
    - The `EnturOauth2ResourceServerCustomizer` constructors taking JWK sources and validators; use the one taking a `ClosableJwtDecoders`.
    - The `JwkSourceMap(Map)` constructor; use `JwkSourceMap(Map, Map)`.
    - `entur.jwt.decode.fail-on-jwt-decoder-bean` now defaults to `true`: startup fails if there is a `JwtDecoder` (or `ReactiveJwtDecoder`) bean, which is ignored by this library. Set it to `false` to keep the old behavior.
    - The unused `claimConstraints` bean; inject `EnturJwtValidators` and any `OAuth2TokenValidator` beans instead.
+   - BREAKING: renamed package `org.entur.jwt.junit5.extention` to `org.entur.jwt.junit5.extension` (jwt-junit5-core); update imports of `AuthorizationServerExtension`, `AuthorizationServerTestContext` and `AuthorizationServerTestManager`.
  - 7.2.x: Performance improvement (opt-in): per-tenant decoded JWT cache, with `lru` (default), `fifo` or `fixed` mode when full. The per-issuer decoders are now a single `ClosableJwtDecoders` bean in the common module, shared by the web and gRPC modules (an application with both has one decoded JWT cache per tenant); override it to customize JWT decoding for both. New example with both REST and gRPC: `examples/jwt-resource-server-spring-boot-grpc-web-example`.
    - Opt-in startup check `entur.jwt.decode.fail-on-jwt-decoder-bean=true`: fails startup if there is a `JwtDecoder` (or `ReactiveJwtDecoder`) bean, which is silently ignored by this library (including beans created by Spring Boot from `spring.security.oauth2.resourceserver.jwt.*` properties, and mocked decoder beans in tests). Default false; will default to true in the next major version.
    - gRPC: the `AuthenticationProcessInterceptor` bean is renamed from `jwtSecurityFilterChain` to `authenticationProcessInterceptor`, as the old name collided with Spring Boot's resource server `SecurityFilterChain` bean (if `spring.security.oauth2.resourceserver.jwt.*` properties are set).
