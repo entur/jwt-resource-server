@@ -113,5 +113,11 @@ Test configurations with a mocked `JwtDecoder` bean now fail at startup. Remove 
 ### Entur module
 `jwt-junit5-entur` (`@PartnerAuth0AuthorizationServer`, `@PartnerAuth0Token`) is kept.
 
-### Pending: PR #447
-[#447](https://github.com/entur/jwt-resource-server/pull/447) (open) changes how authorization servers are found in composed annotations and `@Nested` classes, and deprecates the field-based `AuthorizationServerExtension` hooks `getAuthorizationServerImplementation(String)` and `getProperty(String, String)` in favour of hooks taking an `ExtensionContext`. If it is merged before 8.0.0, decide whether to remove the deprecated hooks in 8.0.0, and move its CHANGELOG line and notes into this section.
+### Authorization servers in composed annotations and `@Nested` classes
+ * Claims of a `@PartnerAuth0AuthorizationServer` inside a composed annotation are now namespaced (`https://entur.io/organisationID`), as for a directly annotated class.
+ * An authorization server on a `@Nested` test class overrides the one with the same id on an enclosing class. Different authorization servers with the same id on the same class are rejected with an error.
+ * Static nested (non-`@Nested`) test classes no longer inherit the authorization servers of the enclosing class, as in JUnit and Spring.
+ * Tokens for `@BeforeAll` methods and per-class test instance constructors get the correct issuer.
+ * `PropertiesFileResourceServerConfigurationEnricher` and `PropertiesFileAuthorizationServerConfigurationResolver` now work together.
+ * Test classes using the properties file enricher get a JUnit resource lock, so they do not run in parallel with each other.
+ * Subclasses of `AuthorizationServerExtension`: the field-based hooks `getAuthorizationServerImplementation(String)` and `getProperty(String, String)` are deprecated (they are not removed in 8.0.0); override `getAuthorizationServerImplementation(ExtensionContext, String)` and `getConfiguration(ExtensionContext)` instead.

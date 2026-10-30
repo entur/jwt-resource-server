@@ -1,6 +1,6 @@
 package org.entur.jwt.junit5.configuration.resolve;
 
-import org.entur.jwt.junit5.extention.AuthorizationServerExtension;
+import org.entur.jwt.junit5.extension.AuthorizationServerExtension;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 import java.io.IOException;

@@ -16,7 +16,7 @@
 
 package org.entur.jwt.spring.test;
 
-import org.entur.jwt.junit5.extention.AuthorizationServerExtension;
+import org.entur.jwt.junit5.extension.AuthorizationServerExtension;
 import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
 import org.entur.jwt.junit5.impl.AuthorizationServerImplementationFactory;
 import org.slf4j.Logger;

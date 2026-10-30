@@ -53,7 +53,7 @@ public class UnsupportedJwtDecoderGuard implements SmartInitializingSingleton {
             throw new IllegalStateException("Unsupported JwtDecoder / ReactiveJwtDecoder bean(s) " + beanNames + ": JWTs are decoded using the per-issuer decoders configured under 'entur.jwt.tenants', so such a bean would be ignored. "
                     + "Remove the bean(s), or provide a " + org.entur.jwt.spring.decode.ClosableJwtDecoders.class.getName() + " bean to customize JWT decoding (web and gRPC). "
                     + "Note that Spring Boot creates a JwtDecoder bean if 'spring.security.oauth2.resourceserver.jwt.*' properties are set. "
-                    + "To ignore the bean(s), remove 'entur.jwt.decode.fail-on-jwt-decoder-bean=true'.");
+                    + "To ignore the bean(s), set 'entur.jwt.decode.fail-on-jwt-decoder-bean=false'.");
         }
     }
 }

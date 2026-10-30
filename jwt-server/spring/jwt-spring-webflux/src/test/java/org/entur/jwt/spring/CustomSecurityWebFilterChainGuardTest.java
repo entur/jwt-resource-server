@@ -94,7 +94,7 @@ public class CustomSecurityWebFilterChainGuardTest {
                         ReactiveOAuth2ResourceServerAutoConfiguration.class,
                         ReactiveOAuth2ResourceServerWebSecurityAutoConfiguration.class))
                 // so that Spring Boot's resource server auto-configuration would also add a chain
-                .withPropertyValues("spring.security.oauth2.resourceserver.jwt.jwk-set-uri=http://localhost:1/jwks.json")
+                .withPropertyValues("spring.security.oauth2.resourceserver.jwt.jwk-set-uri=http://localhost:1/jwks.json", "entur.jwt.decode.fail-on-jwt-decoder-bean=false")
                 .run(context -> {
             assertThat(context).hasNotFailed();
             assertThat(context).getBeans(SecurityWebFilterChain.class).containsOnlyKeys("jwtSecurityWebFilterChain");

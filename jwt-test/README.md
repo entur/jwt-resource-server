@@ -57,6 +57,8 @@ public void testMyId(@AccessToken(by="myAuth0") String token) {
 }
 ```
 
+The authorization servers of the enclosing classes also apply to `@Nested` test classes. An authorization server on a `@Nested` test class overrides the one with the same id on an enclosing class.
+
 ## Spring Boot
 Add [jwt-junit5-spring] for Spring Boot test support. 
 
@@ -118,6 +120,8 @@ public void testMyId(@MyAccessToken(myId = 5) String token) {
 
 ## Implementing framework support
 In order to configure specific token validation backends, a `ServiceLoader` is used to look up instances of `ResourceServerConfigurationEnricher` and `ResourceServerConfigurationResolver`. These should configure your application framework, for example by outputting a properties file which is read during application test bootstrap. 
+
+For example, register `PropertiesFileResourceServerConfigurationEnricher` and `PropertiesFileAuthorizationServerConfigurationResolver` to write and read the properties file `target/jwt.junit5.properties`, with the JWK location and issuer of each authorization server (`entur.jwt.tenants.<id>.jwk.location` and `entur.jwt.tenants.<id>.issuer`, with id `mock` for an authorization server without id). The JWKs are written to a file per tenant, next to the properties file. Each test class replaces these files, while its `@Nested` test classes add their authorization servers (an overriding authorization server with the same id publishes its keys at the same location, so a resource server which reloads the keys gets them). As the files are shared, test classes using `PropertiesFileResourceServerConfigurationEnricher` do not run in parallel with each other (using a JUnit resource lock); other test classes, i.e. Spring tests, are not affected.
 
 Implementations included in this library:
 
