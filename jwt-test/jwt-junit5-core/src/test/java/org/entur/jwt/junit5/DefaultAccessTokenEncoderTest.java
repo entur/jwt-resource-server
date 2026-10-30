@@ -5,6 +5,7 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.JWTParser;
 import org.entur.jwt.junit5.claim.Audience;
 import org.entur.jwt.junit5.claim.ExpiresAt;
+import org.entur.jwt.junit5.claim.IntegerClaim;
 import org.entur.jwt.junit5.claim.IssuedAt;
 import org.entur.jwt.junit5.claim.JsonClaim;
 import org.entur.jwt.junit5.claim.MapClaim;
@@ -61,6 +62,39 @@ public class DefaultAccessTokenEncoderTest {
 
         assertThat(seconds(claims.getExpirationTime())).isIn(Range.closed(now() + 60 - 5, now() + 60));
         assertThat(seconds(claims.getIssueTime())).isIn(Range.closed(now() - 30 - 5, now() - 30));
+    }
+
+    @Test
+    public void testIntegerClaimExpiresAtAndIssuedAtAreAbsolute(@AccessToken @IntegerClaim(name = "exp", value = 1) @IntegerClaim(name = "iat", value = 2) String token) throws ParseException {
+        JWTClaimsSet claims = decode(token);
+
+        // as given, not relative to now
+        assertThat(seconds(claims.getExpirationTime())).isEqualTo(1L);
+        assertThat(seconds(claims.getIssueTime())).isEqualTo(2L);
+    }
+
+    @Test
+    public void testJsonClaimExpiresAtAndIssuedAtAreAbsolute(@AccessToken @JsonClaim(name = "exp", value = "4102444800") @JsonClaim(name = "iat", value = "1700000000") String token) throws ParseException {
+        JWTClaimsSet claims = decode(token);
+
+        // parsed as long and int respectively, both as given
+        assertThat(seconds(claims.getExpirationTime())).isEqualTo(4102444800L);
+        assertThat(seconds(claims.getIssueTime())).isEqualTo(1700000000L);
+    }
+
+    @Test
+    public void testMapClaimExpiresAtIsAbsolute(@AccessToken @MapClaim(path = {}, entries = @MapClaim.Entry(name = "exp", type = Long.class, value = "1")) String token) throws ParseException {
+        JWTClaimsSet claims = decode(token);
+
+        assertThat(seconds(claims.getExpirationTime())).isEqualTo(1L);
+    }
+
+    @Test
+    public void testGenericClaimOverridesExpiresAtAnnotation(@AccessToken @ExpiresAt(60) @IntegerClaim(name = "exp", value = 1) String token) throws ParseException {
+        JWTClaimsSet claims = decode(token);
+
+        assertThat(seconds(claims.getExpirationTime())).isEqualTo(1L);
+        assertThat(seconds(claims.getIssueTime())).isIn(Range.closed(now() - 5, now()));
     }
 
     @Test

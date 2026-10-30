@@ -139,9 +139,12 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
         encodeCustomClaims(parameterContext, result, resolver);
         
         encodeKnownAnnotationClaims(parameterContext, result, resolver);
-        encodeGenericAnnotationClaims(parameterContext, result, resolver);
 
+        // only the access token and the issued at / expires at annotations have relative times,
+        // so transform before adding the generic claims, which are written as given
         transformParameters(result);
+
+        encodeGenericAnnotationClaims(parameterContext, result, resolver);
 
         return result;
     }

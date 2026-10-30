@@ -17,9 +17,9 @@ public @interface AccessToken {
 
     public String subject() default "mockSubject";
 
-    public long issuedAt() default 0;
+    public long issuedAt() default 0; // in seconds, relative time
 
-    public long expiresAt() default 10 * 60;
+    public long expiresAt() default 10 * 60; // in seconds, relative time
 
     public String authorizedParty() default "";
 
