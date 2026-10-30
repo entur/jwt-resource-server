@@ -275,6 +275,8 @@ The library supports a Spring [HealthIndicator](https://docs.spring.io/spring-bo
 
 In other words, the health check will not refresh expired keys, but repeated calls to the health-check __will result in a positive result once downstream services are back up__. As a positive side-effect, on startup, calling the health-check before opening for traffic will result in the cache being populated (read: warmed up).
 
+After an unsuccessful attempt, the health check fetches the keys even if they are still cached. These refreshes are rate limited together with the refreshes triggered by unknown signature keys.
+
 The health indicator is enabled by default. Disable it using the standard Spring Boot property:
 
 ```yaml
