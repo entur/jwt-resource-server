@@ -35,6 +35,14 @@ public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
         return builder;
     }
 
+    protected static void disconnect(HttpURLConnection c) {
+        if (c != null) {
+            // also closes the response (or error) stream, otherwise the underlying
+            // socket stays open until the connection is garbage collected
+            c.disconnect();
+        }
+    }
+
     protected final int connectTimeout;
     protected final int readTimeout;
 
@@ -57,8 +65,9 @@ public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
 
     @Override
     protected ClientCredentialsResponse getToken() throws AccessTokenException {
+        HttpURLConnection connection = null;
         try {
-            HttpURLConnection connection = (HttpURLConnection) issueUrl.openConnection();
+            connection = (HttpURLConnection) issueUrl.openConnection();
             connection.setConnectTimeout(connectTimeout);
             connection.setReadTimeout(readTimeout);
             connection.setRequestProperty("Accept", "application/json");
@@ -92,6 +101,8 @@ public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
             }
         } catch (IOException | JacksonException e) {
             throw new AccessTokenUnavailableException(e);
+        } finally {
+            disconnect(connection);
         }
     }
 

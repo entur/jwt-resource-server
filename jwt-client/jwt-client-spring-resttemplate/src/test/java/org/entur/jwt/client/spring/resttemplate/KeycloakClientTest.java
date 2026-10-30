@@ -72,7 +72,7 @@ public class KeycloakClientTest {
     public void testAccessToken() throws Exception {
         String authorization = AuthorizationHeaderUtil.createHeader("myClientId", "mySecret");
 
-        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://entur.org/auth/realms/myTenant/protocol/openid-connect/token")))
+        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://entur.org/realms/myTenant/protocol/openid-connect/token")))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("Authorization", authorization))
                 .andRespond(withStatus(HttpStatus.OK)
@@ -80,7 +80,7 @@ public class KeycloakClientTest {
                 .body(resource1));
 
         // the refresh request is authenticated like the issue request
-        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://entur.org/auth/realms/myTenant/protocol/openid-connect/token")))
+        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://entur.org/realms/myTenant/protocol/openid-connect/token")))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("Authorization", authorization))
                 .andRespond(withStatus(HttpStatus.OK)

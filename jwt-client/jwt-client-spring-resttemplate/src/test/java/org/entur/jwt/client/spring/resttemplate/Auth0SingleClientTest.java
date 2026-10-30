@@ -86,7 +86,8 @@ public class Auth0SingleClientTest extends AbstractActuatorTest {
     @Test
     public void testActuator() throws Exception {
         // down
-        mockServer.expect(ExpectedCount.twice(), requestTo(new URI("https://my.entur.org/oauth/token"))).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.NOT_FOUND));
+        // a 404 is not a transient error, so it is not retried
+        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://my.entur.org/oauth/token"))).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.NOT_FOUND));
 
         // up
         mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://my.entur.org/oauth/token"))).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).body(resource));

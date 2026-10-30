@@ -1,9 +1,13 @@
 package org.entur.jwt.client.spring.resttemplate;
 
+import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.entur.jwt.client.AuthorizationHeaderUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -29,6 +33,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withNoContent;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServiceUnavailable;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withUnauthorizedRequest;
 
 public class RestTemplateStatefulUrlAccessTokenProviderTest {
 
@@ -89,6 +94,46 @@ public class RestTemplateStatefulUrlAccessTokenProviderTest {
         });
         // keep the session for the next attempt
         assertThat(provider.getRefreshToken().getValue()).isEqualTo("a.b.c");
+
+        mockServer.verify();
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    public void shouldAcceptHttp204WhenRevokingRefreshToken(CapturedOutput output) throws Exception {
+        expect(ISSUE_URL, withSuccess(ISSUE_RESPONSE, MediaType.APPLICATION_JSON));
+        // i.e. Keycloak
+        expect(REVOKE_URL, withNoContent());
+
+        provider.getAccessToken(false);
+        provider.close();
+
+        assertThat(provider.getRefreshToken()).isNull();
+        assertThat(output.getAll()).doesNotContain("response code 204");
+
+        mockServer.verify();
+    }
+
+    @Test
+    public void shouldThrowAccessTokenExceptionWhenIssueRequestIsRejected() {
+        expect(ISSUE_URL, withUnauthorizedRequest());
+
+        AccessTokenException e = assertThrows(AccessTokenException.class, () -> {
+            provider.getAccessToken(false);
+        });
+        assertThat(e).isNotInstanceOf(AccessTokenUnavailableException.class);
+        assertThat(e).hasMessageThat().contains("401");
+
+        mockServer.verify();
+    }
+
+    @Test
+    public void shouldThrowAccessTokenUnavailableExceptionWhenIssueIsTemporarilyUnavailable() {
+        expect(ISSUE_URL, withServiceUnavailable());
+
+        assertThrows(AccessTokenUnavailableException.class, () -> {
+            provider.getAccessToken(false);
+        });
 
         mockServer.verify();
     }

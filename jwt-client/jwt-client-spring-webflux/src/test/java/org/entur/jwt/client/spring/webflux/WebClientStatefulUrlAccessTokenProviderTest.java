@@ -7,6 +7,9 @@ import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.entur.jwt.client.AuthorizationHeaderUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -91,6 +94,22 @@ public class WebClientStatefulUrlAccessTokenProviderTest {
         assertThat(provider.getRefreshToken().getValue()).isEqualTo("a.b.c");
 
         assertThat(requests).containsExactly(URI.create(ISSUE_URL), URI.create(REFRESH_URL)).inOrder();
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    public void shouldAcceptHttp204WhenRevokingRefreshToken(CapturedOutput output) throws Exception {
+        respond(HttpStatus.OK, ISSUE_RESPONSE);
+        // i.e. Keycloak
+        respond(HttpStatus.NO_CONTENT, null);
+
+        provider.getAccessToken(false);
+        provider.close();
+
+        assertThat(provider.getRefreshToken()).isNull();
+        assertThat(output.getAll()).doesNotContain("response code 204");
+
+        assertThat(requests).containsExactly(URI.create(ISSUE_URL), URI.create(REVOKE_URL)).inOrder();
     }
 
     @Test

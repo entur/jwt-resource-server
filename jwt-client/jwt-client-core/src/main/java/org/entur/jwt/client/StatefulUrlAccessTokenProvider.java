@@ -51,8 +51,9 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
 
     @Override
     protected ClientCredentialsResponse getToken() throws AccessTokenException {
+        HttpURLConnection response = null;
         try {
-            HttpURLConnection response = request(issueUrl, issueBody, issueHeaders);
+            response = request(issueUrl, issueBody, issueHeaders);
 
             int responseCode = response.getResponseCode();
             if (responseCode != 200) {
@@ -72,6 +73,8 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
             }
         } catch (IOException | JacksonException e) {
             throw new AccessTokenUnavailableException(e);
+        } finally {
+            UrlAccessTokenProvider.disconnect(response);
         }
     }
 
@@ -90,6 +93,9 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
 
         try (OutputStream os = c.getOutputStream()) {
             os.write(body);
+        } catch (IOException e) {
+            UrlAccessTokenProvider.disconnect(c);
+            throw e;
         }
 
         return c;
@@ -103,10 +109,11 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
 
             byte[] revokeBody = createRevokeBody(threadSafeRefreshToken);
 
+            HttpURLConnection request = null;
             try {
-                HttpURLConnection request = request(revokeUrl, revokeBody, revokeHeaders);
+                request = request(revokeUrl, revokeBody, revokeHeaders);
                 int responseCode = request.getResponseCode();
-                if (responseCode != 200) {
+                if (responseCode < 200 || responseCode > 299) { // i.e. Keycloak responds with 204
                     if (responseCode == 503) { // service unavailable
                         if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when revoking refresh token at {}. {}", responseCode, revokeUrl, printHeadersIfPresent(request, "Retry-After"));
                     } else if (responseCode == 429) { // too many calls
@@ -118,6 +125,8 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
                 }
             } catch (IOException e) {
                 LOGGER.warn("Unable to revoke token", e);
+            } finally {
+                UrlAccessTokenProvider.disconnect(request);
             }
         }
     }
@@ -126,8 +135,9 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
     protected ClientCredentialsResponse getToken(RefreshToken response) throws AccessTokenException {
         byte[] refreshBody = createRefreshBody(response);
 
+        HttpURLConnection request = null;
         try {
-            HttpURLConnection request = request(refreshUrl, refreshBody, refreshHeaders);
+            request = request(refreshUrl, refreshBody, refreshHeaders);
 
             int responseCode = request.getResponseCode();
             if (responseCode != 200) {
@@ -148,6 +158,8 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
             }
         } catch (IOException | JacksonException e) {
             throw new AccessTokenUnavailableException(e);
+        } finally {
+            UrlAccessTokenProvider.disconnect(request);
         }
     }
 

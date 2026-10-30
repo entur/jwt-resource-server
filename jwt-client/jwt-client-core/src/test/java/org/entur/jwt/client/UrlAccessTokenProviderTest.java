@@ -5,6 +5,7 @@ import org.mockito.ArgumentCaptor;
 
 import java.io.ByteArrayInputStream;
 import java.net.MalformedURLException;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
@@ -13,6 +14,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -80,6 +82,53 @@ public class UrlAccessTokenProviderTest extends AbstractUrlAccessTokenProviderTe
         assertThrows(AccessTokenUnavailableException.class, () -> {
             provider.getAccessToken(false);
         });
+    }
+
+    @Test
+    public void shouldDisconnectAfterAccessToken() throws Exception {
+        AccessTokenProvider provider = providerForResource("/auth0ClientCredentialsResponse.json");
+
+        assertNotNull(provider.getAccessToken(false));
+
+        verify(urlConnection).disconnect();
+    }
+
+    @Test
+    public void shouldDisconnectOnHttp401() throws Exception {
+        AccessTokenProvider provider = providerForResource("/auth0ClientCredentialsResponse.json");
+        when(urlConnection.getResponseCode()).thenReturn(401);
+
+        AccessTokenException e = assertThrows(AccessTokenException.class, () -> {
+            provider.getAccessToken(false);
+        });
+        assertThat(e).isNotInstanceOf(AccessTokenUnavailableException.class);
+
+        // i.e. release the error stream and the underlying socket
+        verify(urlConnection).disconnect();
+    }
+
+    @Test
+    public void shouldDisconnectOnHttp503() throws Exception {
+        AccessTokenProvider provider = providerForResource("/auth0ClientCredentialsResponse.json");
+        when(urlConnection.getResponseCode()).thenReturn(503);
+
+        assertThrows(AccessTokenUnavailableException.class, () -> {
+            provider.getAccessToken(false);
+        });
+
+        verify(urlConnection).disconnect();
+    }
+
+    @Test
+    public void shouldDisconnectWhenRequestFails() throws Exception {
+        AccessTokenProvider provider = providerForResource("/auth0ClientCredentialsResponse.json");
+        doThrow(new SocketTimeoutException("Read timed out")).when(urlConnection).getResponseCode();
+
+        assertThrows(AccessTokenUnavailableException.class, () -> {
+            provider.getAccessToken(false);
+        });
+
+        verify(urlConnection).disconnect();
     }
 
     @Test
