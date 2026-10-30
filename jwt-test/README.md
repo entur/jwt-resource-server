@@ -55,6 +55,8 @@ public void testMyId(@AccessToken(by="myAuth0") String token) {
 }
 ```
 
+The authorization servers of the enclosing classes also apply to `@Nested` test classes. An authorization server on a `@Nested` test class overrides the one with the same id on an enclosing class.
+
 ## Spring Boot
 Add [jwt-junit5-spring] for Spring Boot test support. 
 
