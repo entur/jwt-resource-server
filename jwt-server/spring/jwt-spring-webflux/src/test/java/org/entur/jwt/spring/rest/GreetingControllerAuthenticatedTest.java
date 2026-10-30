@@ -2,6 +2,7 @@ package org.entur.jwt.spring.rest;
 
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
+import org.entur.jwt.junit5.claim.JsonClaim;
 import org.entur.jwt.junit5.claim.Scope;
 import org.entur.jwt.spring.rest.token.MyAccessToken;
 import org.junit.jupiter.api.Test;
@@ -110,6 +111,20 @@ public class GreetingControllerAuthenticatedTest {
 
         assertThat(greeting.getContent()).isEqualTo("Hello protected with authority");
         assertThat(greeting.getAuthorities()).containsExactly("FACTOR_BEARER", "SCOPE_configure");
+    }
+
+    @Test
+    public void testKeycloakClientRolesAreNotMappedWithoutClientId(@AccessToken(audience = "mock.my.audience") @JsonClaim(name = "resource_access", value = "{\"booking-api\":{\"roles\":[\"booking-reader\"]},\"reporting-ui\":{\"roles\":[\"admin\"]}}") String token) {
+        Greeting greeting = webTestClient
+            .get()
+            .uri("/protected")
+            .header(AUTHORIZATION, token)
+            .exchange()
+            .expectStatus().is2xxSuccessful()
+            .returnResult(Greeting.class)
+            .getResponseBody().blockLast();
+
+        assertThat(greeting.getAuthorities()).containsExactly("FACTOR_BEARER");
     }
 
     @Test
