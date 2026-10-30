@@ -30,6 +30,16 @@ class DoubleDataValuePredicateTest {
     }
 
     @Test
+    void doesNotMatchIntegralOrDecimalValuesThatRoundToTheExpectedDouble() {
+        DoubleDataValuePredicate predicate = new DoubleDataValuePredicate(9_007_199_254_740_992d);
+        assertTrue(predicate.test(9_007_199_254_740_992L));
+        assertTrue(predicate.test(new BigDecimal("9007199254740992")));
+        assertFalse(predicate.test(9_007_199_254_740_993L));
+        assertFalse(predicate.test(BigInteger.valueOf(9_007_199_254_740_993L)));
+        assertFalse(predicate.test(new BigDecimal("9007199254740993")));
+    }
+
+    @Test
     void doesNotMatchOtherTypes() {
         DoubleDataValuePredicate predicate = new DoubleDataValuePredicate(2.0d);
         assertFalse(predicate.test("2"));

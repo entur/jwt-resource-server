@@ -1,5 +1,7 @@
 package org.entur.jwt.spring;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.function.Predicate;
 
 /**
@@ -16,6 +18,18 @@ public class DoubleDataValuePredicate implements Predicate<Object> {
 
     @Override
     public boolean test(Object o) {
-        return o instanceof Number number && number.doubleValue() == value;
+        if (!(o instanceof Number number)) {
+            return false;
+        }
+        if (number instanceof BigDecimal decimal) {
+            return Double.isFinite(value) && decimal.compareTo(BigDecimal.valueOf(value)) == 0;
+        }
+        if (number instanceof BigInteger integer) {
+            return Double.isFinite(value) && new BigDecimal(integer).compareTo(BigDecimal.valueOf(value)) == 0;
+        }
+        if (number instanceof Byte || number instanceof Short || number instanceof Integer || number instanceof Long) {
+            return Double.isFinite(value) && BigDecimal.valueOf(number.longValue()).compareTo(BigDecimal.valueOf(value)) == 0;
+        }
+        return number.doubleValue() == value;
     }
 }
