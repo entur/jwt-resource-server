@@ -60,7 +60,7 @@ public class OAuth2TokenValidatorFactory {
                 return new DataTypePredicate<>(String.class);
             }
             case "double": {
-                // any number, as Nimbus parses JSON whole numbers (i.e. 1) to Long
+                // any number, as Nimbus parses JSON whole numbers (e.g. 1) to Long
                 return new DataTypePredicate<>(Number.class);
             }
             default: {
@@ -89,7 +89,7 @@ public class OAuth2TokenValidatorFactory {
                 return (Predicate<T>) new DataValuePredicate<>(r.getValue());
             }
             case "double": {
-                // compare numerically, as Nimbus parses JSON whole numbers (i.e. 2) to Long
+                // compare numerically, as Nimbus parses JSON whole numbers (e.g. 2) to Long
                 return (Predicate<T>) new DoubleDataValuePredicate(Double.parseDouble(r.getValue()));
             }
             default: {
