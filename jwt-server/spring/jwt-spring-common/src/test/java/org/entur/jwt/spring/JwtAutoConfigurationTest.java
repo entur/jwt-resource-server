@@ -104,6 +104,32 @@ class JwtAutoConfigurationTest {
         });
     }
 
+    @Test
+    void testFailsOnTenantsWithSameIssuer() {
+        runner.withPropertyValues(
+                "entur.jwt.tenants.b.issuer=" + ISSUER,
+                "entur.jwt.tenants.b.jwk.location=http://localhost:2/jwks.json"
+        ).run(context -> {
+            assertThat(context).hasFailed();
+            assertThat(context.getStartupFailure())
+                    .rootCause()
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageStartingWith("Tenants 'a' and 'b' have the same issuer '" + ISSUER + "'.");
+        });
+    }
+
+    @Test
+    void testDisabledTenantWithSameIssuer() {
+        runner.withPropertyValues(
+                "entur.jwt.tenants.b.enabled=false",
+                "entur.jwt.tenants.b.issuer=" + ISSUER,
+                "entur.jwt.tenants.b.jwk.location=http://localhost:2/jwks.json"
+        ).run(context -> {
+            assertThat(context).hasNotFailed();
+            assertThat(context.getBean(JwkSourceMap.class).getJwkSources()).containsOnlyKeys(ISSUER);
+        });
+    }
+
     /**
      * The chain of (wrapped) JWK set sources, outermost first.
      */
