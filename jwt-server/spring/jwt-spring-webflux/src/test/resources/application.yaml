@@ -5,11 +5,6 @@ entur:
       expires-at-leeway: 15
       issued-at-leeway: 5
 
-    mdc:
-      enabled: false
-      mappings:
-      - from: issuer
-        to: issuer
     jwk:
       cache:
         preemptive:

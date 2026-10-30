@@ -299,6 +299,8 @@ entur:
         to: issuer
 ```
 
+MDC mappings are not supported for WebFlux; startup fails if `entur.jwt.mdc.mappings` are configured (unless `entur.jwt.mdc.enabled=false`).
+
 ### Cross-Origin Resource Sharing (CORS)
 The CORS support is intended for use-cases where your customers do NOT normally call your API directly from web-browser and other distributed apps like mobile applications (technically, this cannot be prevented using CORS). With the notable exception of your development portal.
 
@@ -377,6 +379,9 @@ entur:
     decode:
       fail-on-jwt-decoder-bean: true # default false
 ```
+
+## Custom security filter chain
+For WebFlux, startup fails if the application defines its own `SecurityWebFilterChain` bean, as it would shadow the chain of this starter. To use a custom chain, set `entur.jwt.enabled=false` and `entur.authorization.enabled=false`, or exclude the starter's chain using `@SpringBootApplication(exclude = {JwtWebFluxSecurityAutoConfiguration.class})`.
 
 ## Advanced features
 A couple of optional, opt-in performance features are available. Both default to disabled and are safe to leave off.

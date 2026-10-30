@@ -63,7 +63,10 @@ public class JwtGrpcAutoConfiguration {
     public JwtGrpcAutoConfiguration(GrpcPermitAll permitAll, SecurityProperties securityProperties) {
         this.securityProperties = securityProperties;
 
-        if(permitAll.isEnabled()) {
+        if(!securityProperties.getAuthorization().isEnabled()) {
+            if(LOGGER.isInfoEnabled()) LOGGER.info("Authorization is disabled, allow anonymous access to all GRPC methods");
+            permitAllMappings = Collections.emptyMap();
+        } else if(permitAll.isEnabled()) {
             permitAllMappings = getPermitAllMappings(permitAll.getGrpc());
         } else {
             permitAllMappings = Collections.emptyMap();
@@ -130,7 +133,12 @@ public class JwtGrpcAutoConfiguration {
                     requests.methods(patterns).permitAll();
                 }
 
-                requests.allRequests().fullyAuthenticated();
+                if (securityProperties.getAuthorization().isEnabled()) {
+                    requests.allRequests().fullyAuthenticated();
+                } else {
+                    // tokens which are present are still validated
+                    requests.allRequests().permitAll();
+                }
             });
 
             Customizer<OAuth2ResourceServerConfigurer.JwtConfigurer> configurer = new Customizer<OAuth2ResourceServerConfigurer.JwtConfigurer>() {
