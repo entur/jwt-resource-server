@@ -414,13 +414,13 @@ See [jwt-spring-web] for a concrete implementation example.
 ## Custom JWT decoders
 JWTs are decoded by per-issuer decoders built from the `entur.jwt.tenants` configuration. A `JwtDecoder` or `ReactiveJwtDecoder` bean in the application context is ignored, including one created by Spring Boot from `spring.security.oauth2.resourceserver.jwt.*` properties. To customize JWT decoding for the web and gRPC modules, provide a `ClosableJwtDecoders` bean (a map of issuer to `JwtDecoder`) instead. To keep the [claim validation](#custom-claim-validation), build it using `ClosableJwtDecodersBuilder` with the validators from `JwtDecoderValidators.combine(..)`.
 
-To fail startup if there is such a bean (recommended; the default in the next major version), enable the check:
+Startup fails if there is such a bean. To ignore the bean(s) instead, disable the check:
 
 ```yaml
 entur:
   jwt:
     decode:
-      fail-on-jwt-decoder-bean: true # default false
+      fail-on-jwt-decoder-bean: false # default true
 ```
 
 ## Custom security filter chain

@@ -131,7 +131,7 @@ public class JwtAutoConfiguration {
 
     /**
      * Fail startup if there is a JwtDecoder bean, as it would silently be ignored.
-     * Opt-in via {@code entur.jwt.decode.fail-on-jwt-decoder-bean=true} (the default in the next major version).
+     * Enabled by default; opt out via {@code entur.jwt.decode.fail-on-jwt-decoder-bean=false}.
      */
     @Bean
     public UnsupportedJwtDecoderGuard unsupportedJwtDecoderGuard(ListableBeanFactory beanFactory, SecurityProperties securityProperties) {
