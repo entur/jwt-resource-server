@@ -38,23 +38,42 @@ public class FastIssuerAuthenticationManager implements AuthenticationManager {
             // fast path
             AuthenticationManager authenticationManager = issuerAuthenticationManagerResolver.resolve(issuer);
 
-            return getAuthentication(authentication, authenticationManager);
-        } else {
-            // slow path
-            issuer = issuerConverter.convert(token);
-
-            AuthenticationManager authenticationManager = issuerAuthenticationManagerResolver.resolve(issuer);
-
-            Authentication result = getAuthentication(authentication, authenticationManager);
-
-            if(result instanceof JwtAuthenticationToken r) {
-                if(jwtHeaderToIssuerMapperDecider.apply(r.getToken())) {
-                    // cache this jwt header to issuer mapping for future requests with the same token
-                    jwtHeaderToIssuerMapper.add(issuer, token.getToken());
+            try {
+                return getAuthentication(authentication, authenticationManager);
+            } catch (AuthenticationException e) {
+                // the header might also be used by another issuer (i.e. which shares signing key and key id),
+                // if so authenticate as usual (slow path). Otherwise do not authenticate again, i.e. for an expired token.
+                if(!isOtherIssuer(token, issuer)) {
+                    throw e;
                 }
             }
+        }
+        // slow path
+        issuer = issuerConverter.convert(token);
 
-            return result;
+        AuthenticationManager authenticationManager = issuerAuthenticationManagerResolver.resolve(issuer);
+
+        Authentication result = getAuthentication(authentication, authenticationManager);
+
+        if(result instanceof JwtAuthenticationToken r) {
+            if(jwtHeaderToIssuerMapperDecider.apply(r.getToken())) {
+                // cache this jwt header to issuer mapping for future requests with the same token
+                jwtHeaderToIssuerMapper.add(issuer, token.getToken());
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * @return true if the token's (not yet verified) issuer claim names another issuer than the given issuer
+     */
+    private boolean isOtherIssuer(BearerTokenAuthenticationToken token, String issuer) {
+        try {
+            return !issuer.equals(issuerConverter.convert(token));
+        } catch (AuthenticationException e) {
+            // not a JWT, or no issuer claim
+            return false;
         }
     }
 
