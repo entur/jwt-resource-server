@@ -6,10 +6,14 @@ import org.entur.jwt.client.ClientCredentials;
 public class KeycloakClientCredentialsBuilder extends AbstractClientCredentialsBuilder<KeycloakClientCredentialsBuilder> {
 
     /**
-     * Context path of Keycloak versions before 17. Later versions serve from the root path by default,
-     * see the Keycloak <code>http-relative-path</code> option.
+     * Default context path of Keycloak 17 and later (the root path), see the Keycloak <code>http-relative-path</code> option.
      */
-    public static final String DEFAULT_CONTEXT_PATH = "/auth";
+    public static final String DEFAULT_CONTEXT_PATH = "/";
+
+    /**
+     * Context path of Keycloak versions before 17.
+     */
+    public static final String LEGACY_CONTEXT_PATH = "/auth";
 
     private static final String TEMPLATE = "%s/realms/%s/protocol/openid-connect";
     private static final String ISSUE_TEMPLATE = TEMPLATE + "/token";
@@ -60,8 +64,9 @@ public class KeycloakClientCredentialsBuilder extends AbstractClientCredentialsB
     }
 
     /**
-     * Set the path Keycloak is served from. Defaults to {@value #DEFAULT_CONTEXT_PATH}; use <code>/</code>
-     * for Keycloak 17 or later, unless it is configured with another <code>http-relative-path</code>.
+     * Set the path Keycloak is served from. Defaults to {@value #DEFAULT_CONTEXT_PATH}, as for Keycloak 17 and later;
+     * use {@value #LEGACY_CONTEXT_PATH} for Keycloak versions before 17, or the value of the Keycloak
+     * <code>http-relative-path</code> option if configured.
      */
     public KeycloakClientCredentialsBuilder withContextPath(String contextPath) {
         this.contextPath = contextPath;

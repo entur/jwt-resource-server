@@ -26,6 +26,16 @@ public class KeycloakClientCredentialsBuilderTest {
     public void testBuilderWithDefaultContextPath() {
         ClientCredentials build = KeycloakClientCredentialsBuilder.newInstance().withHost("my.keycloak.com").withRealm("myRealm").withSecret("mySecret").withClientId("myClientID").build();
 
+        // i.e. Keycloak 17 and later
+        assertEquals("https://my.keycloak.com/realms/myRealm/protocol/openid-connect/token", build.getIssueURL().toString());
+        assertEquals("https://my.keycloak.com/realms/myRealm/protocol/openid-connect/token", build.getRefreshURL().toString());
+        assertEquals("https://my.keycloak.com/realms/myRealm/protocol/openid-connect/logout", build.getRevokeURL().toString());
+    }
+
+    @Test
+    public void testBuilderWithLegacyContextPath() {
+        ClientCredentials build = KeycloakClientCredentialsBuilder.newInstance().withHost("my.keycloak.com").withRealm("myRealm").withSecret("mySecret").withClientId("myClientID").withContextPath(KeycloakClientCredentialsBuilder.LEGACY_CONTEXT_PATH).build();
+
         assertEquals("https://my.keycloak.com/auth/realms/myRealm/protocol/openid-connect/token", build.getIssueURL().toString());
         assertEquals("https://my.keycloak.com/auth/realms/myRealm/protocol/openid-connect/token", build.getRefreshURL().toString());
         assertEquals("https://my.keycloak.com/auth/realms/myRealm/protocol/openid-connect/logout", build.getRevokeURL().toString());

@@ -54,25 +54,26 @@ public class JwtClientBeanDefinitionRegistryPostProcessorSupportTest {
     }
 
     @Test
-    public void shouldUseLegacyKeycloakContextPathByDefault() {
+    public void shouldUseRootKeycloakContextPathByDefault() {
+        // i.e. Keycloak 17 and later
         CapturingSupport support = new CapturingSupport(bindKeycloak(Map.of()));
-
-        support.newKeycloakInstance("myClient");
-
-        assertThat(support.issueUrl.toString()).isEqualTo("https://entur.org/auth/realms/myTenant/protocol/openid-connect/token");
-        assertThat(support.refreshUrl.toString()).isEqualTo("https://entur.org/auth/realms/myTenant/protocol/openid-connect/token");
-        assertThat(support.revokeUrl.toString()).isEqualTo("https://entur.org/auth/realms/myTenant/protocol/openid-connect/logout");
-    }
-
-    @Test
-    public void shouldUseConfiguredKeycloakContextPath() {
-        // i.e. Keycloak 17+
-        CapturingSupport support = new CapturingSupport(bindKeycloak(Map.of("entur.jwt.clients.keycloak.myClient.context-path", "/")));
 
         support.newKeycloakInstance("myClient");
 
         assertThat(support.issueUrl.toString()).isEqualTo("https://entur.org/realms/myTenant/protocol/openid-connect/token");
         assertThat(support.refreshUrl.toString()).isEqualTo("https://entur.org/realms/myTenant/protocol/openid-connect/token");
         assertThat(support.revokeUrl.toString()).isEqualTo("https://entur.org/realms/myTenant/protocol/openid-connect/logout");
+    }
+
+    @Test
+    public void shouldUseConfiguredKeycloakContextPath() {
+        // i.e. Keycloak versions before 17
+        CapturingSupport support = new CapturingSupport(bindKeycloak(Map.of("entur.jwt.clients.keycloak.myClient.context-path", "/auth")));
+
+        support.newKeycloakInstance("myClient");
+
+        assertThat(support.issueUrl.toString()).isEqualTo("https://entur.org/auth/realms/myTenant/protocol/openid-connect/token");
+        assertThat(support.refreshUrl.toString()).isEqualTo("https://entur.org/auth/realms/myTenant/protocol/openid-connect/token");
+        assertThat(support.revokeUrl.toString()).isEqualTo("https://entur.org/auth/realms/myTenant/protocol/openid-connect/logout");
     }
 }
