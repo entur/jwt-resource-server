@@ -7,8 +7,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 /**
- * {@linkplain AccessTokenProvider} which handles refresh tokens.
- * <br><br>
+ * {@linkplain AccessTokenProvider} which handles refresh tokens. <br>
+ * <br>
  * The refresh and revoke requests are authenticated the same way as the issue request (RFC 6749 section 6),
  * i.e. they carry the same headers (for example a basic authorization header) and the same client id and
  * secret body parameters (if any).
