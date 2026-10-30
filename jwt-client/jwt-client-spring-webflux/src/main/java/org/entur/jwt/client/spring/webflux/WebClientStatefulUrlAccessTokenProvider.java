@@ -19,7 +19,6 @@ import reactor.core.publisher.Mono;
 
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
@@ -100,11 +99,17 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
             try {
                 byte[] revokeBody = createRevokeBody(threadSafeRefreshToken);
 
+                HttpHeaders headers = new HttpHeaders();
+                for (Entry<String, Object> entry : revokeHeaders.entrySet()) {
+                    headers.set(entry.getKey(), entry.getValue().toString());
+                }
+
                 Mono<ResponseEntity<Void>> mono = webClient
                         .post()
                         .uri(revokeUrl.toURI())
                         .accept(MediaType.APPLICATION_JSON)
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .headers(httpHeaders -> httpHeaders.addAll(headers))
                         .bodyValue(revokeBody)
                         .retrieve()
                         .toBodilessEntity();
@@ -127,7 +132,7 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
         byte[] refreshBody = createRefreshBody(refreshToken);
 
         try {
-            Mono<ClientCredentialsResponse> response = request(refreshUrl, refreshBody, Collections.emptyMap());
+            Mono<ClientCredentialsResponse> response = request(refreshUrl, refreshBody, refreshHeaders);
 
             ClientCredentialsResponse clientCredentialsResponse = response.toFuture().get();
             validate(clientCredentialsResponse);
