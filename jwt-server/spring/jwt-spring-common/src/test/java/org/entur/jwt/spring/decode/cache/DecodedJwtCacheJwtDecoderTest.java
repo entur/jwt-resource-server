@@ -23,6 +23,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.JwtValidationException;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -481,34 +482,24 @@ class DecodedJwtCacheJwtDecoderTest {
     // cleanup()
     // -----------------------------------------------------------------------
 
-    @Test
-    void cleanupDoesNothingWhenCacheIsEmpty() {
-        AtomicInteger validations = new AtomicInteger();
-        OAuth2TokenValidator<Jwt> validator = validated -> {
-            validations.incrementAndGet();
-            return OAuth2TokenValidatorResult.success();
-        };
-        decoder(delegate(), validator);
-
-        decoder.cleanup();
-
-        // nothing cached -> validator should never be invoked by cleanup
-        assertEquals(0, validations.get());
-        assertEquals(0, decoder.getSize());
+    private static TestJwtDecoder delegateExpiringAt(Instant expiresAt) {
+        return new TestJwtDecoder().answering(token -> Jwt.withTokenValue(token)
+                .header("alg", "ES256")
+                .claim("sub", "user")
+                .expiresAt(expiresAt)
+                .build());
     }
 
     @Test
-    void cleanupRemovesInvalidJwtsFromCache() {
-        TestJwtDecoder delegate = delegate();
-        decoder(delegate, alwaysInvalid());
+    void cleanupRemovesExpiredJwts() {
+        // i.e. still valid within the expiry leeway when decoded
+        TestJwtDecoder delegate = delegateExpiringAt(Instant.now().minusSeconds(1));
+        decoder(delegate);
 
-        // cached without going through validateJwt(), since the delegate already validates it
         decoder.decode(token("token1"));
         assertEquals(1, decoder.getSize());
 
         decoder.cleanup();
-
-        // the invalid entry should have been evicted by cleanup()
         assertEquals(0, decoder.getSize());
 
         // subsequent decode must hit the delegate again since the cache entry is gone
@@ -517,41 +508,48 @@ class DecodedJwtCacheJwtDecoderTest {
     }
 
     @Test
-    void cleanupKeepsStillValidJwtsInCache() {
-        TestJwtDecoder delegate = delegate();
+    void cleanupKeepsJwtsWhichHaveNotExpired() {
+        TestJwtDecoder delegate = delegateExpiringAt(Instant.now().plusSeconds(3600));
         decoder(delegate);
-
         decoder.decode(token("token1"));
-        assertEquals(1, decoder.getSize());
 
-        decoder.cleanup();
+        // without expiry
+        TestJwtDecoder delegateWithoutExpiry = delegate();
+        DecodedJwtCacheJwtDecoder decoderWithoutExpiry = new DecodedJwtCacheJwtDecoder(delegateWithoutExpiry, jwkSource, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
+        try {
+            decoderWithoutExpiry.decode(token("token1"));
 
-        // still valid -> not evicted
-        assertEquals(1, decoder.getSize());
-        decoder.decode(token("token1"));
-        assertEquals(1, delegate.count(token("token1")));
+            decoder.cleanup();
+            decoderWithoutExpiry.cleanup();
+
+            assertEquals(1, decoder.getSize());
+            assertEquals(1, decoderWithoutExpiry.getSize());
+        } finally {
+            decoderWithoutExpiry.close();
+        }
     }
 
     @Test
-    void cleanupSwallowsExceptionsThrownByValidator() {
-        // decode() itself is not affected by the validator since the delegate "already validates",
-        // so the first call just caches the entry
+    void cleanupDoesNotRunValidators() {
+        // validators might have side effects or need a request; they run on cache hits
+        AtomicInteger validations = new AtomicInteger();
         OAuth2TokenValidator<Jwt> validator = validated -> {
+            validations.incrementAndGet();
             throw new RuntimeException("TEST EXCEPTION");
         };
-        decoder(delegate(), validator);
+        decoder(delegateExpiringAt(Instant.now().plusSeconds(3600)), validator);
 
         decoder.decode(token("token1"));
-        assertEquals(1, decoder.getSize());
+        decoder.cleanup();
 
-        // cleanup() must not propagate exceptions raised while revalidating cached entries
-        assertDoesNotThrow(() -> decoder.cleanup());
+        assertEquals(0, validations.get());
+        assertEquals(1, decoder.getSize());
     }
 
     @Test
-    void scheduleCleanupPeriodicallyEvictsInvalidJwts() throws Exception {
+    void scheduleCleanupPeriodicallyRemovesExpiredJwts() throws Exception {
         long shortCleanupInterval = 20L;
-        decoder = new DecodedJwtCacheJwtDecoder(delegate(), jwkSource, alwaysInvalid(), shortCleanupInterval, MAX_TOKENS);
+        decoder = new DecodedJwtCacheJwtDecoder(delegateExpiringAt(Instant.now().minusSeconds(1)), jwkSource, alwaysValid(), shortCleanupInterval, MAX_TOKENS);
 
         decoder.decode(token("token1"));
         assertEquals(1, decoder.getSize());
@@ -563,7 +561,7 @@ class DecodedJwtCacheJwtDecoderTest {
             Thread.sleep(20L);
         }
 
-        assertEquals(0, decoder.getSize(), "background cleanup should have evicted the invalid entry");
+        assertEquals(0, decoder.getSize(), "background cleanup should have removed the expired entry");
     }
 
     @Test
@@ -597,6 +595,42 @@ class DecodedJwtCacheJwtDecoderTest {
         Thread thread = decoder.getScheduledExecutorService().submit(Thread::currentThread).get(5, TimeUnit.SECONDS);
         assertTrue(thread.isDaemon());
         assertEquals("decoded-jwt-cache-cleanup-https://issuer.a", thread.getName());
+    }
+
+    @Test
+    void sharedScheduledExecutorServiceIsUsedAndNotShutDownOnClose() throws Exception {
+        java.util.concurrent.ScheduledExecutorService executor = DecodedJwtCacheJwtDecoder.createDefaultScheduledExecutorService();
+        try {
+            decoder = new DecodedJwtCacheJwtDecoder("https://issuer.a", delegate(), jwkSource, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS, JwtDecoderCacheMode.LRU, executor);
+            assertTrue(decoder.scheduleCleanup());
+            assertSame(executor, decoder.getScheduledExecutorService());
+
+            decoder.close();
+
+            // owned by the caller
+            assertFalse(executor.isShutdown());
+            assertTrue(decoder.cleanupTask.isCancelled());
+            assertThrows(java.util.concurrent.RejectedExecutionException.class, () -> decoder.executeInBackground(() -> {}));
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void closeClearsCacheAndStopsCaching() {
+        TestJwtDecoder delegate = delegate();
+        decoder(delegate);
+        decoder.decode(token("token1"));
+        assertEquals(1, decoder.getSize());
+
+        decoder.close();
+        assertEquals(0, decoder.getSize());
+
+        // still decodes, via the delegate
+        decoder.decode(token("token1"));
+        decoder.decode(token("token1"));
+        assertEquals(3, delegate.count(token("token1")));
+        assertEquals(0, decoder.getSize());
     }
 
     // -----------------------------------------------------------------------

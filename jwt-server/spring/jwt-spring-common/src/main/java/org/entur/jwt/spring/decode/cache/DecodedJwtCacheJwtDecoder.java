@@ -24,6 +24,7 @@ import org.springframework.security.oauth2.jwt.JwtValidationException;
 
 import java.io.Closeable;
 import java.text.ParseException;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -70,8 +71,11 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
         });
     }
 
-    // created lazily (on scheduling cleanup or on the first eviction) so instances which need neither don't spin up an unused background thread
+    // shared with other decoders (see constructor), or else created lazily (on scheduling cleanup or on the first eviction)
+    // so instances which need neither don't spin up an unused background thread
     protected volatile ScheduledExecutorService scheduledExecutorService;
+    // a shared executor is shut down by its owner, not by close()
+    protected final boolean sharedScheduledExecutorService;
     // the periodic cleanup task, if scheduled (see scheduleCleanup())
     protected ScheduledFuture<?> cleanupTask;
     protected volatile boolean closed = false;
@@ -111,7 +115,6 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
         protected final ConcurrentHashMap<String, Entry> map;
         protected final int maxCacheSize;
         protected final JwtDecoderCacheMode mode;
-        protected final OAuth2TokenValidator<Jwt> jwtValidator;
 
         protected final AtomicLong sequence = new AtomicLong();
 
@@ -124,7 +127,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
         // total number of evicted JWTs
         protected final LongAdder evictions = new LongAdder();
 
-        protected Cache(int maxCacheSize, JwtDecoderCacheMode mode, OAuth2TokenValidator<Jwt> jwtValidator, Executor evictionExecutor) {
+        protected Cache(int maxCacheSize, JwtDecoderCacheMode mode, Executor evictionExecutor) {
             if(maxCacheSize == -1) {
                 this.map = new ConcurrentHashMap<>();
                 this.maxCacheSize = Integer.MAX_VALUE;
@@ -134,7 +137,6 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
                 this.maxCacheSize = maxCacheSize;
             }
             this.mode = mode;
-            this.jwtValidator = jwtValidator;
             this.evictionExecutor = evictionExecutor;
         }
 
@@ -204,11 +206,11 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
 
         /**
          * Evict entries with the lowest order (sequence for FIFO, last access time for LRU),
-         * leaving at most {@link #EVICTION_TARGET_PERCENT} of the target size.
+         * leaving at most {@link #EVICTION_TARGET_PERCENT} of the target size (but at least one entry).
          */
         protected void evict() {
             try {
-                int target = (int) ((long) maxCacheSize * EVICTION_TARGET_PERCENT / 100);
+                int target = Math.max(1, (int) ((long) maxCacheSize * EVICTION_TARGET_PERCENT / 100));
                 int count = map.size() - target;
                 if(count > 0) {
                     int evicted = evict(count);
@@ -322,17 +324,16 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
             map.clear();
         }
 
-        protected int cleanInvalidJwts() {
+        /**
+         * Remove expired JWTs. Only the expiry is checked (not the validators, which might have side effects
+         * or need a request): this is just to free memory, as cached JWTs are validated on every cache hit anyway.
+         */
+        protected int removeExpiredJwts(Instant now) {
             int count = 0;
-            // remove no longer valid JWTs. Typically they expire by time.
             for (Map.Entry<String, Entry> entry : map.entrySet()) {
-                Entry value = entry.getValue();
-                if(value != null) {
-                    OAuth2TokenValidatorResult result = jwtValidator.validate(value.jwt);
-                    if (result.hasErrors()) {
-                        map.remove(entry.getKey());
-                        count++;
-                    }
+                Instant expiresAt = entry.getValue().jwt.getExpiresAt();
+                if (expiresAt != null && expiresAt.isBefore(now) && map.remove(entry.getKey(), entry.getValue())) {
+                    count++;
                 }
             }
             return count;
@@ -372,11 +373,22 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
     }
 
     /**
-     * @param name name of this cache, i.e. the issuer; used to name the background thread. Can be null.
+     * @param name name of this cache, i.e. the issuer; used to name its own background thread. Can be null.
      * @param jwtValidatingDecoder decoder which verifies and validates JWTs which are not cached
      * @param jwkSource the JWK source which the decoder verifies signatures with
      */
     public DecodedJwtCacheJwtDecoder(String name, JwtDecoder jwtValidatingDecoder, JWKSource<SecurityContext> jwkSource, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupIntervalMillis, int maxCacheSize, JwtDecoderCacheMode mode) {
+        this(name, jwtValidatingDecoder, jwkSource, jwtValidators, cleanupIntervalMillis, maxCacheSize, mode, null);
+    }
+
+    /**
+     * @param name name of this cache, i.e. the issuer; used to name its own background thread. Can be null.
+     * @param jwtValidatingDecoder decoder which verifies and validates JWTs which are not cached
+     * @param jwkSource the JWK source which the decoder verifies signatures with
+     * @param scheduledExecutorService executor for cleanup and eviction, i.e. shared by the decoders of several issuers,
+     *                                 and shut down by the caller (not by {@link #close()}); or null to create one when needed
+     */
+    public DecodedJwtCacheJwtDecoder(String name, JwtDecoder jwtValidatingDecoder, JWKSource<SecurityContext> jwkSource, OAuth2TokenValidator<Jwt> jwtValidators, long cleanupIntervalMillis, int maxCacheSize, JwtDecoderCacheMode mode, ScheduledExecutorService scheduledExecutorService) {
         if (maxCacheSize < -1) {
             throw new IllegalArgumentException("maxCacheSize must be -1 (unlimited) or non-negative, was " + maxCacheSize);
         }
@@ -393,8 +405,10 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
         this.cleanupInterval = cleanupIntervalMillis;
         this.maxCacheSize = maxCacheSize;
         this.mode = mode;
+        this.scheduledExecutorService = scheduledExecutorService;
+        this.sharedScheduledExecutorService = scheduledExecutorService != null;
 
-        cache = new Cache(maxCacheSize, mode, jwtValidator, this::executeInBackground);
+        cache = new Cache(maxCacheSize, mode, this::executeInBackground);
     }
 
     /**
@@ -437,8 +451,8 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
     // run eviction on the (single) background thread, also used for cleanup
     protected void executeInBackground(Runnable command) {
         ScheduledExecutorService executor = scheduledExecutorService; // defensive copy
-        if (executor == null) {
-            executor = getScheduledExecutorService();
+        if (executor == null || closed) {
+            executor = getScheduledExecutorService(); // throws if closed
         }
         executor.execute(command);
     }
@@ -447,9 +461,9 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
         if(!cache.isEmpty()) {
             try {
                 // avoid memory leaks due to stagnant JWTs
-                int cleaned = cache.cleanInvalidJwts();
+                int cleaned = cache.removeExpiredJwts(Instant.now());
                 if(cleaned > 0) {
-                    if (LOGGER.isDebugEnabled()) LOGGER.debug("Cleaned {} invalid JWTs from cache, now have {}", cleaned, cache.size());
+                    if (LOGGER.isDebugEnabled()) LOGGER.debug("Cleaned {} expired JWTs from cache, now have {}", cleaned, cache.size());
                 }
             } catch (Throwable e) {
                 // ignore, will be handled by regular flow
@@ -460,6 +474,9 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
 
     @Override
     public Jwt decode(String token) throws JwtException {
+        if (closed) {
+            return jwtValidatingDecoder.decode(token);
+        }
         Entry entry = cache.get(token);
         if (entry != null) {
             if (hasKeys(entry)) {
@@ -566,12 +583,19 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
         cache.clear();
     }
 
+    /**
+     * Stop the background cleanup and clear the cache. JWTs are still decoded (by the delegate decoder), but not cached.
+     */
     public synchronized void close() {
         closed = true;
+        if (cleanupTask != null) {
+            cleanupTask.cancel(false);
+        }
         ScheduledExecutorService executor = scheduledExecutorService; // defensive copy
-        if (executor != null) {
+        if (executor != null && !sharedScheduledExecutorService) {
             executor.shutdownNow();
         }
+        cache.clear();
     }
 
     public int getSize() {

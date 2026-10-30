@@ -46,7 +46,7 @@ public class JwtDecoderCacheProperties {
     private JwtDecoderCacheMode mode = JwtDecoderCacheMode.LRU;
 
     /**
-     * In seconds, how often to clean up the cache. Default is 60 seconds. Set to -1 to disable cleanup.
+     * In seconds, how often to remove expired JWTs from the cache. Default is 60 seconds. Set to -1 to disable cleanup (0 is not allowed).
      */
     private int cleanupInterval = 60;
 
@@ -86,8 +86,8 @@ public class JwtDecoderCacheProperties {
     }
 
     public void setCleanupInterval(int cleanupIntervalSeconds) {
-        if (cleanupIntervalSeconds < -1) {
-            throw new IllegalArgumentException("cleanupInterval must be -1 or non-negative");
+        if (cleanupIntervalSeconds == 0 || cleanupIntervalSeconds < -1) {
+            throw new IllegalArgumentException("cleanupInterval must be -1 (disabled) or positive");
         }
         this.cleanupInterval = cleanupIntervalSeconds;
     }

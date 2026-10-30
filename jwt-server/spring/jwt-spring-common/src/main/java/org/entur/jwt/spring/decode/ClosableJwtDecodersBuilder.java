@@ -13,9 +13,11 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
 
 /**
  *
@@ -51,6 +53,10 @@ public class ClosableJwtDecodersBuilder {
      */
     public ClosableJwtDecoders build() {
         Map<String, JwtDecoder> map = HashMap.newHashMap(jwkSources.size() * 4);
+        List<AutoCloseable> resources = new ArrayList<>();
+
+        // background cleanup and eviction for all decoded JWT caches, on a single thread
+        ScheduledExecutorService scheduledExecutorService = null;
 
         for (Map.Entry<String, JWKSource> entry : jwkSources.entrySet()) {
             JWKSource jwkSource = entry.getValue();
@@ -71,8 +77,12 @@ public class ClosableJwtDecodersBuilder {
 
             JwtDecoderCacheProperties cacheProperties = decodedJwtCacheIssuers != null ? decodedJwtCacheIssuers.get(entry.getKey()) : null;
             if (cacheProperties != null) {
+                if (scheduledExecutorService == null) {
+                    scheduledExecutorService = DecodedJwtCacheJwtDecoder.createDefaultScheduledExecutorService();
+                    resources.add(scheduledExecutorService::shutdownNow);
+                }
                 // checks cached JWTs against the same JWK source as the decoder
-                DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(entry.getKey(), decoder, jwkSource, validators, cacheProperties.getCleanupInterval() * 1000L, cacheProperties.getSize(), cacheProperties.getMode());
+                DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(entry.getKey(), decoder, jwkSource, validators, cacheProperties.getCleanupInterval() * 1000L, cacheProperties.getSize(), cacheProperties.getMode(), scheduledExecutorService);
                 cachedDecoder.scheduleCleanup();
                 decoder = cachedDecoder;
             }
@@ -80,6 +90,6 @@ public class ClosableJwtDecodersBuilder {
             map.put(entry.getKey(), decoder);
         }
 
-        return new ClosableJwtDecoders(map);
+        return new ClosableJwtDecoders(map, resources);
     }
 }

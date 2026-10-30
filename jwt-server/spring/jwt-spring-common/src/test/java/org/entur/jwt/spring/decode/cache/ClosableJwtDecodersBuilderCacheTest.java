@@ -95,6 +95,10 @@ class ClosableJwtDecodersBuilderCacheTest {
     }
 
     private ClosableJwtDecoders build(int cleanupIntervalSeconds) throws Exception {
+        return build(cleanupIntervalSeconds, ISSUER_A);
+    }
+
+    private ClosableJwtDecoders build(int cleanupIntervalSeconds, String... cachedIssuers) throws Exception {
         jwkSetSourceA = new TestJWKSetSource(new JWKSet(keyA.toPublicJWK()));
         jwkSourceA = jwkSource(jwkSetSourceA);
 
@@ -106,7 +110,7 @@ class ClosableJwtDecodersBuilderCacheTest {
         decoders = new ClosableJwtDecodersBuilder()
                 .withJwkSources(Map.of(ISSUER_A, jwkSourceA, ISSUER_B, jwkSource(new TestJWKSetSource(new JWKSet(keyB.toPublicJWK())))))
                 .withJwtValidators(List.of(claimValidator))
-                .withDecodedJwtCacheIssuers(Map.of(ISSUER_A, cache))
+                .withDecodedJwtCacheIssuers(java.util.Arrays.stream(cachedIssuers).collect(java.util.stream.Collectors.toMap(issuer -> issuer, issuer -> cache)))
                 .build();
 
         // load the JWK set, so that the first JWT is cached
@@ -168,19 +172,21 @@ class ClosableJwtDecodersBuilderCacheTest {
     }
 
     @Test
-    void testCloseStopsCleanupThread() throws Exception {
-        build(60);
-        DecodedJwtCacheJwtDecoder decoder = (DecodedJwtCacheJwtDecoder) decoders.getJwtDecoders().get(ISSUER_A);
-        assertThat(decoder.scheduledExecutorService).isNotNull();
+    void testCachesShareCleanupThreadWhichIsStoppedOnClose() throws Exception {
+        build(60, ISSUER_A, ISSUER_B);
+        DecodedJwtCacheJwtDecoder decoderA = (DecodedJwtCacheJwtDecoder) decoders.getJwtDecoders().get(ISSUER_A);
+        DecodedJwtCacheJwtDecoder decoderB = (DecodedJwtCacheJwtDecoder) decoders.getJwtDecoders().get(ISSUER_B);
+        assertThat(decoderA.getName()).isEqualTo(ISSUER_A);
 
-        // named after the issuer, so that threads of different tenants can be told apart
-        assertThat(decoder.getName()).isEqualTo(ISSUER_A);
-        Thread thread = decoder.scheduledExecutorService.submit(Thread::currentThread).get(5, TimeUnit.SECONDS);
-        assertThat(thread.getName()).isEqualTo("decoded-jwt-cache-cleanup-" + ISSUER_A);
+        // a single background thread for all tenants
+        assertThat(decoderA.scheduledExecutorService).isNotNull().isSameAs(decoderB.scheduledExecutorService);
+        Thread thread = decoderA.scheduledExecutorService.submit(Thread::currentThread).get(5, TimeUnit.SECONDS);
+        assertThat(thread.getName()).isEqualTo("decoded-jwt-cache-cleanup");
+        assertThat(thread.isDaemon()).isTrue();
 
         decoders.close();
 
-        assertThat(decoder.scheduledExecutorService.isShutdown()).isTrue();
+        assertThat(decoderA.scheduledExecutorService.isShutdown()).isTrue();
         decoders = null;
     }
 }

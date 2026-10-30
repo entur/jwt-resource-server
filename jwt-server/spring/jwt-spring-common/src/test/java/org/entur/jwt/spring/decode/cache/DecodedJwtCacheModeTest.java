@@ -198,14 +198,32 @@ class DecodedJwtCacheModeTest {
     }
 
     @Test
-    void testNoEvictionAfterClose() {
+    void testNothingCachedAfterClose() {
         decoder(10, JwtDecoderCacheMode.LRU);
         fill(10);
         decoder.close();
+        assertEquals(0, decoder.getSize());
 
         decoder.decode(token("new"));
+        decoder.decode(token("new"));
 
-        assertEquals(11, decoder.getSize());
+        assertEquals(0, decoder.getSize());
+        assertEquals(12, decodes.get());
+    }
+
+    @Test
+    void testSizeOneKeepsTheNewestJwt() throws Exception {
+        decoder(1, JwtDecoderCacheMode.FIFO);
+
+        decoder.decode(token("first"));
+        decoder.decode(token("second"));
+
+        // evicted down to (at least) one entry, not emptied
+        awaitSize(1);
+        assertTrue(isCached("second"));
+
+        decoder.decode(token("second"));
+        assertEquals(2, decodes.get());
     }
 
     @Test
@@ -250,7 +268,7 @@ class DecodedJwtCacheModeTest {
     }
 
     private static DecodedJwtCacheJwtDecoder.Cache cacheWithOrders(long... sequences) {
-        DecodedJwtCacheJwtDecoder.Cache cache = new DecodedJwtCacheJwtDecoder.Cache(1000, JwtDecoderCacheMode.FIFO, jwt -> OAuth2TokenValidatorResult.success(), Runnable::run);
+        DecodedJwtCacheJwtDecoder.Cache cache = new DecodedJwtCacheJwtDecoder.Cache(1000, JwtDecoderCacheMode.FIFO, Runnable::run);
         for (int i = 0; i < sequences.length; i++) {
             Jwt jwt = Jwt.withTokenValue("t" + i).header("alg", "none").claim("sub", "s").build();
             cache.map.put("t" + i, new DecodedJwtCacheJwtDecoder.Entry(jwt, null, List.of(), sequences[i], 0));
