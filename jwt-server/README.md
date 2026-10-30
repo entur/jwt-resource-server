@@ -26,9 +26,9 @@ The default implementation supports configuration of one or more tenants.
  * issuer
  * JSON Web Key location
 
-Claim validation (common for all tenants) can also be added:
+Claim validation (common for all tenants):
 
- * audiences
+ * audiences (required)
  * expires-at leeway
  * issued-at leeway
  * and more
@@ -47,9 +47,13 @@ entur:
     claims:
       expires-at-leeway: 15
       issued-at-leeway: 5
-      audiences: # at least one
+      audiences: # required, at least one
         - https://my.audience
 ```
+
+The audiences are required: with JWT enabled and at least one enabled tenant, startup fails if `entur.jwt.claims.audiences` is not set.
+Tokens must contain (in the `aud` claim) at least one of the configured audiences. Without audience validation, a token issued
+by the same tenant for any other API would be accepted.
 
 ### Custom claim validation
 To validate additional claims, add one or more `OAuth2TokenValidator<Jwt>` beans. These are used in addition to the validators configured above:
@@ -71,6 +75,8 @@ public EnturJwtValidators enturJwtValidators() {
 ```
 
 The expiry (`exp`) and not-before (`nbf`) claims are always validated: if the replacement does not validate them, validators with the configured `expires-at-leeway` and `issued-at-leeway` are added.
+
+The replacement is responsible for validating the audience: `entur.jwt.claims.audiences` is then neither used nor required.
 
 ## Authorization configuration
 
@@ -162,6 +168,29 @@ public class TestController {
 
 See the [Spring documentation]([https://docs.spring.io/spring-security/site/docs/current/reference/htmlsingle/#access-control-using-preauthorize-and-postauthorize](https://docs.spring.io/spring-security/site/docs/current/reference/htmlsingle/#access-control-using-preauthorize-and-postauthorize)) for further details.
 
+#### Authorities
+The authorities are taken from the access-token claims:
+
+ * `scope` (or `scp`): with prefix `SCOPE_`
+ * `permissions` (Auth0): as-is
+ * `resource_access` (Keycloak): the roles of the configured client, with prefix `ROLE_`
+
+For Keycloak, configure the client whose roles are mapped, normally the client id of this resource server:
+
+```yaml
+entur:
+  jwt:
+    flavours:
+      keycloak:
+        client-id: booking-api
+```
+
+Only the roles in `resource_access.booking-api.roles` are mapped, so role `booking-reader` becomes authority `ROLE_booking-reader` (for use with `hasRole('booking-reader')`). Keycloak (with the default _Full scope allowed_) adds the roles of every client the user has roles in, and the roles of other clients (like role `admin` on client `reporting-ui`) must not grant access to this resource server.
+
+Without a client id, no client roles are mapped; a warning is logged the first time a token with client roles is seen.
+
+Disable the Keycloak mapping using `entur.jwt.flavours.keycloak.enabled=false`, or both the Auth0 and Keycloak mappings using `entur.jwt.flavours.enabled=false`.
+
 #### Accessing JWT claims
 The library also makes it possible to inject a derived method argument generated from the authorization header: 
 
@@ -201,13 +230,14 @@ The [jwt-junit5-spring] module provide JUnit5 support. In a nutshell:
 public class MyTest {
 
     @Test
-    public void test(@AccessToken String token) throws IOException {
+    public void test(@AccessToken(audience = "https://my.audience") String token) throws IOException {
         // set token in Autorization header and invoke calls
     }
 }
 ```
 
-The `@AuthorizationServer` test extention spawns/overwrites the tenant JWK location with a local file URL.
+The `@AuthorizationServer` test extention spawns/overwrites the tenant JWK location with a local file URL. The audiences
+are not mocked, so configure `entur.jwt.claims.audiences` for tests as well, and add one of them to the tokens.
 
 #### Multi-tentant testing
 Use tenant id for multi-tentant support:
@@ -274,6 +304,8 @@ The library supports a Spring [HealthIndicator](https://docs.spring.io/spring-bo
  * last attempt was unsuccessful
 
 In other words, the health check will not refresh expired keys, but repeated calls to the health-check __will result in a positive result once downstream services are back up__. As a positive side-effect, on startup, calling the health-check before opening for traffic will result in the cache being populated (read: warmed up).
+
+After an unsuccessful attempt, the health check fetches the keys even if they are still cached. These refreshes are rate limited together with the refreshes triggered by unknown signature keys.
 
 The health indicator is enabled by default. Disable it using the standard Spring Boot property:
 

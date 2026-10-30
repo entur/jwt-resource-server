@@ -17,6 +17,10 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.times;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -299,6 +303,73 @@ public class StatefulUrlAccessTokenProviderTest extends AbstractUrlAccessTokenPr
         assertThrows(AccessTokenUnavailableException.class, () -> {
             provider.getAccessToken(accessToken.getExpires() + 1);
         });
+    }
+
+    @Test
+    public void shouldAuthenticateRefreshAndRevokeRequestsUsingAuthorizationHeader() throws Exception {
+        String authorization = AuthorizationHeaderUtil.createHeader("myClientId", "mySecret");
+
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put(AbstractClientCredentialsBuilder.KEY_GRANT_TYPE, AbstractClientCredentialsBuilder.KEY_CLIENT_CREDENTIALS);
+        parameters.put(AbstractClientCredentialsBuilder.KEY_AUDIENCE, "myAudience");
+
+        Map<String, Object> headers = new HashMap<>();
+        headers.put("Authorization", authorization);
+
+        StatefulUrlAccessTokenProvider provider = new StatefulUrlAccessTokenProvider(mockUrl, parameters, headers, 15000, 15000, mockUrl, mockUrl);
+
+        when(urlConnection.getInputStream()).thenReturn(getClass().getResourceAsStream("/keycloakClientCredentialsResponse.json"));
+        AccessToken accessToken = provider.getAccessToken(false);
+
+        ByteArrayOutputStream refreshOutput = new ByteArrayOutputStream();
+        when(urlConnection.getInputStream()).thenReturn(getClass().getResourceAsStream("/keycloakClientCredentialsResponse.json"));
+        when(urlConnection.getOutputStream()).thenReturn(refreshOutput);
+        clearInvocations(urlConnection);
+
+        provider.getAccessToken(accessToken.getExpires() + 1);
+
+        assertThat(refreshOutput.toString(StandardCharsets.UTF_8)).isEqualTo("grant_type=refresh_token&refresh_token=a.b.c");
+        verify(urlConnection).setRequestProperty("Authorization", authorization);
+
+        ByteArrayOutputStream revokeOutput = new ByteArrayOutputStream();
+        when(urlConnection.getOutputStream()).thenReturn(revokeOutput);
+        clearInvocations(urlConnection);
+
+        provider.close();
+
+        assertThat(revokeOutput.toString(StandardCharsets.UTF_8)).isEqualTo("refresh_token=a.b.c");
+        verify(urlConnection).setRequestProperty("Authorization", authorization);
+    }
+
+    @Test
+    public void shouldAuthenticateRefreshAndRevokeRequestsUsingBodyParameters() throws Exception {
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put(AbstractClientCredentialsBuilder.KEY_GRANT_TYPE, AbstractClientCredentialsBuilder.KEY_CLIENT_CREDENTIALS);
+        parameters.put(AbstractClientCredentialsBuilder.KEY_AUDIENCE, "myAudience");
+        parameters.put(AbstractClientCredentialsBuilder.KEY_SCOPE, "myScope");
+        parameters.put(AbstractClientCredentialsBuilder.KEY_CLIENT_ID, "myClientId");
+        parameters.put(AbstractClientCredentialsBuilder.KEY_SECRET, "my&Secret");
+
+        StatefulUrlAccessTokenProvider provider = new StatefulUrlAccessTokenProvider(mockUrl, parameters, Collections.emptyMap(), 15000, 15000, mockUrl, mockUrl);
+
+        when(urlConnection.getInputStream()).thenReturn(getClass().getResourceAsStream("/keycloakClientCredentialsResponse.json"));
+        AccessToken accessToken = provider.getAccessToken(false);
+
+        ByteArrayOutputStream refreshOutput = new ByteArrayOutputStream();
+        when(urlConnection.getInputStream()).thenReturn(getClass().getResourceAsStream("/keycloakClientCredentialsResponse.json"));
+        when(urlConnection.getOutputStream()).thenReturn(refreshOutput);
+
+        provider.getAccessToken(accessToken.getExpires() + 1);
+
+        assertThat(refreshOutput.toString(StandardCharsets.UTF_8)).isEqualTo("grant_type=refresh_token&refresh_token=a.b.c&client_id=myClientId&client_secret=my%26Secret");
+
+        ByteArrayOutputStream revokeOutput = new ByteArrayOutputStream();
+        when(urlConnection.getOutputStream()).thenReturn(revokeOutput);
+
+        provider.close();
+
+        assertThat(revokeOutput.toString(StandardCharsets.UTF_8)).isEqualTo("refresh_token=a.b.c&client_id=myClientId&client_secret=my%26Secret");
+        verify(urlConnection, never()).setRequestProperty(eq("Authorization"), anyString());
     }
 
 }

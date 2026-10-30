@@ -41,6 +41,12 @@ entur:
 
 Note that this property also applies to the Spring Web / WebFlux modules, if present.
 
+### Disabling JWT
+Setting `entur.jwt.enabled=false` disables JWT authentication. Like for the Spring Web / WebFlux modules, authorization is still enforced: only the permit-all methods are accessible, other calls are rejected with `UNAUTHENTICATED`. To allow anonymous access to all gRPC methods, also set `entur.authorization.enabled=false`.
+
+### Servlet gRPC
+Only the native gRPC server is supported. Startup fails if Spring Boot configures servlet gRPC (i.e. if `grpc-servlet-jakarta` is on the classpath of a servlet web application); set `spring.grpc.server.servlet.enabled=false` to use the native gRPC server instead.
+
 ### MDC logging
 If you have added MDC log mappings, 
 

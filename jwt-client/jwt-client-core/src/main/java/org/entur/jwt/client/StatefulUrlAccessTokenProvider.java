@@ -11,7 +11,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -112,7 +111,7 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
 
             HttpURLConnection request = null;
             try {
-                request = request(revokeUrl, revokeBody, Collections.emptyMap());
+                request = request(revokeUrl, revokeBody, revokeHeaders);
                 int responseCode = request.getResponseCode();
                 if (responseCode < 200 || responseCode > 299) { // i.e. Keycloak responds with 204
                     if (responseCode == 503) { // service unavailable
@@ -138,7 +137,7 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
 
         HttpURLConnection request = null;
         try {
-            request = request(refreshUrl, refreshBody, Collections.emptyMap());
+            request = request(refreshUrl, refreshBody, refreshHeaders);
 
             int responseCode = request.getResponseCode();
             if (responseCode != 200) {

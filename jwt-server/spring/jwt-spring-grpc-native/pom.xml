@@ -138,6 +138,12 @@
             <artifactId>spring-boot-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- for testing that servlet gRPC is rejected; disabled in application.yaml -->
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-servlet-jakarta</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

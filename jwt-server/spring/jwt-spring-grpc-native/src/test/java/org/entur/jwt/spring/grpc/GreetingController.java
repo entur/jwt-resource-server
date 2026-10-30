@@ -17,6 +17,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 @GrpcService
 public class GreetingController extends GreetingServiceImplBase {
@@ -24,6 +25,8 @@ public class GreetingController extends GreetingServiceImplBase {
     private static Logger log = LoggerFactory.getLogger(GreetingController.class);
 
     private final AtomicLong counter = new AtomicLong();
+
+    private final AtomicReference<JwtAuthenticationToken> lastProtectedToken = new AtomicReference<>();
 
     private JwtAuthenticationToken getToken() {
         SecurityContext securityContext = SecurityContextHolder.getContext();
@@ -68,8 +71,14 @@ public class GreetingController extends GreetingServiceImplBase {
 
         log.info("Tenant {}", token);
 
+        lastProtectedToken.set(token);
+
         responseObserver.onNext(GreetingResponse.newBuilder().setMessage("Hello protected tenant").setStatus(counter.incrementAndGet()).build());
         responseObserver.onCompleted();
+    }
+
+    public JwtAuthenticationToken getLastProtectedToken() {
+        return lastProtectedToken.get();
     }
 
     @Override

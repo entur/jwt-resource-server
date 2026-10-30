@@ -22,7 +22,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -76,6 +75,10 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
                 headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
                 headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
+                for (Entry<String, Object> entry : revokeHeaders.entrySet()) {
+                    headers.set(entry.getKey(), entry.getValue().toString());
+                }
+
                 HttpEntity<byte[]> request = new HttpEntity<>(revokeBody, headers);
 
                 URI uri = revokeUrl.toURI();
@@ -104,7 +107,7 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
         byte[] refreshBody = createRefreshBody(refreshToken);
 
         try {
-            ResponseEntity<ClientCredentialsResponse> response = request(refreshUrl, refreshBody, Collections.emptyMap());
+            ResponseEntity<ClientCredentialsResponse> response = request(refreshUrl, refreshBody, refreshHeaders);
 
             int responseCode = response.getStatusCode().value();
             if (responseCode != 200) {

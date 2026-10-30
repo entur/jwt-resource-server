@@ -2,11 +2,13 @@ package org.entur.jwt.client.spring.resttemplate;
 
 import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenUnavailableException;
+import org.entur.jwt.client.AuthorizationHeaderUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -16,10 +18,14 @@ import org.springframework.web.client.RestTemplate;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.headerDoesNotExist;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withBadRequest;
@@ -39,14 +45,19 @@ public class RestTemplateStatefulUrlAccessTokenProviderTest {
     private static final String REISSUE_RESPONSE = "{\"access_token\":\"a1.b1.c1\",\"expires_in\":86400,\"token_type\":\"Bearer\",\"refresh_token\":\"a2.b2.c2\",\"refresh_expires_in\":604800}";
 
     private MockRestServiceServer mockServer;
+    private RestTemplate restTemplate;
     private RestTemplateStatefulUrlAccessTokenProvider provider;
 
     @BeforeEach
     public void beforeEach() throws Exception {
-        RestTemplate restTemplate = new RestTemplate();
+        restTemplate = new RestTemplate();
         mockServer = MockRestServiceServer.bindTo(restTemplate).build();
 
-        provider = new RestTemplateStatefulUrlAccessTokenProvider(restTemplate, new URL(ISSUE_URL), Map.of("grant_type", "client_credentials"), Collections.emptyMap(), new URL(REFRESH_URL), new URL(REVOKE_URL));
+        provider = newProvider(Map.of("grant_type", "client_credentials"), Collections.emptyMap());
+    }
+
+    private RestTemplateStatefulUrlAccessTokenProvider newProvider(Map<String, Object> parameters, Map<String, Object> headers) throws Exception {
+        return new RestTemplateStatefulUrlAccessTokenProvider(restTemplate, new URL(ISSUE_URL), parameters, headers, new URL(REFRESH_URL), new URL(REVOKE_URL));
     }
 
     private void expect(String url, ResponseCreator responseCreator) {
@@ -134,6 +145,65 @@ public class RestTemplateStatefulUrlAccessTokenProviderTest {
         assertThrows(AccessTokenUnavailableException.class, () -> {
             provider.getAccessToken(false);
         });
+
+        mockServer.verify();
+    }
+
+    @Test
+    public void shouldAuthenticateRefreshAndRevokeRequestsUsingAuthorizationHeader() throws Exception {
+        String authorization = AuthorizationHeaderUtil.createHeader("myClientId", "mySecret");
+
+        provider = newProvider(Map.of("grant_type", "client_credentials", "audience", "myAudience"), Map.of(HttpHeaders.AUTHORIZATION, authorization));
+
+        mockServer.expect(requestTo(ISSUE_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header(HttpHeaders.AUTHORIZATION, authorization))
+                .andRespond(withSuccess(ISSUE_RESPONSE, MediaType.APPLICATION_JSON));
+        mockServer.expect(requestTo(REFRESH_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header(HttpHeaders.AUTHORIZATION, authorization))
+                .andExpect(content().string("grant_type=refresh_token&refresh_token=a.b.c"))
+                .andRespond(withSuccess(REISSUE_RESPONSE, MediaType.APPLICATION_JSON));
+        mockServer.expect(requestTo(REVOKE_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header(HttpHeaders.AUTHORIZATION, authorization))
+                .andExpect(content().string("refresh_token=a2.b2.c2"))
+                .andRespond(withNoContent());
+
+        assertThat(provider.getAccessToken(false).getValue()).isEqualTo("x.y.z");
+        assertThat(provider.getAccessToken(true).getValue()).isEqualTo("a1.b1.c1");
+        provider.close();
+
+        mockServer.verify();
+    }
+
+    @Test
+    public void shouldAuthenticateRefreshAndRevokeRequestsUsingBodyParameters() throws Exception {
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("grant_type", "client_credentials");
+        parameters.put("audience", "myAudience");
+        parameters.put("client_id", "myClientId");
+        parameters.put("client_secret", "mySecret");
+
+        provider = newProvider(parameters, Collections.emptyMap());
+
+        mockServer.expect(requestTo(ISSUE_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(ISSUE_RESPONSE, MediaType.APPLICATION_JSON));
+        mockServer.expect(requestTo(REFRESH_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(headerDoesNotExist(HttpHeaders.AUTHORIZATION))
+                .andExpect(content().string("grant_type=refresh_token&refresh_token=a.b.c&client_id=myClientId&client_secret=mySecret"))
+                .andRespond(withSuccess(REISSUE_RESPONSE, MediaType.APPLICATION_JSON));
+        mockServer.expect(requestTo(REVOKE_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(headerDoesNotExist(HttpHeaders.AUTHORIZATION))
+                .andExpect(content().string("refresh_token=a2.b2.c2&client_id=myClientId&client_secret=mySecret"))
+                .andRespond(withNoContent());
+
+        assertThat(provider.getAccessToken(false).getValue()).isEqualTo("x.y.z");
+        assertThat(provider.getAccessToken(true).getValue()).isEqualTo("a1.b1.c1");
+        provider.close();
 
         mockServer.verify();
     }
