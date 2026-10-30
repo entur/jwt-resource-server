@@ -421,7 +421,7 @@ Only the decoding/signature verification step is cached - claim validators (audi
 
 A cached token is only used while the JWK set still holds the key(s) it was verified with: on every cache hit, the keys matching the token's header are looked up in the (cached) JWK set, and compared with the keys from when the token was verified. This is a lookup, not a signature verification. So the cache follows the JWK set like decoding without the cache does: a rotated or revoked key is detected as soon as the JWK set is refreshed, and during a JWK set outage cached tokens are accepted for as long as the JWK set is served from the JWK outage cache.
 
-The cache is opt-in per tenant, and requires the JWK set cache (enabled by default):
+The cache is opt-in per tenant, and requires the JWK set cache (enabled by default; startup fails without it):
 
 ```yaml
 entur:

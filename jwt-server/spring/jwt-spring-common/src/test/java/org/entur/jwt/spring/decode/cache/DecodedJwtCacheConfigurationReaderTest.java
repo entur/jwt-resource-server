@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class DecodedJwtCacheConfigurationReaderTest {
 
@@ -34,19 +35,6 @@ public class DecodedJwtCacheConfigurationReaderTest {
 
     private static Logger loggerUnderTest() {
         return (Logger) LoggerFactory.getLogger(DecodedJwtCacheConfigurationReader.class);
-    }
-
-    @Test
-    public void testEmptyWhenJwkCacheDisabled() {
-        JwtProperties jwt = jwtProperties();
-        jwt.getJwk().getCache().setEnabled(false);
-
-        JwtTenantProperties tenant = tenant("https://issuer-a", true, true);
-        jwt.getTenants().put("a", tenant);
-
-        Map<String, JwtDecoderCacheProperties> result = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt);
-
-        assertThat(result).isEmpty();
     }
 
     @Test
@@ -83,7 +71,7 @@ public class DecodedJwtCacheConfigurationReaderTest {
     }
 
     @Test
-    public void testWarnsWhenDecoderCacheEnabledButJwkCacheDisabled() {
+    public void testFailsWhenDecoderCacheEnabledButJwkCacheDisabled() {
         JwtProperties jwt = jwtProperties();
         jwt.getJwk().getCache().setEnabled(false);
 
@@ -91,23 +79,19 @@ public class DecodedJwtCacheConfigurationReaderTest {
         jwt.getTenants().put("b", tenant("https://issuer-b", true, false));
         jwt.getTenants().put("c", tenant("https://issuer-c", false, true));
 
-        Map<String, JwtDecoderCacheProperties> result = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt);
-
-        assertThat(result).isEmpty();
-        List<ILoggingEvent> warnings = logAppender.list;
-        assertThat(warnings).hasSize(1);
-        assertThat(warnings.get(0).getFormattedMessage()).contains("'a'", "entur.jwt.jwk.cache.enabled");
+        assertThatThrownBy(() -> DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("decoder-cache.enabled=true for tenant(s) [a] requires entur.jwt.jwk.cache.enabled=true");
     }
 
     @Test
-    public void testDoesNotWarnWhenDecoderCacheDisabledAndJwkCacheDisabled() {
+    public void testDoesNotFailWhenDecoderCacheDisabledAndJwkCacheDisabled() {
         JwtProperties jwt = jwtProperties();
         jwt.getJwk().getCache().setEnabled(false);
 
         jwt.getTenants().put("a", tenant("https://issuer-a", true, false));
 
-        DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt);
-
+        assertThat(DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt)).isEmpty();
         assertThat(logAppender.list).isEmpty();
     }
 

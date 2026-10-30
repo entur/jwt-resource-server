@@ -23,7 +23,7 @@ public class JwtDecoderCacheProperties {
      * Requires the (shared, not per-tenant) JWK set cache, i.e. {@code entur.jwt.jwk.cache.enabled=true} (the default):
      * on every cache hit, the keys the JWT was verified with are looked up in the JWK set, so a cached JWT is only
      * used while the JWK set still holds its keys (i.e. key rotation and revocation are detected as soon as the
-     * JWK set is refreshed). Without the JWK set cache, this flag is a no-op (a warning is logged).
+     * JWK set is refreshed). Without the JWK set cache, startup fails.
      * <p>
      * JWTs without expiry ({@code exp} claim) are not cached.
      *

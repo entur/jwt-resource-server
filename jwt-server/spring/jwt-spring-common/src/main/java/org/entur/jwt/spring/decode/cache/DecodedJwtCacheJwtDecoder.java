@@ -102,7 +102,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
 
     protected static class Entry {
         protected final Jwt jwt;
-        // selects the JWT's verification keys from the JWK set
+        // selects the JWT's verification keys from the JWK set; thread safe, shared by entries with the same header (see keySelectors)
         protected final JWKSelector keySelector;
         // the keys the JWT was verified with (one of them)
         protected final List<JWK> keys;
@@ -392,7 +392,9 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
 
     protected final Cache cache;
 
-    // key selectors of cached JWTs, by (encoded) header, so that cached JWTs with the same header share a key selector
+    // key selectors of cached JWTs, by (encoded) header, so that cached JWTs with the same header share a key selector.
+    // Thread safe, so they can be shared between request threads: JWKSelector and JWKMatcher are immutable (final fields only,
+    // the matcher's sets are not modified after construction), and JWKSelector.select(..) returns a new list on every call.
     protected final ConcurrentHashMap<String, JWKSelector> keySelectors = new ConcurrentHashMap<>();
 
     /**
@@ -578,7 +580,7 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
     }
 
     protected void add(String token, Jwt jwt, String header, JWKSelector keySelector, List<JWK> keys) {
-        // share the key selector with JWTs with the same header; only for verified JWTs, as the header is user input
+        // share the (thread safe) key selector with JWTs with the same header; only for verified JWTs, as the header is user input
         if (keySelectors.size() >= MAX_KEY_SELECTORS) {
             // i.e. after key rotations; start over
             keySelectors.clear();

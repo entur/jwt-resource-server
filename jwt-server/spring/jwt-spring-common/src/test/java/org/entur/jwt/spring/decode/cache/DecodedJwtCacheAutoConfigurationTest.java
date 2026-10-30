@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * The decoded JWT cache as part of the shared {@link ClosableJwtDecoders} bean, see {@link org.entur.jwt.spring.decode.ClosableJwtDecodersAutoConfigurationTest}.
@@ -34,11 +35,18 @@ class DecodedJwtCacheAutoConfigurationTest {
             ClosableJwtDecoders decoders = context.getBean(ClosableJwtDecoders.class);
             decoder.set((DecodedJwtCacheJwtDecoder) decoders.getJwtDecoders().get(ISSUER));
 
-            // the default cleanup interval schedules a background thread
+            // background thread for cleanup and eviction
             assertThat(decoder.get().scheduledExecutorService.isShutdown()).isFalse();
         });
 
         // context closed
         assertThat(decoder.get().scheduledExecutorService.isShutdown()).isTrue();
+    }
+
+    @Test
+    void testFailsWithoutJwkCache() {
+        runner.withPropertyValues("entur.jwt.jwk.cache.enabled=false").run(context ->
+                assertThatThrownBy(() -> context.getBean(ClosableJwtDecoders.class))
+                        .hasStackTraceContaining("decoder-cache.enabled=true for tenant(s) [a] requires entur.jwt.jwk.cache.enabled=true"));
     }
 }

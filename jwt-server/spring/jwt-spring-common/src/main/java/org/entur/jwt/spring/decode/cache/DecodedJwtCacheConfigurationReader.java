@@ -26,11 +26,8 @@ public class DecodedJwtCacheConfigurationReader {
         JwkCacheProperties cache = jwt.getJwk().getCache();
         if (cache == null || !cache.isEnabled()) {
             // every cache hit looks up the JWT's keys in the JWK set, which without the JWK cache
-            // would mean loading the JWK set; warn so the misconfiguration is not silent
-            for (String tenant : tenants) {
-                LOGGER.warn("Tenant '{}' has decoder-cache.enabled=true, but the decoded JWT cache requires entur.jwt.jwk.cache.enabled=true; the decoded JWT cache is disabled", tenant);
-            }
-            return Collections.emptyMap();
+            // would mean loading the JWK set; fail so the misconfiguration is not silent
+            throw new IllegalStateException("decoder-cache.enabled=true for tenant(s) " + tenants + " requires entur.jwt.jwk.cache.enabled=true");
         }
 
         Map<String, JwtDecoderCacheProperties> decodedJwtCacheIssuers = new HashMap<>();
