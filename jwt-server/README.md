@@ -391,6 +391,8 @@ In a multi-tenant setup (more than one configured issuer), figuring out which te
 
 `FastIssuerJwtDecoder` optimizes this by caching a mapping from the JWT's header (the raw, unparsed segment before the first `.`) to the issuer it previously resolved to. JWT headers are small and typically contain just `alg` and `kid`, which are effectively static per signing key - so once a header has been seen, subsequent tokens with that same header can jump straight to the right per-issuer decoder (fast path) instead of parsing the whole token just to find the issuer (slow path). Claims and the signature are still fully verified as normal either way; only issuer resolution is short-circuited.
 
+Tenants which share a signing key and key id produce identical headers, for example an Auth0 custom domain and its canonical domain, or a Keycloak realm reachable via two hostnames. So if a token fails on the fast path, and its `iss` claim names another tenant, the token is decoded via the slow path, by the decoder of its own issuer. Once a header has been verified for more than one tenant, it is no longer mapped (an info message is logged), and tokens with that header always take the slow path. A token is never accepted for another issuer than its `iss` claim, and invalid tokens of the mapped tenant (e.g. expired) are not decoded twice.
+
 This setting has no effect if only one issuer/tenant is configured.
 
 ```yaml

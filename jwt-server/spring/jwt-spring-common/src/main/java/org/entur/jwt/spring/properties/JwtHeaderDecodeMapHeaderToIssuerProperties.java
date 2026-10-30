@@ -3,7 +3,9 @@ package org.entur.jwt.spring.properties;
 /**
  * Optimization for multi-tenant setups. Avoids parsing the whole JWT to extract the issuer.
  *
- * Enable if JWT headers are known to be unique and semi-static per issuer.
+ * Most effective if JWT headers are semi-static and unique per issuer. Issuers which share a signing key and key id
+ * produce identical headers; such headers are no longer mapped once seen with more than one issuer, so tokens with
+ * these headers are resolved by their issuer claim (as without this setting).
  *
  * If only one issuer, this setting has no effect.
  */
