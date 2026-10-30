@@ -4,6 +4,8 @@ entur:
     claims:
       expires-at-leeway: 15
       issued-at-leeway: 5
+      audiences:
+        - mock.my.audience
 
     jwk:
       cache:
