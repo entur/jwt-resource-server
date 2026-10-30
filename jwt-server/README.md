@@ -168,6 +168,29 @@ public class TestController {
 
 See the [Spring documentation]([https://docs.spring.io/spring-security/site/docs/current/reference/htmlsingle/#access-control-using-preauthorize-and-postauthorize](https://docs.spring.io/spring-security/site/docs/current/reference/htmlsingle/#access-control-using-preauthorize-and-postauthorize)) for further details.
 
+#### Authorities
+The authorities are taken from the access-token claims:
+
+ * `scope` (or `scp`): with prefix `SCOPE_`
+ * `permissions` (Auth0): as-is
+ * `resource_access` (Keycloak): the roles of the configured client, with prefix `ROLE_`
+
+For Keycloak, configure the client whose roles are mapped, normally the client id of this resource server:
+
+```yaml
+entur:
+  jwt:
+    flavours:
+      keycloak:
+        client-id: booking-api
+```
+
+Only the roles in `resource_access.booking-api.roles` are mapped, so role `booking-reader` becomes authority `ROLE_booking-reader` (for use with `hasRole('booking-reader')`). Keycloak (with the default _Full scope allowed_) adds the roles of every client the user has roles in, and the roles of other clients (like role `admin` on client `reporting-ui`) must not grant access to this resource server.
+
+Without a client id, no client roles are mapped; a warning is logged the first time a token with client roles is seen.
+
+Disable the Keycloak mapping using `entur.jwt.flavours.keycloak.enabled=false`, or both the Auth0 and Keycloak mappings using `entur.jwt.flavours.enabled=false`.
+
 #### Accessing JWT claims
 The library also makes it possible to inject a derived method argument generated from the authorization header: 
 

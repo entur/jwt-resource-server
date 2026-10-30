@@ -194,7 +194,7 @@ public class JwtGrpcAutoConfiguration {
 
             KeycloakFlavour keycloak = flavours.getKeycloak();
             if (keycloak.isEnabled()) {
-                enrichers.add(new KeycloakJwtAuthorityEnricher());
+                enrichers.add(new KeycloakJwtAuthorityEnricher(keycloak.getClientId()));
             }
 
             jwtAuthorityEnrichers = enrichers;
