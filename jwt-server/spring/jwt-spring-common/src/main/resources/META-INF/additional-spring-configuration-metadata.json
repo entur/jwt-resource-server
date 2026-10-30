@@ -9,6 +9,12 @@
         "reason": "The JWKs health indicator is a standard Spring Boot health indicator.",
         "replacement": "management.health.jwks.enabled"
       }
+    },
+    {
+      "name": "entur.jwt.flavours.keycloak.client-id",
+      "type": "java.lang.String",
+      "sourceType": "org.entur.jwt.spring.properties.KeycloakFlavour",
+      "description": "Client id (i.e. key in the access-token claim 'resource_access') of the client whose roles are mapped to authorities (with prefix 'ROLE_'). Normally the client id of this resource server. If not set, no client roles are mapped."
     }
   ]
 }
