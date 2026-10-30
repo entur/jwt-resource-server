@@ -39,14 +39,15 @@ public class UnsupportedReactiveJwtDecoderGuardTest {
     }
 
     @Test
-    public void testStartsWithReactiveJwtDecoderBeanByDefault() {
-        runner.withUserConfiguration(ReactiveJwtDecoderConfiguration.class).run(context -> assertThat(context).hasNotFailed());
+    public void testStartsWithReactiveJwtDecoderBeanWhenDisabled() {
+        runner.withUserConfiguration(ReactiveJwtDecoderConfiguration.class)
+                .withPropertyValues("entur.jwt.decode.fail-on-jwt-decoder-bean=false")
+                .run(context -> assertThat(context).hasNotFailed());
     }
 
     @Test
-    public void testFailsWithReactiveJwtDecoderBeanWhenEnabled() {
+    public void testFailsWithReactiveJwtDecoderBeanByDefault() {
         runner.withUserConfiguration(ReactiveJwtDecoderConfiguration.class)
-                .withPropertyValues("entur.jwt.decode.fail-on-jwt-decoder-bean=true")
                 .run(context -> {
             assertThat(context).hasFailed();
             assertThat(context.getStartupFailure())

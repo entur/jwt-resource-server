@@ -9,7 +9,7 @@ public class JwtDecodeProperties {
      * ignored, as JWTs are decoded by the per-issuer decoders configured under {@code entur.jwt.tenants}.
      * Default false; will default to true in the next major version.
      */
-    private boolean failOnJwtDecoderBean = false;
+    private boolean failOnJwtDecoderBean = true;
 
     public boolean isFailOnJwtDecoderBean() {
         return failOnJwtDecoderBean;
