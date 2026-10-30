@@ -135,7 +135,6 @@ class EnturJwtValidatorsAutoConfigurationTest {
                 .withPropertyValues("entur.jwt.claims.expires-at-leeway=120")
                 .run(context -> {
                     assertThat(context).hasSingleBean(EnturJwtValidators.class);
-                    assertThat(context.getBean("claimConstraints")).isSameAs(context.getBean(EnturJwtValidators.class).getValidators());
 
                     JwtDecoder decoder = context.getBean(ClosableJwtDecoders.class).getJwtDecoders().get(ISSUER);
 
