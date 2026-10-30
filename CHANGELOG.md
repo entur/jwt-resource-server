@@ -1,5 +1,8 @@
 # CHANGELOG
- - 8.0.0 (pending): Removed the code deprecated in 7.2.x:
+ - 8.0.0 (pending):
+   - Removed the unused `ReactiveEnturOauth2ResourceServerCustomizer` constructor without header-to-issuer mapper arguments, and the metadata entry for the obsolete `entur.jwt.jwk.health-indicator.enabled` property (use `management.health.jwks.enabled`).
+   - renamed package `org.entur.jwt.junit5.extention` to `org.entur.jwt.junit5.extension` (jwt-junit5-core); update imports of `AuthorizationServerExtension`, `AuthorizationServerTestContext` and `AuthorizationServerTestManager`.
+   - Removed the code deprecated in 7.2.x:
    - `org.entur.jwt.spring.grpc.netty.IssuerJwtDecoder`, `FastIssuerJwtDecoder` and `IssuerJwtDecoder.newBuilder()`; use `org.entur.jwt.spring.decode.ClosableJwtDecodersBuilder` and `IssuerJwtDecoderFactory`.
    - The `EnturOauth2ResourceServerCustomizer` constructors taking JWK sources and validators; use the one taking a `ClosableJwtDecoders`.
    - The `JwkSourceMap(Map)` constructor; use `JwkSourceMap(Map, Map)`.

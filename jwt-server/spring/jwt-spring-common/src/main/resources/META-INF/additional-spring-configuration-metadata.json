@@ -1,16 +1,6 @@
 {
   "properties": [
     {
-      "name": "entur.jwt.jwk.health-indicator.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Whether to enable the JWKs health indicator.",
-      "deprecation": {
-        "level": "error",
-        "reason": "The JWKs health indicator is a standard Spring Boot health indicator.",
-        "replacement": "management.health.jwks.enabled"
-      }
-    },
-    {
       "name": "entur.jwt.flavours.keycloak.client-id",
       "type": "java.lang.String",
       "sourceType": "org.entur.jwt.spring.properties.KeycloakFlavour",
