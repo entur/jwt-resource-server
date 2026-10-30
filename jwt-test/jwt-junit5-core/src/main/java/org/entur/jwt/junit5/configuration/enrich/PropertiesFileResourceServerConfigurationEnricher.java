@@ -1,7 +1,7 @@
 package org.entur.jwt.junit5.configuration.enrich;
 
 import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfiguration;
-import org.entur.jwt.junit5.extention.AuthorizationServerExtension;
+import org.entur.jwt.junit5.extension.AuthorizationServerExtension;
 import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
