@@ -2,19 +2,30 @@ package org.entur.jwt.client;
 
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * {@linkplain AccessTokenProvider} which handles refresh tokens.
- *
+ * <br><br>
+ * The refresh and revoke requests are authenticated the same way as the issue request (RFC 6749 section 6),
+ * i.e. they carry the same headers (for example a basic authorization header) and the same client id and
+ * secret body parameters (if any).
  */
 
 public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
 
     protected static final String KEY_REFRESH_TOKEN = "refresh_token";
+    protected static final String KEY_CLIENT_ID = "client_id";
+    protected static final String KEY_CLIENT_SECRET = "client_secret";
 
     protected final URL revokeUrl;
     protected final URL refreshUrl;
+
+    protected final Map<String, Object> refreshHeaders;
+    protected final Map<String, Object> revokeHeaders;
+    protected final Map<String, Object> clientAuthenticationParameters;
 
     protected volatile RefreshToken refreshToken;
 
@@ -22,6 +33,21 @@ public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrl
         super(issueUrl, parameters, headers);
         this.refreshUrl = refreshUrl;
         this.revokeUrl = revokeUrl;
+
+        this.refreshHeaders = headers;
+        this.revokeHeaders = headers;
+        this.clientAuthenticationParameters = getClientAuthenticationParameters(parameters);
+    }
+
+    protected static Map<String, Object> getClientAuthenticationParameters(Map<String, Object> parameters) {
+        Map<String, Object> clientAuthenticationParameters = new LinkedHashMap<>();
+        for (String key : new String[]{KEY_CLIENT_ID, KEY_CLIENT_SECRET}) {
+            Object value = parameters.get(key);
+            if (value != null) {
+                clientAuthenticationParameters.put(key, value);
+            }
+        }
+        return clientAuthenticationParameters;
     }
 
     @Override
@@ -38,6 +64,8 @@ public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrl
         builder.append('=');
         builder.append(encode(threadSafeRefreshToken.getValue()));
 
+        appendClientAuthenticationParameters(builder);
+
         return builder.toString().getBytes(StandardCharsets.UTF_8);
     }
 
@@ -52,7 +80,18 @@ public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrl
         builder.append('=');
         builder.append(encode(response.getValue()));
 
+        appendClientAuthenticationParameters(builder);
+
         return builder.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    protected void appendClientAuthenticationParameters(StringBuilder builder) {
+        for (Entry<String, Object> entry : clientAuthenticationParameters.entrySet()) {
+            builder.append('&');
+            builder.append(entry.getKey());
+            builder.append('=');
+            builder.append(encode(entry.getValue().toString()));
+        }
     }
 
     protected abstract ClientCredentialsResponse getToken(RefreshToken response) throws AccessTokenException;

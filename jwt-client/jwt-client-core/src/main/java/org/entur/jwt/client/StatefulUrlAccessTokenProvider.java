@@ -11,7 +11,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -105,7 +104,7 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
             byte[] revokeBody = createRevokeBody(threadSafeRefreshToken);
 
             try {
-                HttpURLConnection request = request(revokeUrl, revokeBody, Collections.emptyMap());
+                HttpURLConnection request = request(revokeUrl, revokeBody, revokeHeaders);
                 int responseCode = request.getResponseCode();
                 if (responseCode != 200) {
                     if (responseCode == 503) { // service unavailable
@@ -128,7 +127,7 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
         byte[] refreshBody = createRefreshBody(response);
 
         try {
-            HttpURLConnection request = request(refreshUrl, refreshBody, Collections.emptyMap());
+            HttpURLConnection request = request(refreshUrl, refreshBody, refreshHeaders);
 
             int responseCode = request.getResponseCode();
             if (responseCode != 200) {
