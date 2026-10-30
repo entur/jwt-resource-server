@@ -24,18 +24,22 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.grpc.server.GrpcServletRegistration;
+import org.springframework.boot.grpc.server.autoconfigure.GrpcServerAutoConfiguration;
 import org.springframework.boot.grpc.server.autoconfigure.security.GrpcServerOAuth2ResourceServerAutoConfiguration;
+import org.springframework.boot.grpc.server.autoconfigure.security.GrpcServerSecurityAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.grpc.server.GlobalServerInterceptor;
 import org.springframework.grpc.server.security.AuthenticationProcessInterceptor;
 import org.springframework.grpc.server.security.GrpcSecurity;
 import org.springframework.grpc.server.security.OAuth2ResourceServerConfigurer;
+import org.springframework.grpc.server.security.RequestMapperConfigurer;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -49,9 +53,10 @@ import java.util.Map;
 
 @Configuration
 @EnableConfigurationProperties({GrpcPermitAll.class, SecurityProperties.class})
-@AutoConfigureAfter(value = {JwtAutoConfiguration.class})
+// after the gRPC server (and its security), so that the conditions on their beans work
+@AutoConfigureAfter(value = {JwtAutoConfiguration.class, GrpcServerAutoConfiguration.class, GrpcServerSecurityAutoConfiguration.class})
 @AutoConfigureBefore(value = {GrpcServerOAuth2ResourceServerAutoConfiguration.class})
-@ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
+@ConditionalOnExpression("${entur.authorization.enabled:true} || ${entur.jwt.enabled:true}")
 public class JwtGrpcAutoConfiguration {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JwtGrpcAutoConfiguration.class);
@@ -73,27 +78,30 @@ public class JwtGrpcAutoConfiguration {
         }
     }
 
-    @Configuration
+    // Without the native gRPC server, there is no GrpcSecurity and so no authentication interceptor. A bean method
+    // (not a nested configuration, which could be picked up by component scanning) so that it is evaluated after the
+    // gRPC server auto-configuration.
+    @Bean
     @ConditionalOnBean(GrpcServletRegistration.class)
-    public static class GrpcServletServerGuard {
-
-        public GrpcServletServerGuard() {
-            throw new IllegalStateException("Servlet gRPC not supported by this module");
-        }
+    public Object grpcServletServerGuard() {
+        throw new IllegalStateException("Servlet gRPC not supported by this module, use the native gRPC server. Add 'spring.grpc.server.servlet.enabled=false' or remove the gRPC servlet dependency.");
     }
 
     @Bean
+    @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
     public JwtOutageGrpcExceptionHandler jwtOutageGrpcExceptionHandler() {
         return new JwtOutageGrpcExceptionHandler(-1000);
     }
 
     @Bean
+    @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
     @ConditionalOnMissingBean(JwtAuthorityEnricher.class)
     public JwtAuthorityEnricher jwtAuthorityEnricher() {
         return new DefaultJwtAuthorityEnricher();
     }
 
     @Bean
+    @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
     public GrpcJwtDecoderHolder grpcJwtDecoderHolder(
             ClosableJwtDecoders closableJwtDecoders,
             ObjectProvider<JwtHeaderToIssuerMapper> jwtHeaderToIssuerMapperProvider,
@@ -111,6 +119,8 @@ public class JwtGrpcAutoConfiguration {
 
     @Bean
     @GlobalServerInterceptor
+    @ConditionalOnBean(GrpcSecurity.class) // i.e. not if there is no gRPC server
+    @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
     public AuthenticationProcessInterceptor authenticationProcessInterceptor(
             GrpcSecurity grpcSecurity, List<JwtAuthorityEnricher> jwtAuthorityEnrichers,
             GrpcJwtDecoderHolder grpcJwtDecoderHolder
@@ -118,28 +128,7 @@ public class JwtGrpcAutoConfiguration {
             throws Exception {
         JwtDecoder decoder = grpcJwtDecoderHolder.getJwtDecoder();
         try {
-            grpcSecurity.authorizeRequests((requests) -> {
-
-                for (Map.Entry<String, List<String>> entry : permitAllMappings.entrySet()) {
-                    String service = entry.getKey();
-
-                    List<String> methods = entry.getValue();
-
-                    String[] patterns = new String[methods.size()];
-                    for (int i = 0; i < methods.size(); i++) {
-                        patterns[i] = service + '/' + methods.get(i);
-                    }
-
-                    requests.methods(patterns).permitAll();
-                }
-
-                if (securityProperties.getAuthorization().isEnabled()) {
-                    requests.allRequests().fullyAuthenticated();
-                } else {
-                    // tokens which are present are still validated
-                    requests.allRequests().permitAll();
-                }
-            });
+            grpcSecurity.authorizeRequests(this::authorizeRequests);
 
             Customizer<OAuth2ResourceServerConfigurer.JwtConfigurer> configurer = new Customizer<OAuth2ResourceServerConfigurer.JwtConfigurer>() {
                 @Override
@@ -155,6 +144,40 @@ public class JwtGrpcAutoConfiguration {
             return grpcSecurity.build();
         } catch(Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    @Bean
+    @GlobalServerInterceptor
+    @ConditionalOnBean(GrpcSecurity.class) // i.e. not if there is no gRPC server
+    @ConditionalOnExpression("${entur.authorization.enabled:true} && !${entur.jwt.enabled:true}")
+    public AuthenticationProcessInterceptor authenticationProcessInterceptorWithoutJwt(GrpcSecurity grpcSecurity) throws Exception {
+        if(LOGGER.isInfoEnabled()) LOGGER.info("Configure without JWT");
+
+        // no authentication, so only the permit-all methods are accessible
+        grpcSecurity.authorizeRequests(this::authorizeRequests);
+        return grpcSecurity.build();
+    }
+
+    private void authorizeRequests(RequestMapperConfigurer requests) {
+        for (Map.Entry<String, List<String>> entry : permitAllMappings.entrySet()) {
+            String service = entry.getKey();
+
+            List<String> methods = entry.getValue();
+
+            String[] patterns = new String[methods.size()];
+            for (int i = 0; i < methods.size(); i++) {
+                patterns[i] = service + '/' + methods.get(i);
+            }
+
+            requests.methods(patterns).permitAll();
+        }
+
+        if (securityProperties.getAuthorization().isEnabled()) {
+            requests.allRequests().fullyAuthenticated();
+        } else {
+            // tokens which are present are still validated
+            requests.allRequests().permitAll();
         }
     }
 
@@ -200,12 +223,19 @@ public class JwtGrpcAutoConfiguration {
                 if(LOGGER.isInfoEnabled()) LOGGER.info("Allow anonymous access to methods {} of GRPC service {}", configuration.getMethods(), configuration.getName());
             }
 
-            serviceNameMethodName.put(configuration.getName(), methods);
+            // merge the methods of entries with the same service name
+            List<String> serviceMethods = serviceNameMethodName.computeIfAbsent(configuration.getName(), (name) -> new ArrayList<>());
+            for (String method : methods) {
+                if (!serviceMethods.contains(method)) {
+                    serviceMethods.add(method);
+                }
+            }
         }
         return serviceNameMethodName;
     }
 
     @Bean
+    @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
     @ConditionalOnMissingBean(UserDetailsService.class)
     public UserDetailsService userDetailsService() {
         return new NoUserDetailsService();  // avoid the default user.
