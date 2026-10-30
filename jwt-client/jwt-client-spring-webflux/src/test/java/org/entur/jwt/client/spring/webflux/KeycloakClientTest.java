@@ -4,6 +4,7 @@ import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.entur.jwt.client.AccessToken;
 import org.entur.jwt.client.AccessTokenProvider;
+import org.entur.jwt.client.AuthorizationHeaderUtil;
 import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -76,6 +77,11 @@ public class KeycloakClientTest {
         RecordedRequest request2 = mockWebServer.takeRequest();
         assertTrue(request2.getPath().endsWith("/token"), request2.getPath());
         assertTrue(request2.getBody().toString().contains("a.b.c"));
+
+        // the refresh request is authenticated like the issue request
+        String authorization = AuthorizationHeaderUtil.createHeader("myClientId", "mySecret");
+        assertThat(request1.getHeader("Authorization")).isEqualTo(authorization);
+        assertThat(request2.getHeader("Authorization")).isEqualTo(authorization);
 
         assertThat(accessToken.getType()).isEqualTo("Bearer");
         assertThat(accessToken.getValue()).isEqualTo("a1.b1.c1");
