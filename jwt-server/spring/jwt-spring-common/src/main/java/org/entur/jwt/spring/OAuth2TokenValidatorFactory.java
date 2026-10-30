@@ -42,26 +42,26 @@ public class OAuth2TokenValidatorFactory {
     }
 
     private <T> JwtClaimValidator<T> toTypeConstraint(JwtClaimConstraintProperties dataTypeConstraint) {
-        Class<?> typeClass = getTypeClass(dataTypeConstraint.getType());
+        Predicate<T> predicate = (Predicate<T>) toDataTypePredicate(dataTypeConstraint.getType());
 
-        Predicate<T> predicate = (Predicate<T>) new DataTypePredicate<>(typeClass);
         return new JwtClaimValidator<>(dataTypeConstraint.getName(), predicate);
     }
 
-    private Class<?> getTypeClass(String type) {
+    private Predicate<?> toDataTypePredicate(String type) {
         switch (type) {
             case "integer": {
-                // TODO long vs int
-                return Long.class;
+                // Nimbus parses JSON whole numbers to Long, but accept any integral type
+                return new IntegerDataTypePredicate();
             }
             case "boolean": {
-                return Boolean.class;
+                return new DataTypePredicate<>(Boolean.class);
             }
             case "string": {
-                return String.class;
+                return new DataTypePredicate<>(String.class);
             }
             case "double": {
-                return Double.class;
+                // any number, as Nimbus parses JSON whole numbers (i.e. 1) to Long
+                return new DataTypePredicate<>(Number.class);
             }
             default: {
                 throw new IllegalArgumentException("Unexpected claim type '" + type + "'");
@@ -79,17 +79,8 @@ public class OAuth2TokenValidatorFactory {
 
         switch (r.getType()) {
             case "integer": {
-
-                // TODO long vs int
-                /*
-                Long l = Long.parseLong(r.getValue());
-                if (l <= Integer.MAX_VALUE) {
-                    jwtBuilder.withClaim(r.getName(), l.intValue());
-                } else {
-                    jwtBuilder.withClaim(r.getName(), l);
-                }
-                 */
-                return (Predicate<T>) new DataValuePredicate<>(Long.parseLong(r.getValue()));
+                // compare numerically, regardless of the integral type
+                return (Predicate<T>) new IntegerDataValuePredicate(Long.parseLong(r.getValue()));
             }
             case "boolean": {
                 return (Predicate<T>) new DataValuePredicate<>(Boolean.parseBoolean(r.getValue()));
@@ -98,7 +89,8 @@ public class OAuth2TokenValidatorFactory {
                 return (Predicate<T>) new DataValuePredicate<>(r.getValue());
             }
             case "double": {
-                return (Predicate<T>) new DataValuePredicate<>(Double.parseDouble(r.getValue()));
+                // compare numerically, as Nimbus parses JSON whole numbers (i.e. 2) to Long
+                return (Predicate<T>) new DoubleDataValuePredicate(Double.parseDouble(r.getValue()));
             }
             default: {
                 throw new IllegalArgumentException("Unexpected claim type '" + r.getType() + "'");
