@@ -62,6 +62,8 @@ public class EnturOauth2ResourceServerCustomizer implements Customizer<OAuth2Res
                 jwtHeaderToIssuerMapper,
                 jwtHeaderToIssuerMapperDecider,
                 new ClosableJwtDecodersBuilder().withJwkSources(jwkSources).withJwtValidators(jwtValidators).build());
+        // the decoded JWT cache is not supported here; do not ignore its settings silently
+        LOGGER.warn("Deprecated EnturOauth2ResourceServerCustomizer constructor: JWT decoders are built without the decoded JWT cache, any decoder-cache settings are ignored. Use the constructor taking the ClosableJwtDecoders bean.");
     }
 
     public EnturOauth2ResourceServerCustomizer(

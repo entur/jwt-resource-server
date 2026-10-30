@@ -94,18 +94,17 @@ class ClosableJwtDecodersBuilderCacheTest {
         return jwt.serialize();
     }
 
-    private ClosableJwtDecoders build(int cleanupIntervalSeconds) throws Exception {
-        return build(cleanupIntervalSeconds, ISSUER_A);
+    private ClosableJwtDecoders build() throws Exception {
+        return build(ISSUER_A);
     }
 
-    private ClosableJwtDecoders build(int cleanupIntervalSeconds, String... cachedIssuers) throws Exception {
+    private ClosableJwtDecoders build(String... cachedIssuers) throws Exception {
         jwkSetSourceA = new TestJWKSetSource(new JWKSet(keyA.toPublicJWK()));
         jwkSourceA = jwkSource(jwkSetSourceA);
 
         JwtDecoderCacheProperties cache = new JwtDecoderCacheProperties();
         cache.setEnabled(true);
         cache.setSize(10);
-        cache.setCleanupInterval(cleanupIntervalSeconds);
 
         decoders = new ClosableJwtDecodersBuilder()
                 .withJwkSources(Map.of(ISSUER_A, jwkSourceA, ISSUER_B, jwkSource(new TestJWKSetSource(new JWKSet(keyB.toPublicJWK())))))
@@ -121,7 +120,7 @@ class ClosableJwtDecodersBuilderCacheTest {
 
     @Test
     void testOnlyTenantsWithDecoderCacheAreCached() throws Exception {
-        build(-1);
+        build();
 
         assertThat(decoders.getJwtDecoders().get(ISSUER_A)).isInstanceOf(DecodedJwtCacheJwtDecoder.class);
         assertThat(decoders.getJwtDecoders().get(ISSUER_B)).isInstanceOf(NimbusJwtDecoder.class);
@@ -129,7 +128,7 @@ class ClosableJwtDecodersBuilderCacheTest {
 
     @Test
     void testCacheHitRunsConfiguredClaimValidators() throws Exception {
-        build(-1);
+        build();
         DecodedJwtCacheJwtDecoder decoder = (DecodedJwtCacheJwtDecoder) decoders.getJwtDecoders().get(ISSUER_A);
         String token = token(keyA, ISSUER_A);
 
@@ -144,7 +143,7 @@ class ClosableJwtDecodersBuilderCacheTest {
 
     @Test
     void testCachedDecoderValidatesIssuer() throws Exception {
-        build(-1);
+        build();
         JwtDecoder decoder = decoders.getJwtDecoders().get(ISSUER_A);
 
         // signed with the tenant's key, but issued by someone else
@@ -156,7 +155,7 @@ class ClosableJwtDecodersBuilderCacheTest {
 
     @Test
     void testCachedDecoderFollowsJwkSource() throws Exception {
-        build(-1);
+        build();
         DecodedJwtCacheJwtDecoder decoder = (DecodedJwtCacheJwtDecoder) decoders.getJwtDecoders().get(ISSUER_A);
         String token = token(keyA, ISSUER_A);
 
@@ -173,7 +172,7 @@ class ClosableJwtDecodersBuilderCacheTest {
 
     @Test
     void testCachesShareCleanupThreadWhichIsStoppedOnClose() throws Exception {
-        build(60, ISSUER_A, ISSUER_B);
+        build(ISSUER_A, ISSUER_B);
         DecodedJwtCacheJwtDecoder decoderA = (DecodedJwtCacheJwtDecoder) decoders.getJwtDecoders().get(ISSUER_A);
         DecodedJwtCacheJwtDecoder decoderB = (DecodedJwtCacheJwtDecoder) decoders.getJwtDecoders().get(ISSUER_B);
         assertThat(decoderA.getName()).isEqualTo(ISSUER_A);

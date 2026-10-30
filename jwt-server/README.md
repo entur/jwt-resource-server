@@ -435,7 +435,7 @@ entur:
           enabled: true # opt-in per issuer, default false
           size: 250 # target size; default; -1 for unlimited
           mode: lru # default; what to do when full: lru, fifo or fixed
-          cleanup-interval: 60 # seconds; how often expired JWTs are removed; default; -1 to disable
+          cleanup-interval: 60 # seconds; how often expired JWTs are removed; default; must be positive
 ```
 
 `size` is the target size, i.e. the number of JWTs the cache normally holds at most. In extreme cases (see below) the cache holds up to double the target size.
@@ -448,7 +448,7 @@ When the cache holds `size` JWTs, `mode` decides what happens to new JWTs:
 
 For `lru` and `fifo`, eviction runs on a background thread: once the cache is full, new JWTs are still cached (temporarily exceeding `size`) and eviction is triggered straight away, reducing the cache to 90% of `size`. So the cost of eviction is spread over many cache misses, and neither cache hits nor misses wait for it. Should eviction not keep up, new JWTs are not cached once the cache holds double the target size. With `fixed`, the cache does not grow beyond `size` (approximately: concurrent additions might overshoot by a few JWTs). A `size` of 0 disables the cache.
 
-Eviction and the removal of expired JWTs run on a single background thread, shared by the caches of all tenants. Removing expired JWTs only checks their expiry (`exp` claim), it does not run the claim validators.
+Eviction and the removal of expired JWTs run on a single background thread, shared by the caches of all tenants. Removing expired JWTs only checks their expiry (`exp` claim), it does not run the claim validators. JWTs without expiry are not cached.
 
 With more than one tenant, also enable [header-to-issuer mapping](#header-to-issuer-mapping), as otherwise every JWT, cached or not, is first parsed to read its issuer (`iss` claim) before the tenant's cache is consulted.
 

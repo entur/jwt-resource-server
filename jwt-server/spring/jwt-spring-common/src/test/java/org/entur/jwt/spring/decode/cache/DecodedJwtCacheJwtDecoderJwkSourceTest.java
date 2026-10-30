@@ -28,6 +28,9 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -49,9 +52,14 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
     // scheduled refresh-ahead runs 1500 - 500 - 200 = 800 ms after each JWK set load
     private static final long JWK_CACHE_REFRESH_AHEAD = 500;
 
+    private static final long CLEANUP_INTERVAL = 60_000;
+
     private static RSAKey key;
 
     private DecodedJwtCacheJwtDecoder decoder;
+
+    // closed after each test, as they run (scheduled) refresh-ahead threads
+    private final List<Closeable> jwkSources = new ArrayList<>();
 
     @BeforeAll
     static void createKey() throws Exception {
@@ -59,9 +67,12 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
     }
 
     @AfterEach
-    void tearDown() {
+    void tearDown() throws IOException {
         if (decoder != null) {
             decoder.close();
+        }
+        for (Closeable jwkSource : jwkSources) {
+            jwkSource.close();
         }
     }
 
@@ -83,7 +94,7 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
         return nimbusJwtDecoder;
     }
 
-    private static JWKSource<SecurityContext> jwkSource(JWKSetSource<SecurityContext> source, ListEventListener listener, long outageCacheTimeToLive) {
+    private JWKSource<SecurityContext> jwkSource(JWKSetSource<SecurityContext> source, ListEventListener listener, long outageCacheTimeToLive) {
         // similar to JwkSourceMapFactory, with eager (scheduled) refresh-ahead
         JWKSourceBuilder<SecurityContext> builder = JWKSourceBuilder.create(source)
                 .rateLimited(false)
@@ -95,7 +106,9 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
         } else {
             builder.outageTolerant(false);
         }
-        return builder.build();
+        JWKSource<SecurityContext> jwkSource = builder.build();
+        jwkSources.add((Closeable) jwkSource);
+        return jwkSource;
     }
 
     // counts the decodes by the (verifying) delegate decoder
@@ -104,7 +117,7 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
         decoder = new DecodedJwtCacheJwtDecoder(t -> {
             decodes.incrementAndGet();
             return nimbusJwtDecoder.decode(t);
-        }, jwkSource, jwt -> OAuth2TokenValidatorResult.success(), 0, 100);
+        }, jwkSource, jwt -> OAuth2TokenValidatorResult.success(), CLEANUP_INTERVAL, 100);
         return decoder;
     }
 
@@ -218,7 +231,7 @@ class DecodedJwtCacheJwtDecoderJwkSourceTest {
             return jwt;
         };
 
-        decoder = new DecodedJwtCacheJwtDecoder(delegate, jwkSource, jwt -> OAuth2TokenValidatorResult.success(), 0, 100);
+        decoder = new DecodedJwtCacheJwtDecoder(delegate, jwkSource, jwt -> OAuth2TokenValidatorResult.success(), CLEANUP_INTERVAL, 100);
 
         String token = token(oldKey, "a");
         decoder.decode(token);

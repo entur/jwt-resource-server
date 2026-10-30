@@ -70,25 +70,19 @@ public class JwtDecoderCachePropertiesBindingTest {
     }
 
     @Test
-    public void testBindsDisabledCleanupInterval() {
-        runner.withPropertyValues("entur.jwt.tenants.a.decoder-cache.cleanup-interval=-1")
-                .run(context -> assertThat(decoderCache(context).getCleanupInterval()).isEqualTo(-1));
-    }
-
-    @Test
-    public void testFailsOnInvalidCleanupInterval() {
-        runner.withPropertyValues("entur.jwt.tenants.a.decoder-cache.cleanup-interval=-2").run(context -> {
+    public void testFailsOnDisabledCleanupInterval() {
+        // expired JWTs would only be removed if presented again, i.e. the cache would fill up with expired JWTs
+        runner.withPropertyValues("entur.jwt.tenants.a.decoder-cache.cleanup-interval=-1").run(context -> {
             assertThat(context).hasFailed();
-            assertThat(context.getStartupFailure()).hasStackTraceContaining("cleanupInterval must be -1 (disabled) or positive");
+            assertThat(context.getStartupFailure()).hasStackTraceContaining("cleanupInterval must be positive");
         });
     }
 
     @Test
     public void testFailsOnZeroCleanupInterval() {
-        // would silently disable cleanup
         runner.withPropertyValues("entur.jwt.tenants.a.decoder-cache.cleanup-interval=0").run(context -> {
             assertThat(context).hasFailed();
-            assertThat(context.getStartupFailure()).hasStackTraceContaining("cleanupInterval must be -1 (disabled) or positive");
+            assertThat(context.getStartupFailure()).hasStackTraceContaining("cleanupInterval must be positive");
         });
     }
 

@@ -82,9 +82,7 @@ public class ClosableJwtDecodersBuilder {
                     resources.add(scheduledExecutorService::shutdownNow);
                 }
                 // checks cached JWTs against the same JWK source as the decoder
-                DecodedJwtCacheJwtDecoder cachedDecoder = new DecodedJwtCacheJwtDecoder(entry.getKey(), decoder, jwkSource, validators, cacheProperties.getCleanupInterval() * 1000L, cacheProperties.getSize(), cacheProperties.getMode(), scheduledExecutorService);
-                cachedDecoder.scheduleCleanup();
-                decoder = cachedDecoder;
+                decoder = new DecodedJwtCacheJwtDecoder(entry.getKey(), decoder, jwkSource, validators, cacheProperties.getCleanupInterval() * 1000L, cacheProperties.getSize(), cacheProperties.getMode(), scheduledExecutorService);
             }
 
             map.put(entry.getKey(), decoder);

@@ -8,6 +8,7 @@ import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSetBasedJWKSource;
+import com.nimbusds.jose.jwk.source.JWKSourceBuilder;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jose.util.Base64URL;
@@ -23,6 +24,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.JwtValidationException;
 
+import java.net.URL;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,7 +41,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class DecodedJwtCacheJwtDecoderTest {
 
-    private static final long CLEANUP_INTERVAL = 24L * 60L * 60L * 1000L; // not used unless scheduleCleanup() is called
+    private static final long CLEANUP_INTERVAL = 24L * 60L * 60L * 1000L; // scheduled when the first JWT is cached, but does not run during the tests
     private static final int MAX_TOKENS = 10000;
 
     private static ECKey key1;
@@ -91,6 +93,7 @@ class DecodedJwtCacheJwtDecoderTest {
         return Jwt.withTokenValue(token)
                 .header("alg", "ES256")
                 .claim("sub", "user")
+                .expiresAt(Instant.now().plusSeconds(3600))
                 .build();
     }
 
@@ -184,6 +187,57 @@ class DecodedJwtCacheJwtDecoderTest {
         // third decode should hit delegate again since the invalid entry was evicted
         decoder.decode(token("token1"));
         assertEquals(2, delegate.count(token("token1")));
+    }
+
+    @Test
+    void evictsCachedJwtWhichFailsRevalidationByToken() {
+        // i.e. a delegate which does not set the token value as given
+        TestJwtDecoder delegate = new TestJwtDecoder().answering(token -> jwt("other"));
+        decoder(delegate, alwaysInvalid());
+
+        decoder.decode(token("token1"));
+        assertThrows(JwtValidationException.class, () -> decoder.decode(token("token1")));
+
+        assertEquals(0, decoder.getSize());
+    }
+
+    @Test
+    void removeDoesNotRemoveEntryWhichWasCachedAgain() {
+        decoder(delegate());
+        decoder.decode(token("token1"));
+        DecodedJwtCacheJwtDecoder.Entry stale = decoder.cache.map.get(token("token1"));
+
+        // i.e. decoded and cached again by another thread
+        decoder.cache.add(token("token1"), jwt(token("token1")), stale.keySelector, stale.keys);
+
+        decoder.cache.remove(token("token1"), stale);
+        assertEquals(1, decoder.getSize());
+    }
+
+    @Test
+    void doesNotCacheJwtsWithoutExpiry() {
+        // the cleanup could never remove them
+        TestJwtDecoder delegate = new TestJwtDecoder().answering(token -> Jwt.withTokenValue(token)
+                .header("alg", "ES256")
+                .claim("sub", "user")
+                .build());
+        decoder(delegate);
+
+        decoder.decode(token("token1"));
+        decoder.decode(token("token1"));
+
+        assertEquals(2, delegate.count(token("token1")));
+        assertEquals(0, decoder.getSize());
+    }
+
+    @Test
+    void sharesKeySelectorBetweenJwtsWithTheSameHeader() {
+        decoder(delegate());
+
+        decoder.decode(token("token1"));
+        decoder.decode(token("token2"));
+
+        assertSame(decoder.cache.map.get(token("token1")).keySelector, decoder.cache.map.get(token("token2")).keySelector);
     }
 
     @Test
@@ -383,6 +437,25 @@ class DecodedJwtCacheJwtDecoderTest {
     }
 
     @Test
+    void disablesCacheForJwkSourceBuiltWithoutCache() throws Exception {
+        URL url = new URL("http://localhost:1/jwks"); // not loaded
+        JWKSource<SecurityContext> withoutCache = JWKSourceBuilder.create(url).cache(false).refreshAheadCache(false).rateLimited(false).build();
+        JWKSource<SecurityContext> withCache = JWKSourceBuilder.create(url).build();
+        assertFalse(DecodedJwtCacheJwtDecoder.isCachingJwkSource(withoutCache));
+        assertTrue(DecodedJwtCacheJwtDecoder.isCachingJwkSource(withCache));
+        assertTrue(DecodedJwtCacheJwtDecoder.isCachingJwkSource(jwkSource));
+
+        jwkSource = withoutCache;
+        TestJwtDecoder delegate = delegate();
+        decoder(delegate);
+
+        decoder.decode(token("token1"));
+        decoder.decode(token("token1"));
+        assertEquals(2, delegate.count(token("token1")));
+        assertEquals(0, decoder.getSize());
+    }
+
+    @Test
     void doesNotCacheWithJwkSourceWhichDoesNotCacheTheJwkSet() {
         // new key instances on every call
         jwkSource = (selector, context) -> selector.select(jwkSet(key1));
@@ -437,6 +510,24 @@ class DecodedJwtCacheJwtDecoderTest {
         decoder.decode(token("token-2"));
         assertEquals(maxCacheSize, decoder.getSize());
         assertEquals(2, delegate.count(token("token-2")));
+    }
+
+    @Test
+    void doesNotLookUpKeysWhenFull() {
+        JWKSet jwkSet = jwkSet(key1);
+        AtomicInteger lookups = new AtomicInteger();
+        jwkSource = (selector, context) -> {
+            lookups.incrementAndGet();
+            return selector.select(jwkSet);
+        };
+        decoder = new DecodedJwtCacheJwtDecoder(delegate(), jwkSource, alwaysValid(), CLEANUP_INTERVAL, 1, JwtDecoderCacheMode.FIXED);
+
+        decoder.decode(token("token-0")); // before and after decoding
+        assertEquals(2, lookups.get());
+
+        // the JWT would not be cached anyway
+        decoder.decode(token("token-1"));
+        assertEquals(2, lookups.get());
     }
 
     @Test
@@ -513,20 +604,9 @@ class DecodedJwtCacheJwtDecoderTest {
         decoder(delegate);
         decoder.decode(token("token1"));
 
-        // without expiry
-        TestJwtDecoder delegateWithoutExpiry = delegate();
-        DecodedJwtCacheJwtDecoder decoderWithoutExpiry = new DecodedJwtCacheJwtDecoder(delegateWithoutExpiry, jwkSource, alwaysValid(), CLEANUP_INTERVAL, MAX_TOKENS);
-        try {
-            decoderWithoutExpiry.decode(token("token1"));
+        decoder.cleanup();
 
-            decoder.cleanup();
-            decoderWithoutExpiry.cleanup();
-
-            assertEquals(1, decoder.getSize());
-            assertEquals(1, decoderWithoutExpiry.getSize());
-        } finally {
-            decoderWithoutExpiry.close();
-        }
+        assertEquals(1, decoder.getSize());
     }
 
     @Test
@@ -551,10 +631,10 @@ class DecodedJwtCacheJwtDecoderTest {
         long shortCleanupInterval = 20L;
         decoder = new DecodedJwtCacheJwtDecoder(delegateExpiringAt(Instant.now().minusSeconds(1)), jwkSource, alwaysValid(), shortCleanupInterval, MAX_TOKENS);
 
+        // also schedules the cleanup
         decoder.decode(token("token1"));
         assertEquals(1, decoder.getSize());
-
-        decoder.scheduleCleanup();
+        assertNotNull(decoder.cleanupTask);
 
         long deadline = System.currentTimeMillis() + 5000L;
         while (decoder.getSize() != 0 && System.currentTimeMillis() < deadline) {
@@ -565,12 +645,18 @@ class DecodedJwtCacheJwtDecoderTest {
     }
 
     @Test
-    void scheduleCleanupIsNoOpWhenCleanupIntervalIsNotPositive() {
-        decoder = new DecodedJwtCacheJwtDecoder(delegate(), jwkSource, alwaysValid(), 0L, MAX_TOKENS);
-
-        // must not throw and must not schedule anything against the executor
-        assertFalse(assertDoesNotThrow(() -> decoder.scheduleCleanup()));
+    void doesNotScheduleCleanupUntilJwtIsCached() {
+        decoder(delegate());
+        assertNull(decoder.cleanupTask);
         assertNull(decoder.scheduledExecutorService);
+    }
+
+    @Test
+    void scheduleCleanupReturnsFalseWhenClosed() {
+        decoder(delegate());
+        decoder.close();
+
+        assertFalse(assertDoesNotThrow(() -> decoder.scheduleCleanup()));
     }
 
     @Test
@@ -677,6 +763,7 @@ class DecodedJwtCacheJwtDecoderTest {
                     .header("alg", "ES256")
                     .header("verified-with", thumbprint(key))
                     .claim("sub", "user")
+                    .expiresAt(Instant.now().plusSeconds(3600))
                     .build();
         });
         decoder(delegate);
@@ -771,6 +858,25 @@ class DecodedJwtCacheJwtDecoderTest {
         OAuth2TokenValidator<Jwt> validator = alwaysValid();
 
         assertThrows(IllegalArgumentException.class, () -> new DecodedJwtCacheJwtDecoder(delegate, null, validator, CLEANUP_INTERVAL, MAX_TOKENS));
+    }
+
+    @Test
+    void testConstructorRejectsMissingDecoderOrValidators() {
+        TestJwtDecoder delegate = delegate();
+        OAuth2TokenValidator<Jwt> validator = alwaysValid();
+
+        assertThrows(IllegalArgumentException.class, () -> new DecodedJwtCacheJwtDecoder(null, jwkSource, validator, CLEANUP_INTERVAL, MAX_TOKENS));
+        assertThrows(IllegalArgumentException.class, () -> new DecodedJwtCacheJwtDecoder(delegate, jwkSource, null, CLEANUP_INTERVAL, MAX_TOKENS));
+    }
+
+    @Test
+    void testConstructorRejectsNonPositiveCleanupInterval() {
+        TestJwtDecoder delegate = delegate();
+        OAuth2TokenValidator<Jwt> validator = alwaysValid();
+
+        // expired JWTs would never be removed
+        assertThrows(IllegalArgumentException.class, () -> new DecodedJwtCacheJwtDecoder(delegate, jwkSource, validator, 0, MAX_TOKENS));
+        assertThrows(IllegalArgumentException.class, () -> new DecodedJwtCacheJwtDecoder(delegate, jwkSource, validator, -1, MAX_TOKENS));
     }
 
     @Test

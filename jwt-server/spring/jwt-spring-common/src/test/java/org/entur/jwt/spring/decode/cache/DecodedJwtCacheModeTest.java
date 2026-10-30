@@ -23,6 +23,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 
 import java.util.ArrayList;
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -37,7 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DecodedJwtCacheModeTest {
 
-    private static final long CLEANUP_INTERVAL = 0; // disabled
+    private static final long CLEANUP_INTERVAL = 24L * 60L * 60L * 1000L; // does not run during the tests
 
     // JWS header of the test tokens, so that the cache can look up their key
     private static final String HEADER = Base64URL.encode("{\"alg\":\"ES256\",\"kid\":\"kid1\"}").toString();
@@ -63,6 +64,7 @@ class DecodedJwtCacheModeTest {
                 .header("kid", "kid1")
                 .header("alg", "ES256")
                 .claim("sub", token)
+                .expiresAt(Instant.now().plusSeconds(3600))
                 .build();
     };
 
@@ -146,7 +148,7 @@ class DecodedJwtCacheModeTest {
         fill(10);
 
         // deterministic access times, one second apart; token0 is the least recently used
-        long now = System.currentTimeMillis();
+        long now = DecodedJwtCacheJwtDecoder.currentTimeMillis();
         for (int i = 0; i < 10; i++) {
             decoder.cache.map.get(token("token" + i)).accessed = now - (10 - i) * 1000L;
         }
@@ -327,7 +329,7 @@ class DecodedJwtCacheModeTest {
     @Test
     void testDefaultConstructorUsesLru() {
         decoder = new DecodedJwtCacheJwtDecoder(delegate, jwkSource, jwt -> OAuth2TokenValidatorResult.success(), CLEANUP_INTERVAL, 10);
-        assertEquals(JwtDecoderCacheMode.LRU, decoder.mode);
+        assertEquals(JwtDecoderCacheMode.LRU, decoder.cache.mode);
     }
 
     @Test

@@ -24,6 +24,8 @@ public class JwtDecoderCacheProperties {
      * on every cache hit, the keys the JWT was verified with are looked up in the JWK set, so a cached JWT is only
      * used while the JWK set still holds its keys (i.e. key rotation and revocation are detected as soon as the
      * JWK set is refreshed). Without the JWK set cache, this flag is a no-op (a warning is logged).
+     * <p>
+     * JWTs without expiry ({@code exp} claim) are not cached.
      *
      * @see JwkCacheProperties#isEnabled()
      * @see org.entur.jwt.spring.decode.cache.DecodedJwtCacheConfigurationReader#getActiveJwtDecoderCacheProperties(org.entur.jwt.spring.properties.JwtProperties)
@@ -46,7 +48,8 @@ public class JwtDecoderCacheProperties {
     private JwtDecoderCacheMode mode = JwtDecoderCacheMode.LRU;
 
     /**
-     * In seconds, how often to remove expired JWTs from the cache. Default is 60 seconds. Set to -1 to disable cleanup (0 is not allowed).
+     * In seconds, how often to remove expired JWTs from the cache. Default is 60 seconds. Must be positive,
+     * as otherwise expired JWTs would only be removed if presented again, i.e. the cache would fill up with expired JWTs.
      */
     private int cleanupInterval = 60;
 
@@ -86,8 +89,8 @@ public class JwtDecoderCacheProperties {
     }
 
     public void setCleanupInterval(int cleanupIntervalSeconds) {
-        if (cleanupIntervalSeconds == 0 || cleanupIntervalSeconds < -1) {
-            throw new IllegalArgumentException("cleanupInterval must be -1 (disabled) or positive");
+        if (cleanupIntervalSeconds <= 0) {
+            throw new IllegalArgumentException("cleanupInterval must be positive");
         }
         this.cleanupInterval = cleanupIntervalSeconds;
     }
