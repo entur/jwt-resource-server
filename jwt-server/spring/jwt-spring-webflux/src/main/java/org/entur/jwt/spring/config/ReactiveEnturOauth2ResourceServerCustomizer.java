@@ -41,10 +41,6 @@ public class ReactiveEnturOauth2ResourceServerCustomizer implements Customizer<S
     private final JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper;
     private final JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider;
 
-    public ReactiveEnturOauth2ResourceServerCustomizer(Map<String, JWKSource> jwkSources, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators, JwtDecodeProperties properties) {
-        this(jwkSources, jwtAuthorityEnrichers, jwtValidators, properties, null, null);
-    }
-
     public ReactiveEnturOauth2ResourceServerCustomizer(Map<String, JWKSource> jwkSources, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators,
                                                JwtDecodeProperties properties,
                                                JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper,
