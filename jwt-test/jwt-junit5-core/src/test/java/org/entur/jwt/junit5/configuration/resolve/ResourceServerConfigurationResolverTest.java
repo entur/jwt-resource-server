@@ -9,9 +9,10 @@ import static com.google.common.truth.Truth.assertThat;
 public class ResourceServerConfigurationResolverTest {
 
     @Test
-    public void testResolvesDummy() {
+    public void testResolvesPropertiesFileResolver() {
         List<ResourceServerConfigurationResolver> load = ResourceServerConfigurationResolverServiceLoader.load();
 
-        assertThat(load).hasSize(0);
+        assertThat(load).hasSize(1);
+        assertThat(load.get(0)).isInstanceOf(PropertiesFileAuthorizationServerConfigurationResolver.class);
     }
 }
