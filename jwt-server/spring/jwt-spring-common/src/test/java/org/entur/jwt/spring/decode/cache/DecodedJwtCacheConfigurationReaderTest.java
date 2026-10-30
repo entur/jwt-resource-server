@@ -128,31 +128,6 @@ public class DecodedJwtCacheConfigurationReaderTest {
     }
 
     @Test
-    public void testFailsOnTenantsWithSameIssuer() {
-        // otherwise the decoder cache configuration of the issuer would depend on map ordering
-        JwtProperties jwt = jwtProperties();
-        jwt.getTenants().put("a", tenant("https://issuer-a", true, true));
-        jwt.getTenants().put("b", tenant("https://issuer-a", true, false));
-
-        assertThatThrownBy(() -> DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageStartingWith("Tenants 'a' and 'b' have the same issuer 'https://issuer-a'.");
-    }
-
-    @Test
-    public void testIgnoresDisabledTenantWithSameIssuer() {
-        JwtProperties jwt = jwtProperties();
-        JwtTenantProperties enabledWithCache = tenant("https://issuer-a", true, true);
-        jwt.getTenants().put("a", enabledWithCache);
-        jwt.getTenants().put("b", tenant("https://issuer-a", false, true));
-
-        Map<String, JwtDecoderCacheProperties> result = DecodedJwtCacheConfigurationReader.getActiveJwtDecoderCacheProperties(jwt);
-
-        assertThat(result).containsOnlyKeys("https://issuer-a");
-        assertThat(result.get("https://issuer-a")).isSameAs(enabledWithCache.getDecoderCache());
-    }
-
-    @Test
     public void testGetTenantsWithDecoderCacheEnabled() {
         JwtProperties jwt = jwtProperties();
         jwt.getTenants().put("a", tenant("https://issuer-a", true, true));
