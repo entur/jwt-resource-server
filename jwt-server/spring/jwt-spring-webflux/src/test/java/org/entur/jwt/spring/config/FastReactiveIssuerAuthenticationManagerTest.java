@@ -18,6 +18,7 @@ import java.util.Base64;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -92,6 +93,68 @@ public class FastReactiveIssuerAuthenticationManagerTest {
         verifyNoInteractions(resolver);
     }
 
+    @Test
+    public void testAuthenticateTokenOfOtherIssuerWithSameHeader() {
+        String issuerA = "https://issuer-a";
+        String issuerB = "https://issuer-b";
+        String tokenA = tokenWithIssuer("kid-shared", issuerA);
+        String tokenB = tokenWithIssuer("kid-shared", issuerB);
+        assertThat(headerSegment(tokenA)).isEqualTo(headerSegment(tokenB));
+
+        JwtHeaderToIssuerMapper mapper = new JwtHeaderToIssuerMapper();
+        mapper.add(issuerA, tokenA);
+
+        ReactiveIssuerAuthenticationManagerResolver resolver = mock(ReactiveIssuerAuthenticationManagerResolver.class);
+        ReactiveAuthenticationManager delegateA = mock(ReactiveAuthenticationManager.class);
+        ReactiveAuthenticationManager delegateB = mock(ReactiveAuthenticationManager.class);
+
+        BearerTokenAuthenticationToken bearerToken = new BearerTokenAuthenticationToken(tokenB);
+        JwtAuthenticationToken jwtAuthentication = new JwtAuthenticationToken(jwt(tokenB, issuerB, "kid-shared"));
+
+        when(resolver.resolve(issuerA)).thenReturn(Mono.just(delegateA));
+        when(resolver.resolve(issuerB)).thenReturn(Mono.just(delegateB));
+        when(delegateA.authenticate(bearerToken)).thenReturn(Mono.error(new InvalidBearerTokenException("The iss claim is not valid")));
+        when(delegateB.authenticate(bearerToken)).thenReturn(Mono.just(jwtAuthentication));
+
+        FastReactiveIssuerAuthenticationManager manager = new FastReactiveIssuerAuthenticationManager(resolver, mapper, new DefaultJwtHeaderToIssuerMapperDecider());
+        Authentication result = manager.authenticate(bearerToken).block();
+
+        assertThat(result).isSameAs(jwtAuthentication);
+        verify(delegateA).authenticate(bearerToken);
+        verify(delegateB).authenticate(bearerToken);
+
+        // the header no longer identifies the issuer
+        assertThat(mapper.get(tokenA)).isNull();
+        assertThat(mapper.getSharedHeaders()).containsExactly(headerSegment(tokenA));
+    }
+
+    @Test
+    public void testAuthenticateDoesNotAuthenticateInvalidTokenOfMappedIssuerAgain() {
+        String issuer = "https://issuer-a";
+        String cachedToken = tokenWithIssuer("kid-a", issuer);
+        // same header and issuer, but rejected by the issuer's authentication manager, i.e. expired
+        String invalidToken = tokenWithIssuer("kid-a", issuer, "subject");
+
+        JwtHeaderToIssuerMapper mapper = new JwtHeaderToIssuerMapper();
+        mapper.add(issuer, cachedToken);
+
+        ReactiveIssuerAuthenticationManagerResolver resolver = mock(ReactiveIssuerAuthenticationManagerResolver.class);
+        ReactiveAuthenticationManager delegate = mock(ReactiveAuthenticationManager.class);
+
+        BearerTokenAuthenticationToken bearerToken = new BearerTokenAuthenticationToken(invalidToken);
+        InvalidBearerTokenException exception = new InvalidBearerTokenException("Jwt expired");
+
+        when(resolver.resolve(issuer)).thenReturn(Mono.just(delegate));
+        when(delegate.authenticate(bearerToken)).thenReturn(Mono.error(exception));
+
+        FastReactiveIssuerAuthenticationManager manager = new FastReactiveIssuerAuthenticationManager(resolver, mapper, new DefaultJwtHeaderToIssuerMapperDecider());
+
+        assertThatThrownBy(() -> manager.authenticate(bearerToken).block()).isSameAs(exception);
+        verify(resolver).resolve(issuer);
+        verify(delegate).authenticate(bearerToken);
+        assertThat(mapper.get(cachedToken)).isEqualTo(issuer);
+    }
+
     private static Jwt jwt(String token, String issuer, String kid) {
         return Jwt.withTokenValue(token)
                 .header("alg", "RS256")
@@ -105,6 +168,12 @@ public class FastReactiveIssuerAuthenticationManagerTest {
     private static String tokenWithIssuer(String kid, String issuer) {
         String header = base64Json(Map.of("alg", "RS256", "kid", kid));
         String payload = base64Json(Map.of("iss", issuer));
+        return header + "." + payload + ".signature";
+    }
+
+    private static String tokenWithIssuer(String kid, String issuer, String subject) {
+        String header = base64Json(Map.of("alg", "RS256", "kid", kid));
+        String payload = base64Json(Map.of("iss", issuer, "sub", subject));
         return header + "." + payload + ".signature";
     }
 

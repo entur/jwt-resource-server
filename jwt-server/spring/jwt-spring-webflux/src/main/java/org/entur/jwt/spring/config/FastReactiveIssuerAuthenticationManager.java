@@ -36,13 +36,21 @@ public class FastReactiveIssuerAuthenticationManager implements ReactiveAuthenti
         String issuer = jwtHeaderToIssuerMapper.get(token.getToken());
         if (issuer != null) {
             // fast path
-            return resolveAndAuthenticate(issuer, authentication);
+            return resolveAndAuthenticate(issuer, authentication)
+                    // the header might also be used by another issuer (i.e. which shares signing key and key id),
+                    // if so authenticate as usual (slow path). Otherwise do not authenticate again, i.e. for an expired token.
+                    .onErrorResume(AuthenticationException.class, e -> isOtherIssuer(token, issuer)
+                            .flatMap(otherIssuer -> otherIssuer ? authenticateByIssuerClaim(token) : Mono.error(e)));
         }
 
+        return authenticateByIssuerClaim(token);
+    }
+
+    private Mono<Authentication> authenticateByIssuerClaim(BearerTokenAuthenticationToken token) {
         // slow path: parse the JWT to extract the issuer
         // then populate the cache
         return this.issuerConverter.convert(token)
-                .flatMap(convertIssuer -> resolveAndAuthenticate(convertIssuer, authentication)
+                .flatMap(convertIssuer -> resolveAndAuthenticate(convertIssuer, token)
                         .doOnNext(result -> {
                             if (result instanceof JwtAuthenticationToken t) {
                                 if(jwtHeaderToIssuerMapperDecider.apply(t.getToken())) {
@@ -51,6 +59,16 @@ public class FastReactiveIssuerAuthenticationManager implements ReactiveAuthenti
                                 }
                             }
                         }));
+    }
+
+    /**
+     * @return true if the token's (not yet verified) issuer claim names another issuer than the given issuer
+     */
+    private Mono<Boolean> isOtherIssuer(BearerTokenAuthenticationToken token, String issuer) {
+        return this.issuerConverter.convert(token)
+                .map(tokenIssuer -> !tokenIssuer.equals(issuer))
+                // not a JWT, or no issuer claim
+                .onErrorReturn(AuthenticationException.class, false);
     }
 
     private Mono<Authentication> resolveAndAuthenticate(String issuer, Authentication authentication) {
