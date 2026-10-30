@@ -1,9 +1,12 @@
 package org.entur.jwt.client.spring.resttemplate;
 
 import org.entur.jwt.client.AccessToken;
+import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenUnavailableException;
+import org.entur.jwt.client.RetryingAccessTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -17,7 +20,11 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withResourceNotFound;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServiceUnavailable;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withTooManyRequests;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withUnauthorizedRequest;
 
 public class RestTemplateUrlAccessTokenProviderTest {
 
@@ -59,6 +66,66 @@ public class RestTemplateUrlAccessTokenProviderTest {
         assertThrows(AccessTokenUnavailableException.class, () -> {
             provider.getAccessToken(false);
         });
+
+        mockServer.verify();
+    }
+
+    @Test
+    public void shouldThrowAccessTokenExceptionOnHttp401() {
+        mockServer.expect(requestTo(ISSUE_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withUnauthorizedRequest());
+
+        AccessTokenException e = assertThrows(AccessTokenException.class, () -> {
+            provider.getAccessToken(false);
+        });
+        assertThat(e).isNotInstanceOf(AccessTokenUnavailableException.class);
+        assertThat(e).hasMessageThat().contains("401");
+
+        mockServer.verify();
+    }
+
+    @Test
+    public void shouldNotRetryOnHttp404() {
+        // i.e. wrong path is a permanent error, so expect a single request
+        mockServer.expect(requestTo(ISSUE_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withResourceNotFound());
+
+        RetryingAccessTokenProvider retryingProvider = new RetryingAccessTokenProvider(provider);
+
+        AccessTokenException e = assertThrows(AccessTokenException.class, () -> {
+            retryingProvider.getAccessToken(false);
+        });
+        assertThat(e).isNotInstanceOf(AccessTokenUnavailableException.class);
+
+        mockServer.verify();
+    }
+
+    @Test
+    public void shouldThrowAccessTokenUnavailableExceptionOnHttp503() {
+        mockServer.expect(requestTo(ISSUE_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withServiceUnavailable().header(HttpHeaders.RETRY_AFTER, "120"));
+
+        AccessTokenUnavailableException e = assertThrows(AccessTokenUnavailableException.class, () -> {
+            provider.getAccessToken(false);
+        });
+        assertThat(e).hasMessageThat().contains("Retry-After:120");
+
+        mockServer.verify();
+    }
+
+    @Test
+    public void shouldThrowAccessTokenUnavailableExceptionOnHttp429() {
+        mockServer.expect(requestTo(ISSUE_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withTooManyRequests().header("X-RateLimit-Reset", "1700000000"));
+
+        AccessTokenUnavailableException e = assertThrows(AccessTokenUnavailableException.class, () -> {
+            provider.getAccessToken(false);
+        });
+        assertThat(e).hasMessageThat().contains("X-RateLimit-Reset:1700000000");
 
         mockServer.verify();
     }

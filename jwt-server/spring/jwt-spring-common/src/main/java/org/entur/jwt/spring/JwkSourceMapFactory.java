@@ -30,6 +30,9 @@ public class JwkSourceMapFactory<C> {
     private static final Logger LOGGER = LoggerFactory.getLogger(JwkSourceMapFactory.class);
 
     public JwkSourceMap getJwkSourceMap(Map<String, JwtTenantProperties> tenants, JwkProperties jwkConfiguration, ListJwksHealthIndicator listJwksHealthIndicator) {
+        // the JWK sources are mapped by issuer; check before creating any (closeable) JWK source or health indicator
+        JwtTenantIssuers.requireUniqueIssuers(tenants);
+
         Map<String, JWKSource> jwkSources = new HashMap<>();
         Map<String, ListEventListener> jwkEventListeners = new HashMap<>();
 

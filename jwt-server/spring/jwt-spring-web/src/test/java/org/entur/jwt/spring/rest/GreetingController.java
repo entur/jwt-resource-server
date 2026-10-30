@@ -41,6 +41,13 @@ public class GreetingController {
         return new Greeting(counter.incrementAndGet(), "Hello unprotected with path variable " + value);
     }
 
+    @GetMapping("/unprotected/exception")
+    public Greeting unprotectedWithException() {
+        log.info("Get unprotected method with exception");
+
+        throw new IllegalStateException("Unprotected method exception");
+    }
+
     @GetMapping("/protected")
     @PreAuthorize("isFullyAuthenticated()")
     public Greeting body() {

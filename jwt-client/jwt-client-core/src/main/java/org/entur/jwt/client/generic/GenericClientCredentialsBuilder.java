@@ -10,10 +10,11 @@ public class GenericClientCredentialsBuilder extends AbstractClientCredentialsBu
 
     @Override
     public ClientCredentials build() {
-        return build(authorizationHeader);
+        return build(Boolean.TRUE.equals(authorizationHeader));
     }
 
-    protected Boolean authorizationHeader;
+    // default to client credentials as request parameters, like the Spring configuration
+    protected Boolean authorizationHeader = Boolean.FALSE;
 
     public GenericClientCredentialsBuilder withAuthorizationHeader(Boolean authorizationHeader) {
         this.authorizationHeader = authorizationHeader;

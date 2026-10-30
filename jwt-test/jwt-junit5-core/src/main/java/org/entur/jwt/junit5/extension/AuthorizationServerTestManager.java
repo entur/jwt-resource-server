@@ -1,4 +1,4 @@
-package org.entur.jwt.junit5.extention;
+package org.entur.jwt.junit5.extension;
 
 public class AuthorizationServerTestManager {
 

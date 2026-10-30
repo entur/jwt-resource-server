@@ -4,7 +4,7 @@ import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.junit5.configuration.resolve.PropertiesAuthorizationServerConfiguration;
-import org.entur.jwt.junit5.extention.AuthorizationServerExtension;
+import org.entur.jwt.junit5.extension.AuthorizationServerExtension;
 import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
 import org.entur.jwt.junit5.impl.DefaultAuthorizationServerEncoder;
 import org.junit.jupiter.api.Test;

@@ -40,6 +40,23 @@ public class JwtGrpcAutoConfigurationPermitAllTest {
         assertThat(mappings).isEmpty();
     }
 
+    @Test
+    public void testPermitAllMergesServicesWithTheSameName() {
+        GrpcServicesConfiguration grpc = grpc(
+                service("my.Service", true, "a", "b"),
+                service("my.OtherService", true, "c"),
+                service("my.Service", true, "b", "d"),
+                service("my.Service", false, "e")
+        );
+
+        Map<String, List<String>> mappings = JwtGrpcAutoConfiguration.getPermitAllMappings(grpc);
+
+        assertThat(mappings).containsOnly(
+                Map.entry("my.Service", List.of("a", "b", "d")),
+                Map.entry("my.OtherService", List.of("c"))
+        );
+    }
+
     private static GrpcServicesConfiguration grpc(ServiceMatcherConfiguration... services) {
         GrpcServicesConfiguration grpc = new GrpcServicesConfiguration();
         grpc.setServices(new ArrayList<>(List.of(services)));

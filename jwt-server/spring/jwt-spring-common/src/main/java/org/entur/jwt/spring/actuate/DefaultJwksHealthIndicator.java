@@ -23,7 +23,8 @@ public class DefaultJwksHealthIndicator extends AbstractJwksHealthIndicator impl
 
     private JWKSetSource jwkSetSource;
 
-    private HealthReport healthReport;
+    // volatile: written by the threads refreshing the JWKs, read by health-check invocations
+    private volatile HealthReport healthReport;
 
     public DefaultJwksHealthIndicator(String name) {
         super(name);
@@ -54,6 +55,13 @@ public class DefaultJwksHealthIndicator extends AbstractJwksHealthIndicator impl
             // do not force refresh an existing value;
             // the cache will refresh if an existing value is expired
             JWKSet jwkSet = jwkSetSource.getJWKSet(JWKSetCacheRefreshEvaluator.noRefresh(), time, null);
+
+            if(!isJwksHealtyReport()) {
+                // the JWKs were served from the cache, so the (bad) health report was not updated.
+                // Refresh the cache like for an unknown key id, so that the JWKs are actually fetched.
+                // This is subject to rate limiting.
+                jwkSetSource.getJWKSet(JWKSetCacheRefreshEvaluator.referenceComparison(jwkSet), time, null);
+            }
 
             return true;
         } catch (RateLimitReachedException e) {

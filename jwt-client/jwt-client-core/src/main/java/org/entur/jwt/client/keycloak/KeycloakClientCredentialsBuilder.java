@@ -5,7 +5,17 @@ import org.entur.jwt.client.ClientCredentials;
 
 public class KeycloakClientCredentialsBuilder extends AbstractClientCredentialsBuilder<KeycloakClientCredentialsBuilder> {
 
-    private static final String TEMPLATE = "/auth/realms/%s/protocol/openid-connect";
+    /**
+     * Default context path of Keycloak 17 and later (the root path), see the Keycloak <code>http-relative-path</code> option.
+     */
+    public static final String DEFAULT_CONTEXT_PATH = "/";
+
+    /**
+     * Context path of Keycloak versions before 17.
+     */
+    public static final String LEGACY_CONTEXT_PATH = "/auth";
+
+    private static final String TEMPLATE = "%s/realms/%s/protocol/openid-connect";
     private static final String ISSUE_TEMPLATE = TEMPLATE + "/token";
     private static final String REVOKE_TEMPLATE = TEMPLATE + "/logout";
 
@@ -13,16 +23,33 @@ public class KeycloakClientCredentialsBuilder extends AbstractClientCredentialsB
         return new KeycloakClientCredentialsBuilder();
     }
 
+    protected static String toPathPrefix(String contextPath) {
+        // i.e. "/auth", "auth" or "/auth/" becomes "/auth", while null, "" or "/" becomes ""
+        if (contextPath == null) {
+            return "";
+        }
+        String path = contextPath.trim();
+        while (path.endsWith("/")) {
+            path = path.substring(0, path.length() - 1);
+        }
+        if (!path.isEmpty() && !path.startsWith("/")) {
+            path = "/" + path;
+        }
+        return path;
+    }
+
     protected String realm;
+    protected String contextPath = DEFAULT_CONTEXT_PATH;
 
     @Override
     public ClientCredentials build() {
         if (realm == null) {
             throw new IllegalStateException("Expected realm");
         }
-        this.issuePath = String.format(ISSUE_TEMPLATE, realm);
+        String pathPrefix = toPathPrefix(contextPath);
+        this.issuePath = String.format(ISSUE_TEMPLATE, pathPrefix, realm);
         this.refreshPath = issuePath;
-        this.revokePath = String.format(REVOKE_TEMPLATE, realm);
+        this.revokePath = String.format(REVOKE_TEMPLATE, pathPrefix, realm);
 
         return build(true); // keycloak supports using the basic authorization header
     }
@@ -34,5 +61,19 @@ public class KeycloakClientCredentialsBuilder extends AbstractClientCredentialsB
 
     public String getRealm() {
         return realm;
+    }
+
+    /**
+     * Set the path Keycloak is served from. Defaults to {@value #DEFAULT_CONTEXT_PATH}, as for Keycloak 17 and later;
+     * use {@value #LEGACY_CONTEXT_PATH} for Keycloak versions before 17, or the value of the Keycloak
+     * <code>http-relative-path</code> option if configured.
+     */
+    public KeycloakClientCredentialsBuilder withContextPath(String contextPath) {
+        this.contextPath = contextPath;
+        return this;
+    }
+
+    public String getContextPath() {
+        return contextPath;
     }
 }

@@ -26,9 +26,9 @@ The default implementation supports configuration of one or more tenants.
  * issuer
  * JSON Web Key location
 
-Claim validation (common for all tenants) can also be added:
+Claim validation (common for all tenants):
 
- * audiences
+ * audiences (required)
  * expires-at leeway
  * issued-at leeway
  * and more
@@ -47,9 +47,13 @@ entur:
     claims:
       expires-at-leeway: 15
       issued-at-leeway: 5
-      audiences: # at least one
+      audiences: # required, at least one
         - https://my.audience
 ```
+
+The audiences are required: with JWT enabled and at least one enabled tenant, startup fails if `entur.jwt.claims.audiences` is not set.
+Tokens must contain (in the `aud` claim) at least one of the configured audiences. Without audience validation, a token issued
+by the same tenant for any other API would be accepted.
 
 ### Custom claim validation
 To validate additional claims, add one or more `OAuth2TokenValidator<Jwt>` beans. These are used in addition to the validators configured above:
@@ -71,6 +75,8 @@ public EnturJwtValidators enturJwtValidators() {
 ```
 
 The expiry (`exp`) and not-before (`nbf`) claims are always validated: if the replacement does not validate them, validators with the configured `expires-at-leeway` and `issued-at-leeway` are added.
+
+The replacement is responsible for validating the audience: `entur.jwt.claims.audiences` is then neither used nor required.
 
 ## Authorization configuration
 
@@ -130,6 +136,10 @@ interaction with closed REST controller endpoints. So unwanted requests (i.e. re
 will fail `@PreAuthorize` authorization checks in the controller) are rejected as early as possible, in a secure and
 lightweight way.
 
+For Spring Web, error dispatches (i.e. the servlet container forwarding a failed request to the error page, like Spring
+Boot's `/error`) are permitted, so that errors from open endpoints keep their status (like 400, 404, 415 or 500) for
+requests without a token. Requests made directly to the error page must still be authenticated.
+
 #### Actuator
 
 To
@@ -161,6 +171,29 @@ public class TestController {
 ```
 
 See the [Spring documentation]([https://docs.spring.io/spring-security/site/docs/current/reference/htmlsingle/#access-control-using-preauthorize-and-postauthorize](https://docs.spring.io/spring-security/site/docs/current/reference/htmlsingle/#access-control-using-preauthorize-and-postauthorize)) for further details.
+
+#### Authorities
+The authorities are taken from the access-token claims:
+
+ * `scope` (or `scp`): with prefix `SCOPE_`
+ * `permissions` (Auth0): as-is
+ * `resource_access` (Keycloak): the roles of the configured client, with prefix `ROLE_`
+
+For Keycloak, configure the client whose roles are mapped, normally the client id of this resource server:
+
+```yaml
+entur:
+  jwt:
+    flavours:
+      keycloak:
+        client-id: booking-api
+```
+
+Only the roles in `resource_access.booking-api.roles` are mapped, so role `booking-reader` becomes authority `ROLE_booking-reader` (for use with `hasRole('booking-reader')`). Keycloak (with the default _Full scope allowed_) adds the roles of every client the user has roles in, and the roles of other clients (like role `admin` on client `reporting-ui`) must not grant access to this resource server.
+
+Without a client id, no client roles are mapped; a warning is logged the first time a token with client roles is seen.
+
+Disable the Keycloak mapping using `entur.jwt.flavours.keycloak.enabled=false`, or both the Auth0 and Keycloak mappings using `entur.jwt.flavours.enabled=false`.
 
 #### Accessing JWT claims
 The library also makes it possible to inject a derived method argument generated from the authorization header: 
@@ -201,13 +234,14 @@ The [jwt-junit5-spring] module provide JUnit5 support. In a nutshell:
 public class MyTest {
 
     @Test
-    public void test(@AccessToken String token) throws IOException {
+    public void test(@AccessToken(audience = "https://my.audience") String token) throws IOException {
         // set token in Autorization header and invoke calls
     }
 }
 ```
 
-The `@AuthorizationServer` test extention spawns/overwrites the tenant JWK location with a local file URL.
+The `@AuthorizationServer` test extension spawns/overwrites the tenant JWK location with a local file URL. The audiences
+are not mocked, so configure `entur.jwt.claims.audiences` for tests as well, and add one of them to the tokens.
 
 #### Multi-tentant testing
 Use tenant id for multi-tentant support:
@@ -232,10 +266,12 @@ As a reminder; JWKs are the keys used to validate JWT signatures, so the data in
 The default configuration is as follows:
 
  * refresh cache every 60 minutes
+ * refresh cache in the background 30 seconds before it expires, if there are requests (preemptive refresh)
  * block at most 15 seconds for cache refresh before failing
  * instantly retry once to capture transient IOExceptions
  * keep cache at most 10 hours, should cache refresh fail (i.e. outage)
- * limit refreshes (triggered by unknown signature keys) to at most 1 per 10 seconds
+ * limit refreshes (including those triggered by unknown signature keys) to at most 2 per 10 seconds
+ * time out HTTP requests for keys after 15 seconds (connect and read)
  * Spring [HealthIndicator](https://docs.spring.io/spring-boot/docs/current/api/org/springframework/boot/actuate/health/HealthIndicator.html) enabled
 
 This corresponds to the following configuration:
@@ -244,12 +280,17 @@ This corresponds to the following configuration:
 entur:
     jwt:
         jwk:
+            connect-timeout: 15 # seconds
+            read-timeout: 15 # seconds
             cache:
               enabled: true
               time-to-live: 3600 # seconds
               refresh-timeout: 15 # seconds
               preemptive:
-                time-to-expires: 15 # seconds
+                enabled: true
+                time-to-expires: 30 # seconds
+                eager:
+                  enabled: false # refresh even if there are no requests
             retry:
               enabled: true
             outage-cache:
@@ -262,7 +303,7 @@ entur:
 
 Note that eager cache refresh (if enabled) does not kick off until first time the cache is populated, which would normally be through health checks or first time a token is to be validated.
 
-Rate limiting requires caching, so disabling the cache also disables rate limiting (with a warning). With both enabled, the cache `time-to-live` must be greater than the rate limit interval (1 / `refill-rate` seconds), otherwise startup fails.
+Rate limiting allows two refreshes per interval of 1 / `refill-rate` seconds, so that under normal operation one refresh is left for key rotation should the other be used by preemptive refresh. Rate limiting requires caching, so disabling the cache also disables rate limiting (with a warning). With both enabled, the cache `time-to-live` must be greater than the rate limit interval, otherwise startup fails.
 
 #### Key rotation
 The authorization server might choose to rotate its keys. When that happens, the key id used to sign the access-tokens changes, and a new key id will be noted in the JWT header. This implementation will promptly refresh the keys and normally be able to instantly verify new tokens. Previously issued tokens will be able to verify if the key list still contains the old key.
@@ -274,6 +315,8 @@ The library supports a Spring [HealthIndicator](https://docs.spring.io/spring-bo
  * last attempt was unsuccessful
 
 In other words, the health check will not refresh expired keys, but repeated calls to the health-check __will result in a positive result once downstream services are back up__. As a positive side-effect, on startup, calling the health-check before opening for traffic will result in the cache being populated (read: warmed up).
+
+After an unsuccessful attempt, the health check fetches the keys even if they are still cached. These refreshes are rate limited together with the refreshes triggered by unknown signature keys.
 
 The health indicator is enabled by default. Disable it using the standard Spring Boot property:
 

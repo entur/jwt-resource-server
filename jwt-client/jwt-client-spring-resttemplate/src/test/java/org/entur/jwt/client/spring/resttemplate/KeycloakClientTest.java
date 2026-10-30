@@ -2,6 +2,7 @@ package org.entur.jwt.client.spring.resttemplate;
 
 import org.entur.jwt.client.AccessToken;
 import org.entur.jwt.client.AccessTokenProvider;
+import org.entur.jwt.client.AuthorizationHeaderUtil;
 import org.entur.jwt.client.spring.actuate.AccessTokenProviderHealthIndicator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +25,7 @@ import java.net.URI;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
@@ -68,14 +70,19 @@ public class KeycloakClientTest {
 
     @Test
     public void testAccessToken() throws Exception {
-        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://entur.org/auth/realms/myTenant/protocol/openid-connect/token")))
+        String authorization = AuthorizationHeaderUtil.createHeader("myClientId", "mySecret");
+
+        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://entur.org/realms/myTenant/protocol/openid-connect/token")))
                 .andExpect(method(HttpMethod.POST))
+                .andExpect(header("Authorization", authorization))
                 .andRespond(withStatus(HttpStatus.OK)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(resource1));
 
-        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://entur.org/auth/realms/myTenant/protocol/openid-connect/token")))
+        // the refresh request is authenticated like the issue request
+        mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://entur.org/realms/myTenant/protocol/openid-connect/token")))
                 .andExpect(method(HttpMethod.POST))
+                .andExpect(header("Authorization", authorization))
                 .andRespond(withStatus(HttpStatus.OK)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(resource2));

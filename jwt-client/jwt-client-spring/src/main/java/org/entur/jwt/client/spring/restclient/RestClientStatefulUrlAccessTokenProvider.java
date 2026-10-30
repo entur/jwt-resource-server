@@ -17,7 +17,6 @@ import org.springframework.web.client.RestClientException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -72,6 +71,10 @@ public class RestClientStatefulUrlAccessTokenProvider extends AbstractStatefulUr
                     .headers(headers -> {
                         headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
                         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+                        for (Entry<String, Object> entry : revokeHeaders.entrySet()) {
+                            headers.set(entry.getKey(), entry.getValue().toString());
+                        }
                     })
                     .body(revokeBody)
                     .contentLength(revokeBody.length)
@@ -99,7 +102,7 @@ public class RestClientStatefulUrlAccessTokenProvider extends AbstractStatefulUr
         byte[] refreshBody = createRefreshBody(response);
 
         try {
-            return request(refreshUrl, refreshBody, Collections.emptyMap());
+            return request(refreshUrl, refreshBody, refreshHeaders);
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException(e);
         } catch (HttpStatusCodeException e) {

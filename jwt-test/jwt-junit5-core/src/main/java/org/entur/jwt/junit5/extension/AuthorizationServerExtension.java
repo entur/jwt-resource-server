@@ -1,4 +1,4 @@
-package org.entur.jwt.junit5.extention;
+package org.entur.jwt.junit5.extension;
 
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
