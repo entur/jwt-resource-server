@@ -633,6 +633,37 @@ class DecodedJwtCacheJwtDecoderTest {
         assertEquals(0, decoder.getSize());
     }
 
+    @Test
+    void decodeInProgressWhenClosedDoesNotRepopulateCache() throws Exception {
+        CountDownLatch decoding = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        TestJwtDecoder delegate = new TestJwtDecoder().answering(token -> {
+            decoding.countDown();
+            try {
+                release.await(10, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return jwt(token);
+        });
+        decoder(delegate);
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            // past the closed check, waiting in the delegate
+            Future<Jwt> future = executor.submit(() -> decoder.decode(token("token1")));
+            assertTrue(decoding.await(10, TimeUnit.SECONDS));
+
+            decoder.close();
+            release.countDown();
+
+            assertNotNull(future.get(10, TimeUnit.SECONDS));
+            assertEquals(0, decoder.getSize());
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
     // -----------------------------------------------------------------------
     // Concurrency
     // -----------------------------------------------------------------------

@@ -495,10 +495,20 @@ public class DecodedJwtCacheJwtDecoder implements JwtDecoder, Closeable {
         // Only add if the keys did not change while decoding: the decoder might otherwise have verified the
         // JWT using the previous JWK set, i.e. with a key which has since been replaced under the same key id.
         if (keys != null && !keys.isEmpty() && isSameKeys(keys, getKeys(keySelector))) {
-            cache.add(token, jwt, keySelector, keys);
+            add(token, jwt, keySelector, keys);
         }
 
         return jwt;
+    }
+
+    /**
+     * Add to the cache, unless closed: atomic with {@link #close()}, so that a decode which was in progress
+     * when the decoder was closed does not repopulate the (cleared) cache.
+     */
+    protected synchronized void add(String token, Jwt jwt, JWKSelector keySelector, List<JWK> keys) {
+        if (!closed) {
+            cache.add(token, jwt, keySelector, keys);
+        }
     }
 
     /**
