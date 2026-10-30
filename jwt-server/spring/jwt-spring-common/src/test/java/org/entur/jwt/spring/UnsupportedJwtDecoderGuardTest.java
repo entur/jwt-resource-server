@@ -17,7 +17,8 @@ public class UnsupportedJwtDecoderGuardTest {
             .withPropertyValues(
                     "entur.jwt.enabled=true",
                     "entur.jwt.tenants.a.issuer=https://issuer.a",
-                    "entur.jwt.tenants.a.jwk.location=http://localhost:1/jwks.json"
+                    "entur.jwt.tenants.a.jwk.location=http://localhost:1/jwks.json",
+                    "entur.jwt.claims.audiences=https://my.audience"
             );
 
     @Configuration

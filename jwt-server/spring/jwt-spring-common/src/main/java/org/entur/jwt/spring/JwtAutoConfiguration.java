@@ -26,6 +26,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -74,13 +75,32 @@ public class JwtAutoConfiguration {
     /**
      * The library's JWT validators. {@link OAuth2TokenValidator} beans are used in addition to these;
      * provide a bean of this type to replace them.
+     * <br><br>
+     * Fails startup if there are enabled tenants but no {@code entur.jwt.claims.audiences}, as tokens issued
+     * (by the same tenants) for other APIs would then be accepted. Not checked if the application provides its own
+     * {@link EnturJwtValidators} bean, as the audiences are then not used by the library.
      */
     @Bean
     @ConditionalOnMissingBean(EnturJwtValidators.class)
     public EnturJwtValidators enturJwtValidators(SecurityProperties properties) {
+        JwtProperties jwtProperties = properties.getJwt();
+        requireAudiences(jwtProperties);
+
         OAuth2TokenValidatorFactory oAuth2TokenValidatorFactory = new OAuth2TokenValidatorFactory();
 
-        return new EnturJwtValidators(oAuth2TokenValidatorFactory.create(properties.getJwt().getClaims()));
+        return new EnturJwtValidators(oAuth2TokenValidatorFactory.create(jwtProperties.getClaims()));
+    }
+
+    private static void requireAudiences(JwtProperties jwtProperties) {
+        List<String> enabledTenants = jwtProperties.getTenants().entrySet().stream()
+                .filter(entry -> entry.getValue().isEnabled())
+                .map(Entry::getKey)
+                .sorted()
+                .toList();
+        if (!enabledTenants.isEmpty() && jwtProperties.getClaims().getAudiences().stream().noneMatch(StringUtils::hasText)) {
+            throw new IllegalStateException("No audiences configured for tenants " + enabledTenants + ": set 'entur.jwt.claims.audiences' to the audience(s) of this API. "
+                    + "Without audience validation, tokens issued (by the same tenants) for any other API would be accepted.");
+        }
     }
 
     /**
