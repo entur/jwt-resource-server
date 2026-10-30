@@ -12,6 +12,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -36,8 +37,14 @@ public class RestTemplateUrlAccessTokenProvider extends AbstractUrlAccessTokenPr
     private static final Logger LOGGER = LoggerFactory.getLogger(RestTemplateUrlAccessTokenProvider.class);
 
     protected static StringBuilder printResponseEntityHeadersIfPresent(ResponseEntity<?> c, String... headerNames) {
+        return printHttpHeadersIfPresent(c.getHeaders(), headerNames);
+    }
+
+    protected static StringBuilder printHttpHeadersIfPresent(HttpHeaders headers, String... headerNames) {
         StringBuilder builder = new StringBuilder();
-        HttpHeaders headers = c.getHeaders();
+        if (headers == null) {
+            return builder;
+        }
         for (String headerName : headerNames) {
             List<String> value = headers.get(headerName);
             if (value != null) {
@@ -82,14 +89,7 @@ public class RestTemplateUrlAccessTokenProvider extends AbstractUrlAccessTokenPr
 
             int responseCode = response.getStatusCode().value();
             if (responseCode != 200) {
-                if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
-                if (responseCode == 503) { // service unavailable
-                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(response, "Retry-After"));
-                } else if (responseCode == 429) { // too many calls
-                    // see for example https://auth0.com/docs/policies/rate-limits
-                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests. " + printHeadersIfPresent(response, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
-                }
-                throw new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
+                throw createUnexpectedResponseCodeException(responseCode, response.getHeaders());
             }
 
             ClientCredentialsResponse clientCredentialsResponse = response.getBody();
@@ -97,9 +97,23 @@ public class RestTemplateUrlAccessTokenProvider extends AbstractUrlAccessTokenPr
             return clientCredentialsResponse;
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException(e);
+        } catch (HttpStatusCodeException e) {
+            // the default error handler throws for 4xx and 5xx response codes
+            throw createUnexpectedResponseCodeException(e.getStatusCode().value(), e.getResponseHeaders());
         } catch(RestClientException e) {
             throw new AccessTokenUnavailableException(e);
         }
+    }
+
+    protected AccessTokenException createUnexpectedResponseCodeException(int responseCode, HttpHeaders headers) {
+        if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
+        if (responseCode == 503) { // service unavailable
+            return new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHttpHeadersIfPresent(headers, "Retry-After"));
+        } else if (responseCode == 429) { // too many calls
+            // see for example https://auth0.com/docs/policies/rate-limits
+            return new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests. " + printHttpHeadersIfPresent(headers, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
+        }
+        return new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
     }
 
     protected StringBuilder printHeadersIfPresent(ResponseEntity<ClientCredentialsResponse> c, String... headerNames) {

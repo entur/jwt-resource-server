@@ -142,14 +142,7 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
 
             int responseCode = response.getStatusCode().value();
             if (responseCode != 200) {
-                if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
-                if (responseCode == 503) { // service unavailable
-                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(response, "Retry-After"));
-                } else if (responseCode == 429) { // too many calls
-                    // see for example https://auth0.com/docs/policies/rate-limits
-                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests. " + printHeadersIfPresent(response, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
-                }
-                throw new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
+                throw createUnexpectedResponseCodeException(responseCode, response.getHeaders());
             }
 
             ClientCredentialsResponse clientCredentialsResponse = response.getBody();
@@ -157,9 +150,23 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
             return clientCredentialsResponse;
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException(e);
+        } catch (HttpStatusCodeException e) {
+            // the default error handler throws for 4xx and 5xx response codes
+            throw createUnexpectedResponseCodeException(e.getStatusCode().value(), e.getResponseHeaders());
         } catch (RestClientException e) {
             throw new AccessTokenUnavailableException(e);
         }
+    }
+
+    protected AccessTokenException createUnexpectedResponseCodeException(int responseCode, HttpHeaders headers) {
+        if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
+        if (responseCode == 503) { // service unavailable
+            return new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + RestTemplateUrlAccessTokenProvider.printHttpHeadersIfPresent(headers, "Retry-After"));
+        } else if (responseCode == 429) { // too many calls
+            // see for example https://auth0.com/docs/policies/rate-limits
+            return new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests. " + RestTemplateUrlAccessTokenProvider.printHttpHeadersIfPresent(headers, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
+        }
+        return new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
     }
 
 }

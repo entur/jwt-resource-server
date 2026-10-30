@@ -1,5 +1,6 @@
 package org.entur.jwt.client.spring.resttemplate;
 
+import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +23,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServiceUnavailable;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withUnauthorizedRequest;
 
 public class RestTemplateStatefulUrlAccessTokenProviderTest {
 
@@ -77,6 +79,30 @@ public class RestTemplateStatefulUrlAccessTokenProviderTest {
         });
         // keep the session for the next attempt
         assertThat(provider.getRefreshToken().getValue()).isEqualTo("a.b.c");
+
+        mockServer.verify();
+    }
+
+    @Test
+    public void shouldThrowAccessTokenExceptionWhenIssueRequestIsRejected() {
+        expect(ISSUE_URL, withUnauthorizedRequest());
+
+        AccessTokenException e = assertThrows(AccessTokenException.class, () -> {
+            provider.getAccessToken(false);
+        });
+        assertThat(e).isNotInstanceOf(AccessTokenUnavailableException.class);
+        assertThat(e).hasMessageThat().contains("401");
+
+        mockServer.verify();
+    }
+
+    @Test
+    public void shouldThrowAccessTokenUnavailableExceptionWhenIssueIsTemporarilyUnavailable() {
+        expect(ISSUE_URL, withServiceUnavailable());
+
+        assertThrows(AccessTokenUnavailableException.class, () -> {
+            provider.getAccessToken(false);
+        });
 
         mockServer.verify();
     }
