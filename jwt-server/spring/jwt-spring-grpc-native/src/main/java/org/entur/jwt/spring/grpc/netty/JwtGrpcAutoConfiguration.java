@@ -200,7 +200,13 @@ public class JwtGrpcAutoConfiguration {
                 if(LOGGER.isInfoEnabled()) LOGGER.info("Allow anonymous access to methods {} of GRPC service {}", configuration.getMethods(), configuration.getName());
             }
 
-            serviceNameMethodName.put(configuration.getName(), methods);
+            // merge the methods of entries with the same service name
+            List<String> serviceMethods = serviceNameMethodName.computeIfAbsent(configuration.getName(), (name) -> new ArrayList<>());
+            for (String method : methods) {
+                if (!serviceMethods.contains(method)) {
+                    serviceMethods.add(method);
+                }
+            }
         }
         return serviceNameMethodName;
     }
