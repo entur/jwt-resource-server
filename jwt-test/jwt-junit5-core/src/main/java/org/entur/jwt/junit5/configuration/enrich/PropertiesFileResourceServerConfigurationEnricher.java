@@ -3,6 +3,7 @@ package org.entur.jwt.junit5.configuration.enrich;
 import org.entur.jwt.junit5.configuration.resolve.ResourceServerConfiguration;
 import org.entur.jwt.junit5.extention.AuthorizationServerExtension;
 import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
+import org.entur.jwt.junit5.impl.AuthorizationServerImplementationFactory;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 import java.io.BufferedWriter;
@@ -34,6 +35,14 @@ public class PropertiesFileResourceServerConfigurationEnricher extends AbstractP
     @Override
     public void beforeAll(List<AuthorizationServerImplementation> authorizationServers, ExtensionContext context) throws IOException {
         Map<String, Object> properties = getProperties(authorizationServers);
+
+        // add the issuers, as read by PropertiesFileAuthorizationServerConfigurationResolver
+        for (AuthorizationServerImplementation authorizationServer : authorizationServers) {
+            String tenant = authorizationServer.getId().isEmpty() ? AuthorizationServerImplementationFactory.ON_THE_FLY_TENANT : authorizationServer.getId();
+
+            properties.put(prefix + "." + tenant + ".issuer", AuthorizationServerExtension.toIssuer(authorizationServer.getAuthorizationServer()));
+        }
+
         Properties p = new Properties();
 
         for (Map.Entry<String, Object> e : properties.entrySet()) {

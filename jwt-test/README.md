@@ -117,6 +117,8 @@ public void testMyId(@MyAccessToken(myId = 5) String token) {
 ## Implementing framework support
 In order to configure specific token validation backends, a `ServiceLoader` is used to look up instances of `ResourceServerConfigurationEnricher` and `ResourceServerConfigurationResolver`. These should configure your application framework, for example by outputting a properties file which is read during application test bootstrap. 
 
+For example, register `PropertiesFileResourceServerConfigurationEnricher` and `PropertiesFileAuthorizationServerConfigurationResolver` to write and read the properties file `target/jwt.junit5.properties`, with the JWK location and issuer of each authorization server (`entur.jwt.tenants.<id>.jwk.location` and `entur.jwt.tenants.<id>.issuer`, with id `mock` for an authorization server without id).
+
 Implementations included in this library:
 
  * [jwt-junit5-spring]

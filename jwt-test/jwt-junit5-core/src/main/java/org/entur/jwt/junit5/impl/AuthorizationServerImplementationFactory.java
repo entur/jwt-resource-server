@@ -24,6 +24,9 @@ public class AuthorizationServerImplementationFactory {
 
     public static final String ON_THE_FLY_PROPERTY = ".on-the-fly";
 
+    // tenant id in the properties for an authorization server without id
+    public static final String ON_THE_FLY_TENANT = "mock";
+
     private List<AuthorizationServerImplementation> servers = new ArrayList<>();
 
     public AuthorizationServerImplementationFactory() {
@@ -169,7 +172,7 @@ public class AuthorizationServerImplementationFactory {
                 if (implementations.size() > 1) {
                     throw new IllegalArgumentException("Specify authorization server id in multi-tenant tests.");
                 }
-                key = "mock";
+                key = ON_THE_FLY_TENANT;
                 properties.put(prefix + "." + key + ON_THE_FLY_PROPERTY, "true");
             }
             properties.put(prefix + "." + key + ".jwk.location", path.toUri().toString());
