@@ -103,16 +103,6 @@ public class JwtAutoConfiguration {
         }
     }
 
-    /**
-     * @deprecated not used by this library; inject {@link EnturJwtValidators} and any {@link OAuth2TokenValidator} beans instead
-     * (as a list of validators, this bean is not injected if there are {@link OAuth2TokenValidator} beans). To be removed in the next major version.
-     */
-    @Bean
-    @Deprecated
-    public List<OAuth2TokenValidator<Jwt>> claimConstraints(EnturJwtValidators enturJwtValidators) {
-        return enturJwtValidators.getValidators();
-    }
-
     @Bean
     @ConditionalOnProperty(name = "entur.jwt.decode.header.map-to-issuer.enabled", havingValue = "true")
     @ConditionalOnMissingBean(JwtHeaderToIssuerMapper.class)
