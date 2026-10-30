@@ -4,14 +4,15 @@ import org.entur.jwt.junit5.AuthorizationServer;
 import org.junit.jupiter.api.Nested;
 import org.junit.platform.commons.support.AnnotationSupport;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -164,9 +165,8 @@ public class AuthorizationServerImplementationFactory {
             File tempFile = new File(tempDir, jsonWebKeys.hashCode() + ".jwk.json");
             tempFile.deleteOnExit(); // https://stackoverflow.com/questions/28752006/alternative-to-file-deleteonexit-in-java-nio
             Path path = tempFile.toPath();
-            try (BufferedWriter writer = Files.newBufferedWriter(tempFile.toPath(), StandardCharsets.UTF_8)) {
-                writer.write(implementation.getJsonWebKeys());
-            }
+            // test classes running in parallel might write (and read) the same file
+            writeAtomically(path, jsonWebKeys);
             String key = authorizationServer.value();
             if (key.isEmpty()) {
                 if (implementations.size() > 1) {
@@ -180,4 +180,27 @@ public class AuthorizationServerImplementationFactory {
         return properties;
     }
 
+    /**
+     * Write a file so that concurrent readers never see a partially written file, i.e. when test classes
+     * run in parallel.
+     *
+     * @param path file to write
+     * @param content file content
+     * @throws IOException if the file could not be written
+     */
+
+    public static void writeAtomically(Path path, String content) throws IOException {
+        Path absolutePath = path.toAbsolutePath();
+        Path temp = Files.createTempFile(absolutePath.getParent(), absolutePath.getFileName().toString(), ".tmp");
+        try {
+            Files.writeString(temp, content, StandardCharsets.UTF_8);
+            try {
+                Files.move(temp, absolutePath, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(temp, absolutePath, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(temp);
+        }
+    }
 }

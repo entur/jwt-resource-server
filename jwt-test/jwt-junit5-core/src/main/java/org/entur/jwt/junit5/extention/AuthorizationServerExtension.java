@@ -40,11 +40,20 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
         return FACTORY;
     }
 
+    /**
+     * The authorization servers and enrichers of a test class. Kept in the store of the test class, as an extension
+     * instance is shared by a test class and its {@literal @}Nested test classes, which might run in parallel.
+     */
+    protected record TestClassState(List<AuthorizationServerImplementation> servers, List<ResourceServerConfigurationEnricher> enrichers) {
+    }
+
+    // of the last initialized test class; prefer the state in the store of the test class
     protected List<AuthorizationServerImplementation> servers = new ArrayList<>();
     protected List<ResourceServerConfigurationEnricher> enrichers = new ArrayList<>();
     // might be empty
     protected List<ResourceServerConfigurationResolver> resolvers = ResourceServerConfigurationResolverServiceLoader.load();
 
+    // of the last test; prefer the configurations in the store of the test
     protected List<ResourceServerConfiguration> configurations = new ArrayList<>();
 
     public static Store getStore(ExtensionContext context) {
@@ -64,7 +73,7 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
      * @throws Exception if the configuration could not be enriched
      */
 
-    protected void initialize(ExtensionContext context) throws Exception {
+    protected synchronized void initialize(ExtensionContext context) throws Exception {
         Class<?> testClass = context.getRequiredTestClass();
         Store store = context.getStore(NAMESPACE);
         if (store.get(testClass) != null) {
@@ -72,18 +81,32 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
             return;
         }
 
-        servers = getServers(context);
-        store.put(testClass, servers);
+        List<AuthorizationServerImplementation> testClassServers = getServers(context);
 
-        enrichers = ResourceServerConfigurationEnricherServiceLoader.load();
-        if (enrichers.isEmpty()) {
+        List<ResourceServerConfigurationEnricher> testClassEnrichers = ResourceServerConfigurationEnricherServiceLoader.load();
+        if (testClassEnrichers.isEmpty()) {
             throw new IllegalArgumentException("No configuration enrichers registred");
         }
 
         // configure
-        for (ResourceServerConfigurationEnricher enricher : enrichers) {
-            enricher.beforeAll(servers, context);
+        for (ResourceServerConfigurationEnricher enricher : testClassEnrichers) {
+            enricher.beforeAll(testClassServers, context);
         }
+
+        store.put(testClass, new TestClassState(testClassServers, testClassEnrichers));
+
+        servers = testClassServers;
+        enrichers = testClassEnrichers;
+    }
+
+    /**
+     * @param context extension context of the test class (or one of its tests)
+     * @return the authorization servers and enrichers of the test class, or null if not initialized
+     */
+
+    protected TestClassState getTestClassState(ExtensionContext context) {
+        // note: the store also looks up the stores of the enclosing contexts, i.e. of the test class of a test
+        return context.getStore(NAMESPACE).get(context.getRequiredTestClass(), TestClassState.class);
     }
 
     @Override
@@ -94,8 +117,12 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
         // for resolving the parameters of this test
         context.getStore(NAMESPACE).put(KEY_CONFIGURATIONS, values);
 
-        for (ResourceServerConfigurationEnricher enricher : enrichers) {
-            enricher.beforeEach(this, context);
+        TestClassState state = getTestClassState(context);
+        if (state != null) {
+            ResourceServerConfiguration configuration = (id, propertyName) -> getProperty(values, id, propertyName);
+            for (ResourceServerConfigurationEnricher enricher : state.enrichers()) {
+                enricher.beforeEach(configuration, context);
+            }
         }
 
     }
@@ -113,12 +140,12 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
 
     @Override
     public void afterAll(ExtensionContext context) throws Exception {
-        servers.clear();
-
-        for (ResourceServerConfigurationEnricher enricher : enrichers) {
-            enricher.afterAll(context);
+        TestClassState state = getTestClassState(context);
+        if (state != null) {
+            for (ResourceServerConfigurationEnricher enricher : state.enrichers()) {
+                enricher.afterAll(context);
+            }
         }
-        enrichers.clear();
     }
 
     @Override
@@ -144,7 +171,12 @@ public class AuthorizationServerExtension implements ParameterResolver, BeforeAl
 
             AccessTokenImplementationFactory factory = new AccessTokenImplementationFactory(authorizationServerImplementation);
 
-            String token = factory.create(accessToken, parameterContext, extensionContext, getConfiguration(extensionContext));
+            // a token without authorization server id is for the authorization server resolved above
+            String id = authorizationServerImplementation.getId();
+            ResourceServerConfiguration configuration = getConfiguration(extensionContext);
+            ResourceServerConfiguration tokenConfiguration = (tenantId, propertyName) -> configuration.getProperty(tenantId == null || tenantId.isEmpty() ? id : tenantId, propertyName);
+
+            String token = factory.create(accessToken, parameterContext, extensionContext, tokenConfiguration);
             
             return "Bearer " + token;
         }

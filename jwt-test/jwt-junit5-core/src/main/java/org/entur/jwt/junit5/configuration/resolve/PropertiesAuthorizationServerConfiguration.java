@@ -1,5 +1,7 @@
 package org.entur.jwt.junit5.configuration.resolve;
 
+import org.entur.jwt.junit5.impl.AuthorizationServerImplementationFactory;
+
 import java.util.Properties;
 
 public class PropertiesAuthorizationServerConfiguration implements ResourceServerConfiguration {
@@ -15,7 +17,12 @@ public class PropertiesAuthorizationServerConfiguration implements ResourceServe
     @Override
     public String getProperty(String id, String propertyName) {
         if (id == null || id.isEmpty()) {
-            // if there is only one, select it (also if it was written using an on-the-fly id)
+            // an authorization server without id is written using the on-the-fly id
+            String onTheFly = properties.getProperty(prefix + '.' + AuthorizationServerImplementationFactory.ON_THE_FLY_TENANT + "." + propertyName);
+            if (onTheFly != null) {
+                return onTheFly;
+            }
+            // if there is only one, select it
             String value = null;
             for (String name : properties.stringPropertyNames()) {
                 if (name.startsWith(prefix + '.') && name.endsWith('.' + propertyName)) {
