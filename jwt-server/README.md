@@ -26,9 +26,9 @@ The default implementation supports configuration of one or more tenants.
  * issuer
  * JSON Web Key location
 
-Claim validation (common for all tenants) can also be added:
+Claim validation (common for all tenants):
 
- * audiences
+ * audiences (required)
  * expires-at leeway
  * issued-at leeway
  * and more
@@ -47,9 +47,13 @@ entur:
     claims:
       expires-at-leeway: 15
       issued-at-leeway: 5
-      audiences: # at least one
+      audiences: # required, at least one
         - https://my.audience
 ```
+
+The audiences are required: with JWT enabled and at least one enabled tenant, startup fails if `entur.jwt.claims.audiences` is not set.
+Tokens must contain (in the `aud` claim) at least one of the configured audiences. Without audience validation, a token issued
+by the same tenant for any other API would be accepted.
 
 ### Custom claim validation
 To validate additional claims, add one or more `OAuth2TokenValidator<Jwt>` beans. These are used in addition to the validators configured above:
@@ -71,6 +75,8 @@ public EnturJwtValidators enturJwtValidators() {
 ```
 
 The expiry (`exp`) and not-before (`nbf`) claims are always validated: if the replacement does not validate them, validators with the configured `expires-at-leeway` and `issued-at-leeway` are added.
+
+The replacement is responsible for validating the audience: `entur.jwt.claims.audiences` is then neither used nor required.
 
 ## Authorization configuration
 
@@ -201,13 +207,14 @@ The [jwt-junit5-spring] module provide JUnit5 support. In a nutshell:
 public class MyTest {
 
     @Test
-    public void test(@AccessToken String token) throws IOException {
+    public void test(@AccessToken(audience = "https://my.audience") String token) throws IOException {
         // set token in Autorization header and invoke calls
     }
 }
 ```
 
-The `@AuthorizationServer` test extention spawns/overwrites the tenant JWK location with a local file URL.
+The `@AuthorizationServer` test extention spawns/overwrites the tenant JWK location with a local file URL. The audiences
+are not mocked, so configure `entur.jwt.claims.audiences` for tests as well, and add one of them to the tokens.
 
 #### Multi-tentant testing
 Use tenant id for multi-tentant support:

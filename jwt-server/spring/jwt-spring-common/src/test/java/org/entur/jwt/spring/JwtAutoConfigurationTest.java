@@ -5,13 +5,17 @@ import com.nimbusds.jose.jwk.source.JWKSetBasedJWKSource;
 import com.nimbusds.jose.jwk.source.JWKSetSource;
 import com.nimbusds.jose.jwk.source.JWKSetSourceWrapper;
 import com.nimbusds.jose.jwk.source.RateLimitedJWKSetSource;
+import com.nimbusds.jose.proc.SecurityContext;
 import org.entur.jwt.spring.actuate.ListJwksHealthIndicator;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -22,12 +26,33 @@ class JwtAutoConfigurationTest {
 
     private static final String ISSUER = "https://issuer.a";
 
-    private final ApplicationContextRunner runner = new ApplicationContextRunner()
+    // without the (required) audiences
+    private final ApplicationContextRunner runnerWithoutAudiences = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(JwtAutoConfiguration.class))
             .withPropertyValues(
                     "entur.jwt.tenants.a.issuer=" + ISSUER,
                     "entur.jwt.tenants.a.jwk.location=http://localhost:1/jwks.json"
             );
+
+    private final ApplicationContextRunner runner = runnerWithoutAudiences.withPropertyValues("entur.jwt.claims.audiences=https://my.audience");
+
+    @Configuration
+    static class JwkSourceMapConfiguration {
+
+        @Bean
+        public JwkSourceMap<SecurityContext> jwkSourceMap() {
+            return new JwkSourceMap<>(Map.of(), Map.of());
+        }
+    }
+
+    @Configuration
+    static class EnturJwtValidatorsConfiguration {
+
+        @Bean
+        public EnturJwtValidators customEnturJwtValidators() {
+            return new EnturJwtValidators(List.of());
+        }
+    }
 
     @Test
     void testEnabledByDefault() {
@@ -42,6 +67,66 @@ class JwtAutoConfigurationTest {
         runner.withPropertyValues("entur.jwt.enabled=false").run(context -> {
             assertThat(context).hasNotFailed();
             assertThat(context).doesNotHaveBean(JwkSourceMap.class);
+        });
+    }
+
+    @Test
+    void testFailsWithoutAudiences() {
+        runnerWithoutAudiences.run(context -> {
+            assertThat(context).hasFailed();
+            assertThat(context.getStartupFailure())
+                    .rootCause()
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("entur.jwt.claims.audiences")
+                    .hasMessageContaining("[a]");
+        });
+    }
+
+    @Test
+    void testFailsWithEmptyAudiences() {
+        runnerWithoutAudiences.withPropertyValues("entur.jwt.claims.audiences=").run(context -> {
+            assertThat(context).hasFailed();
+            assertThat(context.getStartupFailure()).rootCause().hasMessageContaining("entur.jwt.claims.audiences");
+        });
+        runnerWithoutAudiences.withPropertyValues("entur.jwt.claims.audiences[0]=").run(context -> {
+            assertThat(context).hasFailed();
+            assertThat(context.getStartupFailure()).rootCause().hasMessageContaining("entur.jwt.claims.audiences");
+        });
+    }
+
+    @Test
+    void testStartsWithoutAudiencesWhenDisabled() {
+        runnerWithoutAudiences.withPropertyValues("entur.jwt.enabled=false").run(context -> {
+            assertThat(context).hasNotFailed();
+            assertThat(context).doesNotHaveBean(EnturJwtValidators.class);
+        });
+    }
+
+    @Test
+    void testStartsWithoutAudiencesWithoutEnabledTenants() {
+        // i.e. with a custom JWK source map, as the default requires enabled tenants
+        runnerWithoutAudiences.withUserConfiguration(JwkSourceMapConfiguration.class)
+                .withPropertyValues("entur.jwt.tenants.a.enabled=false")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).hasSingleBean(EnturJwtValidators.class);
+                });
+    }
+
+    @Test
+    void testStartsWithoutAudiencesWithCustomEnturJwtValidators() {
+        // the application is responsible for validating the audience
+        runnerWithoutAudiences.withUserConfiguration(EnturJwtValidatorsConfiguration.class).run(context -> {
+            assertThat(context).hasNotFailed();
+            assertThat(context.getBean(EnturJwtValidators.class).getValidators()).isEmpty();
+        });
+    }
+
+    @Test
+    void testAudienceValidatorWithAudiences() {
+        runner.run(context -> {
+            assertThat(context).hasNotFailed();
+            assertThat(context.getBean(EnturJwtValidators.class).getValidators()).hasAtLeastOneElementOfType(AudienceOauth2TokenValidator.class);
         });
     }
 

@@ -12,6 +12,9 @@ import java.util.List;
  * <br><br>
  * {@link OAuth2TokenValidator} beans are used in addition to these validators. Provide a bean of this type
  * to replace the default validators. Note that the expiry and not-before claims are always validated.
+ * <br><br>
+ * The default validators require {@code entur.jwt.claims.audiences} (startup fails without it). A replacement is not
+ * subject to this check, so the application is then responsible for validating the audience.
  *
  */
 
