@@ -32,4 +32,11 @@ public class GrpcServletServerGuardApplicationTest {
         assertThatThrownBy(() -> run("--spring.grpc.server.servlet.enabled=true"))
                 .hasStackTraceContaining("Servlet gRPC not supported by this module");
     }
+
+    @Test
+    public void testFailsWithServletGrpcServerWithoutJwt() {
+        // authorization is still enabled
+        assertThatThrownBy(() -> run("--spring.grpc.server.servlet.enabled=true", "--entur.jwt.enabled=false"))
+                .hasStackTraceContaining("Servlet gRPC not supported by this module");
+    }
 }

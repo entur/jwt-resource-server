@@ -43,6 +43,13 @@ public class NoGrpcServerApplicationTest {
     }
 
     @Test
+    public void testStartsWithGrpcServerAndJwtDisabled() {
+        try (ConfigurableApplicationContext context = run(DemoApplication.class, "--spring.grpc.server.enabled=false", "--entur.jwt.enabled=false")) {
+            assertThat(context.getBeanNamesForType(AuthenticationProcessInterceptor.class)).isEmpty();
+        }
+    }
+
+    @Test
     public void testStartsWithoutGrpcServices() {
         try (ConfigurableApplicationContext context = run(NoGrpcServicesApplication.class)) {
             assertThat(context.getBeanNamesForType(GrpcSecurity.class)).isEmpty();
