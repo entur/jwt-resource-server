@@ -110,7 +110,12 @@ entur:
                     realm: myTenant
                     scope: myScope
                     secret: mySecret
+                    context-path: /auth
 ```
+
+The `context-path` is the path Keycloak is served from, and defaults to `/auth`. Keycloak 17 and later serves from the root path by default, so set `context-path: /` (or the value of the Keycloak `http-relative-path` option, if configured). Token requests go to `<context-path>/realms/<realm>/protocol/openid-connect/token`.
+
+When using `KeycloakClientCredentialsBuilder` directly, use `withContextPath(..)`.
 
 ### Multiple clients
 Configure additional clients by adding keys under `entur.jwt.clients.keycloak` and `entur.jwt.clients.auth0` (like `myClient`) in above examples, i.e.

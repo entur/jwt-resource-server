@@ -55,6 +55,7 @@ public abstract class JwtClientBeanDefinitionRegistryPostProcessorSupport<T> {
                 .withScope(properties.getScope())
                 .withAudience(properties.getAudience())
                 .withRealm(properties.getRealm())
+                .withContextPath(properties.getContextPath())
                 .build();
 
         return toAccessTokenProvider(client, properties, credentials, properties.isHealth());
