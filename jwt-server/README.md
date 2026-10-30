@@ -130,6 +130,10 @@ interaction with closed REST controller endpoints. So unwanted requests (i.e. re
 will fail `@PreAuthorize` authorization checks in the controller) are rejected as early as possible, in a secure and
 lightweight way.
 
+For Spring Web, error dispatches (i.e. the servlet container forwarding a failed request to the error page, like Spring
+Boot's `/error`) are permitted, so that errors from open endpoints keep their status (like 400, 404, 415 or 500) for
+requests without a token. Requests made directly to the error page must still be authenticated.
+
 #### Actuator
 
 To
