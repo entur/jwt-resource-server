@@ -32,7 +32,7 @@ public void myTest(@AccessToken @NumberClaim(name="https://my.organisation", val
 }
 ```
 
-The `issuedAt` and `expiresAt` attributes of `@AccessToken` and the `@IssuedAt` and `@ExpiresAt` annotations are in seconds, relative to the current time. Generic claim annotations like `@IntegerClaim` and `@JsonClaim` are written as given, so for example `@IntegerClaim(name = "exp", value = 1700000000)` is an absolute time.
+The `issuedAt` and `expiresAt` attributes of `@AccessToken` and the `@IssuedAt` and `@ExpiresAt` annotations are in seconds, relative to the current time. Generic claim annotations like `@IntegerClaim` and `@JsonClaim` are written as given, also for the standard claims, so for example `@IntegerClaim(name = "exp", value = 1700000000)` is an absolute time and `@StringClaim(name = "exp", value = "soon")` is a malformed expiry time.
 
 Use the `@AlgorithmHeader` annotation to sign a token with another algorithm than `RS256` (the default). The authorization server signs tokens with an RSA key (`RS256`, `RS384`, `RS512`, `PS256`, `PS384` and `PS512`) or an elliptic curve key (`ES256`, `ES384` and `ES512`), all of which are published in its JSON Web Keys. Other algorithms (`HS256`, `EdDSA`, `none` and so on) are not supported; creating the token fails.
 

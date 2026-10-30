@@ -19,6 +19,8 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.ECGenParameterSpec;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -27,8 +29,11 @@ import java.util.Set;
 
 public class DefaultAuthorizationServerEncoder implements AuthorizationServerEncoder {
 
-    // like the JWT library, write dates in non-standard claims as milliseconds
+    // like the JWT library, write dates in other claims than the date claims as milliseconds
     private static final JsonMapper JSON_MAPPER = JsonMapper.builder().enable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS).build();
+
+    // claims with a NumericDate (seconds) value
+    private static final Set<String> dateClaims = Set.of("exp", "nbf", "iat");
 
     private static final Set<String> standardClaims;
 
@@ -230,12 +235,17 @@ public class DefaultAuthorizationServerEncoder implements AuthorizationServerEnc
     }
 
     private byte[] toJson(Map<String, Object> claims) {
-        // the JWT library drops claims with null values, so let it convert the standard claims (e.g. dates to seconds),
-        // then add back the null values and serialize the claims ourselves
-        Map<String, Object> payload = new LinkedHashMap<>(Jwts.claims().add(claims).build());
-        for (Map.Entry<String, Object> entry : claims.entrySet()) {
-            if (entry.getValue() == null) {
-                payload.put(entry.getKey(), null);
+        // serialize the claims ourselves, as given: the JWT library converts or rejects standard claims of other types
+        // (and drops null and empty values), so tokens with malformed standard claims could not be created
+        Map<String, Object> payload = new LinkedHashMap<>(claims);
+
+        // like the JWT library, write dates in the date claims as seconds
+        for (String name : dateClaims) {
+            Object value = payload.get(name);
+            if (value instanceof Date date) {
+                payload.put(name, date.getTime() / 1000);
+            } else if (value instanceof Calendar calendar) {
+                payload.put(name, calendar.getTimeInMillis() / 1000);
             }
         }
         return JSON_MAPPER.writeValueAsBytes(payload);

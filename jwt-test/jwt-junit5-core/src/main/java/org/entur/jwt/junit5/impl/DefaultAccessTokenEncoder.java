@@ -56,7 +56,7 @@ public class DefaultAccessTokenEncoder implements AccessTokenEncoder {
     protected static final String AZP = "azp";
     protected static final String SCOPE = "scope";
 
-    // note: the JWT library serializes using its own JSON library, so parse JSON claims to plain maps and lists
+    // note: parse JSON claims to plain maps and lists, so that the claims can be serialized using any JSON library
     private static final JsonMapper JSON_MAPPER = JsonMapper.builder().build();
 
     @SuppressWarnings("unchecked")
