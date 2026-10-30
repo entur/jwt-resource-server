@@ -1,5 +1,6 @@
 package org.entur.jwt.spring.decode.cache;
 
+import org.entur.jwt.spring.JwtTenantIssuers;
 import org.entur.jwt.spring.properties.JwtProperties;
 import org.entur.jwt.spring.properties.jwk.JwkCacheProperties;
 import org.entur.jwt.spring.properties.jwk.JwtDecoderCacheProperties;
@@ -37,6 +38,9 @@ public class DecodedJwtCacheConfigurationReader {
             // would mean loading the JWK set; fail so the misconfiguration is not silent
             throw new IllegalStateException("decoder-cache.enabled=true for tenant(s) " + tenants + " requires entur.jwt.jwk.cache.enabled=true");
         }
+
+        // the caches are mapped by issuer, so with a duplicate issuer the cache configuration would be ambiguous
+        JwtTenantIssuers.requireUniqueIssuers(jwt.getTenants());
 
         Map<String, JwtDecoderCacheProperties> decodedJwtCacheIssuers = new HashMap<>();
         for (String tenant : tenants) {

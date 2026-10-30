@@ -262,10 +262,12 @@ As a reminder; JWKs are the keys used to validate JWT signatures, so the data in
 The default configuration is as follows:
 
  * refresh cache every 60 minutes
+ * refresh cache in the background 30 seconds before it expires, if there are requests (preemptive refresh)
  * block at most 15 seconds for cache refresh before failing
  * instantly retry once to capture transient IOExceptions
  * keep cache at most 10 hours, should cache refresh fail (i.e. outage)
- * limit refreshes (triggered by unknown signature keys) to at most 1 per 10 seconds
+ * limit refreshes (including those triggered by unknown signature keys) to at most 2 per 10 seconds
+ * time out HTTP requests for keys after 15 seconds (connect and read)
  * Spring [HealthIndicator](https://docs.spring.io/spring-boot/docs/current/api/org/springframework/boot/actuate/health/HealthIndicator.html) enabled
 
 This corresponds to the following configuration:
@@ -274,12 +276,17 @@ This corresponds to the following configuration:
 entur:
     jwt:
         jwk:
+            connect-timeout: 15 # seconds
+            read-timeout: 15 # seconds
             cache:
               enabled: true
               time-to-live: 3600 # seconds
               refresh-timeout: 15 # seconds
               preemptive:
-                time-to-expires: 15 # seconds
+                enabled: true
+                time-to-expires: 30 # seconds
+                eager:
+                  enabled: false # refresh even if there are no requests
             retry:
               enabled: true
             outage-cache:
@@ -292,7 +299,7 @@ entur:
 
 Note that eager cache refresh (if enabled) does not kick off until first time the cache is populated, which would normally be through health checks or first time a token is to be validated.
 
-Rate limiting requires caching, so disabling the cache also disables rate limiting (with a warning). With both enabled, the cache `time-to-live` must be greater than the rate limit interval (1 / `refill-rate` seconds), otherwise startup fails.
+Rate limiting allows two refreshes per interval of 1 / `refill-rate` seconds, so that under normal operation one refresh is left for key rotation should the other be used by preemptive refresh. Rate limiting requires caching, so disabling the cache also disables rate limiting (with a warning). With both enabled, the cache `time-to-live` must be greater than the rate limit interval, otherwise startup fails.
 
 #### Key rotation
 The authorization server might choose to rotate its keys. When that happens, the key id used to sign the access-tokens changes, and a new key id will be noted in the JWT header. This implementation will promptly refresh the keys and normally be able to instantly verify new tokens. Previously issued tokens will be able to verify if the key list still contains the old key.
