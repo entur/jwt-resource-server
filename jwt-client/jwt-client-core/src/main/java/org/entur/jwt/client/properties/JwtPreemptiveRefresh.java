@@ -5,6 +5,8 @@ public class JwtPreemptiveRefresh {
     private boolean enabled = true;
     /** Preemptively refresh the cache this number of seconds before it expires */
     private int timeToExpires = 30; // in seconds
+    /** Traffic-triggered cooldown after a failed preemptive refresh, in seconds; zero disables it. */
+    private long errorCooldown = 15;
     /** 
      * Never refresh the token before a certain percent of its lifetime has elapsed. 
      * <br>
@@ -32,6 +34,14 @@ public class JwtPreemptiveRefresh {
 
     public void setTimeToExpires(int time) {
         this.timeToExpires = time;
+    }
+
+    public long getErrorCooldown() {
+        return errorCooldown;
+    }
+
+    public void setErrorCooldown(long errorCooldown) {
+        this.errorCooldown = errorCooldown;
     }
 
     public void setEager(JwtEagerRefresh eager) {

@@ -10,6 +10,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -31,9 +32,15 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
 
     protected static final Logger LOGGER = LoggerFactory.getLogger(PreemptiveCachedAccessTokenProvider.class);
 
+    private static final long DEFAULT_PREEMPTIVE_ERROR_COOLDOWN = 15_000L;
+    private static final long DEFAULT_EAGER_ERROR_COOLDOWN = 60_000L;
+
     // preemptive update should execute when
     // expire - preemptiveRefresh < current time < expire.
     private final long preemptiveRefresh; // milliseconds
+    private final long preemptiveErrorCooldown; // milliseconds
+    private final long eagerErrorCooldown; // milliseconds
+    private volatile Long lastPreemptiveFailureNanos;
 
     private final ReentrantLock lazyLock = new ReentrantLock();
 
@@ -45,10 +52,10 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
     /** do not preemptively refresh before this percentage of a token's lifetime has passed */
     private final int refreshConstraintInPercent;
     private ScheduledFuture<?> eagerScheduledFuture;
+    private volatile boolean closed;
     
 
-    // cache expire time is used as its fingerprint
-    private volatile long cacheExpires;
+    private final AtomicReference<AccessTokenCacheItem> refreshingCache = new AtomicReference<>();
     
     /**
      * Construct new instance.
@@ -73,6 +80,32 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
     }
 
     /**
+     * Construct with independent traffic-triggered and eager error cooldowns.
+     *
+     * @param provider                     access-token provider
+     * @param minimumTimeToLiveUnits       minimum remaining token lifetime
+     * @param minimumTimeToLiveUnit        minimum lifetime unit
+     * @param refreshTimeoutUnits          cache refresh timeout
+     * @param refreshTimeoutUnit           cache refresh timeout unit
+     * @param preemptiveTimeoutUnits       time before expiry to refresh
+     * @param preemptiveTimeoutUnit        preemptive refresh unit
+     * @param preemptiveErrorCooldownUnits traffic-triggered cooldown after failure;
+     *                                     zero disables it
+     * @param preemptiveErrorCooldownUnit  traffic-triggered cooldown unit
+     * @param eagerErrorCooldownUnits      eager cooldown after failure; retries
+     *                                     still wait at least one second
+     * @param eagerErrorCooldownUnit       eager cooldown unit
+     * @param refreshConstraintInPercent   earliest refresh as a percentage of token
+     *                                     lifetime
+     * @param eager                        refresh without incoming traffic
+     */
+    public PreemptiveCachedAccessTokenProvider(AccessTokenProvider provider, long minimumTimeToLiveUnits, TimeUnit minimumTimeToLiveUnit, long refreshTimeoutUnits, TimeUnit refreshTimeoutUnit, long preemptiveTimeoutUnits,
+            TimeUnit preemptiveTimeoutUnit, long preemptiveErrorCooldownUnits, TimeUnit preemptiveErrorCooldownUnit, long eagerErrorCooldownUnits, TimeUnit eagerErrorCooldownUnit, int refreshConstraintInPercent, boolean eager) {
+        this(provider, minimumTimeToLiveUnit.toMillis(minimumTimeToLiveUnits), refreshTimeoutUnit.toMillis(refreshTimeoutUnits), preemptiveTimeoutUnit.toMillis(preemptiveTimeoutUnits),
+                preemptiveErrorCooldownUnit.toMillis(preemptiveErrorCooldownUnits), eagerErrorCooldownUnit.toMillis(eagerErrorCooldownUnits), refreshConstraintInPercent, eager);
+    }
+
+    /**
      * Construct new instance.
      * 
      * @param provider          Access-token provider
@@ -89,6 +122,27 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
 
     public PreemptiveCachedAccessTokenProvider(AccessTokenProvider provider, long minimumTimeToLive, long refreshTimeout, long preemptiveRefresh, int refreshConstraintInPercent, boolean eager) {
         this(provider, minimumTimeToLive, refreshTimeout, preemptiveRefresh, refreshConstraintInPercent, eager, Executors.newSingleThreadExecutor(), true);
+    }
+
+    /**
+     * Construct with independent traffic-triggered and eager error cooldowns.
+     *
+     * @param provider                   access-token provider
+     * @param minimumTimeToLive          minimum remaining token lifetime in
+     *                                   milliseconds
+     * @param refreshTimeout             cache refresh timeout in milliseconds
+     * @param preemptiveRefresh          time before expiry to refresh, in
+     *                                   milliseconds
+     * @param preemptiveErrorCooldown    traffic-triggered cooldown after failure
+     *                                   in milliseconds; zero disables it
+     * @param eagerErrorCooldown         eager cooldown after failure in
+     *                                   milliseconds; retries wait at least one second
+     * @param refreshConstraintInPercent earliest refresh as a percentage of token
+     *                                   lifetime
+     * @param eager                      refresh without incoming traffic
+     */
+    public PreemptiveCachedAccessTokenProvider(AccessTokenProvider provider, long minimumTimeToLive, long refreshTimeout, long preemptiveRefresh, long preemptiveErrorCooldown, long eagerErrorCooldown, int refreshConstraintInPercent, boolean eager) {
+        this(provider, minimumTimeToLive, refreshTimeout, preemptiveRefresh, preemptiveErrorCooldown, eagerErrorCooldown, refreshConstraintInPercent, eager, Executors.newSingleThreadExecutor(), true);
     }
 
     /**
@@ -109,13 +163,46 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
      */
 
     public PreemptiveCachedAccessTokenProvider(AccessTokenProvider provider, long minimumTimeToLive, long refreshTimeout, long preemptiveRefresh, int refreshConstraintInPercent, boolean eager, ExecutorService executorService, boolean shutdownExecutorOnClose) {
+        this(provider, minimumTimeToLive, refreshTimeout, preemptiveRefresh, DEFAULT_PREEMPTIVE_ERROR_COOLDOWN, DEFAULT_EAGER_ERROR_COOLDOWN, refreshConstraintInPercent, eager, executorService, shutdownExecutorOnClose);
+    }
+
+    /**
+     * Construct with a custom executor and independent traffic-triggered and eager
+     * error cooldowns.
+     *
+     * @param provider                   access-token provider
+     * @param minimumTimeToLive          minimum remaining token lifetime in
+     *                                   milliseconds
+     * @param refreshTimeout             cache refresh timeout in milliseconds
+     * @param preemptiveRefresh          time before expiry to refresh, in
+     *                                   milliseconds
+     * @param preemptiveErrorCooldown    traffic-triggered cooldown after failure
+     *                                   in milliseconds; zero disables it
+     * @param eagerErrorCooldown         eager cooldown after failure in
+     *                                   milliseconds; retries wait at least one second
+     * @param refreshConstraintInPercent earliest refresh as a percentage of token
+     *                                   lifetime
+     * @param eager                      refresh without incoming traffic
+     * @param executorService            background refresh executor
+     * @param shutdownExecutorOnClose    whether to shut down the executor on close
+     */
+    public PreemptiveCachedAccessTokenProvider(AccessTokenProvider provider, long minimumTimeToLive, long refreshTimeout, long preemptiveRefresh, long preemptiveErrorCooldown, long eagerErrorCooldown, int refreshConstraintInPercent, boolean eager,
+            ExecutorService executorService, boolean shutdownExecutorOnClose) {
         super(provider, minimumTimeToLive, refreshTimeout);
 
         if (preemptiveRefresh < minimumTimeToLive) {
             throw new IllegalArgumentException("Minimum time to live must be less than preemptive refresh limit");
         }
+        if (preemptiveErrorCooldown < 0) {
+            throw new IllegalArgumentException("Preemptive error cooldown must not be negative");
+        }
+        if (eagerErrorCooldown < 0) {
+            throw new IllegalArgumentException("Eager error cooldown must not be negative");
+        }
 
         this.preemptiveRefresh = preemptiveRefresh;
+        this.preemptiveErrorCooldown = preemptiveErrorCooldown;
+        this.eagerErrorCooldown = eagerErrorCooldown;
         this.executorService = executorService;
         this.shutdownExecutorOnClose = shutdownExecutorOnClose;
         this.refreshConstraintInPercent = refreshConstraintInPercent;
@@ -139,35 +226,49 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
     }
 
     protected void schedulePreemptiveRefresh(long time, AccessTokenCacheItem cache) {
+        if (!cache.isValid(time)) {
+            schedulePreemptiveRefresh(cache, Math.max(eagerErrorCooldown, 1000L));
+            return;
+        }
+        // Start before the refresh window to avoid competing with request-triggered
+        // refreshes.
+        long delay = cache.getRefreshable() - refreshTimeout - time;
+        if (delay <= 0) {
+            // Retry before cache expiry when possible, without a tight loop.
+            delay = Math.max(1000L, (cache.getExpires() - time) / 2);
+        }
+        schedulePreemptiveRefresh(cache, delay);
+    }
+
+    private synchronized void schedulePreemptiveRefresh(AccessTokenCacheItem cache, long delay) {
+        if (closed || this.cache != cache) {
+            return;
+        }
         if(eagerScheduledFuture != null) {
             eagerScheduledFuture.cancel(false);
         }
         
-        // so we want to keep other threads from triggering preemptive refreshing
-        // subtracting the refresh timeout should be enough
-        
-        long delay = cache.getRefreshable() - refreshTimeout - time;
-        if(delay > 0) {
-            this.eagerScheduledFuture = scheduledExecutorService.schedule(() -> {
-                try {
-                    // so will only refresh if this specific cache entry still is the current one
-                    preemptiveRefresh(System.currentTimeMillis(), cache, true);
-                } catch (Exception e) {
-                    LOGGER.warn("Scheduled eager access-token refresh failed", e);
-                }
-            }, delay, TimeUnit.MILLISECONDS);
-            
-            if(LOGGER.isDebugEnabled()) LOGGER.debug("Scheduled next eager access-token refresh in " + getTime(delay));
-        } else {
-            LOGGER.warn("Not scheduling eager access-token refresh");
-        }
+        this.eagerScheduledFuture = scheduleEagerRefresh(() -> {
+            try {
+                // so will only refresh if this specific cache entry still is the current one
+                preemptiveRefresh(currentTimeMillis(), cache, true);
+            } catch (Exception e) {
+                LOGGER.warn("Scheduled eager access-token refresh failed", e);
+            }
+        }, delay);
+
+        if(LOGGER.isDebugEnabled()) LOGGER.debug("Scheduled next eager access-token refresh in " + getTime(delay));
     }    
+
+    protected ScheduledFuture<?> scheduleEagerRefresh(Runnable refresh, long delay) {
+        return scheduledExecutorService.schedule(refresh, delay, TimeUnit.MILLISECONDS);
+    }
     
     @Override
     protected AccessTokenCacheItem loadAccessTokenFromProvider(long time) throws AccessTokenException {
         AccessTokenCacheItem item = super.loadAccessTokenFromProvider(time);
         if(scheduledExecutorService != null) {
-            schedulePreemptiveRefresh(time, item);
+            schedulePreemptiveRefresh(currentTimeMillis(), item);
         }
         
         return item;
@@ -182,44 +283,94 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
      */
 
     protected void preemptiveRefresh(final long time, final AccessTokenCacheItem cache, boolean forceRefresh) {
+        if (closed) {
+            return;
+        }
         if(!cache.isRefreshable(time) && !forceRefresh){
             // cache will not expire soon,
             // no need to preemptively update.
             return;
         }
-        if(cacheExpires >= cache.getExpires()) {
-            // an update is in progress,
-            // no need to preemptively update.
+        if (this.cache != cache || refreshingCache.get() == cache) {
+            // Ignore obsolete entries and duplicate refreshes of the current entry.
+            return;
+        }
+        if (deferDuringErrorCooldown(cache, forceRefresh)) {
             return;
         }
         // Try to aquire a lock to update the cache.
         if (lazyLock.tryLock()) {
             try {
                 // check again now that this thread holds the lock
-                if (cacheExpires >= cache.getExpires()) {
-                    // an update is in progress,
+                if (this.cache != cache || refreshingCache.get() == cache) {
+                    return;
+                }
+                if (deferDuringErrorCooldown(cache, forceRefresh)) {
                     return;
                 }
                  // still no update is in progress, so we start one.
-                 cacheExpires = cache.getExpires();
+                 refreshingCache.set(cache);
 
                  // run update in the background
                  executorService.execute(() -> {
                      try {
                          PreemptiveCachedAccessTokenProvider.super.getAccessTokenBlocking(time, cache);
-                         // so next time this method is invoked, it'll be with the updated cache item expiry time
                      } catch (Exception e) {
-                         // update failed, but another thread can retry
-                         cacheExpires = -1L;
-                         // ignore, unable to update
-                         // another thread will attempt the same
+                         lastPreemptiveFailureNanos = nanoTime();
+                         refreshingCache.compareAndSet(cache, null);
                          LOGGER.warn("Preemptive access-token refresh failed", e);
+                         if (scheduledExecutorService != null) {
+                             // A rejected replacement may already have overwritten the old cache.
+                             AccessTokenCacheItem current = this.cache;
+                             if (current == cache || !current.isValid(currentTimeMillis())) {
+                                 schedulePreemptiveRefresh(current, Math.max(eagerErrorCooldown, 1000L));
+                             }
+                         }
                      }
                  });
             } finally {
                 lazyLock.unlock();
             }
         }
+    }
+
+    private boolean deferDuringErrorCooldown(AccessTokenCacheItem cache, boolean scheduledRefresh) {
+        Long failureNanos = lastPreemptiveFailureNanos;
+        if (failureNanos == null) {
+            return false;
+        }
+        long cooldown = scheduledRefresh ? eagerErrorCooldown : preemptiveErrorCooldown;
+        long remaining = TimeUnit.MILLISECONDS.toNanos(cooldown) - (nanoTime() - failureNanos);
+        if (remaining <= 0) {
+            return false;
+        }
+        if (scheduledRefresh && scheduledExecutorService != null) {
+            // Round up so an early timer does not consume the only scheduled retry.
+            schedulePreemptiveRefresh(cache, TimeUnit.NANOSECONDS.toMillis(remaining - 1) + 1);
+        }
+        return true;
+    }
+
+    protected long nanoTime() {
+        return System.nanoTime();
+    }
+
+    protected long currentTimeMillis() {
+        return System.currentTimeMillis();
+    }
+
+    /**
+     * @return traffic-triggered cooldown after a failed preemptive refresh, in milliseconds
+     */
+    public long getPreemptiveErrorCooldown() {
+        return preemptiveErrorCooldown;
+    }
+
+    /**
+     * @return eager cooldown after a failed preemptive refresh, in milliseconds
+     */
+    public long getEagerErrorCooldown() {
+        return eagerErrorCooldown;
     }
     
     @Override
@@ -267,10 +418,12 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
     
     @Override
     public void close() throws IOException {
-        ScheduledFuture<?> eagerJwkListCacheItem = this.eagerScheduledFuture; // defensive copy
-        if(eagerJwkListCacheItem != null) {
-            eagerJwkListCacheItem.cancel(true);
-            if(LOGGER.isDebugEnabled()) LOGGER.debug("Cancelled scheduled access-token refresh");
+        synchronized (this) {
+            closed = true;
+            if (eagerScheduledFuture != null) {
+                eagerScheduledFuture.cancel(true);
+                if(LOGGER.isDebugEnabled()) LOGGER.debug("Cancelled scheduled access-token refresh");
+            }
         }
         super.close();
         
