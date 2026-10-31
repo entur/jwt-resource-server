@@ -1,6 +1,8 @@
 package org.entur.jwt.client;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
 import java.io.ByteArrayInputStream;
@@ -9,6 +11,7 @@ import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertNotNull;
@@ -16,6 +19,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 public class UrlAccessTokenProviderTest extends AbstractUrlAccessTokenProviderTest {
@@ -33,7 +37,12 @@ public class UrlAccessTokenProviderTest extends AbstractUrlAccessTokenProviderTe
     private AccessTokenProvider providerForResource(String resource) throws Exception {
         when(urlConnection.getInputStream()).thenReturn(getClass().getResourceAsStream(resource));
 
-        return new DefaultAccessTokenHealthProvider(new UrlAccessTokenProvider(new URL("mock://localhost"), Collections.emptyMap(), Collections.emptyMap(), 15000, 15000));
+        return new DefaultAccessTokenHealthProvider(new UrlAccessTokenProvider(new URL("mock://localhost"), Collections.emptyMap(), Collections.emptyMap(), 15000, 15000) {
+            @Override
+            protected long nanoTime() {
+                return 0L;
+            }
+        });
     }
 
     @Test
@@ -82,6 +91,35 @@ public class UrlAccessTokenProviderTest extends AbstractUrlAccessTokenProviderTe
         assertThrows(AccessTokenUnavailableException.class, () -> {
             provider.getAccessToken(false);
         });
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {429, 503})
+    public void shouldHonorRetryAfterWithoutIssuingAnImmediateRetry(int status) throws Exception {
+        AccessTokenProvider provider = new RetryingAccessTokenProvider(providerForResource("/auth0ClientCredentialsResponse.json"));
+        when(urlConnection.getResponseCode()).thenReturn(status);
+        when(urlConnection.getHeaderField("Retry-After")).thenReturn("120");
+        AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
+                () -> provider.getAccessToken(false));
+        assertThat(failure.getRetryAfterDeadlineNanos()).isEqualTo(TimeUnit.SECONDS.toNanos(120));
+        assertThat(failure.getHeaders()).containsExactly("Retry-After", "120");
+        AccessTokenRetryAfterException rejected = assertThrows(AccessTokenRetryAfterException.class,
+                () -> provider.getAccessToken(true));
+        assertThat(rejected.getRetryAfterDeadlineNanos()).isEqualTo(failure.getRetryAfterDeadlineNanos());
+        verify(urlConnection, times(1)).getResponseCode();
+        verify(urlConnection, times(1)).disconnect();
+    }
+
+    @Test
+    public void shouldConvertRateLimitResetTimestampToRetryAfterDelay() throws Exception {
+        AccessTokenProvider provider = providerForResource("/auth0ClientCredentialsResponse.json");
+        when(urlConnection.getResponseCode()).thenReturn(429);
+        when(urlConnection.getHeaderField("X-RateLimit-Reset")).thenReturn(Long.toString(System.currentTimeMillis() / 1000 + 3600));
+        AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
+                () -> provider.getAccessToken(false));
+        assertThat(failure.getRetryAfterDeadlineNanos()).isAtMost(TimeUnit.SECONDS.toNanos(3600));
+        assertThat(failure.getRetryAfterDeadlineNanos()).isGreaterThan(TimeUnit.SECONDS.toNanos(3500));
+        assertThat(failure.getHeaders()).containsKey("X-RateLimit-Reset");
     }
 
     @Test

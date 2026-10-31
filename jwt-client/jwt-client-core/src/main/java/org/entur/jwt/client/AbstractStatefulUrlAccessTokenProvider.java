@@ -98,24 +98,33 @@ public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrl
 
     @Override
     public AccessToken getAccessToken(boolean forceRefresh) throws AccessTokenException {
-        return getAccessToken(System.currentTimeMillis());
+        return getAccessToken(currentTimeMillis());
     }
 
     public AccessToken getAccessToken(long time) throws AccessTokenException {
         // note: force refresh is not relevant for whether to use refresh-token or not
-        ClientCredentialsResponse token;
+        checkRetryDeadline(null);
 
-        RefreshToken threadSafeRefreshToken = this.refreshToken; // defensive copy
-        if (threadSafeRefreshToken != null && threadSafeRefreshToken.isValid(time)) {
-            try {
-                token = getToken(threadSafeRefreshToken);
-            } catch (RefreshTokenException e) {
-                // assume current session has been revoked or expired
-                // open a new session and forget about the old one
+        ClientCredentialsResponse token;
+        try {
+            RefreshToken threadSafeRefreshToken = this.refreshToken; // defensive copy
+            if (threadSafeRefreshToken != null && threadSafeRefreshToken.isValid(time)) {
+                try {
+                    token = getToken(threadSafeRefreshToken);
+                } catch (RefreshTokenException e) {
+                    // assume current session has been revoked or expired
+                    // open a new session and forget about the old one
+                    this.refreshToken = null;
+                    // the rejection starts the backoff, which then defers the new session
+                    recordFailure(e);
+                    checkRetryDeadline(e);
+                    token = getToken();
+                }
+            } else {
                 token = getToken();
             }
-        } else {
-            token = getToken();
+        } catch (AccessTokenException e) {
+            throw recordFailure(e);
         }
 
         if (token.getRefreshToken() != null) {

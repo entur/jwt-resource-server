@@ -9,7 +9,8 @@ Features:
     * reduces spikes in processing time
     * minimizes number of calls to authorization servers
  * fault-tolerance / robustness
-    * transient network error protection (retry once)
+    * failed-request backoff, including HTTP `Retry-After`
+    * optional one-time retry for unavailable errors other than `AccessTokenRetryAfterException`
     * health status (on last remote access)
 
 Essentially this allows a single JWT to be shared within a single JVM, drastically reducing the load on Authorization Servers, and reducing the server response time.
@@ -170,7 +171,9 @@ entur:
         clients:
             auth0:
                 myClient:
-                    retrying: true # retry (once) if getting token fails                    
+                    retrying: true # retry once on unavailable errors, except Retry-After
+                    retry-after:
+                        fallback-delay: 15 # after failure without a usable Retry-After or reset header (seconds); 0 leaves such failures ordinary
                     cache:
                         minimum-time-to-live: 15 # minimum time left on token (seconds)
                         refresh-timeout: 15 # timeout when refreshing the token (seconds)
@@ -193,7 +196,7 @@ SpringApplication.run(MyApplication.class, args).start();
 
 A failed preemptive refresh starts two independent cooldowns, measured from completion of the failed attempt. Traffic-triggered background refreshes use `cache.preemptive-refresh.error-cooldown` (default 15 seconds). Scheduled eager refreshes use `cache.preemptive-refresh.eager.error-cooldown` (default 60 seconds), even without incoming requests; closing the provider cancels pending retries.
 
-Blocking reloads when the cached token is unusable, and the optional immediate `retrying` wrapper, are not delayed by either setting. Setting a cooldown to zero disables its gate; scheduled eager retries still wait at least one second to avoid a tight retry loop. Both settings are independent of `cache.refresh-timeout`.
+Those two local cooldowns do not gate blocking reloads or the optional immediate `retrying` wrapper. The independent HTTP backoff below rejects required loads without another HTTP request while its deadline is active. The retry wrapper always propagates `AccessTokenRetryAfterException` unchanged, leaving deadline handling to the HTTP provider and cache/scheduler. Setting a background cooldown to zero disables only its local gate; scheduled eager error retries still wait at least one second. Both local settings are independent of `cache.refresh-timeout`.
 
 An expired replacement returned during a foreground reload is rejected, but eager recovery remains scheduled after the eager error cooldown, with a one-second minimum.
 
@@ -205,6 +208,18 @@ please note the preemptive-refresh parameter `expires-constraint`, which limits 
 
 This prevents adjustments of the access-token time-to-live (which can be dynamically configured on the authorization server) from resulting in constant refreshes, 
 which could negatively affect the authorization server.
+
+### HTTP failure backoff and authorization-server protection
+
+The built-in URLConnection, RestClient, WebClient, and legacy RestTemplate providers enforce backoff for generic, Auth0, and Keycloak clients, **even with caching disabled**. On HTTP 429/503, a valid `Retry-After` determines the delay: nonnegative whole seconds or an RFC-1123 HTTP-date. Without one, the `X-RateLimit-Reset` (Auth0) or `X-Rate-Limit-Reset` (Okta) UNIX timestamp is converted to the equivalent delay, but only if it lies in the future, because a timestamp which has already passed (for example through clock skew) would otherwise allow an immediate retry. A missing, blank, or malformed header uses `retry-after.fallback-delay`, default **15 seconds**. Other token-request failures, including connection failures and invalid response bodies, use that fallback too. The rate limit headers of the response (`Retry-After`, `X-RateLimit-*`, `X-Rate-Limit-*`, and Auth0's `Auth0-Client-Quota-Limit` and `Auth0-Organization-Quota-Limit`) are included in the exception message, and available from `AccessTokenRetryAfterException.getHeaders()`. Revocation is outside this policy.
+
+This is a **failure-only** policy. A valid shorter header overrides the fallback; `0` or a past date permits the next call immediately. `AccessTokenRetryAfterException` still ends the current logical load without an immediate retry, even when its deadline has elapsed. Successful token requests establish no delay. Cache minimum-lifetime rejection after a successful HTTP response is a cache error, not an HTTP failure.
+
+Each HTTP provider instance has one fixed monotonic deadline shared by issuance and refresh. Usable cached tokens remain available. During backoff, required cold, expired, forced, or uncached loads throw `AccessTokenRetryAfterException` (an `AccessTokenUnavailableException`) without HTTP or sleeping until the deadline; cached loads still use the normal reload-lock rules. Rejected calls do not restart the deadline. Background refreshes, traffic-triggered and eager, wait for the **maximum**, not the sum, of their local cooldown and the delay carried by the latest `AccessTokenRetryAfterException` the cache saw, and deferring does not restart that wait. A deadline the cache has not seen yet is still enforced by the HTTP provider, which rejects the attempt without HTTP. Throttled refreshes retain the refresh token; a genuinely rejected refresh token is discarded, with a new session deferred until backoff ends.
+
+Builders always apply a fallback to built-in HTTP providers, 15 seconds unless `retryAfter(fallback, unit)` says otherwise, and direct providers expose `setRetryAfterFallbackMillis(...)`. Server directives are always honored. `fallback-delay: 0` stops the client from inventing a wait: a failure without a usable header throws an ordinary `AccessTokenUnavailableException`, records no deadline, and gets the one immediate retry when `retrying` is enabled. Deadlines are JVM-local `System.nanoTime()` values, not epoch timestamps. The HTTP provider enforces its deadline itself, so caches need no wiring to it; a cache learns a deadline only from the `AccessTokenRetryAfterException` of a failed background attempt.
+
+Reuse one provider per client configuration. Cache coordination and the `ExclusiveAccessTokenProvider`, which the builder places directly above every built-in HTTP provider and which rejects overlapping token requests, prevent concurrent request fan-out, while failure backoff prevents repeated calls from immediately hitting a failing server. **This is not a global rate limit or an unconditional "never hammered" guarantee:** independent providers/replicas do not coordinate, successful forced/uncached requests are not rate-capped, and server-directed zero delays permit an immediate subsequent call. Setting `fallback-delay: 0` restores immediate retries for header-less failures. Providers composed by hand must be wrapped in `ExclusiveAccessTokenProvider` to get that protection and to keep deadline updates race-free; custom providers and HTTP-client-internal retries are otherwise outside its control.
 
 ### Health indicator configuration
 The library supports a Spring [HealthIndicator](https://docs.spring.io/spring-boot/docs/current/api/org/springframework/boot/actuate/health/HealthIndicator.html) via the enabling `jwts` health indicator.

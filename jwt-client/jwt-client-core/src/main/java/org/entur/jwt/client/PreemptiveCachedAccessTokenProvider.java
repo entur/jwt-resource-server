@@ -41,6 +41,8 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
     private final long preemptiveErrorCooldown; // milliseconds
     private final long eagerErrorCooldown; // milliseconds
     private volatile Long lastPreemptiveFailureNanos;
+    // deadline of the latest AccessTokenRetryAfterException seen by a background refresh; an elapsed value is harmless
+    private volatile Long retryAfterDeadlineNanos;
 
     private final ReentrantLock lazyLock = new ReentrantLock();
 
@@ -316,6 +318,9 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
                      try {
                          PreemptiveCachedAccessTokenProvider.super.getAccessTokenBlocking(time, cache);
                      } catch (Exception e) {
+                         if (e instanceof AccessTokenRetryAfterException retryAfter) {
+                             retryAfterDeadlineNanos = retryAfter.getRetryAfterDeadlineNanos();
+                         }
                          lastPreemptiveFailureNanos = nanoTime();
                          refreshingCache.compareAndSet(cache, null);
                          LOGGER.warn("Preemptive access-token refresh failed", e);
@@ -323,7 +328,8 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
                              // A rejected replacement may already have overwritten the old cache.
                              AccessTokenCacheItem current = this.cache;
                              if (current == cache || !current.isValid(currentTimeMillis())) {
-                                 schedulePreemptiveRefresh(current, Math.max(eagerErrorCooldown, 1000L));
+                                 long remaining = remainingCooldownNanos(true);
+                                 schedulePreemptiveRefresh(current, Math.max(1000L, remaining <= 0 ? 0 : TimeUnit.NANOSECONDS.toMillis(remaining - 1) + 1));
                              }
                          }
                      }
@@ -335,12 +341,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
     }
 
     private boolean deferDuringErrorCooldown(AccessTokenCacheItem cache, boolean scheduledRefresh) {
-        Long failureNanos = lastPreemptiveFailureNanos;
-        if (failureNanos == null) {
-            return false;
-        }
-        long cooldown = scheduledRefresh ? eagerErrorCooldown : preemptiveErrorCooldown;
-        long remaining = TimeUnit.MILLISECONDS.toNanos(cooldown) - (nanoTime() - failureNanos);
+        long remaining = remainingCooldownNanos(scheduledRefresh);
         if (remaining <= 0) {
             return false;
         }
@@ -349,6 +350,18 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
             schedulePreemptiveRefresh(cache, TimeUnit.NANOSECONDS.toMillis(remaining - 1) + 1);
         }
         return true;
+    }
+
+    private long remainingCooldownNanos(boolean scheduledRefresh) {
+        Long failureNanos = lastPreemptiveFailureNanos;
+        if (failureNanos == null) {
+            return 0;
+        }
+        long now = nanoTime();
+        long cooldown = scheduledRefresh ? eagerErrorCooldown : preemptiveErrorCooldown;
+        long remaining = TimeUnit.MILLISECONDS.toNanos(cooldown) - (now - failureNanos);
+        Long deadline = retryAfterDeadlineNanos;
+        return deadline == null ? remaining : Math.max(remaining, deadline - now);
     }
 
     protected long nanoTime() {

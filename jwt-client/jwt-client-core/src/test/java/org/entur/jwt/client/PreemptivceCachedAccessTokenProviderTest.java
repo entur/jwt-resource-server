@@ -27,6 +27,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.only;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegateProviderTest {
@@ -210,7 +211,8 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
 
             provider.getAccessToken(justBeforeExpiry, false); // wants to update, but can't get lock
 
-            verify(fallback, only()).getAccessToken(false);
+            verify(fallback).getAccessToken(false);
+            verifyNoMoreInteractions(fallback);
         } finally {
             helper.close();
         }
@@ -409,6 +411,79 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         ((Runnable) provider.getEagerScheduledFuture()).run();
         verify(fallback, times(2)).getAccessToken(false);
         timed.advance(1, TimeUnit.SECONDS);
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        assertThat(provider.getCachedAccessToken()).isSameInstanceAs(refreshedAccessToken);
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {30, 120})
+    public void shouldWaitForTheMaximumOfServerAndLocalCooldowns(long serverSeconds) throws Exception {
+        TestPreemptiveProvider timed = newEagerProvider(directExecutor());
+        provider = timed;
+        long deadline = TimeUnit.SECONDS.toNanos(serverSeconds);
+        when(fallback.getAccessToken(false)).thenReturn(accessToken).thenThrow(new AccessTokenRetryAfterException("HTTP 429", null, deadline))
+                .thenReturn(refreshedAccessToken);
+
+        provider.getAccessToken(false);
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        long waitSeconds = Math.max(serverSeconds, 60);
+        assertThat(provider.getEagerScheduledFuture().getDelay(TimeUnit.SECONDS)).isEqualTo(waitSeconds);
+        verify(fallback, times(2)).getAccessToken(false);
+
+        // the traffic cooldown (15s) has elapsed, but the server deadline and the eager cooldown have not
+        timed.advance(15, TimeUnit.SECONDS);
+        provider.getAccessToken(provider.getRefreshable(1), false);
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        assertThat(provider.getEagerScheduledFuture().getDelay(TimeUnit.SECONDS)).isEqualTo(waitSeconds - 15);
+        assertThat(provider.getCachedAccessToken()).isSameInstanceAs(accessToken);
+        verify(fallback, times(2)).getAccessToken(false);
+
+        timed.advance(waitSeconds - 15, TimeUnit.SECONDS);
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        assertThat(provider.getCachedAccessToken()).isSameInstanceAs(refreshedAccessToken);
+        verify(fallback, times(3)).getAccessToken(false);
+    }
+
+    @Test
+    public void shouldDeferEagerCallbackAfterTheLocalCooldownUntilTheServerDeadline() throws Exception {
+        TestPreemptiveProvider timed = newEagerProvider(directExecutor());
+        provider = timed;
+        long deadline = TimeUnit.SECONDS.toNanos(120);
+        when(fallback.getAccessToken(false)).thenReturn(accessToken).thenThrow(new AccessTokenRetryAfterException("HTTP 429", null, deadline))
+                .thenReturn(refreshedAccessToken);
+
+        provider.getAccessToken(false);
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        verify(fallback, times(2)).getAccessToken(false);
+
+        // an early or stale callback: the 60s eager cooldown has elapsed, the server deadline has not
+        timed.advance(100, TimeUnit.SECONDS);
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        verify(fallback, times(2)).getAccessToken(false);
+        assertThat(provider.getEagerScheduledFuture().getDelay(TimeUnit.SECONDS)).isEqualTo(20L);
+
+        timed.advance(20, TimeUnit.SECONDS);
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        assertThat(provider.getCachedAccessToken()).isSameInstanceAs(refreshedAccessToken);
+        verify(fallback, times(3)).getAccessToken(false);
+    }
+
+    @Test
+    public void shouldApplyBothDelaysWhenBackoffIsEstablishedAfterDispatch() throws Exception {
+        TestPreemptiveProvider timed = newEagerProvider(directExecutor());
+        provider = timed;
+        long deadline = TimeUnit.SECONDS.toNanos(15);
+        when(fallback.getAccessToken(false)).thenReturn(accessToken).thenThrow(new AccessTokenRetryAfterException("Another load established backoff", null, deadline))
+                .thenReturn(refreshedAccessToken);
+
+        provider.getAccessToken(false);
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        assertThat(provider.getEagerScheduledFuture().getDelay(TimeUnit.SECONDS)).isEqualTo(60L);
+        timed.advance(5, TimeUnit.SECONDS);
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        assertThat(provider.getEagerScheduledFuture().getDelay(TimeUnit.SECONDS)).isEqualTo(55L);
+        verify(fallback, times(2)).getAccessToken(false);
+        timed.advance(55, TimeUnit.SECONDS);
         ((Runnable) provider.getEagerScheduledFuture()).run();
         assertThat(provider.getCachedAccessToken()).isSameInstanceAs(refreshedAccessToken);
     }

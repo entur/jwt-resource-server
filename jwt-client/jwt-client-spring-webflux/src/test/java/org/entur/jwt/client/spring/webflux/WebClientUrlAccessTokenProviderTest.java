@@ -2,7 +2,11 @@ package org.entur.jwt.client.spring.webflux;
 
 import org.entur.jwt.client.AccessToken;
 import org.entur.jwt.client.AccessTokenUnavailableException;
+import org.entur.jwt.client.AccessTokenRetryAfterException;
+import org.entur.jwt.client.RetryingAccessTokenProvider;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -13,6 +17,10 @@ import reactor.core.publisher.Mono;
 import java.net.URL;
 import java.util.Collections;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -51,5 +59,55 @@ public class WebClientUrlAccessTokenProviderTest {
         assertThrows(AccessTokenUnavailableException.class, () -> {
             provider.getAccessToken(false);
         });
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {429, 503})
+    public void shouldHonorRetryAfterWithoutSendingAnotherRequest(int status) throws Exception {
+        AtomicInteger requests = new AtomicInteger();
+        WebClient client = WebClient.builder().exchangeFunction(request -> {
+            requests.incrementAndGet();
+            return Mono.just(ClientResponse.create(HttpStatus.valueOf(status)).header("Retry-After", "120").build());
+        }).build();
+        WebClientUrlAccessTokenProvider http = new WebClientUrlAccessTokenProvider(client, new URL(ISSUE_URL), Map.of(), Map.of()) {
+            @Override
+            protected long nanoTime() {
+                return 0L;
+            }
+        };
+        RetryingAccessTokenProvider provider = new RetryingAccessTokenProvider(http);
+        AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
+                () -> provider.getAccessToken(false));
+        assertThat(failure.getRetryAfterDeadlineNanos()).isEqualTo(TimeUnit.SECONDS.toNanos(120));
+        assertThat(failure.getHeaders()).containsExactly("Retry-After", "120");
+        AccessTokenRetryAfterException rejected = assertThrows(AccessTokenRetryAfterException.class,
+                () -> provider.getAccessToken(true));
+        assertThat(rejected.getRetryAfterDeadlineNanos()).isEqualTo(failure.getRetryAfterDeadlineNanos());
+        assertThat(requests.get()).isEqualTo(1);
+    }
+
+    @Test
+    public void shouldCancelTheRequestWhenTheCallerIsInterrupted() throws Exception {
+        CountDownLatch subscribed = new CountDownLatch(1);
+        CountDownLatch cancelled = new CountDownLatch(1);
+        WebClient client = WebClient.builder().exchangeFunction(request -> Mono.<ClientResponse>never()
+                .doOnSubscribe(subscription -> subscribed.countDown())
+                .doOnCancel(cancelled::countDown)).build();
+        WebClientUrlAccessTokenProvider http = new WebClientUrlAccessTokenProvider(client, new URL(ISSUE_URL), Map.of(), Map.of());
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Thread caller = new Thread(() -> {
+            try {
+                http.getAccessToken(false);
+            } catch (Throwable e) {
+                failure.set(e);
+            }
+        });
+        caller.start();
+        assertThat(subscribed.await(10, TimeUnit.SECONDS)).isTrue();
+        caller.interrupt();
+        caller.join(10_000);
+        assertThat(caller.isAlive()).isFalse();
+        assertThat(cancelled.await(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(failure.get()).isInstanceOf(AccessTokenUnavailableException.class);
     }
 }

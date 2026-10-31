@@ -35,7 +35,9 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@TestPropertySource(locations = "/application-auth0-multiple.properties")
+@TestPropertySource(locations = "/application-auth0-multiple.properties", properties = {
+        "entur.jwt.clients.auth0.firstClient.retry-after.fallback-delay=0",
+        "entur.jwt.clients.auth0.secondClient.retry-after.fallback-delay=0"})
 @DirtiesContext(classMode = ClassMode.BEFORE_EACH_TEST_METHOD)
 public class Auth0MultipleClientsTest extends AbstractActuatorTest {
 
@@ -99,7 +101,7 @@ public class Auth0MultipleClientsTest extends AbstractActuatorTest {
     }   
     
     @Test
-    public void testActuator() throws Exception {
+    public void testActuatorWithZeroFailureFallback() throws Exception {
 
         // set the executor or requests will not arrive in the arranged order
         ExecutorService executor = Executors.newSingleThreadExecutor();
