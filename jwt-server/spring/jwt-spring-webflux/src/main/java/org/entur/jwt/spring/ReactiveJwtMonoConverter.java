@@ -34,7 +34,6 @@ import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
 import java.security.Key;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.RejectedExecutionException;
@@ -48,9 +47,13 @@ import java.util.concurrent.TimeUnit;
  * The keys of a lookup are then used for verifying tokens on the calling thread, so that most requests need
  * no lookup at all.
  * <br><br>
- * The keys of a lookup are used for at most 10 seconds, and never for longer than the time-to-live of the JWK source cache.
- * If the JWK source does not cache (i.e. it fetches the keys on every call), the keys are not reused, so that
- * only concurrent requests share a lookup.
+ * The keys of a lookup are used for at most 10 seconds, and never for longer than the time-to-live of the JWK source cache
+ * (so a removed key might be accepted for up to 10 seconds longer than the JWK source cache alone would). If the JWK source does not cache
+ * (i.e. it fetches the keys on every call), or is not known to cache (i.e. it is not built by the JWK source builder of Nimbus), the keys are
+ * not reused, so that only concurrent requests share a lookup.
+ * <br><br>
+ * The JWK source is read with a selector for all keys, and the keys for a token are then selected from the result. A JWK source which
+ * restricts the keys by the criteria of the selector is therefore not supported.
  */
 
 public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSet>> {
@@ -58,6 +61,7 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
     // use the keys of a lookup for this long (at most), and look them up again in the background after half of it.
     // Unknown keys are looked up right away, so this only delays the removal of keys
     private static final long MAX_KEYS_TIME_TO_LIVE = TimeUnit.SECONDS.toNanos(10);
+    private static final long UNKNOWN_CACHE = -1;
 
     private static final JWKSelector ALL_KEYS = new JWKSelector(new JWKMatcher.Builder().build());
 
@@ -67,6 +71,8 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
     private final Scheduler scheduler;
     // zero if the keys of a lookup are not reused
     private final long keysTimeToLive;
+    // false if a refresh is pointless, i.e. the JWK source does not cache
+    private final boolean refreshUnknownKeys;
 
     private final Object lock = new Object();
     // the lookup in progress, if any
@@ -83,25 +89,30 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
      * are copied to an internal processor, which selects the keys from the keys looked up from the JWK source of the given selector.
      * The verifiers are called without security context.
      * <br><br>
-     * As the keys are looked up in advance, custom key selection is not supported: the JWT processor must not have a JWS key selector
-     * (or the given selector as its JWS key selector), and the selector must be a {@linkplain JWSVerificationKeySelector} (not a subclass).
+     * As the keys are looked up in advance, custom key selection and processing is not supported: the JWT processor must be a
+     * {@linkplain DefaultJWTProcessor} (not a subclass) without a JWS key selector (or the given selector as its JWS key selector), and the
+     * selector must be a {@linkplain JWSVerificationKeySelector} (not a subclass).
      *
      * @param jwtProcessor JWT processor, for the configuration of the verification
      * @param selector key selector, for the JWK source and the allowed algorithms
      * @param scheduler scheduler for looking up the keys
-     * @throws IllegalArgumentException if the key selection of the JWT processor or the selector is customized
+     * @throws IllegalArgumentException if the key selection of the JWT processor or the selector is customized, or the JWT processor is a subclass
      */
 
     public ReactiveJwtMonoConverter(DefaultJWTProcessor<SecurityContext> jwtProcessor, JWSVerificationKeySelector selector, Scheduler scheduler) {
-        // fail closed, as custom key selection (i.e. an allowlist or revocation check) would otherwise be bypassed
+        // fail closed, as custom key selection or processing (i.e. an allowlist or revocation check) would otherwise be bypassed
         JWSKeySelector<SecurityContext> jwsKeySelector = jwtProcessor.getJWSKeySelector();
-        if (selector.getClass() != JWSVerificationKeySelector.class || (jwsKeySelector != null && jwsKeySelector != selector) || jwtProcessor.getJWTClaimsSetAwareJWSKeySelector() != null) {
-            throw new IllegalArgumentException("Custom key selection is not supported, as keys are selected from keys looked up in advance");
+        if (jwtProcessor.getClass() != DefaultJWTProcessor.class || selector.getClass() != JWSVerificationKeySelector.class
+                || (jwsKeySelector != null && jwsKeySelector != selector) || jwtProcessor.getJWTClaimsSetAwareJWSKeySelector() != null) {
+            throw new IllegalArgumentException("Custom key selection and processing is not supported, as keys are selected from keys looked up in advance");
         }
 
         this.selector = selector;
         this.scheduler = scheduler;
-        this.keysTimeToLive = keysTimeToLive(selector.getJWKSource());
+        long cacheTimeToLive = cacheTimeToLive(selector.getJWKSource());
+        // a JWK source which is not known to cache might still do so, so look up unknown keys (but do not reuse the keys of a lookup)
+        this.keysTimeToLive = Math.max(0, Math.min(MAX_KEYS_TIME_TO_LIVE, cacheTimeToLive));
+        this.refreshUnknownKeys = cacheTimeToLive != 0;
 
         // the verifiers do not receive the security context of this converter (the looked up keys)
         JOSEObjectTypeVerifier<SecurityContext> typeVerifier = jwtProcessor.getJWSTypeVerifier();
@@ -135,14 +146,18 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
                 }
                 return Mono.fromCallable(() -> createClaimsSet(source, current));
             }
-            return lookup(jwsHeader)
-                    // a lookup started for another token does not look up unknown keys of this token
-                    .flatMap(k -> k.contains(jwsHeader) || k.isLookupFor(jwsHeader) ? Mono.just(k) : lookup(jwsHeader))
+            return keysFor(jwsHeader)
                     // continue (i.e. the security filter chain and the request handling) on a non-blocking thread,
                     // so that the scheduler is only used for lookups
                     .publishOn(Schedulers.parallel())
                     .map(k -> createClaimsSet(source, k));
         });
+    }
+
+    // a lookup in progress might be for another token, which does not look up unknown keys of this token.
+    // So repeat until the keys contain the key, or are the result of a lookup for this token
+    private Mono<Keys> keysFor(JWSHeader header) {
+        return lookup(header).flatMap(k -> k.contains(header) || k.isLookupFor(header) ? Mono.just(k) : keysFor(header));
     }
 
     private Mono<Keys> lookup(JWSHeader header) {
@@ -165,19 +180,43 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
     }
 
     private void lookup(JWSHeader header, Sinks.One<Keys> sink) {
-        Keys result;
+        // the sink of the current phase of the lookup, as the lookup is completed for waiting requests in two phases if a refresh is needed
+        Sinks.One<Keys> current = sink;
         try {
-            result = getKeys(header);
+            JWKSource<SecurityContext> jwkSource = selector.getJWKSource();
+
+            long time = nanoTime();
+            List<JWK> all = jwkSource.get(ALL_KEYS, null);
+
+            JWKMatcher matcher = header != null && refreshUnknownKeys ? JWKMatcher.forJWSHeader(header) : null;
+            if (matcher != null && all.stream().noneMatch(matcher::matches)) {
+                // the keys at hand are enough for requests which do not need the unknown key (also those already waiting), so release
+                // them right away. Requests for the unknown key look up again, which waits for the refresh in progress
+                Keys known = new Keys(new JWKSet(all), time, null);
+                this.keys = known;
+                current = Sinks.one();
+                synchronized (lock) {
+                    lookup = current;
+                }
+                sink.tryEmitValue(known);
+                try {
+                    // unknown key, so that the JWK source refreshes its keys
+                    jwkSource.get(new JWKSelector(matcher), null);
+                    all = jwkSource.get(ALL_KEYS, null);
+                } catch (RateLimitReachedException e) {
+                    // use the keys at hand; any other failure is not hidden as an invalid token
+                }
+            }
+            Keys result = new Keys(new JWKSet(all), time, header);
+            this.keys = result;
+            complete(current);
+            current.tryEmitValue(result);
         } catch (Throwable e) {
             // always complete the lookup, so that later requests do not wait for a lookup which never finishes
-            complete(sink);
-            sink.tryEmitError(e instanceof RuntimeException r ? r : new JwtException("Failed to validate the token", e));
+            complete(current);
+            current.tryEmitError(e instanceof RuntimeException r ? r : new JwtException("Failed to validate the token", e));
             Exceptions.throwIfJvmFatal(e);
-            return;
         }
-        this.keys = result;
-        complete(sink);
-        sink.tryEmitValue(result);
     }
 
     private void complete(Sinks.One<Keys> sink) {
@@ -188,46 +227,14 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
         }
     }
 
-    private Keys getKeys(JWSHeader header) throws KeySourceException {
-        JWKSource<SecurityContext> jwkSource = selector.getJWKSource();
-
-        long time = nanoTime();
-        List<JWK> all = jwkSource.get(ALL_KEYS, null);
-
-        // if the JWK source does not cache, the keys were just fetched, so there is nothing more to refresh
-        JWKMatcher matcher = header != null && keysTimeToLive > 0 ? JWKMatcher.forJWSHeader(header) : null;
-        if (matcher != null && all.stream().noneMatch(matcher::matches)) {
-            // use the keys at hand right away, so that requests for known keys do not wait for the refresh
-            this.keys = new Keys(new JWKSet(all), time, null);
-            try {
-                // unknown key, so that the JWK source refreshes its keys. Keep the matching keys, as the refresh
-                // might not be visible for another read (and no further read is needed for verifying the token)
-                all = merge(all, jwkSource.get(new JWKSelector(matcher), null));
-            } catch (RateLimitReachedException e) {
-                // use the keys at hand; any other failure is not hidden as an invalid token
-            }
-        }
-        return new Keys(new JWKSet(all), time, header);
-    }
-
-    private static List<JWK> merge(List<JWK> keys, List<JWK> additional) {
-        List<JWK> merged = new ArrayList<>(keys);
-        for (JWK key : additional) {
-            if (!merged.contains(key)) {
-                merged.add(key);
-            }
-        }
-        return merged;
-    }
-
-    // for how long the keys of a lookup might be used: the shorter of the maximum and the cache of the JWK source,
-    // and not at all if the JWK source does not cache (i.e. fetches the keys on every call)
-    private static long keysTimeToLive(JWKSource<SecurityContext> jwkSource) {
+    // the time to live of the JWK source cache in nanoseconds, zero if the JWK source does not cache (i.e. it fetches the keys
+    // on every call), or UNKNOWN_CACHE if it is not known
+    private static long cacheTimeToLive(JWKSource<SecurityContext> jwkSource) {
         if (jwkSource instanceof JWKSetBasedJWKSource<SecurityContext> jwkSetBasedJwkSource) {
             JWKSetSource<SecurityContext> source = jwkSetBasedJwkSource.getJWKSetSource();
             while (source instanceof JWKSetSourceWrapper<SecurityContext> wrapper) {
                 if (wrapper instanceof CachingJWKSetSource<SecurityContext> caching) {
-                    return Math.max(0, Math.min(MAX_KEYS_TIME_TO_LIVE, TimeUnit.MILLISECONDS.toNanos(caching.getTimeToLive())));
+                    return TimeUnit.MILLISECONDS.toNanos(caching.getTimeToLive());
                 }
                 source = wrapper.getSource();
             }
@@ -235,7 +242,7 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
                 return 0;
             }
         }
-        return MAX_KEYS_TIME_TO_LIVE;
+        return UNKNOWN_CACHE;
     }
 
     private JWTClaimsSet createClaimsSet(JWT parsedToken, Keys keys) {
