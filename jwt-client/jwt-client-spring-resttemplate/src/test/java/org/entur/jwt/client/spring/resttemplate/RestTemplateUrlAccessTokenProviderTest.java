@@ -155,6 +155,7 @@ public class RestTemplateUrlAccessTokenProviderTest {
         AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
                 () -> retrying.getAccessToken(false));
         assertThat(failure.getRetryAfterDeadlineNanos()).isEqualTo(TimeUnit.SECONDS.toNanos(120));
+        assertThat(failure.getHeaders()).containsExactly("Retry-After", "120");
         AccessTokenRetryAfterException rejected = assertThrows(AccessTokenRetryAfterException.class,
                 () -> retrying.getAccessToken(true));
         assertThat(rejected.getRetryAfterDeadlineNanos()).isEqualTo(failure.getRetryAfterDeadlineNanos());
@@ -171,6 +172,7 @@ public class RestTemplateUrlAccessTokenProviderTest {
         AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(false));
 
         assertThat(failure.getRetryAfterDeadlineNanos()).isEqualTo(TimeUnit.SECONDS.toNanos(120));
+        assertThat(failure.getHeaders()).containsExactly("Retry-After", "120");
         mockServer.verify();
     }
 }

@@ -102,11 +102,24 @@ public class UrlAccessTokenProviderTest extends AbstractUrlAccessTokenProviderTe
         AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
                 () -> provider.getAccessToken(false));
         assertThat(failure.getRetryAfterDeadlineNanos()).isEqualTo(TimeUnit.SECONDS.toNanos(120));
+        assertThat(failure.getHeaders()).containsExactly("Retry-After", "120");
         AccessTokenRetryAfterException rejected = assertThrows(AccessTokenRetryAfterException.class,
                 () -> provider.getAccessToken(true));
         assertThat(rejected.getRetryAfterDeadlineNanos()).isEqualTo(failure.getRetryAfterDeadlineNanos());
         verify(urlConnection, times(1)).getResponseCode();
         verify(urlConnection, times(1)).disconnect();
+    }
+
+    @Test
+    public void shouldConvertRateLimitResetTimestampToRetryAfterDelay() throws Exception {
+        AccessTokenProvider provider = providerForResource("/auth0ClientCredentialsResponse.json");
+        when(urlConnection.getResponseCode()).thenReturn(429);
+        when(urlConnection.getHeaderField("X-RateLimit-Reset")).thenReturn(Long.toString(System.currentTimeMillis() / 1000 + 3600));
+        AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
+                () -> provider.getAccessToken(false));
+        assertThat(failure.getRetryAfterDeadlineNanos()).isAtMost(TimeUnit.SECONDS.toNanos(3600));
+        assertThat(failure.getRetryAfterDeadlineNanos()).isGreaterThan(TimeUnit.SECONDS.toNanos(3500));
+        assertThat(failure.getHeaders()).containsKey("X-RateLimit-Reset");
     }
 
     @Test

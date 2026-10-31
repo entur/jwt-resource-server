@@ -87,12 +87,10 @@ public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
             if (responseCode != 200) {
                 if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
                 if (responseCode == 503) { // service unavailable
-                    throw retryAfterException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(connection, "Retry-After"),
-                            connection.getHeaderField("Retry-After"));
+                    throw retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.", connection::getHeaderField);
                 } else if (responseCode == 429) { // too many calls
                     // see for example https://auth0.com/docs/policies/rate-limits
-                    throw retryAfterException("Authorization server responded with HTTP code 429 - too many requests. "
-                            + printHeadersIfPresent(connection, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"), connection.getHeaderField("Retry-After"));
+                    throw retryAfterException("Authorization server responded with HTTP code 429 - too many requests.", connection::getHeaderField);
                 }
                 throw new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
             }
@@ -108,10 +106,6 @@ public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
         }
     }
 
-    protected StringBuilder printHeadersIfPresent(HttpURLConnection c, String... headerNames) {
-        return printHttpURLConnectionHeadersIfPresent(c, headerNames);
-    }
-    
     @Override
     public boolean supportsHealth() {
         return false;

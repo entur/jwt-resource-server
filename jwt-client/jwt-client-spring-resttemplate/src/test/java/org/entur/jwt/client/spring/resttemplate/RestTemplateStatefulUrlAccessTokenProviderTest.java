@@ -133,6 +133,7 @@ public class RestTemplateStatefulUrlAccessTokenProviderTest {
         AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
                 () -> provider.getAccessToken(false));
         assertThat(failure.getRetryAfterDeadlineNanos() - nowNanos).isEqualTo(TimeUnit.SECONDS.toNanos(120));
+        assertThat(failure.getHeaders()).containsExactly("Retry-After", "120");
         assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(true));
         assertThat(provider.getRefreshToken()).isSameInstanceAs(original);
         nowNanos = TimeUnit.SECONDS.toNanos(15);
@@ -158,6 +159,7 @@ public class RestTemplateStatefulUrlAccessTokenProviderTest {
         AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(false));
 
         assertThat(failure.getRetryAfterDeadlineNanos() - nowNanos).isEqualTo(TimeUnit.SECONDS.toNanos(120));
+        assertThat(failure.getHeaders()).containsExactly("Retry-After", "120");
         assertThat(provider.getRefreshToken()).isSameInstanceAs(original);
         mockServer.verify();
     }

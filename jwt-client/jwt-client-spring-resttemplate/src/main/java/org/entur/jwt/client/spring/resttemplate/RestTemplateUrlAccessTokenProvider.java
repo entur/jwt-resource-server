@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.function.Function;
 
 /**
  * 
@@ -36,6 +37,10 @@ import java.util.Map.Entry;
 public class RestTemplateUrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RestTemplateUrlAccessTokenProvider.class);
+
+    protected static Function<String, String> headerLookup(HttpHeaders headers) {
+        return headers == null ? null : headers::getFirst;
+    }
 
     protected static StringBuilder printResponseEntityHeadersIfPresent(ResponseEntity<?> c, String... headerNames) {
         return printHttpHeadersIfPresent(c.getHeaders(), headerNames);
@@ -124,13 +129,10 @@ public class RestTemplateUrlAccessTokenProvider extends AbstractUrlAccessTokenPr
     protected AccessTokenException createUnexpectedResponseCodeException(int responseCode, HttpHeaders headers) {
         if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
         if (responseCode == 503) { // service unavailable
-            return retryAfterException("Authorization server responded with HTTP code 503 - service unavailable. " + printHttpHeadersIfPresent(headers, "Retry-After"),
-                    headers == null ? null : headers.getFirst("Retry-After"));
+            return retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.", headerLookup(headers));
         } else if (responseCode == 429) { // too many calls
             // see for example https://auth0.com/docs/policies/rate-limits
-            return retryAfterException("Authorization server responded with HTTP code 429 - too many requests. "
-                    + printHttpHeadersIfPresent(headers, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"),
-                    headers == null ? null : headers.getFirst("Retry-After"));
+            return retryAfterException("Authorization server responded with HTTP code 429 - too many requests.", headerLookup(headers));
         }
         return new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
     }

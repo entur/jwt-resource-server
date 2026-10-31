@@ -8,6 +8,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.net.URI;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -141,6 +142,93 @@ class RetryAfterAccessTokenProviderTest {
         assertThat(provider.getAccessToken(false).getValue()).isEqualTo("token");
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"X-RateLimit-Reset", "X-Rate-Limit-Reset"})
+    void shouldConvertRateLimitResetTimestampsToDelays(String name) throws Exception {
+        TestProvider provider = new TestProvider();
+        provider.headerFailure = true;
+        provider.otherHeaders.put(name, Long.toString(provider.nowMillis / 1000 + 90));
+        AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
+                () -> provider.getAccessToken(false));
+        assertThat(failure.getRetryAfterDeadlineNanos() - provider.nowNanos).isEqualTo(TimeUnit.SECONDS.toNanos(90));
+        provider.headerFailure = false;
+        provider.advance(89, TimeUnit.SECONDS);
+        assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(false));
+        provider.advance(1, TimeUnit.SECONDS);
+        assertThat(provider.getAccessToken(false).getValue()).isEqualTo("token");
+    }
+
+    @Test
+    void shouldPreferRetryAfterOverRateLimitResetTimestamps() throws Exception {
+        TestProvider provider = new TestProvider();
+        provider.headerFailure = true;
+        provider.header = "10";
+        provider.otherHeaders.put("X-RateLimit-Reset", Long.toString(provider.nowMillis / 1000 + 120));
+        provider.otherHeaders.put("X-Rate-Limit-Reset", Long.toString(provider.nowMillis / 1000 + 240));
+        AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
+                () -> provider.getAccessToken(false));
+        assertThat(failure.getRetryAfterDeadlineNanos() - provider.nowNanos).isEqualTo(TimeUnit.SECONDS.toNanos(10));
+    }
+
+    @Test
+    void shouldFallBackToTheOktaResetTimestampWhenTheAuth0ResetIsUnusable() throws Exception {
+        TestProvider provider = new TestProvider();
+        provider.headerFailure = true;
+        provider.otherHeaders.put("X-RateLimit-Reset", "invalid");
+        provider.otherHeaders.put("X-Rate-Limit-Reset", Long.toString(provider.nowMillis / 1000 + 45));
+        AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
+                () -> provider.getAccessToken(false));
+        assertThat(failure.getRetryAfterDeadlineNanos() - provider.nowNanos).isEqualTo(TimeUnit.SECONDS.toNanos(45));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"1793448000", "1793447940", "30", "0", "invalid", "-1", "1.5", "99999999999999999999", "9223372036854775807"})
+    void shouldUseTheFallbackForResetTimestampsWhichAreNotInTheFuture(String reset) throws Exception {
+        TestProvider provider = new TestProvider();
+        provider.headerFailure = true;
+        provider.otherHeaders.put("X-RateLimit-Reset", reset);
+        AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
+                () -> provider.getAccessToken(false));
+        assertThat(failure.getRetryAfterDeadlineNanos() - provider.nowNanos).isEqualTo(TimeUnit.SECONDS.toNanos(15));
+    }
+
+    @Test
+    void shouldKeepRateLimitHeadersAsContextOnTheException() throws Exception {
+        TestProvider provider = new TestProvider();
+        provider.headerFailure = true;
+        provider.header = "30";
+        provider.otherHeaders.put("X-RateLimit-Reset", "1793448030");
+        provider.otherHeaders.put("X-RateLimit-Remaining", "0");
+        provider.otherHeaders.put("Content-Type", "application/json");
+        AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
+                () -> provider.getAccessToken(false));
+        assertThat(failure.getHeaders()).containsExactly("Retry-After", "30", "X-RateLimit-Remaining", "0", "X-RateLimit-Reset", "1793448030").inOrder();
+        assertThat(failure).hasMessageThat().isEqualTo("HTTP 503 Retry-After:30, X-RateLimit-Remaining:0, X-RateLimit-Reset:1793448030");
+        assertThrows(UnsupportedOperationException.class, () -> failure.getHeaders().put("a", "b"));
+    }
+
+    @Test
+    void shouldNotAddContextWhenThereAreNoRateLimitHeaders() throws Exception {
+        TestProvider provider = new TestProvider();
+        provider.headerFailure = true;
+        AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
+                () -> provider.getAccessToken(false));
+        assertThat(failure.getHeaders()).isEmpty();
+        assertThat(failure).hasMessageThat().isEqualTo("HTTP 503");
+    }
+
+    @Test
+    void shouldDescribeRateLimitHeadersOnOrdinaryFailuresWhenTheFallbackIsZero() throws Exception {
+        TestProvider provider = new TestProvider();
+        provider.setRetryAfterFallbackMillis(0);
+        provider.headerFailure = true;
+        provider.otherHeaders.put("X-Rate-Limit-Remaining", "0");
+        AccessTokenUnavailableException failure = assertThrows(AccessTokenUnavailableException.class,
+                () -> provider.getAccessToken(false));
+        assertThat(failure).isNotInstanceOf(AccessTokenRetryAfterException.class);
+        assertThat(failure).hasMessageThat().isEqualTo("HTTP 503 X-Rate-Limit-Remaining:0");
+    }
+
     @Test
     void shouldMeasureFallbackFromFailureCompletionAndPreserveItsCause() throws Exception {
         TestProvider provider = new TestProvider();
@@ -166,8 +254,8 @@ class RetryAfterAccessTokenProviderTest {
     void shouldKeepTheLongestDeadlineAndHandleNanoTimeWraparound() throws Exception {
         TestProvider provider = new TestProvider();
         provider.nowNanos = Long.MAX_VALUE - TimeUnit.SECONDS.toNanos(1);
-        provider.retryAfterException("long response", "120");
-        provider.retryAfterException("short response", "10");
+        provider.retryAfterException("long response", Map.of("Retry-After", "120")::get);
+        provider.retryAfterException("short response", Map.of("Retry-After", "10")::get);
         assertThat(provider.getRetryAfterDeadlineNanos() - provider.nowNanos).isEqualTo(TimeUnit.SECONDS.toNanos(120));
         assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(false));
         provider.advance(120, TimeUnit.SECONDS);
@@ -178,7 +266,7 @@ class RetryAfterAccessTokenProviderTest {
     @ValueSource(strings = {"9223372036854775807", "999999999999999999999999"})
     void shouldSaturateVeryLongServerDelaysWithoutBecomingImmediatelyRetryable(String header) throws Exception {
         TestProvider provider = new TestProvider();
-        provider.retryAfterException("long response", header);
+        provider.retryAfterException("long response", Map.of("Retry-After", header)::get);
         assertThat(provider.getRetryAfterDeadlineNanos() - provider.nowNanos).isEqualTo(Long.MAX_VALUE);
         assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(false));
         assertThat(provider.calls).isEqualTo(0);
@@ -366,6 +454,7 @@ class RetryAfterAccessTokenProviderTest {
         private int calls;
         private boolean headerFailure;
         private String header;
+        private final Map<String, String> otherHeaders = new LinkedHashMap<>();
         private AccessTokenException failure;
         private long requestDurationMillis;
         private CountDownLatch started;
@@ -389,7 +478,7 @@ class RetryAfterAccessTokenProviderTest {
             }
             advance(requestDurationMillis, TimeUnit.MILLISECONDS);
             if (headerFailure) {
-                throw retryAfterException("HTTP 503", header);
+                throw retryAfterException("HTTP 503", name -> "Retry-After".equals(name) ? header : otherHeaders.get(name));
             }
             if (failure != null) {
                 throw failure;

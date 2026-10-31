@@ -122,6 +122,7 @@ public class WebClientStatefulUrlAccessTokenProviderTest {
         AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
                 () -> provider.getAccessToken(false));
         assertThat(failure.getRetryAfterDeadlineNanos() - nowNanos).isEqualTo(TimeUnit.SECONDS.toNanos(120));
+        assertThat(failure.getHeaders()).containsExactly("Retry-After", "120");
         assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(true));
         assertThat(provider.getRefreshToken()).isSameInstanceAs(original);
         assertThat(requests).hasSize(refreshing ? 2 : 1);
