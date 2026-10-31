@@ -111,6 +111,7 @@ public abstract class JwtClientBeanDefinitionRegistryPostProcessorSupport<T> {
             if (preemptiveRefresh != null && preemptiveRefresh.isEnabled()) {
                 builder.preemptiveCacheRefresh(preemptiveRefresh.getTimeToExpires(), TimeUnit.SECONDS, preemptiveRefresh.getExpiresConstraint(), preemptiveRefresh.getEager().isEnabled());
                 builder.preemptiveErrorCooldown(preemptiveRefresh.getErrorCooldown(), TimeUnit.SECONDS);
+                builder.eagerErrorCooldown(preemptiveRefresh.getEager().getErrorCooldown(), TimeUnit.SECONDS);
             } else {
                 builder.preemptiveCacheRefresh(false);
             }

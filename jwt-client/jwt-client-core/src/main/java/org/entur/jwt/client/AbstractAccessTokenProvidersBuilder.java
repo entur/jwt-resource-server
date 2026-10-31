@@ -28,8 +28,10 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
     protected long preemptiveRefreshTimeUnits = 30;
     protected boolean preemptiveRefreshEager = false;
     protected int preemptiveRefreshConstraint = 25;
-    protected long preemptiveErrorCooldown = 60;
+    protected long preemptiveErrorCooldown = 15;
     protected TimeUnit preemptiveErrorCooldownUnit = TimeUnit.SECONDS;
+    protected long eagerErrorCooldown = 60;
+    protected TimeUnit eagerErrorCooldownUnit = TimeUnit.SECONDS;
 
     // health indicator support
     protected boolean health = true;
@@ -137,7 +139,7 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
     }
 
     /**
-     * Configure the cooldown after a failed preemptive refresh. Does not delay blocking cache reloads.
+     * Configure the traffic-triggered cooldown after a failed preemptive refresh. Does not delay blocking cache reloads.
      *
      * @param cooldown cooldown duration; zero disables it
      * @param unit cooldown unit
@@ -147,6 +149,20 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
     public B preemptiveErrorCooldown(long cooldown, TimeUnit unit) {
         this.preemptiveErrorCooldown = cooldown;
         this.preemptiveErrorCooldownUnit = unit;
+        return (B) this;
+    }
+
+    /**
+     * Configure the eager cooldown after a failed preemptive refresh. Does not delay blocking cache reloads.
+     *
+     * @param cooldown cooldown duration; scheduled retries wait at least one second
+     * @param unit cooldown unit
+     * @return the builder
+     */
+    @SuppressWarnings("unchecked")
+    public B eagerErrorCooldown(long cooldown, TimeUnit unit) {
+        this.eagerErrorCooldown = cooldown;
+        this.eagerErrorCooldownUnit = unit;
         return (B) this;
     }
 
@@ -173,7 +189,7 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
         }
         if (preemptiveRefresh) {
             provider = new PreemptiveCachedAccessTokenProvider(provider, minimumTimeToLiveUnits, minimumTimeToLiveUnit, refreshExpiresIn, refreshExpiresUnit, preemptiveRefreshTimeUnits, preemptiveRefreshTimeUnit,
-                    preemptiveErrorCooldown, preemptiveErrorCooldownUnit, preemptiveRefreshConstraint, preemptiveRefreshEager);
+                    preemptiveErrorCooldown, preemptiveErrorCooldownUnit, eagerErrorCooldown, eagerErrorCooldownUnit, preemptiveRefreshConstraint, preemptiveRefreshEager);
         } else if (cached) {
             provider = new DefaultCachedAccessTokenProvider(provider, minimumTimeToLiveUnits, minimumTimeToLiveUnit, refreshExpiresIn, refreshExpiresUnit);
         }

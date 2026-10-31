@@ -79,14 +79,32 @@ public class JwtClientBeanDefinitionRegistryPostProcessorSupportTest {
     }
 
     @Test
-    public void shouldApplyConfiguredPreemptiveErrorCooldown() throws Exception {
-        CapturingSupport support = new CapturingSupport(bindKeycloak(
-                Map.of("entur.jwt.clients.keycloak.myClient.cache.enabled", "true", "entur.jwt.clients.keycloak.myClient.cache.refresh-timeout", "7", "entur.jwt.clients.keycloak.myClient.cache.preemptive-refresh.error-cooldown", "90")));
+    public void shouldApplyConfiguredErrorCooldowns() throws Exception {
+        CapturingSupport support = new CapturingSupport(bindKeycloak(Map.of(
+                "entur.jwt.clients.keycloak.myClient.cache.enabled", "true",
+                "entur.jwt.clients.keycloak.myClient.cache.refresh-timeout", "7",
+                "entur.jwt.clients.keycloak.myClient.cache.preemptive-refresh.error-cooldown", "90",
+                "entur.jwt.clients.keycloak.myClient.cache.preemptive-refresh.eager.enabled", "true",
+                "entur.jwt.clients.keycloak.myClient.cache.preemptive-refresh.eager.error-cooldown", "120")));
 
         try (AccessTokenProvider provider = support.newKeycloakInstance("myClient")) {
             PreemptiveCachedAccessTokenProvider cached = (PreemptiveCachedAccessTokenProvider) provider;
             assertThat(cached.getPreemptiveErrorCooldown()).isEqualTo(90_000L);
+            assertThat(cached.getEagerErrorCooldown()).isEqualTo(120_000L);
             assertThat(cached.getRefreshTimeout()).isEqualTo(7_000L);
+        }
+    }
+
+    @Test
+    public void shouldApplyDefaultErrorCooldowns() throws Exception {
+        CapturingSupport support = new CapturingSupport(bindKeycloak(Map.of(
+                "entur.jwt.clients.keycloak.myClient.cache.enabled", "true",
+                "entur.jwt.clients.keycloak.myClient.cache.preemptive-refresh.eager.enabled", "true")));
+
+        try (AccessTokenProvider provider = support.newKeycloakInstance("myClient")) {
+            PreemptiveCachedAccessTokenProvider cached = (PreemptiveCachedAccessTokenProvider) provider;
+            assertThat(cached.getPreemptiveErrorCooldown()).isEqualTo(15_000L);
+            assertThat(cached.getEagerErrorCooldown()).isEqualTo(60_000L);
         }
     }
 }

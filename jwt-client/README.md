@@ -171,9 +171,10 @@ entur:
                         refresh-timeout: 15 # timeout when refreshing the token (seconds)
                         preemptive-refresh:
                             time-to-expires: 30 # time left on token when refreshing in the background (seconds)
-                            error-cooldown: 60 # minimum wait after a failed background refresh (seconds)
+                            error-cooldown: 15 # traffic-triggered cooldown after a failed background refresh (seconds)
                             eager:
                                 enabled: false
+                                error-cooldown: 60 # scheduled retry cooldown after a failed background refresh (seconds)
 ```
 
 Note that
@@ -185,11 +186,11 @@ Note that
 SpringApplication.run(MyApplication.class, args).start();
 ```
 
-A failed preemptive refresh starts a `cache.preemptive-refresh.error-cooldown` (default 60 seconds), measured from completion of the failed attempt. Both eager and traffic-triggered background refreshes respect it. Eager retries run after this cooldown, even without incoming requests; closing the provider cancels pending retries.
+A failed preemptive refresh starts two independent cooldowns, measured from completion of the failed attempt. Traffic-triggered background refreshes use `cache.preemptive-refresh.error-cooldown` (default 15 seconds). Scheduled eager refreshes use `cache.preemptive-refresh.eager.error-cooldown` (default 60 seconds), even without incoming requests; closing the provider cancels pending retries.
 
-Blocking reloads when the cached token is unusable, and the optional immediate `retrying` wrapper, are not delayed by this setting. Setting the cooldown to zero disables the preemptive cooldown; scheduled eager retries still wait at least one second to avoid a tight retry loop. This setting is independent of `cache.refresh-timeout`.
+Blocking reloads when the cached token is unusable, and the optional immediate `retrying` wrapper, are not delayed by either setting. Setting a cooldown to zero disables its gate; scheduled eager retries still wait at least one second to avoid a tight retry loop. Both settings are independent of `cache.refresh-timeout`.
 
-An expired replacement returned during a foreground reload is rejected, but eager recovery remains scheduled after the error cooldown, with a one-second minimum. A still-valid replacement whose next eager-refresh deadline has already passed is logged and stops eager scheduling; later traffic or a health-triggered reload can restart it.
+An expired replacement returned during a foreground reload is rejected, but eager recovery remains scheduled after the eager error cooldown, with a one-second minimum. A still-valid replacement whose next eager-refresh deadline has already passed is logged and stops eager scheduling; later traffic or a health-triggered reload can restart it.
 
 #### Aggressive prefetching
 Those wanting to preemptivly refresh tokens long before they expire, i.e. to always have some minutes (or hours) left on tokens in case of authorization server downtime, 
