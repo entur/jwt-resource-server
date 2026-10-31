@@ -51,13 +51,14 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         super.setUp();
         provider = new PreemptiveCachedAccessTokenProvider(fallback, 10, TimeUnit.SECONDS, 15, TimeUnit.SECONDS, 15, TimeUnit.SECONDS, 0, false);
     }
-
+    
     @AfterEach
     public void shutdown() throws Exception {
-        if (provider != null) {
+        if(provider != null) {
             provider.close();
         }
     }
+    
 
     @Test
     public void shouldUseFallbackWhenNotCached() throws Exception {
@@ -211,15 +212,15 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
             helper.close();
         }
     }
-
+    
     @Test
     public void shouldSchedulePreemptivelyRefresh() throws Exception {
-        long minimumTimeToLive = 1000;
+        long minimumTimeToLive = 1000; 
         long refreshTimeout = 150;
         long preemptiveRefresh = 1500;
-
+        
         long validFor = 2000;
-
+        
         long now = System.currentTimeMillis();
 
         fallback = mock(AccessTokenProvider.class);
@@ -234,17 +235,17 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         // first access-token
         assertThat(provider.getAccessToken(false)).isSameInstanceAs(accessToken);
         verify(fallback, only()).getAccessToken(false);
-
+        
         ScheduledFuture<?> eagerOnJwkListCacheItem = provider.getEagerScheduledFuture();
         assertNotNull(eagerOnJwkListCacheItem);
-
+        
         long left = eagerOnJwkListCacheItem.getDelay(TimeUnit.MILLISECONDS);
         long skew = System.currentTimeMillis() - now;
         long limit = validFor - preemptiveRefresh - refreshTimeout;
 
         Truth.assertThat(left).isAtMost(limit);
         Truth.assertThat(left).isAtLeast(limit - skew - 1);
-
+        
         // sleep and check that keys were actually updated
         Thread.sleep(left + Math.min(25, 4 * skew));
 
@@ -257,7 +258,7 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         assertThat(provider.getAccessToken(false)).isSameInstanceAs(refreshedAccessToken);
         verify(fallback, times(2)).getAccessToken(false);
     }
-
+    
     @Test
     public void shouldRetryFailedEagerRefreshUntilItSucceedsWithoutRequests() throws Exception {
         TestPreemptiveProvider timed = newEagerProvider(directExecutor());
@@ -516,16 +517,16 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
 
     @Test
     public void shouldConstrainPreemptivelyRefreshCache() throws Exception {
-        long minimumTimeToLive = 1000;
+        long minimumTimeToLive = 1000; 
         long refreshTimeout = 150;
         long preemptiveRefresh = 8000; // refresh after just 2000 ms
-
+        
         long validFor = 10000;
-
+        
         long now = System.currentTimeMillis();
 
         int percent = 50; // should limit refresh to 5000ms
-
+        
         fallback = mock(AccessTokenProvider.class);
         accessToken = new AccessToken("a.b.c", "bearer", now + validFor);
         provider = new PreemptiveCachedAccessTokenProvider(fallback, minimumTimeToLive, refreshTimeout, preemptiveRefresh, percent, true);
@@ -541,6 +542,6 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
 
         Truth.assertThat(refreshable).isAtMost(constraintsInMillis + skew);
         Truth.assertThat(refreshable).isAtLeast(constraintsInMillis - skew);
-    }
-
+    }    
+    
 }

@@ -30,7 +30,7 @@ public class AccessTokenProviderBuilderTest {
 
         assertThat(accessTokenProviders.get(0)).isInstanceOf(DefaultCachedAccessTokenProvider.class);
         assertThat(accessTokenProviders.get(1)).isInstanceOf(AccessTokenProvider.class);
-
+        
         assertFalse(provider.supportsHealth());
     }
 
