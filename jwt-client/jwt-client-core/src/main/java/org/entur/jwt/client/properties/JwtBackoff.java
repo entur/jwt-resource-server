@@ -1,12 +1,12 @@
 package org.entur.jwt.client.properties;
 
 /** Failed HTTP token-request backoff, independent of the cache configuration. */
-public class JwtRetryAfter {
+public class JwtBackoff {
 
     private long fallbackDelay = 15;
 
     /** Create backoff configuration with a 15-second fallback. */
-    public JwtRetryAfter() {
+    public JwtBackoff() {
     }
 
     /**
