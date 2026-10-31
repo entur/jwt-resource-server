@@ -1,5 +1,6 @@
 package org.entur.jwt.spring;
 
+import com.nimbusds.jose.JOSEObjectType;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.KeySourceException;
@@ -9,21 +10,26 @@ import com.nimbusds.jose.jwk.JWKSelector;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.OctetSequenceKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier;
+import com.nimbusds.jose.proc.JWSKeySelector;
 import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import com.nimbusds.jwt.proc.BadJWTException;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtReactiveAuthenticationManager;
+import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
@@ -39,6 +45,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -65,6 +72,7 @@ class ReactiveJwtMonoConverterTest {
         private volatile JWKSet refreshed;
         private volatile CountDownLatch blocked;
         private volatile KeySourceException failure;
+        private volatile Error error;
 
         private final List<Thread> threads = new CopyOnWriteArrayList<>();
         private final AtomicInteger active = new AtomicInteger();
@@ -82,6 +90,9 @@ class ReactiveJwtMonoConverterTest {
                 CountDownLatch latch = blocked;
                 if (latch != null && !latch.await(10, TimeUnit.SECONDS)) {
                     throw new IllegalStateException();
+                }
+                if (error != null) {
+                    throw error;
                 }
                 if (failure != null) {
                     throw failure;
@@ -226,6 +237,89 @@ class ReactiveJwtMonoConverterTest {
         source.failure = null;
         assertThat(authenticate(manager, token(key)).block(Duration.ofSeconds(10)).isAuthenticated()).isTrue();
         assertThat(source.threads).hasSize(4);
+    }
+
+    @Test
+    void shouldFailRequestsWaitingForLookupWhenSchedulerRejects() throws Exception {
+        CountDownLatch scheduling = new CountDownLatch(1);
+        CountDownLatch rejected = new CountDownLatch(1);
+        Scheduler rejecting = new Scheduler() {
+            @Override
+            public Disposable schedule(Runnable task) {
+                scheduling.countDown();
+                try {
+                    rejected.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                throw new RejectedExecutionException("Rejected");
+            }
+
+            @Override
+            public Worker createWorker() {
+                throw new UnsupportedOperationException();
+            }
+        };
+        ReactiveJwtMonoConverter converter = new ReactiveJwtMonoConverter(processor(), selector(), rejecting);
+        SignedJWT jwt = SignedJWT.parse(token(key));
+
+        // the first request starts the lookup, and blocks in the scheduler
+        CompletableFuture<JWTClaimsSet> first = new CompletableFuture<>();
+        Thread thread = new Thread(() -> converter.convert(jwt).subscribe(first::complete, first::completeExceptionally));
+        thread.start();
+        assertThat(scheduling.await(10, TimeUnit.SECONDS)).isTrue();
+
+        // the second request waits for that lookup
+        CompletableFuture<JWTClaimsSet> second = converter.convert(jwt).toFuture();
+        rejected.countDown();
+
+        assertThatThrownBy(() -> first.get(5, TimeUnit.SECONDS)).hasCauseInstanceOf(JwtException.class);
+        assertThatThrownBy(() -> second.get(5, TimeUnit.SECONDS)).hasCauseInstanceOf(JwtException.class);
+        thread.join();
+    }
+
+    @Test
+    void shouldFailAndRecoverWhenLookupThrowsError() throws Exception {
+        JwtReactiveAuthenticationManager manager = manager(new ReactiveJwtMonoConverter(processor(), selector(), jwtScheduler));
+        source.error = new AssertionError("Unexpected");
+
+        // do not wait for this lookup forever
+        assertThatThrownBy(() -> authenticate(manager, token(key)).block(Duration.ofSeconds(5))).isInstanceOf(AuthenticationServiceException.class);
+
+        source.error = null;
+        assertThat(authenticate(manager, token(key)).block(Duration.ofSeconds(5)).isAuthenticated()).isTrue();
+    }
+
+    @Test
+    void shouldNotModifyJwtProcessor() {
+        DefaultJWTProcessor<SecurityContext> processor = processor();
+        JWSKeySelector<SecurityContext> original = (header, context) -> List.of();
+        processor.setJWSKeySelector(original);
+
+        new ReactiveJwtMonoConverter(processor, selector(), jwtScheduler);
+
+        assertThat(processor.getJWSKeySelector()).isSameAs(original);
+    }
+
+    @Test
+    void shouldUseClaimsVerifierOfJwtProcessor() {
+        DefaultJWTProcessor<SecurityContext> processor = processor();
+        processor.setJWTClaimsSetVerifier((claims, context) -> {
+            throw new BadJWTException("Rejected");
+        });
+        JwtReactiveAuthenticationManager manager = manager(new ReactiveJwtMonoConverter(processor, selector(), jwtScheduler));
+
+        assertThatThrownBy(() -> authenticate(manager, token(key)).block(Duration.ofSeconds(10))).isInstanceOf(InvalidBearerTokenException.class);
+    }
+
+    @Test
+    void shouldUseTypeVerifierOfJwtProcessor() {
+        DefaultJWTProcessor<SecurityContext> processor = processor();
+        processor.setJWSTypeVerifier(new DefaultJOSEObjectTypeVerifier<>(new JOSEObjectType("at+jwt")));
+        JwtReactiveAuthenticationManager manager = manager(new ReactiveJwtMonoConverter(processor, selector(), jwtScheduler));
+
+        // the token has no type
+        assertThatThrownBy(() -> authenticate(manager, token(key)).block(Duration.ofSeconds(10))).isInstanceOf(InvalidBearerTokenException.class);
     }
 
     private void awaitLookups(int count) throws InterruptedException {

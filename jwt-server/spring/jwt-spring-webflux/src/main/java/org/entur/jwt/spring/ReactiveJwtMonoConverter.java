@@ -18,6 +18,7 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.JwtException;
+import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Scheduler;
@@ -47,7 +48,8 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
 
     private static final JWKSelector ALL_KEYS = new JWKSelector(new JWKMatcher.Builder().build());
 
-    private final DefaultJWTProcessor<SecurityContext> jwtProcessor;
+    // not the processor given to the constructor, as the JWS key selector is replaced
+    private final DefaultJWTProcessor<SecurityContext> processor = new DefaultJWTProcessor<>();
     private final JWSVerificationKeySelector<SecurityContext> selector;
     private final Scheduler scheduler;
 
@@ -62,21 +64,23 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
     }
 
     /**
-     * Construct new instance. Note that the JWS key selector of the JWT processor is replaced, so that the keys are
-     * selected from the keys looked up from the JWK source of the given selector.
+     * Construct new instance. The given JWT processor is not modified; its JWS type verifier, JWS verifier factory and claims verifier
+     * are copied to an internal processor, which selects the keys from the keys looked up from the JWK source of the given selector.
      *
-     * @param jwtProcessor JWT processor
+     * @param jwtProcessor JWT processor, for the configuration of the verification
      * @param selector key selector, for the JWK source and the allowed algorithms
      * @param scheduler scheduler for looking up the keys
      */
 
     public ReactiveJwtMonoConverter(DefaultJWTProcessor<SecurityContext> jwtProcessor, JWSVerificationKeySelector selector, Scheduler scheduler) {
-        this.jwtProcessor = jwtProcessor;
         this.selector = selector;
         this.scheduler = scheduler;
 
+        this.processor.setJWSTypeVerifier(jwtProcessor.getJWSTypeVerifier());
+        this.processor.setJWSVerifierFactory(jwtProcessor.getJWSVerifierFactory());
+        this.processor.setJWTClaimsSetVerifier(jwtProcessor.getJWTClaimsSetVerifier());
         // select from the keys of a lookup (passed as the security context), so that processing never blocks
-        jwtProcessor.setJWSKeySelector((header, context) -> {
+        processor.setJWSKeySelector((header, context) -> {
             if (!this.selector.isAllowed(header.getAlgorithm())) {
                 return List.of();
             }
@@ -123,8 +127,9 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
         try {
             scheduler.schedule(() -> lookup(header, sink));
         } catch (RejectedExecutionException e) {
+            // also for requests which are already waiting for this lookup
             complete(sink);
-            return Mono.error(new JwtException("Unable to look up keys", e));
+            sink.tryEmitError(new JwtException("Unable to look up keys", e));
         }
         return sink.asMono();
     }
@@ -133,9 +138,11 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
         Keys result;
         try {
             result = getKeys(header);
-        } catch (Exception e) {
+        } catch (Throwable e) {
+            // always complete the lookup, so that later requests do not wait for a lookup which never finishes
             complete(sink);
             sink.tryEmitError(e instanceof RuntimeException r ? r : new JwtException("Failed to validate the token", e));
+            Exceptions.throwIfJvmFatal(e);
             return;
         }
         this.keys = result;
@@ -171,7 +178,7 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
 
     private JWTClaimsSet createClaimsSet(JWT parsedToken, Keys keys) {
         try {
-            return jwtProcessor.process(parsedToken, keys);
+            return processor.process(parsedToken, keys);
         } catch (BadJOSEException ex) {
             throw new BadJwtException("Failed to validate the token", ex);
         } catch (JOSEException ex) {
