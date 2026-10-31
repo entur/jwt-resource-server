@@ -29,10 +29,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ReactiveJwtMonoConverterTest {
+class ReactiveJwtMonoConverterTest {
 
     @Test
-    public void shouldRetrieveJwksOutsideNonBlockingRequestThread() throws Exception {
+    void shouldRetrieveJwksOutsideNonBlockingRequestThread() throws Exception {
         OctetSequenceKey key = new OctetSequenceKey.Builder(new byte[32]).keyID("test-key").build();
         JWKSet keys = new JWKSet(key);
         AtomicReference<Boolean> nonBlockingKeyRetrieval = new AtomicReference<>();

@@ -29,7 +29,7 @@ class JwtProcessingSchedulerTest {
             assertThat(context).hasNotFailed();
             Scheduler jwtScheduler = context.getBean("jwtProcessingScheduler", Scheduler.class);
             assertThat(jwtScheduler).isNotSameAs(Schedulers.boundedElastic());
-            assertThat(jwtScheduler).isNotSameAs(context.getBean("applicationScheduler"));
+            assertThat(jwtScheduler).isNotSameAs(context.getBean("applicationScheduler", Scheduler.class));
             assertThat(jwtScheduler.isDisposed()).isFalse();
             scheduler.set(jwtScheduler);
         });
@@ -73,7 +73,7 @@ class JwtProcessingSchedulerTest {
     void shouldNotInterfereWithApplicationSchedulerInjection() {
         runner.withBean(SchedulerConsumer.class).run(context -> {
             assertThat(context).hasNotFailed();
-            assertThat(context.getBean(SchedulerConsumer.class).scheduler).isSameAs(context.getBean("applicationScheduler"));
+            assertThat(context.getBean(SchedulerConsumer.class).scheduler).isSameAs(context.getBean("applicationScheduler", Scheduler.class));
             assertThat(context).hasBean("jwtProcessingScheduler");
         });
     }
