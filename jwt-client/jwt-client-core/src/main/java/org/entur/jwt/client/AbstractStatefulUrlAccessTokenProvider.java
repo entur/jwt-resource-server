@@ -98,24 +98,34 @@ public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrl
 
     @Override
     public AccessToken getAccessToken(boolean forceRefresh) throws AccessTokenException {
-        return getAccessToken(System.currentTimeMillis());
+        return getAccessToken(currentTimeMillis());
     }
 
     public AccessToken getAccessToken(long time) throws AccessTokenException {
+        // Keep session selection and publication inside the same request lock.
+        return requestToken(() -> loadAccessToken(time));
+    }
+
+    private AccessToken loadAccessToken(long time) throws AccessTokenException {
         // note: force refresh is not relevant for whether to use refresh-token or not
         ClientCredentialsResponse token;
 
         RefreshToken threadSafeRefreshToken = this.refreshToken; // defensive copy
         if (threadSafeRefreshToken != null && threadSafeRefreshToken.isValid(time)) {
             try {
-                token = getToken(threadSafeRefreshToken);
+                token = requestToken(() -> getToken(threadSafeRefreshToken));
             } catch (RefreshTokenException e) {
                 // assume current session has been revoked or expired
                 // open a new session and forget about the old one
-                token = getToken();
+                this.refreshToken = null;
+                Long deadline = getRetryAfterDeadlineNanos();
+                if (deadline != null && deadline - nanoTime() > 0) {
+                    throw new AccessTokenRetryAfterException("Refresh token rejected; new session deferred until the retry deadline", e, deadline, true);
+                }
+                token = requestToken(this::getToken);
             }
         } else {
-            token = getToken();
+            token = requestToken(this::getToken);
         }
 
         if (token.getRefreshToken() != null) {

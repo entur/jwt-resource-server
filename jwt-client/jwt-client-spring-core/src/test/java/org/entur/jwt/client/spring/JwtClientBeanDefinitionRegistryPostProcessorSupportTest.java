@@ -1,6 +1,7 @@
 package org.entur.jwt.client.spring;
 
 import org.entur.jwt.client.AccessTokenProvider;
+import org.entur.jwt.client.AbstractUrlAccessTokenProvider;
 import org.entur.jwt.client.ClientCredentials;
 import org.entur.jwt.client.PreemptiveCachedAccessTokenProvider;
 import org.entur.jwt.client.properties.JwtClientProperties;
@@ -14,6 +15,7 @@ import java.util.Map;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 public class JwtClientBeanDefinitionRegistryPostProcessorSupportTest {
 
@@ -22,6 +24,7 @@ public class JwtClientBeanDefinitionRegistryPostProcessorSupportTest {
         private URL issueUrl;
         private URL refreshUrl;
         private URL revokeUrl;
+        private AbstractUrlAccessTokenProvider httpProvider;
 
         public CapturingSupport(JwtClientProperties properties) {
             super(new Object(), properties);
@@ -30,7 +33,7 @@ public class JwtClientBeanDefinitionRegistryPostProcessorSupportTest {
         @Override
         protected AccessTokenProvider newUrlAccessTokenProvider(Object client, URL issueURL, Map<String, Object> parameters, Map<String, Object> headers, ClientCredentials credentials) {
             this.issueUrl = issueURL;
-            return mock(AccessTokenProvider.class);
+            return httpProvider = mock(AbstractUrlAccessTokenProvider.class);
         }
 
         @Override
@@ -38,7 +41,7 @@ public class JwtClientBeanDefinitionRegistryPostProcessorSupportTest {
             this.issueUrl = issueURL;
             this.refreshUrl = refreshUrl;
             this.revokeUrl = revokeUrl;
-            return mock(AccessTokenProvider.class);
+            return httpProvider = mock(AbstractUrlAccessTokenProvider.class);
         }
     }
 
@@ -105,6 +108,17 @@ public class JwtClientBeanDefinitionRegistryPostProcessorSupportTest {
             PreemptiveCachedAccessTokenProvider cached = (PreemptiveCachedAccessTokenProvider) provider;
             assertThat(cached.getPreemptiveErrorCooldown()).isEqualTo(15_000L);
             assertThat(cached.getEagerErrorCooldown()).isEqualTo(60_000L);
+        }
+    }
+
+    @Test
+    public void shouldConfigureRetryAfterWithoutCaching() throws Exception {
+        CapturingSupport support = new CapturingSupport(bindKeycloak(Map.of(
+                "entur.jwt.clients.keycloak.myClient.retry-after.enabled", "false",
+                "entur.jwt.clients.keycloak.myClient.retry-after.fallback-delay", "90")));
+        try (AccessTokenProvider provider = support.newKeycloakInstance("myClient")) {
+            verify(support.httpProvider).setRetryAfterEnabled(false);
+            verify(support.httpProvider).setRetryAfterFallbackMillis(90_000L);
         }
     }
 }

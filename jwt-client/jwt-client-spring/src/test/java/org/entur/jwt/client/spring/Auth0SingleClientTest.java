@@ -29,7 +29,8 @@ import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@TestPropertySource(locations = "/application-auth0-single.properties")
+@TestPropertySource(locations = "/application-auth0-single.properties",
+        properties = "entur.jwt.clients.auth0.myClient.retry-after.fallback-delay=0")
 @DirtiesContext(classMode = ClassMode.BEFORE_EACH_TEST_METHOD)
 public class Auth0SingleClientTest extends AbstractActuatorTest {
 
@@ -84,7 +85,7 @@ public class Auth0SingleClientTest extends AbstractActuatorTest {
     }
     
     @Test
-    public void testActuator() throws Exception {
+    public void testActuatorWithZeroFailureFallback() throws Exception {
         // down
         mockWebServer.enqueue(new MockResponse().setResponseCode(HttpStatus.NOT_FOUND.value()));
 

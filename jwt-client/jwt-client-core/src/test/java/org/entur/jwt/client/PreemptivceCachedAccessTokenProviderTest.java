@@ -27,6 +27,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.only;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegateProviderTest {
@@ -210,7 +211,9 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
 
             provider.getAccessToken(justBeforeExpiry, false); // wants to update, but can't get lock
 
-            verify(fallback, only()).getAccessToken(false);
+            verify(fallback).getAccessToken(false);
+            verify(fallback).getRetryAfterDeadlineNanos();
+            verifyNoMoreInteractions(fallback);
         } finally {
             helper.close();
         }
@@ -409,6 +412,56 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         ((Runnable) provider.getEagerScheduledFuture()).run();
         verify(fallback, times(2)).getAccessToken(false);
         timed.advance(1, TimeUnit.SECONDS);
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        assertThat(provider.getCachedAccessToken()).isSameInstanceAs(refreshedAccessToken);
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {30, 120})
+    public void shouldWaitForTheMaximumOfServerAndLocalCooldowns(long serverSeconds) throws Exception {
+        TestPreemptiveProvider timed = newEagerProvider(directExecutor());
+        provider = timed;
+        long deadline = TimeUnit.SECONDS.toNanos(serverSeconds);
+        when(fallback.getAccessToken(false)).thenReturn(accessToken).thenAnswer(invocation -> {
+            when(fallback.getRetryAfterDeadlineNanos()).thenReturn(deadline);
+            throw new AccessTokenRetryAfterException("HTTP 429", null, deadline, true);
+        }).thenReturn(refreshedAccessToken);
+
+        provider.getAccessToken(false);
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        long waitSeconds = Math.max(serverSeconds, 60);
+        assertThat(provider.getEagerScheduledFuture().getDelay(TimeUnit.SECONDS)).isEqualTo(waitSeconds);
+
+        timed.advance(15, TimeUnit.SECONDS);
+        assertThat(provider.getAccessToken(provider.getRefreshable(1), false)).isSameInstanceAs(accessToken);
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        assertThat(provider.getEagerScheduledFuture().getDelay(TimeUnit.SECONDS)).isEqualTo(waitSeconds - 15);
+        verify(fallback, times(2)).getAccessToken(false);
+
+        timed.advance(waitSeconds - 15, TimeUnit.SECONDS);
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        assertThat(provider.getCachedAccessToken()).isSameInstanceAs(refreshedAccessToken);
+        verify(fallback, times(3)).getAccessToken(false);
+    }
+
+    @Test
+    public void shouldNotStartAnotherFailureCooldownWhenAdmissionIsRejected() throws Exception {
+        TestPreemptiveProvider timed = newEagerProvider(directExecutor());
+        provider = timed;
+        long deadline = TimeUnit.SECONDS.toNanos(15);
+        when(fallback.getAccessToken(false)).thenReturn(accessToken).thenAnswer(invocation -> {
+            when(fallback.getRetryAfterDeadlineNanos()).thenReturn(deadline);
+            throw new AccessTokenRetryAfterException("Another load established backoff", null, deadline, false);
+        }).thenReturn(refreshedAccessToken);
+
+        provider.getAccessToken(false);
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        assertThat(provider.getEagerScheduledFuture().getDelay(TimeUnit.SECONDS)).isEqualTo(15L);
+        timed.advance(5, TimeUnit.SECONDS);
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        assertThat(provider.getEagerScheduledFuture().getDelay(TimeUnit.SECONDS)).isEqualTo(10L);
+        verify(fallback, times(2)).getAccessToken(false);
+        timed.advance(10, TimeUnit.SECONDS);
         ((Runnable) provider.getEagerScheduledFuture()).run();
         assertThat(provider.getCachedAccessToken()).isSameInstanceAs(refreshedAccessToken);
     }

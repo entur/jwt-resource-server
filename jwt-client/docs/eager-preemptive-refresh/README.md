@@ -16,7 +16,7 @@ cache:
       error-cooldown: 60
 ```
 
-Both cooldown values are in seconds. The builder equivalents are `preemptiveErrorCooldown(...)` and `eagerErrorCooldown(...)`; eager scheduling is enabled by `preemptiveCacheRefresh(timeout, unit, constraint, true)`.
+Both cooldown values are in seconds. The builder equivalents are `preemptiveErrorCooldown(...)` and `eagerErrorCooldown(...)`; eager scheduling is enabled by `preemptiveCacheRefresh(timeout, unit, constraint, true)`. The independent `retry-after` configuration sits beside `cache`; by default HTTP failures establish a server-directed deadline or a 15-second fallback.
 
 ## 1. Startup: a first load is still required
 
@@ -27,7 +27,7 @@ flowchart TD
     New["Construct eager provider<br/>Empty cache, no refresh timer"] --> Trigger["First token request or warmup"]
     Trigger --> Load["Blocking initial load"]
     Load -->|Provider throws before returning a token| Empty["Cache stays empty<br/>No eager retry timer exists"]
-    Empty --> Later["A later request or warmup must retry"]
+    Empty --> Later["A later request or warmup must retry<br/>HTTP backoff still applies"]
     Later --> Load
     Load -->|Token returned| Cache["Install cache entry"]
     Cache --> Schedule["Schedule using its current usability<br/>and refresh deadline"]
@@ -94,7 +94,7 @@ sequenceDiagram
     Cache->>Timer: Replace previous timer with B's next callback
 ```
 
-The scheduled callback uses an **internal force flag** to bypass the ordinary refresh-window check. It does not bypass closed-state checks, cache identity, in-flight deduplication, the dispatch lock, or the eager error cooldown. It is different from public `getAccessToken(true)`, which takes the foreground blocking path without either background-error gate.
+The scheduled callback uses an **internal force flag** to bypass the ordinary refresh-window check. It does not bypass closed-state checks, cache identity, in-flight deduplication, the dispatch lock, the eager error cooldown, or the HTTP retry deadline. It is different from public `getAccessToken(true)`, which takes the foreground blocking path without either background-error gate, but still obeys HTTP backoff.
 
 A timer is a scheduling target, not a guarantee that HTTP work starts at that instant: executor availability, lock contention, and an active cooldown can delay the actual load.
 
@@ -122,15 +122,15 @@ Replacement validation still uses the time captured for the calling load. Schedu
 
 ## 4. Failed refresh: automatic retry after one minute
 
-A failed background attempt records one failure-completion timestamp, shared by both gates:
+A failed background attempt records one failure-completion timestamp, shared by both local gates. A rejection by an already-active HTTP deadline is not a new failure and does not restart either gate.
 
-| Next trigger | Default gate since the latest background failure |
+| Next trigger | Default local gate since the latest background failure |
 |--------------|-------------------------------------------------|
 | Ordinary traffic, with a usable refreshable cache | 15 seconds (`preemptiveErrorCooldown`) |
 | Scheduled eager callback | 60 seconds (`eagerErrorCooldown`) |
-| Empty/unusable cache or public forced reload | Neither gate applies; use the blocking path |
+| Empty/unusable cache or public forced reload | Neither local gate applies; active HTTP backoff rejects the required load without HTTP |
 
-The following assumes no other call replaces the cache or fails during the wait:
+All three paths also honor the source deadline `H`. The scheduled retry is due at `D = max(F + 60 seconds, H)`, not the sum of both delays. The following assumes no other call replaces the cache or fails during the wait:
 
 ```mermaid
 sequenceDiagram
@@ -140,12 +140,12 @@ sequenceDiagram
     participant Provider as Underlying provider chain
     Timer->>Cache: Eager callback for A
     Cache->>Worker: Submit attempt
-    Worker->>Provider: Logical load, including optional immediate retry
+    Worker->>Provider: Logical load, respecting HTTP backoff
     Provider-->>Worker: Attempt fails
     Worker->>Cache: Log failure, clear own marker, record completion F
-    Cache->>Timer: Schedule recovery after 60 seconds
+    Cache->>Timer: Schedule recovery at D
     Note over Timer,Provider: No traffic is needed for this retry
-    Timer->>Cache: Callback at or after F plus 60 seconds
+    Timer->>Cache: Callback at or after D
     Cache->>Worker: Retry if still current and eligible
     Worker->>Provider: Next logical load
     alt Success
@@ -154,7 +154,7 @@ sequenceDiagram
     else Failure
         Provider-->>Worker: Exception
         Worker->>Cache: Record a new failure completion time
-        Cache->>Timer: Schedule recovery after another 60 seconds
+        Cache->>Timer: Schedule after local cooldown and new HTTP deadline
     end
 ```
 
@@ -162,33 +162,41 @@ These are recurring attempts, not a maximum retry count or exponential backoff. 
 
 The retry delay starts after the complete failed attempt, including any immediate retry, finishes. A slow HTTP failure therefore adds its own duration before the 60-second wait begins.
 
-Cooldowns protect background attempts, **not all HTTP calls**. A cache may become unusable during the eager wait; a subsequent request then performs a blocking reload rather than serving an unusable token or waiting for the eager timer. With no traffic, the timer still retries even if its cache entry has become unusable.
+Local cooldowns protect background attempts; **source backoff protects required HTTP loads too**. If the cache becomes unusable before `H`, callers fail without HTTP rather than receive an unusable token or sleep until recovery. After `H`, foreground loads may proceed without waiting for the eager timer's local cooldown. With no traffic, the timer still retries once both deadlines permit, even if the cached token has become unusable.
 
 ## 5. Traffic during an eager cooldown, and early timers
 
-The two gates use independent durations, but the same latest background-failure timestamp. They are not independent failure histories.
+The two local gates use independent durations, but the same latest background-failure timestamp. They are not independent failure histories. `H` below is the separate HTTP retry deadline, if any.
 
 ```mermaid
 flowchart TD
-    F["Background attempt fails at F"] --> Early["Before F plus 15 seconds<br/>Usable-cache traffic does not refresh"]
-    Early --> Traffic["At or after F plus 15 seconds<br/>Refreshable, usable-cache traffic may try"]
-    Traffic -->|No eligible traffic| Eager["Eager retry targets F plus 60 seconds"]
-    Traffic -->|Traffic attempt fails at G| Restart["Both gates now measure from G<br/>Replace eager retry with G plus 60 seconds"]
+    F["Background attempt fails at F"] --> Early["Before max of F plus 15 seconds and H<br/>Usable-cache traffic does not refresh"]
+    Early --> Traffic["After both traffic and HTTP gates open<br/>Refreshable, usable-cache traffic may try"]
+    Traffic -->|No eligible traffic| Eager["Eager retry targets max of<br/>F plus 60 seconds and H"]
+    Traffic -->|Traffic attempt fails at G| Restart["Local gates now measure from G<br/>Combine with updated HTTP deadline"]
     Traffic -->|Traffic attempt succeeds| New["Install replacement and compute its next timer<br/>Existing failure timestamp is retained"]
     New --> Callback["Next eager callback runs"]
-    Callback --> Gate{"Eager cooldown since latest<br/>background failure still active?"}
-    Gate -->|Yes| Defer["Re-arm for remaining cooldown<br/>Round delay up to milliseconds"]
+    Callback --> Gate{"Eager cooldown or HTTP<br/>retry deadline still active?"}
+    Gate -->|Yes| Defer["Re-arm for maximum remaining delay<br/>Round up to milliseconds"]
     Gate -->|No| Attempt["Attempt refresh if other guards allow"]
     Defer --> Callback
     Eager --> Callback
     Restart --> Callback
 ```
 
-An early timer must not consume the only retry: it schedules another callback for the remaining eager cooldown. This also handles a successful traffic or foreground replacement whose normal eager target falls inside an already-active cooldown. Success does not start a new error cooldown, but it does not clear the old one.
+An early timer must not consume the only retry: it re-arms for the maximum remaining eager cooldown and HTTP delay, without fetching or extending either deadline. This also handles a successful replacement whose normal eager target falls inside an already-active cooldown. Success does not start a new error cooldown, but it does not clear the old one.
 
-Custom durations can reverse the order: an eager cooldown shorter than the traffic cooldown allows scheduled work first. Setting either value to zero disables only that trigger's gate. Eager error retries still use `max(eagerErrorCooldown, 1 second)`, even when the eager value is zero; setting the traffic value to zero does not remove that timer floor.
+Custom durations can reverse the order: an eager cooldown shorter than the traffic cooldown allows scheduled work first, once HTTP backoff also permits it. Setting either value to zero disables only that trigger's local gate. Eager error recovery retains a one-second floor even with a zero eager cooldown; a longer HTTP deadline still wins.
 
-The [immediate retry wrapper](../preemptive-refresh/README.md#7-immediate-retry-is-separate-from-cache-cooldowns) is unchanged. HTTP 429/503 can still be retried immediately inside one logical attempt, and **`Retry-After` is not enforced**.
+The [immediate retry wrapper](../preemptive-refresh/README.md#7-immediate-retry-is-separate-from-cache-cooldowns) suppresses retries during an active HTTP deadline. With default cooldowns and negligible failure-processing time:
+
+| HTTP failure delay | Earliest traffic-triggered background retry | Eager recovery target |
+|--------------------|---------------------------------------------|-----------------------|
+| Missing/malformed header: fallback 15 seconds | 15 seconds | 60 seconds |
+| `Retry-After: 30` | 30 seconds | 60 seconds |
+| `Retry-After: 120` | 120 seconds | 120 seconds |
+
+If another load establishes backoff after a worker passed its eligibility check, the source rejects that worker before HTTP. Its `requestAttempted=false` exception re-arms eager recovery for the remaining wait without adding a new 60-second cooldown.
 
 ## 6. Successful replacements that do not extend expiry
 
@@ -279,11 +287,11 @@ flowchart TD
     Current -->|No| Stale["Ignore obsolete A<br/>Leave B's timer alone"]
     Current -->|Yes| Inflight{"Refresh for A already in flight?"}
     Inflight -->|Yes| Existing["Do not duplicate that attempt"]
-    Inflight -->|No| Cooldown{"Eager error cooldown active?"}
-    Cooldown -->|Yes| Rearm["Re-arm for the remaining cooldown"]
+    Inflight -->|No| Cooldown{"Eager cooldown or HTTP<br/>retry deadline active?"}
+    Cooldown -->|Yes| Rearm["Re-arm for maximum remaining delay"]
     Cooldown -->|No| Lock{"Dispatch lock available?"}
     Lock -->|No| Skip["Do not submit competing work"]
-    Lock -->|Yes| Recheck["Recheck identity, in-flight marker,<br/>and cooldown before submission"]
+    Lock -->|Yes| Recheck["Recheck identity, in-flight marker,<br/>and both time gates before submission"]
 ```
 
 Inside the worker, the shared reload lock prevents concurrent provider loads. If a foreground reload wins the race and installs B, A's worker can reuse B. A failed old attempt cannot clear a newer attempt's marker or replace a newer usable entry's timer. A failure can, however, update the shared cooldown timestamp even when a newer usable entry already exists.
@@ -313,6 +321,12 @@ sequenceDiagram
 Scheduling and closing share the same monitor, so an in-flight completion cannot establish another eager timer after close. Closing also closes the underlying provider; a caller-supplied worker executor is shut down only when its ownership flag requests that. Do not use the provider after close or assume cancellation can stop every in-flight HTTP operation.
 
 These recovery rules handle failures inside a dispatched token-load attempt; they are not a replacement for functioning executors. Worker submission rejection is outside that attempt's error handler. A scheduled callback logs such an exception, but does not automatically re-arm itself for it. Scheduler submission failure can also interrupt replacement processing without guaranteeing a new future. Keep externally managed executors alive for the provider's lifetime.
+
+## 10. Authorization-server load protection
+
+The single scheduled callback, cache-entry identity checks, shared reload lock, and HTTP-provider admission gate prevent duplicate token loads for one provider. Failed HTTP requests establish a fixed server-directed delay or the default 15-second fallback; eager recovery additionally observes its local 60-second cooldown. Ordinary requests can keep using a valid token throughout that wait, but cannot bypass an active source deadline by forcing a reload.
+
+Protection is per HTTP-provider instance, not per URL, JVM, or cluster. Reuse providers rather than creating one per request. Successful requests do not start backoff, including successful overdue replacements described in section 6; short normal deadlines, forced/uncached successes, explicit opt-out, and independent replicas are not globally rate-limited. See the first guide's [limits](../preemptive-refresh/README.md#9-authorization-server-load-protection-and-its-limits).
 
 ## Implementation references
 

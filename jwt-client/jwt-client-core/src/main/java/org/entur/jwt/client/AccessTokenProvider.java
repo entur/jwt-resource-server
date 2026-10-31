@@ -12,4 +12,14 @@ public interface AccessTokenProvider extends Closeable, AccessTokenHealthProvide
 
     AccessToken getAccessToken(boolean forceRefresh) throws AccessTokenException;
 
+    /**
+     * Expose retry backoff to decorators without starting a request.
+     *
+     * @return JVM-local retry deadline in the {@link System#nanoTime()} time domain,
+     *         or null if none is known; a deadline may already have elapsed
+     */
+    default Long getRetryAfterDeadlineNanos() {
+        return null;
+    }
+
 }

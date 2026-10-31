@@ -15,6 +15,9 @@ public abstract class AbstractJwtClientProperties {
 
     protected boolean retrying = true;
 
+    /** HTTP failure backoff, independent of cache settings. */
+    protected JwtRetryAfter retryAfter = new JwtRetryAfter();
+
     protected boolean health = true;
 
     protected JwtClientCache cache = new JwtClientCache();
@@ -89,6 +92,22 @@ public abstract class AbstractJwtClientProperties {
 
     public boolean isRetrying() {
         return retrying;
+    }
+
+    /**
+     * Read the HTTP failure backoff configuration.
+     * @return HTTP failure backoff configuration
+     */
+    public JwtRetryAfter getRetryAfter() {
+        return retryAfter;
+    }
+
+    /**
+     * Configure HTTP failure backoff independently of caching.
+     * @param retryAfter HTTP failure backoff configuration
+     */
+    public void setRetryAfter(JwtRetryAfter retryAfter) {
+        this.retryAfter = retryAfter;
     }
 
     public void setEnabled(boolean enabled) {
