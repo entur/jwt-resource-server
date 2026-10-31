@@ -10,10 +10,14 @@ import com.nimbusds.jose.jwk.JWKSelector;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.OctetSequenceKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.jwk.source.JWKSourceBuilder;
+import com.nimbusds.jose.jwk.source.RateLimitReachedException;
 import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier;
 import com.nimbusds.jose.proc.JWSKeySelector;
 import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jose.util.Resource;
+import com.nimbusds.jose.util.ResourceRetriever;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.nimbusds.jwt.proc.BadJWTException;
@@ -34,6 +38,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
+import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -63,7 +68,7 @@ class ReactiveJwtMonoConverterTest {
     private final RecordingJwkSource source = new RecordingJwkSource(new JWKSet(key));
 
     private Scheduler requestScheduler;
-    private Scheduler jwtScheduler;
+    private CountingScheduler jwtScheduler;
 
     // i.e. like a caching JWK source: blocks while refreshing, and refreshes if no key matches
     private static class RecordingJwkSource implements JWKSource<SecurityContext> {
@@ -73,6 +78,9 @@ class ReactiveJwtMonoConverterTest {
         private volatile CountDownLatch blocked;
         private volatile KeySourceException failure;
         private volatile Error error;
+        private volatile KeySourceException refreshFailure;
+        private volatile CountDownLatch refreshing;
+        private volatile CountDownLatch refreshBlocked;
 
         private final List<Thread> threads = new CopyOnWriteArrayList<>();
         private final AtomicInteger active = new AtomicInteger();
@@ -98,9 +106,23 @@ class ReactiveJwtMonoConverterTest {
                     throw failure;
                 }
                 List<JWK> selected = selector.select(keys);
-                if (selected.isEmpty() && refreshed != null) {
-                    keys = refreshed;
-                    selected = selector.select(keys);
+                if (selected.isEmpty()) {
+                    // i.e. refresh, as no key matches
+                    CountDownLatch entered = refreshing;
+                    if (entered != null) {
+                        entered.countDown();
+                    }
+                    CountDownLatch refreshLatch = refreshBlocked;
+                    if (refreshLatch != null && !refreshLatch.await(10, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException();
+                    }
+                    if (refreshFailure != null) {
+                        throw refreshFailure;
+                    }
+                    if (refreshed != null) {
+                        keys = refreshed;
+                        selected = selector.select(keys);
+                    }
                 }
                 return selected;
             } catch (InterruptedException e) {
@@ -109,6 +131,38 @@ class ReactiveJwtMonoConverterTest {
             } finally {
                 active.decrementAndGet();
             }
+        }
+    }
+
+    // counts the lookups which have finished, i.e. also published their result
+    private static class CountingScheduler implements Scheduler {
+
+        private final Scheduler delegate;
+        private final AtomicInteger finished = new AtomicInteger();
+
+        CountingScheduler(Scheduler delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public Disposable schedule(Runnable task) {
+            return delegate.schedule(() -> {
+                try {
+                    task.run();
+                } finally {
+                    finished.incrementAndGet();
+                }
+            });
+        }
+
+        @Override
+        public Worker createWorker() {
+            return delegate.createWorker();
+        }
+
+        @Override
+        public void dispose() {
+            delegate.dispose();
         }
     }
 
@@ -133,7 +187,7 @@ class ReactiveJwtMonoConverterTest {
     @BeforeEach
     void setUp() {
         requestScheduler = Schedulers.newSingle("test-request");
-        jwtScheduler = Schedulers.newBoundedElastic(4, 100, "test-jwt");
+        jwtScheduler = new CountingScheduler(Schedulers.newBoundedElastic(4, 100, "test-jwt"));
     }
 
     @AfterEach
@@ -209,8 +263,8 @@ class ReactiveJwtMonoConverterTest {
         int lookups = source.threads.size();
 
         assertThatThrownBy(() -> authenticate(manager, token(otherKey)).block(Duration.ofSeconds(10))).isInstanceOf(InvalidBearerTokenException.class);
-        // the keys, the unknown key (so that the JWK source refreshes) and then the keys again, but no further lookups
-        assertThat(source.threads).hasSize(lookups + 3);
+        // the keys and the unknown key (so that the JWK source refreshes), but no further lookups
+        assertThat(source.threads).hasSize(lookups + 2);
     }
 
     @Test
@@ -225,7 +279,7 @@ class ReactiveJwtMonoConverterTest {
         AtomicReference<Thread> authenticationThread = new AtomicReference<>();
         authenticate(manager, token(key)).doOnNext(a -> authenticationThread.set(Thread.currentThread())).block(Duration.ofSeconds(10));
         assertThat(authenticationThread.get().getName()).startsWith("test-request");
-        awaitLookups(2);
+        awaitFinishedLookups(2);
 
         // the keys looked up in the background have expired, so wait for a lookup
         converter.advance(11, TimeUnit.SECONDS);
@@ -293,14 +347,157 @@ class ReactiveJwtMonoConverterTest {
     @Test
     void shouldNotModifyJwtProcessor() {
         DefaultJWTProcessor<SecurityContext> processor = processor();
-        JWSKeySelector<SecurityContext> original = (header, context) -> List.of();
-        processor.setJWSKeySelector(original);
+        JWSVerificationKeySelector<SecurityContext> selector = selector();
+        processor.setJWSKeySelector(selector);
 
-        new ReactiveJwtMonoConverter(processor, selector(), jwtScheduler);
+        new ReactiveJwtMonoConverter(processor, selector, jwtScheduler);
 
-        assertThat(processor.getJWSKeySelector()).isSameAs(original);
+        assertThat(processor.getJWSKeySelector()).isSameAs(selector);
     }
 
+    @Test
+    void shouldRejectCustomKeySelectorOfJwtProcessor() {
+        DefaultJWTProcessor<SecurityContext> processor = processor();
+        JWSKeySelector<SecurityContext> custom = (header, context) -> List.of();
+        processor.setJWSKeySelector(custom);
+        JWSVerificationKeySelector<SecurityContext> selector = selector();
+
+        assertThatThrownBy(() -> new ReactiveJwtMonoConverter(processor, selector, jwtScheduler)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void shouldRejectCustomKeySelector() {
+        // i.e. which might not select all keys of the JWK source
+        JWSVerificationKeySelector<SecurityContext> custom = new JWSVerificationKeySelector<>(JWSAlgorithm.HS256, source) {
+        };
+
+        assertThatThrownBy(() -> new ReactiveJwtMonoConverter(processor(), custom, jwtScheduler)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void shouldCallVerifiersWithoutSecurityContext() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        AtomicInteger contexts = new AtomicInteger();
+        DefaultJWTProcessor<SecurityContext> processor = processor();
+        processor.setJWSTypeVerifier((type, context) -> {
+            calls.incrementAndGet();
+            if (context != null) {
+                contexts.incrementAndGet();
+            }
+        });
+        processor.setJWTClaimsSetVerifier((claims, context) -> {
+            calls.incrementAndGet();
+            if (context != null) {
+                contexts.incrementAndGet();
+            }
+        });
+        JwtReactiveAuthenticationManager manager = manager(new ReactiveJwtMonoConverter(processor, selector(), jwtScheduler));
+
+        assertThat(authenticate(manager, token(key)).block(Duration.ofSeconds(10)).isAuthenticated()).isTrue();
+
+        assertThat(calls.get()).isEqualTo(2);
+        assertThat(contexts.get()).isZero();
+    }
+
+    @Test
+    void shouldFailWhenRefreshOfUnknownKeyFails() throws Exception {
+        JwtReactiveAuthenticationManager manager = manager(new ReactiveJwtMonoConverter(processor(), selector(), jwtScheduler));
+        source.refreshFailure = new KeySourceException("Unavailable");
+
+        // not hidden as an invalid token
+        assertThatThrownBy(() -> authenticate(manager, token(otherKey)).block(Duration.ofSeconds(10))).isInstanceOf(AuthenticationServiceException.class);
+    }
+
+    @Test
+    void shouldUseKeysAtHandWhenRefreshIsRateLimited() throws Exception {
+        JwtReactiveAuthenticationManager manager = manager(new ReactiveJwtMonoConverter(processor(), selector(), jwtScheduler));
+        source.refreshFailure = new RateLimitReachedException();
+
+        assertThat(authenticate(manager, token(key)).block(Duration.ofSeconds(10)).isAuthenticated()).isTrue();
+        assertThatThrownBy(() -> authenticate(manager, token(otherKey)).block(Duration.ofSeconds(10))).isInstanceOf(InvalidBearerTokenException.class);
+    }
+
+    @Test
+    void shouldNotWaitForRefreshOfUnknownKeyWhenKeyIsKnown() throws Exception {
+        TimedConverter converter = new TimedConverter(processor(), selector(), jwtScheduler);
+        JwtReactiveAuthenticationManager manager = manager(converter);
+        authenticate(manager, token(key)).block(Duration.ofSeconds(10));
+        converter.advance(11, TimeUnit.SECONDS);
+
+        CountDownLatch refreshing = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        source.refreshed = new JWKSet(List.of(key, otherKey));
+        source.refreshing = refreshing;
+        source.refreshBlocked = release;
+        try {
+            // the keys have expired, so this looks up the keys, and then blocks while refreshing for the unknown key
+            CompletableFuture<Authentication> unknown = authenticate(manager, token(otherKey)).toFuture();
+            assertThat(refreshing.await(10, TimeUnit.SECONDS)).isTrue();
+
+            // the keys which were just looked up are used for known keys
+            assertThat(authenticate(manager, token(key)).block(Duration.ofSeconds(5)).isAuthenticated()).isTrue();
+
+            release.countDown();
+            assertThat(unknown.get(10, TimeUnit.SECONDS).isAuthenticated()).isTrue();
+        } finally {
+            release.countDown();
+        }
+    }
+
+    private static final String JWKS_URL = "https://issuer.example/jwks.json";
+
+    // i.e. like the JWK source of the starter, with or without a cache
+    private JWKSource<SecurityContext> urlJwkSource(AtomicInteger fetches, AtomicReference<JWKSet> keys, boolean cache) throws Exception {
+        ResourceRetriever retriever = url -> {
+            fetches.incrementAndGet();
+            return new Resource(keys.get().toString(false), "application/json");
+        };
+        JWKSourceBuilder<SecurityContext> builder = JWKSourceBuilder.<SecurityContext>create(URI.create(JWKS_URL).toURL(), retriever)
+                .rateLimited(false).retrying(false).outageTolerant(false).refreshAheadCache(false);
+        // a time to live which is shorter than that of the converter
+        return (cache ? builder.cache(2000, 1000) : builder.cache(false)).build();
+    }
+
+    @Test
+    void shouldNotReuseKeysOfJwkSourceWithoutCache() throws Exception {
+        AtomicInteger fetches = new AtomicInteger();
+        AtomicReference<JWKSet> keys = new AtomicReference<>(new JWKSet(key));
+        JWSVerificationKeySelector<SecurityContext> selector = new JWSVerificationKeySelector<>(JWSAlgorithm.HS256, urlJwkSource(fetches, keys, false));
+        JwtReactiveAuthenticationManager manager = manager(new ReactiveJwtMonoConverter(processor(), selector, jwtScheduler));
+
+        authenticate(manager, token(key)).block(Duration.ofSeconds(10));
+        authenticate(manager, token(key)).block(Duration.ofSeconds(10));
+
+        // the keys of a lookup are only shared by concurrent requests, so that removed keys are not used
+        assertThat(fetches.get()).isEqualTo(2);
+
+        // i.e. key rotation, with one fetch for the unknown key
+        keys.set(new JWKSet(List.of(key, otherKey)));
+        assertThat(authenticate(manager, token(otherKey)).block(Duration.ofSeconds(10)).isAuthenticated()).isTrue();
+        assertThat(fetches.get()).isEqualTo(3);
+    }
+
+    @Test
+    void shouldNotReuseKeysLongerThanCacheOfJwkSource() throws Exception {
+        AtomicInteger fetches = new AtomicInteger();
+        AtomicReference<JWKSet> keys = new AtomicReference<>(new JWKSet(key));
+        JWSVerificationKeySelector<SecurityContext> selector = new JWSVerificationKeySelector<>(JWSAlgorithm.HS256, urlJwkSource(fetches, keys, true));
+        TimedConverter converter = new TimedConverter(processor(), selector, jwtScheduler);
+        JwtReactiveAuthenticationManager manager = manager(converter);
+        authenticate(manager, token(key)).block(Duration.ofSeconds(10));
+        int lookups = jwtScheduler.finished.get();
+
+        // within the time to live of the cache, verify on the calling thread (the converter lasts for 10 seconds)
+        AtomicReference<Thread> authenticationThread = new AtomicReference<>();
+        authenticate(manager, token(key)).doOnNext(a -> authenticationThread.set(Thread.currentThread())).block(Duration.ofSeconds(10));
+        assertThat(authenticationThread.get().getName()).startsWith("test-request");
+
+        // after the time to live of the cache, look up the keys
+        converter.advance(3, TimeUnit.SECONDS);
+        authenticate(manager, token(key)).doOnNext(a -> authenticationThread.set(Thread.currentThread())).block(Duration.ofSeconds(10));
+        assertThat(authenticationThread.get().getName()).doesNotStartWith("test-request");
+        assertThat(jwtScheduler.finished.get()).isGreaterThan(lookups);
+    }
     @Test
     void shouldUseClaimsVerifierOfJwtProcessor() {
         DefaultJWTProcessor<SecurityContext> processor = processor();
@@ -322,11 +519,13 @@ class ReactiveJwtMonoConverterTest {
         assertThatThrownBy(() -> authenticate(manager, token(key)).block(Duration.ofSeconds(10))).isInstanceOf(InvalidBearerTokenException.class);
     }
 
-    private void awaitLookups(int count) throws InterruptedException {
+    // wait for the lookup to publish its result, so that it does not interfere with what follows
+    private void awaitFinishedLookups(int count) throws InterruptedException {
         long deadline = System.currentTimeMillis() + 10_000;
-        while (source.threads.size() < count && System.currentTimeMillis() < deadline) {
+        while (jwtScheduler.finished.get() < count && System.currentTimeMillis() < deadline) {
             Thread.sleep(10);
         }
+        assertThat(jwtScheduler.finished.get()).isEqualTo(count);
         assertThat(source.threads).hasSize(count);
     }
 
