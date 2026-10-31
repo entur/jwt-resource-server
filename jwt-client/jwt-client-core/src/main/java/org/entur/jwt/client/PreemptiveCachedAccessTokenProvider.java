@@ -232,7 +232,12 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
         }
         // Start before the refresh window to avoid competing with request-triggered
         // refreshes.
-        schedulePreemptiveRefresh(cache, cache.getRefreshable() - refreshTimeout - time);
+        long delay = cache.getRefreshable() - refreshTimeout - time;
+        if (delay <= 0) {
+            // Retry before cache expiry when possible, without a tight loop.
+            delay = Math.max(1000L, (cache.getExpires() - time) / 2);
+        }
+        schedulePreemptiveRefresh(cache, delay);
     }
 
     private synchronized void schedulePreemptiveRefresh(AccessTokenCacheItem cache, long delay) {
@@ -243,27 +248,27 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
             eagerScheduledFuture.cancel(false);
         }
         
-        if(delay > 0) {
-            this.eagerScheduledFuture = scheduledExecutorService.schedule(() -> {
-                try {
-                    // so will only refresh if this specific cache entry still is the current one
-                    preemptiveRefresh(System.currentTimeMillis(), cache, true);
-                } catch (Exception e) {
-                    LOGGER.warn("Scheduled eager access-token refresh failed", e);
-                }
-            }, delay, TimeUnit.MILLISECONDS);
-            
-            if(LOGGER.isDebugEnabled()) LOGGER.debug("Scheduled next eager access-token refresh in " + getTime(delay));
-        } else {
-            LOGGER.warn("Not scheduling eager access-token refresh because the next refresh deadline has already passed");
-        }
+        this.eagerScheduledFuture = scheduleEagerRefresh(() -> {
+            try {
+                // so will only refresh if this specific cache entry still is the current one
+                preemptiveRefresh(currentTimeMillis(), cache, true);
+            } catch (Exception e) {
+                LOGGER.warn("Scheduled eager access-token refresh failed", e);
+            }
+        }, delay);
+
+        if(LOGGER.isDebugEnabled()) LOGGER.debug("Scheduled next eager access-token refresh in " + getTime(delay));
     }    
+
+    protected ScheduledFuture<?> scheduleEagerRefresh(Runnable refresh, long delay) {
+        return scheduledExecutorService.schedule(refresh, delay, TimeUnit.MILLISECONDS);
+    }
     
     @Override
     protected AccessTokenCacheItem loadAccessTokenFromProvider(long time) throws AccessTokenException {
         AccessTokenCacheItem item = super.loadAccessTokenFromProvider(time);
         if(scheduledExecutorService != null) {
-            schedulePreemptiveRefresh(time, item);
+            schedulePreemptiveRefresh(currentTimeMillis(), item);
         }
         
         return item;
@@ -317,7 +322,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
                          if (scheduledExecutorService != null) {
                              // A rejected replacement may already have overwritten the old cache.
                              AccessTokenCacheItem current = this.cache;
-                             if (current == cache || !current.isValid(System.currentTimeMillis())) {
+                             if (current == cache || !current.isValid(currentTimeMillis())) {
                                  schedulePreemptiveRefresh(current, Math.max(eagerErrorCooldown, 1000L));
                              }
                          }
@@ -348,6 +353,10 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
 
     protected long nanoTime() {
         return System.nanoTime();
+    }
+
+    protected long currentTimeMillis() {
+        return System.currentTimeMillis();
     }
 
     /**
