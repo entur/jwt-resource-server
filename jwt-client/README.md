@@ -171,6 +171,7 @@ entur:
                         refresh-timeout: 15 # timeout when refreshing the token (seconds)
                         preemptive-refresh:
                             time-to-expires: 30 # time left on token when refreshing in the background (seconds)
+                            error-cooldown: 60 # minimum wait after a failed background refresh (seconds)
                             eager:
                                 enabled: false
 ```
@@ -184,7 +185,9 @@ Note that
 SpringApplication.run(MyApplication.class, args).start();
 ```
 
-A failed eager refresh is retried after `cache.refresh-timeout` seconds (at least one second), even without incoming requests. Closing the provider cancels pending retries.
+A failed preemptive refresh starts a `cache.preemptive-refresh.error-cooldown` (default 60 seconds), measured from completion of the failed attempt. Both eager and traffic-triggered background refreshes respect it. Eager retries run after this cooldown, even without incoming requests; closing the provider cancels pending retries.
+
+Blocking reloads when the cached token is unusable, and the optional immediate `retrying` wrapper, are not delayed by this setting. Setting the cooldown to zero disables the preemptive cooldown; scheduled eager retries still wait at least one second to avoid a tight retry loop. This setting is independent of `cache.refresh-timeout`.
 
 #### Aggressive prefetching
 Those wanting to preemptivly refresh tokens long before they expire, i.e. to always have some minutes (or hours) left on tokens in case of authorization server downtime, 

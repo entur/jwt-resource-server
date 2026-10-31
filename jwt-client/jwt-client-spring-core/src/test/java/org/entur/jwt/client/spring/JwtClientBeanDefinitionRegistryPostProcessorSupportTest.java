@@ -2,6 +2,7 @@ package org.entur.jwt.client.spring;
 
 import org.entur.jwt.client.AccessTokenProvider;
 import org.entur.jwt.client.ClientCredentials;
+import org.entur.jwt.client.PreemptiveCachedAccessTokenProvider;
 import org.entur.jwt.client.properties.JwtClientProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.bind.Binder;
@@ -75,5 +76,17 @@ public class JwtClientBeanDefinitionRegistryPostProcessorSupportTest {
         assertThat(support.issueUrl.toString()).isEqualTo("https://entur.org/auth/realms/myTenant/protocol/openid-connect/token");
         assertThat(support.refreshUrl.toString()).isEqualTo("https://entur.org/auth/realms/myTenant/protocol/openid-connect/token");
         assertThat(support.revokeUrl.toString()).isEqualTo("https://entur.org/auth/realms/myTenant/protocol/openid-connect/logout");
+    }
+
+    @Test
+    public void shouldApplyConfiguredPreemptiveErrorCooldown() throws Exception {
+        CapturingSupport support = new CapturingSupport(bindKeycloak(
+                Map.of("entur.jwt.clients.keycloak.myClient.cache.enabled", "true", "entur.jwt.clients.keycloak.myClient.cache.refresh-timeout", "7", "entur.jwt.clients.keycloak.myClient.cache.preemptive-refresh.error-cooldown", "90")));
+
+        try (AccessTokenProvider provider = support.newKeycloakInstance("myClient")) {
+            PreemptiveCachedAccessTokenProvider cached = (PreemptiveCachedAccessTokenProvider) provider;
+            assertThat(cached.getPreemptiveErrorCooldown()).isEqualTo(90_000L);
+            assertThat(cached.getRefreshTimeout()).isEqualTo(7_000L);
+        }
     }
 }

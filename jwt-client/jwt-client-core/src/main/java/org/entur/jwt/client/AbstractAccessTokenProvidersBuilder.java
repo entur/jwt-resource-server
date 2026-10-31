@@ -28,6 +28,8 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
     protected long preemptiveRefreshTimeUnits = 30;
     protected boolean preemptiveRefreshEager = false;
     protected int preemptiveRefreshConstraint = 25;
+    protected long preemptiveErrorCooldown = 60;
+    protected TimeUnit preemptiveErrorCooldownUnit = TimeUnit.SECONDS;
 
     // health indicator support
     protected boolean health = true;
@@ -134,6 +136,20 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
         return (B) this;
     }
 
+    /**
+     * Configure the cooldown after a failed preemptive refresh. Does not delay blocking cache reloads.
+     *
+     * @param cooldown cooldown duration; zero disables it
+     * @param unit cooldown unit
+     * @return the builder
+     */
+    @SuppressWarnings("unchecked")
+    public B preemptiveErrorCooldown(long cooldown, TimeUnit unit) {
+        this.preemptiveErrorCooldown = cooldown;
+        this.preemptiveErrorCooldownUnit = unit;
+        return (B) this;
+    }
+
     public AccessTokenProvider build() {
         return build(this.accessTokenProvider);
     }
@@ -156,7 +172,8 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
             }
         }
         if (preemptiveRefresh) {
-            provider = new PreemptiveCachedAccessTokenProvider(provider, minimumTimeToLiveUnits, minimumTimeToLiveUnit, refreshExpiresIn, refreshExpiresUnit, preemptiveRefreshTimeUnits, preemptiveRefreshTimeUnit, preemptiveRefreshConstraint, preemptiveRefreshEager);
+            provider = new PreemptiveCachedAccessTokenProvider(provider, minimumTimeToLiveUnits, minimumTimeToLiveUnit, refreshExpiresIn, refreshExpiresUnit, preemptiveRefreshTimeUnits, preemptiveRefreshTimeUnit,
+                    preemptiveErrorCooldown, preemptiveErrorCooldownUnit, preemptiveRefreshConstraint, preemptiveRefreshEager);
         } else if (cached) {
             provider = new DefaultCachedAccessTokenProvider(provider, minimumTimeToLiveUnits, minimumTimeToLiveUnit, refreshExpiresIn, refreshExpiresUnit);
         }

@@ -30,7 +30,7 @@ public class AccessTokenProviderBuilderTest {
 
         assertThat(accessTokenProviders.get(0)).isInstanceOf(DefaultCachedAccessTokenProvider.class);
         assertThat(accessTokenProviders.get(1)).isInstanceOf(AccessTokenProvider.class);
-        
+
         assertFalse(provider.supportsHealth());
     }
 
@@ -110,6 +110,15 @@ public class AccessTokenProviderBuilderTest {
         assertThat(accessTokenProviders.get(0)).isInstanceOf(PreemptiveCachedAccessTokenProvider.class);
         assertThat(accessTokenProviders.get(1)).isInstanceOf(RetryingAccessTokenProvider.class);
         assertThat(accessTokenProviders.get(2)).isInstanceOf(AccessTokenProvider.class);
+    }
+
+    @Test
+    public void shouldConfigurePreemptiveErrorCooldownIndependentlyOfRefreshTimeout() throws Exception {
+        try (AccessTokenProvider provider = builder().cached(10, TimeUnit.SECONDS, 15, TimeUnit.SECONDS).preemptiveErrorCooldown(2, TimeUnit.MINUTES).build()) {
+            PreemptiveCachedAccessTokenProvider cached = (PreemptiveCachedAccessTokenProvider) provider;
+            assertThat(cached.getPreemptiveErrorCooldown()).isEqualTo(120_000L);
+            assertThat(cached.getRefreshTimeout()).isEqualTo(15_000L);
+        }
     }
 
     @Test
