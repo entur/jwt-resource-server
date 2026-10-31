@@ -16,6 +16,7 @@ import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtReactiveAuthenticationManager;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
@@ -35,8 +36,10 @@ public class ReactiveJwtMonoConverterTest {
         OctetSequenceKey key = new OctetSequenceKey.Builder(new byte[32]).keyID("test-key").build();
         JWKSet keys = new JWKSet(key);
         AtomicReference<Boolean> nonBlockingKeyRetrieval = new AtomicReference<>();
+        AtomicReference<Thread> keyRetrievalThread = new AtomicReference<>();
         JWKSource<SecurityContext> source = (selector, context) -> {
             nonBlockingKeyRetrieval.set(Schedulers.isInNonBlockingThread());
+            keyRetrievalThread.set(Thread.currentThread());
             return selector.select(keys);
         };
         JWSVerificationKeySelector<SecurityContext> selector = new JWSVerificationKeySelector<>(JWSAlgorithm.HS256, source);
@@ -44,26 +47,31 @@ public class ReactiveJwtMonoConverterTest {
         processor.setJWSKeySelector(selector);
         processor.setJWTClaimsSetVerifier((claims, context) -> {
         });
-        NimbusReactiveJwtDecoder decoder = new NimbusReactiveJwtDecoder(new ReactiveJwtMonoConverter(processor, selector));
         Instant now = Instant.parse("2026-01-01T00:00:00Z");
-        JwtTimestampValidator validator = new JwtTimestampValidator(Duration.ZERO);
-        validator.setClock(Clock.fixed(now, ZoneOffset.UTC));
-        decoder.setJwtValidator(validator);
-        JwtReactiveAuthenticationManager manager = new JwtReactiveAuthenticationManager(decoder);
 
         SignedJWT token = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.HS256).keyID(key.getKeyID()).build(),
                 new JWTClaimsSet.Builder().subject("test-subject").issueTime(Date.from(now.minusSeconds(1))).expirationTime(Date.from(now.plusSeconds(60))).build());
         token.sign(new MACSigner(key));
 
         Scheduler requestScheduler = Schedulers.newSingle("test-request");
+        Scheduler jwtScheduler = Schedulers.newBoundedElastic(1, 100, "test-jwt");
         try {
+            NimbusReactiveJwtDecoder decoder = new NimbusReactiveJwtDecoder(new ReactiveJwtMonoConverter(processor, selector, jwtScheduler));
+            JwtTimestampValidator validator = new JwtTimestampValidator(Duration.ZERO);
+            validator.setClock(Clock.fixed(now, ZoneOffset.UTC));
+            decoder.setJwtValidator(validator);
+            JwtReactiveAuthenticationManager manager = new JwtReactiveAuthenticationManager(decoder);
+            Thread jwtThread = Mono.fromCallable(Thread::currentThread).subscribeOn(jwtScheduler).block(Duration.ofSeconds(10));
+
             var authentication = manager.authenticate(new BearerTokenAuthenticationToken(token.serialize())).subscribeOn(requestScheduler).block(Duration.ofSeconds(10));
 
             assertThat(authentication.getName()).isEqualTo("test-subject");
             assertThat(authentication.isAuthenticated()).isTrue();
             assertThat(nonBlockingKeyRetrieval.get()).isFalse();
+            assertThat(keyRetrievalThread.get()).isSameAs(jwtThread);
         } finally {
             requestScheduler.dispose();
+            jwtScheduler.dispose();
         }
     }
 }
