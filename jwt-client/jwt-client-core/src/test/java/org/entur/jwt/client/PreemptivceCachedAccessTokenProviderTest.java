@@ -380,7 +380,7 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
 
     @ParameterizedTest
     @ValueSource(longs = { 0, -60_000 })
-    public void shouldContinueEagerRefreshWhenReplacementDoesNotExtendExpiry(long expiryChange) throws Exception {
+    public void shouldContinueEagerRefreshBeforeDeadlineWhenReplacementDoesNotExtendExpiry(long expiryChange) throws Exception {
         provider = newEagerProvider(directExecutor());
         AccessToken replacement = new AccessToken("replacement", "bearer", accessToken.getExpires() + expiryChange);
         when(fallback.getAccessToken(false)).thenReturn(accessToken).thenReturn(replacement).thenReturn(refreshedAccessToken);
@@ -395,6 +395,27 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
             assertThat(provider.getEagerScheduledFuture().isDone()).isFalse();
         }
         verify(fallback, times(3)).getAccessToken(false);
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = { 0, -60_000 })
+    public void shouldStopEagerRefreshWhenValidReplacementHasNoFutureRefreshDeadline(long expiryChange) throws Exception {
+        provider = newEagerProvider(directExecutor());
+        AccessToken replacement = new AccessToken("replacement", "bearer", accessToken.getExpires() + expiryChange);
+        when(fallback.getAccessToken(false)).thenReturn(accessToken).thenReturn(replacement);
+
+        provider.getAccessToken(false);
+        AccessTokenCacheItem current = provider.getCache();
+        ScheduledFuture<?> scheduled = provider.getEagerScheduledFuture();
+        long deadline = current.getRefreshable() - provider.getRefreshTimeout();
+
+        // Simulate the timer at its deadline rather than running it early.
+        provider.preemptiveRefresh(deadline, current, true);
+
+        assertThat(provider.getCachedAccessToken(deadline)).isSameInstanceAs(replacement);
+        assertThat(provider.getEagerScheduledFuture()).isSameInstanceAs(scheduled);
+        assertThat(scheduled.isCancelled()).isTrue();
+        verify(fallback, times(2)).getAccessToken(false);
     }
 
     @Test
@@ -458,6 +479,34 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         ((Runnable) retry).run();
 
         assertThat(provider.getCachedAccessToken()).isSameInstanceAs(refreshedAccessToken);
+    }
+
+    @Test
+    public void shouldKeepEagerRetryAfterForegroundRefreshReturnsExpiredReplacement() throws Exception {
+        TestPreemptiveProvider timed = newEagerProvider(directExecutor());
+        provider = timed;
+        AccessToken expired = new AccessToken("expired", "bearer", accessToken.getExpires() - TimeUnit.HOURS.toMillis(1));
+        when(fallback.getAccessToken(false)).thenReturn(accessToken).thenThrow(new AccessTokenUnavailableException("Temporary outage")).thenReturn(expired).thenReturn(refreshedAccessToken);
+
+        provider.getAccessToken(false);
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        ScheduledFuture<?> previousRetry = provider.getEagerScheduledFuture();
+
+        assertThrows(AccessTokenUnavailableException.class, () -> provider.getAccessToken(true));
+
+        ScheduledFuture<?> retry = provider.getEagerScheduledFuture();
+        assertThat(previousRetry.isCancelled()).isTrue();
+        assertThat(retry).isNotSameInstanceAs(previousRetry);
+        assertThat(retry.isDone()).isFalse();
+        assertThat(retry.getDelay(TimeUnit.MILLISECONDS)).isGreaterThan(0L);
+        assertThat(retry.getDelay(TimeUnit.MILLISECONDS)).isAtMost(provider.getPreemptiveErrorCooldown());
+
+        timed.advance(60, TimeUnit.SECONDS);
+        ((Runnable) retry).run();
+
+        assertThat(provider.getCachedAccessToken()).isSameInstanceAs(refreshedAccessToken);
+        assertThat(provider.getEagerScheduledFuture().isDone()).isFalse();
+        verify(fallback, times(4)).getAccessToken(false);
     }
 
     @Test

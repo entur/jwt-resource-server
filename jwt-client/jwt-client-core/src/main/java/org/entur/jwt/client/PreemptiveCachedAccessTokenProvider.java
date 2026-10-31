@@ -212,6 +212,10 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
     }
 
     protected void schedulePreemptiveRefresh(long time, AccessTokenCacheItem cache) {
+        if (!cache.isValid(time)) {
+            schedulePreemptiveRefresh(cache, Math.max(preemptiveErrorCooldown, 1000L));
+            return;
+        }
         // Start before the refresh window to avoid competing with request-triggered
         // refreshes.
         schedulePreemptiveRefresh(cache, cache.getRefreshable() - refreshTimeout - time);
@@ -237,7 +241,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
             
             if(LOGGER.isDebugEnabled()) LOGGER.debug("Scheduled next eager access-token refresh in " + getTime(delay));
         } else {
-            LOGGER.warn("Not scheduling eager access-token refresh");
+            LOGGER.warn("Not scheduling eager access-token refresh because the next refresh deadline has already passed");
         }
     }    
     

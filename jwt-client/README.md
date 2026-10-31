@@ -189,6 +189,8 @@ A failed preemptive refresh starts a `cache.preemptive-refresh.error-cooldown` (
 
 Blocking reloads when the cached token is unusable, and the optional immediate `retrying` wrapper, are not delayed by this setting. Setting the cooldown to zero disables the preemptive cooldown; scheduled eager retries still wait at least one second to avoid a tight retry loop. This setting is independent of `cache.refresh-timeout`.
 
+An expired replacement returned during a foreground reload is rejected, but eager recovery remains scheduled after the error cooldown, with a one-second minimum. A still-valid replacement whose next eager-refresh deadline has already passed is logged and stops eager scheduling; later traffic or a health-triggered reload can restart it.
+
 #### Aggressive prefetching
 Those wanting to preemptivly refresh tokens long before they expire, i.e. to always have some minutes (or hours) left on tokens in case of authorization server downtime, 
 please note the preemptive-refresh parameter `expires-constraint`, which limits how often preemptive refresh happens (as a percentage of the access-token lifetime). 
