@@ -5,9 +5,11 @@ import com.nimbusds.jose.proc.SecurityContext;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ReactiveWebApplicationContextRunner;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -55,5 +57,35 @@ class JwtProcessingSchedulerTest {
         } finally {
             scheduler.dispose();
         }
+    }
+
+    // i.e. an application component which injects its scheduler by type
+    static class SchedulerConsumer {
+
+        private final Scheduler scheduler;
+
+        SchedulerConsumer(Scheduler scheduler) {
+            this.scheduler = scheduler;
+        }
+    }
+
+    @Test
+    void shouldNotInterfereWithApplicationSchedulerInjection() {
+        runner.withBean(SchedulerConsumer.class).run(context -> {
+            assertThat(context).hasNotFailed();
+            assertThat(context.getBean(SchedulerConsumer.class).scheduler).isSameAs(context.getBean("applicationScheduler"));
+            assertThat(context).hasBean("jwtProcessingScheduler");
+        });
+    }
+
+    @Test
+    void shouldUseDaemonThreads() {
+        runner.run(context -> {
+            Scheduler jwtScheduler = context.getBean("jwtProcessingScheduler", Scheduler.class);
+
+            // so that a stalled JWK request does not keep the JVM alive
+            Thread thread = Mono.fromCallable(Thread::currentThread).subscribeOn(jwtScheduler).block(Duration.ofSeconds(10));
+            assertThat(thread.isDaemon()).isTrue();
+        });
     }
 }

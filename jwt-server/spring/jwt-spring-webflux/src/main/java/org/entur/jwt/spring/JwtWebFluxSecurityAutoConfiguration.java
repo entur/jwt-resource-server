@@ -91,11 +91,13 @@ public class JwtWebFluxSecurityAutoConfiguration {
         return new DefaultJwtAuthorityEnricher();
     }
 
-    @Bean(destroyMethod = "dispose")
+    // not a default candidate, so that it does not interfere with Scheduler injection points of the application.
+    // Daemon threads (with the default time to live of 60 seconds), so that a stalled JWK request does not keep the JVM alive.
+    @Bean(destroyMethod = "dispose", defaultCandidate = false)
     @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
     @ConditionalOnMissingBean(name = "jwtProcessingScheduler")
     public Scheduler jwtProcessingScheduler() {
-        return Schedulers.newBoundedElastic(Schedulers.DEFAULT_BOUNDED_ELASTIC_SIZE, Schedulers.DEFAULT_BOUNDED_ELASTIC_QUEUESIZE, "jwt-processing");
+        return Schedulers.newBoundedElastic(Schedulers.DEFAULT_BOUNDED_ELASTIC_SIZE, Schedulers.DEFAULT_BOUNDED_ELASTIC_QUEUESIZE, "jwt-processing", 60, true);
     }
 
     @Configuration

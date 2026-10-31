@@ -37,6 +37,7 @@ public class ReactiveJwtMonoConverterTest {
         JWKSet keys = new JWKSet(key);
         AtomicReference<Boolean> nonBlockingKeyRetrieval = new AtomicReference<>();
         AtomicReference<Thread> keyRetrievalThread = new AtomicReference<>();
+        AtomicReference<Thread> authenticationThread = new AtomicReference<>();
         JWKSource<SecurityContext> source = (selector, context) -> {
             nonBlockingKeyRetrieval.set(Schedulers.isInNonBlockingThread());
             keyRetrievalThread.set(Thread.currentThread());
@@ -63,12 +64,17 @@ public class ReactiveJwtMonoConverterTest {
             JwtReactiveAuthenticationManager manager = new JwtReactiveAuthenticationManager(decoder);
             Thread jwtThread = Mono.fromCallable(Thread::currentThread).subscribeOn(jwtScheduler).block(Duration.ofSeconds(10));
 
-            var authentication = manager.authenticate(new BearerTokenAuthenticationToken(token.serialize())).subscribeOn(requestScheduler).block(Duration.ofSeconds(10));
+            var authentication = manager.authenticate(new BearerTokenAuthenticationToken(token.serialize()))
+                    .doOnNext(a -> authenticationThread.set(Thread.currentThread()))
+                    .subscribeOn(requestScheduler).block(Duration.ofSeconds(10));
 
             assertThat(authentication.getName()).isEqualTo("test-subject");
             assertThat(authentication.isAuthenticated()).isTrue();
             assertThat(nonBlockingKeyRetrieval.get()).isFalse();
             assertThat(keyRetrievalThread.get()).isSameAs(jwtThread);
+            // the request continues on a non-blocking thread, not on the JWT processing scheduler
+            assertThat(authenticationThread.get()).isNotSameAs(jwtThread);
+            assertThat(Schedulers.isNonBlockingThread(authenticationThread.get())).isTrue();
         } finally {
             requestScheduler.dispose();
             jwtScheduler.dispose();

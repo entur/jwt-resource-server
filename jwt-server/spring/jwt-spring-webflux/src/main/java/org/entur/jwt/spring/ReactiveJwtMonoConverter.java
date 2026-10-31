@@ -44,7 +44,10 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
 
         return Mono.fromCallable(() -> {
             return createClaimsSet(source, null);
-        }).subscribeOn(scheduler);
+        }).subscribeOn(scheduler)
+                // continue (i.e. the security filter chain and the request handling) on a non-blocking thread,
+                // so that the scheduler is only used for JWT processing
+                .publishOn(Schedulers.parallel());
     }
 
     private <C extends SecurityContext> JWTClaimsSet createClaimsSet(JWT parsedToken, C context) {

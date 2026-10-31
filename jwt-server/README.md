@@ -427,9 +427,9 @@ entur:
 For WebFlux, startup fails if the application defines its own `SecurityWebFilterChain` bean, as it would shadow the chain of this starter. To use a custom chain, set `entur.jwt.enabled=false` and `entur.authorization.enabled=false`, or exclude the starter's chain using `@SpringBootApplication(exclude = {JwtWebFluxSecurityAutoConfiguration.class})`.
 
 ## WebFlux JWT scheduling
-The WebFlux starter runs JWT processing, including blocking JWK lookups, on a dedicated bounded-elastic `jwtProcessingScheduler` bean shared by its tenants. Spring disposes it when the application context closes. This keeps slow JWK endpoints off both request threads and Reactor's shared bounded-elastic pool.
+The WebFlux starter runs JWT processing, including blocking JWK lookups, on a dedicated bounded-elastic `jwtProcessingScheduler` bean shared by its tenants, and then continues the request on Reactor's parallel scheduler. Spring disposes it when the application context closes; its threads are daemon threads, so a stalled JWK request does not keep the JVM alive. This keeps slow JWK endpoints off both request threads and Reactor's shared bounded-elastic pool. The bean is not a default candidate, so it does not interfere with `Scheduler` injection points of the application.
 
-To customize its capacity, provide a `Scheduler` bean named `jwtProcessingScheduler` with `@Bean(destroyMethod = "dispose")`. When constructing `ReactiveJwtMonoConverter` or `ReactiveEnturOauth2ResourceServerCustomizer` directly, use the constructor accepting a managed scheduler for the same isolation; the original constructors retain the shared scheduler for compatibility.
+To customize its capacity, provide a `Scheduler` bean named `jwtProcessingScheduler` with `@Bean(destroyMethod = "dispose", defaultCandidate = false)`. When constructing `ReactiveJwtMonoConverter` or `ReactiveEnturOauth2ResourceServerCustomizer` directly, use the constructor accepting a managed scheduler for the same isolation; the original constructors retain the shared scheduler for compatibility.
 
 ## Advanced features
 A couple of optional, opt-in performance features are available. Both default to disabled and are safe to leave off.
