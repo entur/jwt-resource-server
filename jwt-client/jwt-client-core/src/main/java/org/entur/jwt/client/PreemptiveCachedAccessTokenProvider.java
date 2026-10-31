@@ -10,6 +10,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -50,8 +51,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
     private ScheduledFuture<?> eagerScheduledFuture;
     private volatile boolean closed;
 
-    // cache expire time is used as its fingerprint
-    private volatile long cacheExpires;
+    private final AtomicReference<AccessTokenCacheItem> refreshingCache = new AtomicReference<>();
 
     /**
      * Construct new instance.
@@ -213,30 +213,26 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
             // no need to preemptively update.
             return;
         }
-        if (cacheExpires >= cache.getExpires()) {
-            // an update is in progress,
-            // no need to preemptively update.
+        if (this.cache != cache || refreshingCache.get() == cache) {
+            // Ignore obsolete entries and duplicate refreshes of the current entry.
             return;
         }
         // Try to aquire a lock to update the cache.
         if (lazyLock.tryLock()) {
             try {
                 // check again now that this thread holds the lock
-                if (cacheExpires >= cache.getExpires()) {
-                    // an update is in progress,
+                if (this.cache != cache || refreshingCache.get() == cache) {
                     return;
                 }
                 // still no update is in progress, so we start one.
-                cacheExpires = cache.getExpires();
+                refreshingCache.set(cache);
 
                 // run update in the background
                 executorService.execute(() -> {
                     try {
                         PreemptiveCachedAccessTokenProvider.super.getAccessTokenBlocking(time, cache);
-                        // so next time this method is invoked, it'll be with the updated cache item
-                        // expiry time
                     } catch (Exception e) {
-                        cacheExpires = -1L;
+                        refreshingCache.compareAndSet(cache, null);
                         LOGGER.warn("Preemptive access-token refresh failed", e);
                         if (scheduledExecutorService != null) {
                             // A rejected replacement may already have overwritten the old cache.

@@ -5,8 +5,12 @@ import org.entur.jwt.client.AbstractCachedAccessTokenProvider.AccessTokenCacheIt
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -277,6 +281,53 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         assertThat(provider.getCachedAccessToken()).isSameInstanceAs(refreshedAccessToken);
         assertThat(provider.getEagerScheduledFuture().isDone()).isFalse();
         verify(fallback, times(4)).getAccessToken(false);
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = { 0, -60_000 })
+    public void shouldContinueEagerRefreshWhenReplacementDoesNotExtendExpiry(long expiryChange) throws Exception {
+        provider = newEagerProvider(directExecutor());
+        AccessToken replacement = new AccessToken("replacement", "bearer", accessToken.getExpires() + expiryChange);
+        when(fallback.getAccessToken(false)).thenReturn(accessToken).thenReturn(replacement).thenReturn(refreshedAccessToken);
+
+        provider.getAccessToken(false);
+        for (AccessToken expected : List.of(replacement, refreshedAccessToken)) {
+            ScheduledFuture<?> scheduled = provider.getEagerScheduledFuture();
+            ((Runnable) scheduled).run();
+
+            assertThat(provider.getCachedAccessToken()).isSameInstanceAs(expected);
+            assertThat(provider.getEagerScheduledFuture()).isNotSameInstanceAs(scheduled);
+            assertThat(provider.getEagerScheduledFuture().isDone()).isFalse();
+        }
+        verify(fallback, times(3)).getAccessToken(false);
+    }
+
+    @Test
+    public void shouldIgnoreStaleAndDuplicatePreemptiveRefreshRequests() throws Exception {
+        List<Runnable> updates = new ArrayList<>();
+        ExecutorService executor = mock(ExecutorService.class);
+        doAnswer(invocation -> {
+            updates.add(invocation.getArgument(0, Runnable.class));
+            return null;
+        }).when(executor).execute(any(Runnable.class));
+        provider = newEagerProvider(executor);
+        AccessToken next = new AccessToken("next", "bearer", refreshedAccessToken.getExpires() + 60_000);
+        when(fallback.getAccessToken(false)).thenReturn(accessToken).thenReturn(refreshedAccessToken).thenReturn(next);
+
+        provider.getAccessToken(false);
+        AccessTokenCacheItem previous = provider.getCache();
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        updates.getFirst().run();
+        AccessTokenCacheItem current = provider.getCache();
+
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        provider.preemptiveRefresh(System.currentTimeMillis(), previous, true);
+        provider.preemptiveRefresh(System.currentTimeMillis(), current, true);
+
+        assertThat(updates).hasSize(2);
+        updates.get(1).run();
+        assertThat(provider.getCachedAccessToken()).isSameInstanceAs(next);
+        assertThat(provider.getEagerScheduledFuture().isDone()).isFalse();
     }
 
     @Test
