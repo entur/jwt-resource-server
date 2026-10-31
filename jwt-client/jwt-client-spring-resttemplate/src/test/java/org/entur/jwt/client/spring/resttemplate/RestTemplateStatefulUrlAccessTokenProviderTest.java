@@ -142,6 +142,26 @@ public class RestTemplateStatefulUrlAccessTokenProviderTest {
         mockServer.verify();
     }
 
+    @ParameterizedTest
+    @CsvSource({"429,false", "503,false", "429,true", "503,true"})
+    public void shouldHonorRetryAfterForIssueAndRefreshWhenTheErrorBodyIsNotAToken(int status, boolean refreshing) throws Exception {
+        restTemplate.setErrorHandler(new NoOpResponseErrorHandler());
+        if (refreshing) {
+            expect(ISSUE_URL, withSuccess(ISSUE_RESPONSE, MediaType.APPLICATION_JSON));
+        }
+        expect(refreshing ? REFRESH_URL : ISSUE_URL,
+                withStatus(HttpStatusCode.valueOf(status)).contentType(MediaType.TEXT_HTML).body("<html>busy</html>").header("Retry-After", "120"));
+        if (refreshing) {
+            provider.getAccessToken(false);
+        }
+        var original = provider.getRefreshToken();
+        AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(false));
+
+        assertThat(failure.getRetryAfterDeadlineNanos() - nowNanos).isEqualTo(TimeUnit.SECONDS.toNanos(120));
+        assertThat(provider.getRefreshToken()).isSameInstanceAs(original);
+        mockServer.verify();
+    }
+
     @Test
     @ExtendWith(OutputCaptureExtension.class)
     public void shouldAcceptHttp204WhenRevokingRefreshToken(CapturedOutput output) throws Exception {

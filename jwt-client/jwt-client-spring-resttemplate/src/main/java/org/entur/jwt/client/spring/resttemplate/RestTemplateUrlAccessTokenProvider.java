@@ -13,6 +13,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.ResponseExtractor;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -66,6 +67,21 @@ public class RestTemplateUrlAccessTokenProvider extends AbstractUrlAccessTokenPr
 
     protected final RestTemplate restTemplate;
 
+    /**
+     * Post a token request. Only a 200 response body is converted, so an unreadable error body cannot hide the headers of a 429 or 503 response.
+     *
+     * @param restTemplate rest template
+     * @param uri request URI
+     * @param request request body and headers
+     * @return the response, without a body unless the status is 200
+     */
+    protected static ResponseEntity<ClientCredentialsResponse> postTokenRequest(RestTemplate restTemplate, URI uri, HttpEntity<byte[]> request) {
+        ResponseExtractor<ResponseEntity<ClientCredentialsResponse>> extractor = restTemplate.responseEntityExtractor(ClientCredentialsResponse.class);
+        return restTemplate.execute(uri, HttpMethod.POST, restTemplate.httpEntityCallback(request, ClientCredentialsResponse.class),
+                response -> response.getStatusCode().value() == 200 ? extractor.extractData(response)
+                        : ResponseEntity.status(response.getStatusCode()).headers(response.getHeaders()).build());
+    }
+
     public RestTemplateUrlAccessTokenProvider(RestTemplate restTemplate, URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers) {
         super(issueUrl, parameters, headers); // timeouts are baked into the resttemplate
 
@@ -85,7 +101,7 @@ public class RestTemplateUrlAccessTokenProvider extends AbstractUrlAccessTokenPr
             HttpEntity<byte[]> request = new HttpEntity<>(issueBody, headers);
 
             URI uri = issueUrl.toURI();
-            ResponseEntity<ClientCredentialsResponse> response = restTemplate.exchange(uri, HttpMethod.POST, request, ClientCredentialsResponse.class);
+            ResponseEntity<ClientCredentialsResponse> response = postTokenRequest(restTemplate, uri, request);
 
             int responseCode = response.getStatusCode().value();
             if (responseCode != 200) {

@@ -160,4 +160,17 @@ public class RestTemplateUrlAccessTokenProviderTest {
         assertThat(rejected.getRetryAfterDeadlineNanos()).isEqualTo(failure.getRetryAfterDeadlineNanos());
         mockServer.verify();
     }
+
+    @ParameterizedTest
+    @CsvSource({"429,text/html,<html>busy</html>", "503,text/html,<html>busy</html>", "429,application/json,{not json", "503,application/json,{not json"})
+    public void shouldHonorRetryAfterWhenTheErrorBodyIsNotAToken(int status, String contentType, String body) {
+        restTemplate.setErrorHandler(new NoOpResponseErrorHandler());
+        mockServer.expect(requestTo(ISSUE_URL))
+                .andRespond(withStatus(HttpStatusCode.valueOf(status)).contentType(MediaType.valueOf(contentType)).body(body).header("Retry-After", "120"));
+
+        AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(false));
+
+        assertThat(failure.getRetryAfterDeadlineNanos()).isEqualTo(TimeUnit.SECONDS.toNanos(120));
+        mockServer.verify();
+    }
 }

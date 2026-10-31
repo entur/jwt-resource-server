@@ -56,7 +56,7 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
         HttpEntity<byte[]> request = new HttpEntity<>(body, headers);
 
         URI uri = url.toURI();
-        return restTemplate.exchange(uri, HttpMethod.POST, request, ClientCredentialsResponse.class);
+        return RestTemplateUrlAccessTokenProvider.postTokenRequest(restTemplate, uri, request);
     }
 
     protected StringBuilder printHeadersIfPresent(ResponseEntity<?> c, String... headerNames) {
