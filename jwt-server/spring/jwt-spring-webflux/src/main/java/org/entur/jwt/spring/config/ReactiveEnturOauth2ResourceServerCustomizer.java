@@ -25,6 +25,8 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtIss
 import org.springframework.security.oauth2.server.resource.authentication.JwtReactiveAuthenticationManager;
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 import java.util.HashMap;
 import java.util.List;
@@ -40,11 +42,21 @@ public class ReactiveEnturOauth2ResourceServerCustomizer implements Customizer<S
     private final JwtDecodeProperties properties;
     private final JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper;
     private final JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider;
+    private final Scheduler jwtProcessingScheduler;
 
     public ReactiveEnturOauth2ResourceServerCustomizer(Map<String, JWKSource> jwkSources, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators,
                                                JwtDecodeProperties properties,
                                                JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper,
                                                JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider
+                                               ) {
+        this(jwkSources, jwtAuthorityEnrichers, jwtValidators, properties, jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider, Schedulers.boundedElastic());
+    }
+
+    public ReactiveEnturOauth2ResourceServerCustomizer(Map<String, JWKSource> jwkSources, List<JwtAuthorityEnricher> jwtAuthorityEnrichers, List<OAuth2TokenValidator<Jwt>> jwtValidators,
+                                               JwtDecodeProperties properties,
+                                               JwtHeaderToIssuerMapper jwtHeaderToIssuerMapper,
+                                               JwtHeaderToIssuerMapperDecider jwtHeaderToIssuerMapperDecider,
+                                               Scheduler jwtProcessingScheduler
                                                ) {
         this.jwkSources = jwkSources;
         this.jwtAuthorityEnrichers = jwtAuthorityEnrichers;
@@ -52,6 +64,7 @@ public class ReactiveEnturOauth2ResourceServerCustomizer implements Customizer<S
         this.properties = properties;
         this.jwtHeaderToIssuerMapper = jwtHeaderToIssuerMapper;
         this.jwtHeaderToIssuerMapperDecider = jwtHeaderToIssuerMapperDecider;
+        this.jwtProcessingScheduler = jwtProcessingScheduler;
     }
 
     @Override
@@ -66,13 +79,13 @@ public class ReactiveEnturOauth2ResourceServerCustomizer implements Customizer<S
 
             JWSVerificationKeySelector verificationKeySelector = new JWSVerificationKeySelector(JWSAlgorithm.Family.SIGNATURE, jwkSource);
 
+            // the JWS key selector is set by the converter
             DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
-            jwtProcessor.setJWSKeySelector(verificationKeySelector);
             // the claims (including expiry) are validated by the JWT validators
             jwtProcessor.setJWTClaimsSetVerifier((claims, context) -> {
             });
 
-            ReactiveJwtMonoConverter reactiveConverter = new ReactiveJwtMonoConverter(jwtProcessor, verificationKeySelector);
+            ReactiveJwtMonoConverter reactiveConverter = new ReactiveJwtMonoConverter(jwtProcessor, verificationKeySelector, jwtProcessingScheduler);
 
             NimbusReactiveJwtDecoder decoder = new NimbusReactiveJwtDecoder(reactiveConverter);
 
