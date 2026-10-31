@@ -5,13 +5,14 @@ import org.entur.jwt.junit5.impl.AuthorizationServerImplementation;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class SystemPropertiesResourceServerConfigurationEnricher extends AbstractPropertiesResourceServerConfigurationEnricher {
 
-    private Set<String> propertyNames;
+    // previous values, null if the property was not set
+    private Map<String, String> previousValues;
 
     public SystemPropertiesResourceServerConfigurationEnricher() throws IOException {
         super();
@@ -19,20 +20,26 @@ public class SystemPropertiesResourceServerConfigurationEnricher extends Abstrac
 
     @Override
     public void beforeAll(List<AuthorizationServerImplementation> authorizationServers, ExtensionContext context) throws IOException {
-        Map<String, Object> properties = super.getProperties(authorizationServers);
+        Map<String, Object> properties = getProperties(authorizationServers);
 
-        propertyNames = properties.keySet();
-        for (String string : propertyNames) {
-            System.setProperty(string, properties.get(string).toString());
+        previousValues = new HashMap<>();
+        for (Map.Entry<String, Object> entry : properties.entrySet()) {
+            previousValues.put(entry.getKey(), System.getProperty(entry.getKey()));
+            System.setProperty(entry.getKey(), entry.getValue().toString());
         }
     }
 
     @Override
     public void afterAll(ExtensionContext context) throws IOException {
-        if (propertyNames != null) {
-            for (String string : propertyNames) {
-                System.clearProperty(string);
+        if (previousValues != null) {
+            for (Map.Entry<String, String> entry : previousValues.entrySet()) {
+                if (entry.getValue() == null) {
+                    System.clearProperty(entry.getKey());
+                } else {
+                    System.setProperty(entry.getKey(), entry.getValue());
+                }
             }
+            previousValues = null;
         }
     }
 

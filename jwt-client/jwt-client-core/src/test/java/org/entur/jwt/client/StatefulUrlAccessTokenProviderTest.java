@@ -1,6 +1,8 @@
 package org.entur.jwt.client;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 
 import java.io.ByteArrayInputStream;
@@ -12,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertNotNull;
@@ -25,6 +28,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class StatefulUrlAccessTokenProviderTest extends AbstractUrlAccessTokenProviderTest {
+
+    private long nowNanos;
 
     @Test
     public void shouldFailHealthCheck() throws Exception {
@@ -45,7 +50,12 @@ public class StatefulUrlAccessTokenProviderTest extends AbstractUrlAccessTokenPr
         Map<String, Object> parameters = new HashMap<>();
         parameters.put(AbstractClientCredentialsBuilder.KEY_GRANT_TYPE, AbstractClientCredentialsBuilder.KEY_CLIENT_CREDENTIALS);
 
-        return new StatefulUrlAccessTokenProvider(mockUrl, parameters, headers, 15000, 15000, mockUrl, mockUrl);
+        return new StatefulUrlAccessTokenProvider(mockUrl, parameters, headers, 15000, 15000, mockUrl, mockUrl) {
+            @Override
+            protected long nanoTime() {
+                return nowNanos;
+            }
+        };
     }
 
     @Test
@@ -70,6 +80,61 @@ public class StatefulUrlAccessTokenProviderTest extends AbstractUrlAccessTokenPr
 
         String body = output.toString();
         assertThat(body).contains(StatefulUrlAccessTokenProvider.KEY_REFRESH_TOKEN);
+    }
+
+    @Test
+    public void shouldRetainNonRotatingRefreshTokenForRefreshAndRevoke() throws Exception {
+        StatefulUrlAccessTokenProvider provider = providerForResource("/keycloakClientCredentialsResponse.json");
+        provider.getAccessToken(1000L);
+        RefreshToken refreshToken = provider.getRefreshToken();
+
+        ByteArrayOutputStream firstRefresh = new ByteArrayOutputStream();
+        ByteArrayOutputStream secondRefresh = new ByteArrayOutputStream();
+        ByteArrayOutputStream revoke = new ByteArrayOutputStream();
+        when(urlConnection.getOutputStream()).thenReturn(firstRefresh, secondRefresh, revoke);
+        when(urlConnection.getInputStream()).thenAnswer(invocation -> getClass().getResourceAsStream("/auth0ClientCredentialsResponse.json"));
+
+        provider.getAccessToken(2000L);
+        assertThat(provider.getRefreshToken()).isNotNull();
+        assertThat(provider.getRefreshToken().getExpires()).isEqualTo(refreshToken.getExpires());
+        provider.getAccessToken(3000L);
+        assertThat(provider.getRefreshToken()).isNotNull();
+        assertThat(provider.getRefreshToken().getExpires()).isEqualTo(refreshToken.getExpires());
+        provider.close(4000L);
+
+        assertThat(firstRefresh.toString(StandardCharsets.UTF_8)).isEqualTo("grant_type=refresh_token&refresh_token=a.b.c");
+        assertThat(secondRefresh.toString(StandardCharsets.UTF_8)).isEqualTo("grant_type=refresh_token&refresh_token=a.b.c");
+        assertThat(revoke.toString(StandardCharsets.UTF_8)).isEqualTo("refresh_token=a.b.c");
+        assertThat(provider.getRefreshToken()).isNull();
+    }
+
+    @Test
+    public void shouldDiscardRejectedRefreshTokenWhenNewSessionHasNoRefreshToken() throws Exception {
+        StatefulUrlAccessTokenProvider provider = providerForResource("/keycloakClientCredentialsResponse.json");
+        provider.getAccessToken(1000L);
+
+        when(urlConnection.getResponseCode()).thenReturn(400, 200);
+        when(urlConnection.getInputStream()).thenReturn(getClass().getResourceAsStream("/auth0ClientCredentialsResponse.json"));
+
+        // the rejection discards the session and defers the new one until the fallback ends
+        assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(2000L));
+        assertThat(provider.getRefreshToken()).isNull();
+        nowNanos += TimeUnit.SECONDS.toNanos(15);
+
+        assertThat(provider.getAccessToken(3000L).getValue()).isEqualTo("x.y.z");
+        assertThat(provider.getRefreshToken()).isNull();
+    }
+
+    @Test
+    public void shouldDiscardExpiredRefreshTokenWhenNewSessionHasNoRefreshToken() throws Exception {
+        StatefulUrlAccessTokenProvider provider = providerForResource("/keycloakClientCredentialsResponse.json");
+        provider.getAccessToken(1000L);
+        long afterRefreshExpiry = provider.getRefreshToken().getExpires() + 1;
+
+        when(urlConnection.getInputStream()).thenReturn(getClass().getResourceAsStream("/auth0ClientCredentialsResponse.json"));
+
+        assertThat(provider.getAccessToken(afterRefreshExpiry).getValue()).isEqualTo("x.y.z");
+        assertThat(provider.getRefreshToken()).isNull();
     }
 
     @Test
@@ -200,6 +265,37 @@ public class StatefulUrlAccessTokenProviderTest extends AbstractUrlAccessTokenPr
         assertThrows(AccessTokenUnavailableException.class, () -> {
             provider.getAccessToken(accessToken.getExpires() + 1);
         });
+    }
+
+    @ParameterizedTest
+    @CsvSource({"429,false", "503,false", "429,true", "503,true"})
+    public void shouldShareRetryAfterBetweenIssueAndRefreshWithoutDiscardingTheSession(int status, boolean refreshing) throws Exception {
+        StatefulUrlAccessTokenProvider provider = providerForResource("/keycloakClientCredentialsResponse.json");
+        if (refreshing) {
+            provider.getAccessToken(false);
+        }
+        RefreshToken original = provider.getRefreshToken();
+        when(urlConnection.getResponseCode()).thenReturn(status);
+        when(urlConnection.getHeaderField("Retry-After")).thenReturn("120");
+        AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
+                () -> provider.getAccessToken(false));
+        assertThat(failure.getRetryAfterDeadlineNanos()).isEqualTo(TimeUnit.SECONDS.toNanos(120));
+        assertThat(failure.getHeaders()).containsExactly("Retry-After", "120");
+        AccessTokenRetryAfterException rejected = assertThrows(AccessTokenRetryAfterException.class,
+                () -> provider.getAccessToken(true));
+        assertThat(rejected.getRetryAfterDeadlineNanos()).isEqualTo(failure.getRetryAfterDeadlineNanos());
+        assertThat(provider.getRefreshToken()).isSameInstanceAs(original);
+        verify(urlConnection, times(refreshing ? 2 : 1)).getResponseCode();
+        nowNanos = TimeUnit.SECONDS.toNanos(15);
+        assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(false));
+        nowNanos = TimeUnit.SECONDS.toNanos(120);
+        when(urlConnection.getResponseCode()).thenReturn(200);
+        when(urlConnection.getInputStream()).thenReturn(getClass().getResourceAsStream("/keycloakClientCredentialsResponse.json"));
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        when(urlConnection.getOutputStream()).thenReturn(output);
+        provider.getAccessToken(false);
+        assertThat(output.toString(StandardCharsets.UTF_8)).contains(refreshing ? "grant_type=refresh_token" : "grant_type=client_credentials");
+        verify(urlConnection, times(refreshing ? 3 : 2)).getResponseCode();
     }
 
     @Test
