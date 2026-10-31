@@ -17,8 +17,10 @@ import reactor.core.publisher.Mono;
 import java.net.URL;
 import java.util.Collections;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -82,5 +84,30 @@ public class WebClientUrlAccessTokenProviderTest {
                 () -> provider.getAccessToken(true));
         assertThat(rejected.getRetryAfterDeadlineNanos()).isEqualTo(failure.getRetryAfterDeadlineNanos());
         assertThat(requests.get()).isEqualTo(1);
+    }
+
+    @Test
+    public void shouldCancelTheRequestWhenTheCallerIsInterrupted() throws Exception {
+        CountDownLatch subscribed = new CountDownLatch(1);
+        CountDownLatch cancelled = new CountDownLatch(1);
+        WebClient client = WebClient.builder().exchangeFunction(request -> Mono.<ClientResponse>never()
+                .doOnSubscribe(subscription -> subscribed.countDown())
+                .doOnCancel(cancelled::countDown)).build();
+        WebClientUrlAccessTokenProvider http = new WebClientUrlAccessTokenProvider(client, new URL(ISSUE_URL), Map.of(), Map.of());
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Thread caller = new Thread(() -> {
+            try {
+                http.getAccessToken(false);
+            } catch (Throwable e) {
+                failure.set(e);
+            }
+        });
+        caller.start();
+        assertThat(subscribed.await(10, TimeUnit.SECONDS)).isTrue();
+        caller.interrupt();
+        caller.join(10_000);
+        assertThat(caller.isAlive()).isFalse();
+        assertThat(cancelled.await(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(failure.get()).isInstanceOf(AccessTokenUnavailableException.class);
     }
 }

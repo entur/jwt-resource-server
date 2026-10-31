@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -318,6 +319,28 @@ class RetryAfterAccessTokenProviderTest {
         }
         assertThat(provider.getAccessToken(false).getValue()).isEqualTo("token");
         assertThat(http.getRetryAfterDeadlineNanos()).isNull();
+    }
+
+    @Test
+    void shouldKeepTheLongestDeadlineWhenFailuresAreRecordedConcurrently() throws Exception {
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            for (int i = 0; i < 5000; i++) {
+                TestProvider provider = new TestProvider();
+                CyclicBarrier barrier = new CyclicBarrier(2);
+                // i.e. the response of an abandoned request overlaps with the caller recording its own failure
+                var server = executor.submit(() -> {
+                    barrier.await(5, TimeUnit.SECONDS);
+                    return provider.retryAfterException("HTTP 503", Map.of("Retry-After", "120")::get);
+                });
+                var fallback = executor.submit(() -> {
+                    barrier.await(5, TimeUnit.SECONDS);
+                    return provider.recordFailure(new AccessTokenUnavailableException("failed"));
+                });
+                server.get(5, TimeUnit.SECONDS);
+                fallback.get(5, TimeUnit.SECONDS);
+                assertThat(provider.getRetryAfterDeadlineNanos() - provider.nowNanos).isEqualTo(TimeUnit.SECONDS.toNanos(120));
+            }
+        }
     }
 
     @Test

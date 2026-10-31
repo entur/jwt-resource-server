@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
@@ -29,7 +30,9 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -134,6 +137,36 @@ public class WebClientStatefulUrlAccessTokenProviderTest {
         assertThat(provider.getAccessToken(false).getValue()).isEqualTo("a1.b1.c1");
         assertThat(requests).hasSize(refreshing ? 3 : 2);
         assertThat(requests.get(requests.size() - 1)).isEqualTo(URI.create(refreshing ? REFRESH_URL : ISSUE_URL));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void shouldCancelTheRequestWhenTheCallerIsInterrupted(boolean refreshing) throws Exception {
+        CountDownLatch subscribed = new CountDownLatch(1);
+        CountDownLatch cancelled = new CountDownLatch(1);
+        ClientResponse issued = ClientResponse.create(HttpStatus.OK).header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE).body(ISSUE_RESPONSE).build();
+        WebClient client = WebClient.builder().exchangeFunction(request -> refreshing && ISSUE_URL.equals(request.url().toString()) ? Mono.just(issued) :
+                Mono.<ClientResponse>never().doOnSubscribe(subscription -> subscribed.countDown()).doOnCancel(cancelled::countDown)).build();
+        WebClientStatefulUrlAccessTokenProvider http = new WebClientStatefulUrlAccessTokenProvider(client, new URL(ISSUE_URL), Map.of(), Map.of(),
+                new URL(REFRESH_URL), new URL(REVOKE_URL));
+        if (refreshing) {
+            http.getAccessToken(false);
+        }
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Thread caller = new Thread(() -> {
+            try {
+                http.getAccessToken(false);
+            } catch (Throwable e) {
+                failure.set(e);
+            }
+        });
+        caller.start();
+        assertThat(subscribed.await(10, TimeUnit.SECONDS)).isTrue();
+        caller.interrupt();
+        caller.join(10_000);
+        assertThat(caller.isAlive()).isFalse();
+        assertThat(cancelled.await(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(failure.get()).isInstanceOf(AccessTokenUnavailableException.class);
     }
 
     @Test

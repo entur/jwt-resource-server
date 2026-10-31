@@ -16,6 +16,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -38,6 +39,7 @@ public class WebClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProvi
 
     @Override
     protected ClientCredentialsResponse getToken() throws AccessTokenException {
+        CompletableFuture<ClientCredentialsResponse> future;
         try {
             Mono<ClientCredentialsResponse> mono = webClient
                 .post()
@@ -63,12 +65,17 @@ public class WebClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProvi
                         response -> Mono.error(new AccessTokenException("Authorization server responded with HTTP unexpected response code " + response.statusCode()))
                 )
                 .bodyToMono(ClientCredentialsResponse.class);
-            ClientCredentialsResponse clientCredentialsResponse = mono.toFuture().get();
-            validate(clientCredentialsResponse);
-            return clientCredentialsResponse;
+            future = mono.toFuture();
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException(e);
+        }
+        try {
+            ClientCredentialsResponse clientCredentialsResponse = future.get();
+            validate(clientCredentialsResponse);
+            return clientCredentialsResponse;
         } catch (InterruptedException e) {
+            // cancel the request, so that it does not continue after the exclusive lock above is released
+            future.cancel(true);
             Thread.currentThread().interrupt();
             throw new AccessTokenUnavailableException(e);
         } catch (ExecutionException e) {

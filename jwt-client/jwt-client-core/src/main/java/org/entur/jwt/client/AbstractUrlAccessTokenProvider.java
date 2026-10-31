@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -49,7 +50,7 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
             "Auth0-Client-Quota-Limit", "Auth0-Organization-Quota-Limit");
 
     private volatile long retryAfterFallbackMillis = DEFAULT_RETRY_AFTER_FALLBACK_MILLIS;
-    private volatile Long retryAfterDeadlineNanos;
+    private final AtomicReference<Long> retryAfterDeadlineNanos = new AtomicReference<>();
 
     public AbstractUrlAccessTokenProvider(URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers) {
         super();
@@ -220,14 +221,10 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
         }
     }
 
-    // not synchronized: token requests are serialized by ExclusiveAccessTokenProvider
+    // atomic maximum: the response handling of an abandoned request can overlap with the caller recording its failure
     private long deferTokenRequests(long delayNanos) {
         long now = nanoTime();
-        Long current = retryAfterDeadlineNanos;
-        if (current == null || delayNanos > current - now) {
-            retryAfterDeadlineNanos = now + delayNanos;
-        }
-        return retryAfterDeadlineNanos;
+        return retryAfterDeadlineNanos.updateAndGet(current -> current == null || delayNanos > current - now ? now + delayNanos : current);
     }
 
     /**
@@ -237,7 +234,7 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
      *         the deadline may already have elapsed
      */
     public Long getRetryAfterDeadlineNanos() {
-        return retryAfterDeadlineNanos;
+        return retryAfterDeadlineNanos.get();
     }
 
     /**

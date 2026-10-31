@@ -21,6 +21,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -41,13 +42,14 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
     }
 
     protected ClientCredentialsResponse getToken() throws AccessTokenException {
+        CompletableFuture<ClientCredentialsResponse> future = request(issueUrl, issueBody, issueHeaders).toFuture();
         try {
-            Mono<ClientCredentialsResponse> response = request(issueUrl, issueBody, issueHeaders);
-
-            ClientCredentialsResponse clientCredentialsResponse = response.toFuture().get();
+            ClientCredentialsResponse clientCredentialsResponse = future.get();
             validate(clientCredentialsResponse);
             return clientCredentialsResponse;
         } catch (InterruptedException e) {
+            // cancel the request, so that it does not continue after the exclusive lock above is released
+            future.cancel(true);
             Thread.currentThread().interrupt();
             throw new AccessTokenUnavailableException(e);
         } catch (ExecutionException e) {
@@ -133,13 +135,14 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
     protected ClientCredentialsResponse getToken(RefreshToken refreshToken) throws AccessTokenException {
         byte[] refreshBody = createRefreshBody(refreshToken);
 
+        CompletableFuture<ClientCredentialsResponse> future = request(refreshUrl, refreshBody, refreshHeaders).toFuture();
         try {
-            Mono<ClientCredentialsResponse> response = request(refreshUrl, refreshBody, refreshHeaders);
-
-            ClientCredentialsResponse clientCredentialsResponse = response.toFuture().get();
+            ClientCredentialsResponse clientCredentialsResponse = future.get();
             validate(clientCredentialsResponse);
             return clientCredentialsResponse;
         } catch (InterruptedException e) {
+            // cancel the request, so that it does not continue after the exclusive lock above is released
+            future.cancel(true);
             Thread.currentThread().interrupt();
             throw new AccessTokenUnavailableException(e);
         } catch (ExecutionException e) {
