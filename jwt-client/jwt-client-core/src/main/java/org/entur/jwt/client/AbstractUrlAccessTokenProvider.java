@@ -38,22 +38,6 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
     private volatile long retryAfterFallbackMillis = DEFAULT_RETRY_AFTER_FALLBACK_MILLIS;
     private volatile Long retryAfterDeadlineNanos;
 
-    /**
-     * A token request and its associated state updates, excluding revocation.
-     *
-     * @param <T> request result
-     */
-    @FunctionalInterface
-    protected interface TokenRequest<T> {
-        /**
-         * Execute the guarded token operation.
-         *
-         * @return request result
-         * @throws AccessTokenException if the request fails
-         */
-        T execute() throws AccessTokenException;
-    }
-
     public AbstractUrlAccessTokenProvider(URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers) {
         super();
 
@@ -98,37 +82,34 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
     protected abstract ClientCredentialsResponse getToken() throws AccessTokenException;
 
     /**
-     * Execute one token request unless the retry deadline is active, and record its failure.
+     * Refuse to send a token request while the retry deadline is active.
      *
-     * @param request issuance or refresh operation
-     * @param <T> request result
-     * @return token response
-     * @throws AccessTokenException if the request fails or is deferred
+     * @param cause failure which led to this request, or null
+     * @throws AccessTokenRetryAfterException if the deadline has not yet elapsed
      */
-    protected <T> T requestToken(TokenRequest<T> request) throws AccessTokenException {
+    protected void checkRetryDeadline(Throwable cause) throws AccessTokenRetryAfterException {
         Long deadline = getRetryAfterDeadlineNanos();
         if (deadline != null && deadline - nanoTime() > 0) {
-            throw new AccessTokenRetryAfterException("Token request deferred until the retry deadline", null, deadline);
+            throw new AccessTokenRetryAfterException("Token request deferred until the retry deadline", cause, deadline);
         }
-        try {
-            return request.execute();
-        } catch (AccessTokenRetryAfterException e) {
-            // its deadline was already recorded
-            throw e;
-        } catch (AccessTokenUnavailableException e) {
-            long fallbackMillis = retryAfterFallbackMillis;
-            if (fallbackMillis == 0) {
-                throw e;
-            }
-            throw new AccessTokenRetryAfterException(e.getMessage(), e, deferTokenRequests(TimeUnit.MILLISECONDS.toNanos(fallbackMillis)));
-        } catch (AccessTokenException e) {
-            // other failures keep their type but still start the fallback backoff
-            long fallbackMillis = retryAfterFallbackMillis;
-            if (fallbackMillis > 0) {
-                deferTokenRequests(TimeUnit.MILLISECONDS.toNanos(fallbackMillis));
-            }
-            throw e;
+    }
+
+    /**
+     * Start the fallback backoff for a failed token request, unless the failure already carries a deadline.
+     *
+     * @param failure the failed request
+     * @return the exception to throw; unavailable failures carry the deadline, others keep their type
+     */
+    protected AccessTokenException recordFailure(AccessTokenException failure) {
+        long fallbackMillis = retryAfterFallbackMillis;
+        if (failure instanceof AccessTokenRetryAfterException || fallbackMillis == 0) {
+            return failure;
         }
+        long deadline = deferTokenRequests(TimeUnit.MILLISECONDS.toNanos(fallbackMillis));
+        if (failure instanceof AccessTokenUnavailableException) {
+            return new AccessTokenRetryAfterException(failure.getMessage(), failure, deadline);
+        }
+        return failure;
     }
 
     /**
@@ -234,7 +215,14 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
     public AccessToken getAccessToken(boolean forceRefresh) throws AccessTokenException {
         long time = currentTimeMillis();
 
-        ClientCredentialsResponse token = requestToken(this::getToken);
+        checkRetryDeadline(null);
+
+        ClientCredentialsResponse token;
+        try {
+            token = getToken();
+        } catch (AccessTokenException e) {
+            throw recordFailure(e);
+        }
 
         return new AccessToken(token.getAccessToken(), token.getTokenType(), time + token.getExpiresIn() * 1000);
     }

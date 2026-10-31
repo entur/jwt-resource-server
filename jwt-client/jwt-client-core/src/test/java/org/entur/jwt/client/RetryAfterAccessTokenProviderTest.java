@@ -328,30 +328,26 @@ class RetryAfterAccessTokenProviderTest {
         }
 
         @Override
-        protected <T> T requestToken(TokenRequest<T> request) throws AccessTokenException {
-            T result = super.requestToken(request);
-            if (result instanceof ClientCredentialsResponse) {
-                beforePublication.countDown();
-                try {
-                    assertThat(publish.await(5, TimeUnit.SECONDS)).isTrue();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new AccessTokenUnavailableException(e);
-                }
-            }
-            return result;
-        }
-
-        @Override
-        protected ClientCredentialsResponse getToken() {
+        protected ClientCredentialsResponse getToken() throws AccessTokenException {
             issueCalls++;
-            return RESPONSE;
+            return awaitPublication();
         }
 
         @Override
-        protected ClientCredentialsResponse getToken(RefreshToken token) {
+        protected ClientCredentialsResponse getToken(RefreshToken token) throws AccessTokenException {
             assertThat(token.getValue()).isEqualTo("session");
             refreshCalls++;
+            return awaitPublication();
+        }
+
+        private ClientCredentialsResponse awaitPublication() throws AccessTokenException {
+            beforePublication.countDown();
+            try {
+                assertThat(publish.await(5, TimeUnit.SECONDS)).isTrue();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new AccessTokenUnavailableException(e);
+            }
             return RESPONSE;
         }
 

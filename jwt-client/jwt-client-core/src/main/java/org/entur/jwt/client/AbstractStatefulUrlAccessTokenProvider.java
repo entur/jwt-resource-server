@@ -103,24 +103,28 @@ public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrl
 
     public AccessToken getAccessToken(long time) throws AccessTokenException {
         // note: force refresh is not relevant for whether to use refresh-token or not
-        ClientCredentialsResponse token;
+        checkRetryDeadline(null);
 
-        RefreshToken threadSafeRefreshToken = this.refreshToken; // defensive copy
-        if (threadSafeRefreshToken != null && threadSafeRefreshToken.isValid(time)) {
-            try {
-                token = requestToken(() -> getToken(threadSafeRefreshToken));
-            } catch (RefreshTokenException e) {
-                // assume current session has been revoked or expired
-                // open a new session and forget about the old one
-                this.refreshToken = null;
-                Long deadline = getRetryAfterDeadlineNanos();
-                if (deadline != null && deadline - nanoTime() > 0) {
-                    throw new AccessTokenRetryAfterException("Refresh token rejected; new session deferred until the retry deadline", e, deadline);
+        ClientCredentialsResponse token;
+        try {
+            RefreshToken threadSafeRefreshToken = this.refreshToken; // defensive copy
+            if (threadSafeRefreshToken != null && threadSafeRefreshToken.isValid(time)) {
+                try {
+                    token = getToken(threadSafeRefreshToken);
+                } catch (RefreshTokenException e) {
+                    // assume current session has been revoked or expired
+                    // open a new session and forget about the old one
+                    this.refreshToken = null;
+                    // the rejection starts the backoff, which then defers the new session
+                    recordFailure(e);
+                    checkRetryDeadline(e);
+                    token = getToken();
                 }
-                token = requestToken(this::getToken);
+            } else {
+                token = getToken();
             }
-        } else {
-            token = requestToken(this::getToken);
+        } catch (AccessTokenException e) {
+            throw recordFailure(e);
         }
 
         if (token.getRefreshToken() != null) {
