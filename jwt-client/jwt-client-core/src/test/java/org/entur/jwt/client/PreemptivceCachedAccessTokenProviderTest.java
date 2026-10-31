@@ -430,7 +430,39 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         assertThat(provider.getEagerScheduledFuture().getDelay(TimeUnit.SECONDS)).isEqualTo(waitSeconds);
         verify(fallback, times(2)).getAccessToken(false);
 
-        timed.advance(waitSeconds, TimeUnit.SECONDS);
+        // the traffic cooldown (15s) has elapsed, but the server deadline and the eager cooldown have not
+        timed.advance(15, TimeUnit.SECONDS);
+        provider.getAccessToken(provider.getRefreshable(1), false);
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        assertThat(provider.getEagerScheduledFuture().getDelay(TimeUnit.SECONDS)).isEqualTo(waitSeconds - 15);
+        assertThat(provider.getCachedAccessToken()).isSameInstanceAs(accessToken);
+        verify(fallback, times(2)).getAccessToken(false);
+
+        timed.advance(waitSeconds - 15, TimeUnit.SECONDS);
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        assertThat(provider.getCachedAccessToken()).isSameInstanceAs(refreshedAccessToken);
+        verify(fallback, times(3)).getAccessToken(false);
+    }
+
+    @Test
+    public void shouldDeferEagerCallbackAfterTheLocalCooldownUntilTheServerDeadline() throws Exception {
+        TestPreemptiveProvider timed = newEagerProvider(directExecutor());
+        provider = timed;
+        long deadline = TimeUnit.SECONDS.toNanos(120);
+        when(fallback.getAccessToken(false)).thenReturn(accessToken).thenThrow(new AccessTokenRetryAfterException("HTTP 429", null, deadline))
+                .thenReturn(refreshedAccessToken);
+
+        provider.getAccessToken(false);
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        verify(fallback, times(2)).getAccessToken(false);
+
+        // an early or stale callback: the 60s eager cooldown has elapsed, the server deadline has not
+        timed.advance(100, TimeUnit.SECONDS);
+        ((Runnable) provider.getEagerScheduledFuture()).run();
+        verify(fallback, times(2)).getAccessToken(false);
+        assertThat(provider.getEagerScheduledFuture().getDelay(TimeUnit.SECONDS)).isEqualTo(20L);
+
+        timed.advance(20, TimeUnit.SECONDS);
         ((Runnable) provider.getEagerScheduledFuture()).run();
         assertThat(provider.getCachedAccessToken()).isSameInstanceAs(refreshedAccessToken);
         verify(fallback, times(3)).getAccessToken(false);
