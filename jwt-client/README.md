@@ -184,6 +184,8 @@ Note that
 SpringApplication.run(MyApplication.class, args).start();
 ```
 
+A failed eager refresh is retried after `cache.refresh-timeout` seconds (at least one second), even without incoming requests. Closing the provider cancels pending retries.
+
 #### Aggressive prefetching
 Those wanting to preemptivly refresh tokens long before they expire, i.e. to always have some minutes (or hours) left on tokens in case of authorization server downtime, 
 please note the preemptive-refresh parameter `expires-constraint`, which limits how often preemptive refresh happens (as a percentage of the access-token lifetime). 
