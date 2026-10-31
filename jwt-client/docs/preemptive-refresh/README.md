@@ -1,0 +1,227 @@
+# Preemptive refresh and errors
+
+[Client configuration](../../README.md) | Next: [Eager preemptive refresh and errors](../eager-preemptive-refresh/README.md)
+
+This guide describes **traffic-triggered preemptive refresh**: caching and preemptive refresh enabled, eager refresh disabled. These are the defaults. The behavior is shared by generic, Auth0, and Keycloak clients using URLConnection, RestClient, WebClient, or the legacy RestTemplate transport.
+
+A normal call is `getAccessToken(false)`. A usable cached token is returned without waiting for a background token fetch. An empty cache, an unusable token, or `getAccessToken(true)` takes the blocking path. This API is not nonblocking/reactive simply because the selected HTTP transport is WebClient.
+
+## 1. Token lifetime and the refresh window
+
+The following settings are relative to a client's `cache` configuration. Durations in Spring properties are in seconds.
+
+| Setting | Default | Purpose |
+|---------|---------|---------|
+| `minimum-time-to-live` | 15 seconds | Stop serving a cached token before its actual expiry |
+| `refresh-timeout` | 15 seconds | Maximum wait to acquire the cache reload lock, not an HTTP request timeout |
+| `preemptive-refresh.time-to-expires` | 30 seconds | Desired refresh lead time before token expiry |
+| `preemptive-refresh.expires-constraint` | 25% | Delay the refresh window until this fraction of the calculated lifetime has elapsed |
+| `preemptive-refresh.error-cooldown` | 15 seconds | Minimum time after a failed background attempt before traffic may start another |
+
+Provider construction rejects a refresh lead time smaller than `minimum-time-to-live` and rejects negative error cooldowns.
+
+Let `E` be the expiry reported by the underlying provider (`AccessToken.getExpires()`), and `T` the time captured for the request or background trigger. For each new cache entry:
+
+```text
+usableUntil   = E - minimumTimeToLive
+earliest      = T + (E - T) * expiresConstraint / 100
+refreshableAt = min(max(E - timeToExpires, earliest), usableUntil)
+```
+
+The calculation uses milliseconds and integer arithmetic. The cache is usable at `time <= usableUntil`, and refreshable at `time >= refreshableAt`. The lifetime constraint is recalculated for every replacement; it is not based on the JWT's original issue time.
+
+For a token loaded at `12:00:00` and expiring at `12:10:00`, the defaults give:
+
+```mermaid
+flowchart LR
+    A["12:00:00<br/>Token loaded"] --> B["Before 12:09:30<br/>Serve cache only"]
+    B --> C["12:09:30 through 12:09:45<br/>Serve cache and consider<br/>a background refresh"]
+    C --> D["After 12:09:45<br/>Blocking reload required"]
+    D --> E["12:10:00<br/>Underlying token expires"]
+```
+
+With a short lifetime or a long configured lead time, the percentage constraint pushes the refresh window later. If that would be later than usable cache expiry, the window is capped at `usableUntil`. This can leave almost no usable preemptive window; the configuration cannot create extra token lifetime.
+
+## 2. Every incoming token request
+
+```mermaid
+flowchart TD
+    Call["getAccessToken(forceUpdate)"] --> Load{"Forced, cache empty,<br/>or cache unusable?"}
+    Load -->|Yes| Blocking["Use the blocking reload path"]
+    Load -->|No| Capture["Capture usable cache entry A"]
+    Capture --> Window{"Inside the<br/>refresh window?"}
+    Window -->|No| Return["Return token A"]
+    Window -->|Yes| Eligible{"Allowed to start<br/>background work now?"}
+    Eligible -->|No| Return
+    Eligible -->|Yes| Submit["Submit a refresh for entry A"]
+    Submit -->|Accepted| Return
+    Submit -->|Executor rejects submission| Error["Exception reaches caller"]
+```
+
+Background work is skipped if the provider is closed, entry A has been replaced, A already has a refresh in flight, the error cooldown is active, or the nonblocking dispatch lock cannot be acquired. Cache identity, the in-flight marker, and the cooldown are checked again after acquiring that lock.
+
+This dispatch lock is separate from the blocking reload lock. Ordinary callers using a usable cache do not wait for either lock to become available.
+
+## 3. Empty, expired, and explicitly forced loads
+
+This is also the reload path used by a background worker. The difference is who waits and who receives an error: the foreground caller, or the worker described in section 5.
+
+```mermaid
+flowchart TD
+    Start["Blocking reload requested"] --> Lock["Acquire the cache reload lock"]
+    Lock -->|Timeout or interruption| Unavailable["AccessTokenUnavailableException"]
+    Lock -->|Acquired| Changed{"Another thread already<br/>replaced this cache entry?"}
+    Changed -->|Yes| Reuse["Reuse that replacement"]
+    Changed -->|No| Fetch["Call the underlying provider chain"]
+    Fetch -->|Exception| Failure["Propagate the exception<br/>Cache not replaced by this load"]
+    Fetch -->|Token B returned| Store["Install cache entry B"]
+    Reuse --> Validate{"Entry usable at the<br/>captured request time?"}
+    Store --> Validate
+    Validate -->|Yes| Return["Return the replacement token"]
+    Validate -->|No| Unavailable
+```
+
+A cold-load exception leaves the cache empty: the next caller must try again. If one waiting caller successfully replaces the cache, other waiters reuse that replacement. If a load fails without replacing the cache, a later waiter can make its own attempt. Waiting does not guarantee that every caller succeeds.
+
+**Neither error cooldown delays this path.** Expired-cache loads and public forced loads may contact the provider immediately, even after a recent background failure. A failed forced load propagates its error rather than falling back to the old token. An exception before replacement leaves that old entry available to other ordinary callers if it is still usable.
+
+`getAccessToken(true)` forces the cache reload path, not necessarily a separate HTTP request: it can reuse another thread's replacement. The cache calls its delegate with `false`, so this is not a command to force a new authorization-server session instead of using a refresh token.
+
+The reload lock is released after loading, before the usability check. Interruption restores the thread's interrupted status and produces `AccessTokenUnavailableException`. Configure HTTP connect/read timeouts separately; `refresh-timeout` does not cancel a slow HTTP request already holding the lock.
+
+## 4. Successful background refresh and concurrent traffic
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant Cache
+    participant Worker
+    participant Provider as Underlying provider chain
+    Caller->>Cache: Request while A is usable and refreshable
+    Cache->>Worker: Submit one refresh for A
+    Cache-->>Caller: Return captured token A
+    Worker->>Provider: Fetch through the serialized reload path
+    Note over Caller,Cache: More callers can keep receiving A while the fetch runs
+    Provider-->>Worker: Return token B
+    Worker->>Cache: Publish replacement entry B
+    Caller->>Cache: Subsequent request
+    Cache-->>Caller: Return B if usable
+```
+
+The triggering call returns the token it captured, even if the worker finishes very quickly. Background work can complete before or after that return; the caller does not wait for B.
+
+Refresh coordination uses **cache-entry identity, not token expiry**:
+
+| Concurrent situation | Behavior |
+|----------------------|----------|
+| More callers encounter A while its refresh is in flight | They return A without starting duplicate refreshes for A |
+| A foreground load publishes B before A's worker acquires the reload lock | The worker reuses B rather than fetching again |
+| A late trigger still refers to A after B is installed | The stale trigger is ignored |
+| B has the same token value, the same expiry, or an earlier expiry than A | B is still a new cache entry; if usable, it can be refreshed when its own window is reached |
+
+## 5. Background failure and the 15-second cooldown
+
+Any `Exception` thrown inside the worker's reload is logged. The failed attempt's in-flight marker is cleared without clearing a newer attempt's marker, and the failure completion time is recorded using a monotonic clock. This includes unavailable errors, other provider errors, unchecked exceptions, lock failures, and failed replacement validation.
+
+The diagram below assumes the failure occurred **before replacing A**, so the old usable cache remains:
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant Cache
+    participant Worker
+    participant Provider as Underlying provider chain
+    Caller->>Cache: Request in the refresh window
+    Cache->>Worker: Submit refresh for A
+    Cache-->>Caller: Return A
+    Worker->>Provider: Logical attempt, including optional immediate retry
+    Provider-->>Worker: Attempt fails
+    Worker->>Cache: Log failure and record completion time F
+    Caller->>Cache: Request before F plus 15 seconds
+    Cache-->>Caller: Return A if usable, no new background attempt
+    alt Cache still usable and refreshable at or after F plus 15 seconds
+        Caller->>Cache: First eligible request after cooldown
+        Cache->>Worker: Submit another background attempt
+        Cache-->>Caller: Return A
+    else Cache becomes unusable, or caller forces a reload
+        Caller->>Cache: Request a token
+        Cache->>Provider: Blocking load, without waiting for cooldown
+        Provider-->>Cache: Token or exception
+        Cache-->>Caller: Token or exception
+    end
+```
+
+**The cooldown is a gate, not a timer.** With eager refresh disabled, no traffic means no background retry. The first eligible request after the cooldown starts another attempt; there is no automatic request exactly 15 seconds later.
+
+The cooldown starts when the entire failed background attempt finishes, not when it starts or when its first HTTP request fails. Each subsequent failed background attempt restarts it. A successful response does not record a new failure, but it does not clear an already-active failure timestamp either.
+
+Setting `preemptive-refresh.error-cooldown: 0` removes the traffic gate: the next eligible request can retry immediately after failure. It does not permit duplicate concurrent attempts for the same entry. A foreground load failure does not itself start this background-error cooldown.
+
+## 6. A replacement token is returned but rejected
+
+A provider response is not the same thing as a usable cache entry. An expired token, or one with insufficient remaining lifetime at validation, can already have replaced the old cache before validation fails.
+
+```mermaid
+flowchart TD
+    A["Caller receives usable token A<br/>and triggers background refresh"] --> B["Provider returns token B"]
+    B --> Store["B replaces A in the cache"]
+    Store --> Reject["B fails minimum-lifetime validation"]
+    Reject --> Failure["Worker logs failure<br/>and starts the background-error cooldown"]
+    Failure --> Next["Next ordinary caller finds unusable B"]
+    Next --> Reload["Blocking reload immediately<br/>Cooldown does not apply"]
+```
+
+The original caller can already have received A, but subsequent callers do **not** automatically fall back to A: the current cache is B. A foreground load encountering the same validation failure throws `AccessTokenUnavailableException` directly.
+
+Without eager refresh there is no recovery timer for B; another call is needed. With eager refresh, [invalid-replacement recovery](../eager-preemptive-refresh/README.md#7-invalid-replacements-and-foreground-loads) is scheduled as well.
+
+## 7. Immediate retry is separate from cache cooldowns
+
+The optional `retrying` wrapper is enabled by default and sits **below the cache**. The usual builder chain is cache, optional health decorator, optional retry wrapper, then the underlying token provider.
+
+```mermaid
+flowchart TD
+    Start["One logical load"] --> First["First underlying provider invocation"]
+    First -->|Success| Return["Return token"]
+    First -->|AccessTokenUnavailableException| Enabled{"retrying enabled?"}
+    Enabled -->|Yes| Second["Invoke underlying provider once more<br/>immediately, with no cooldown delay"]
+    Enabled -->|No| Fail["Propagate failure to the cache layer"]
+    First -->|Other exception| Fail
+    Second -->|Success| Return
+    Second -->|Any exception| Fail
+```
+
+This means one logical foreground or background load can make two provider invocations. Only a failure escaping the wrapper reaches the cache's error handling. If the second invocation succeeds and the cache accepts the result, no new background-error cooldown is started.
+
+Cache lock timeouts and cache validation errors occur above this wrapper, so it does not immediately retry them. Other provider exceptions are not retried by this wrapper, but a failed background load still gets the local cooldown behavior from section 5.
+
+The built-in transports classify HTTP **429** and **503** as unavailable errors. **`Retry-After` is not enforced**: some transports include it in an error message, but it does not control either the immediate retry or these local cooldowns. They are not a general HTTP rate-limit policy.
+
+## 8. Health checks, disabled modes, and lifecycle
+
+The Spring health indicator first reads existing health without requesting a refresh:
+
+```mermaid
+flowchart TD
+    Poll["Spring health poll"] --> Read["Read getHealth(false)"]
+    Read --> Good{"Already healthy?"}
+    Good -->|Yes| NoFetch["Return healthy<br/>No token load requested"]
+    Good -->|No| Idle{"Health refresh already running?"}
+    Idle -->|Yes| Bad["Return current unhealthy status"]
+    Idle -->|No| Refresh["Launch background getHealth(true)"]
+    Refresh --> Bad
+    Refresh -->|Background task| Cache["If health needs recovery,<br/>call top-level getAccessToken(false)"]
+    Cache --> Routing["Follow the same cache, refresh-window,<br/>cooldown, and blocking-load rules"]
+```
+
+The default health decorator requests a token when its last recorded provider result is absent or failed. A usable cached token can mask a failed background refresh as healthy, and a previously successful provider result can remain healthy without another remote call. Thus health polling is **not a guarantee of proactive refresh**. An explicit refreshing health check can warm an empty cache or recover a failed provider, but it is not an unconditional forced reload.
+
+Disabling preemptive refresh leaves ordinary caching: usable entries are returned and empty, unusable, or forced loads block. Disabling caching removes these cache refresh mechanisms entirely.
+
+On close, new preemptive work is skipped and an owned worker executor is shut down. An already-submitted task can still finish; callers must stop using a closed provider. An externally managed executor must remain available while the provider is in use. In particular, worker submission rejection happens outside the worker's failure handler: it can escape to a traffic caller and does not itself establish the token-fetch cooldown/recovery behavior above.
+
+## Implementation references
+
+See [PreemptiveCachedAccessTokenProvider](../../jwt-client-core/src/main/java/org/entur/jwt/client/PreemptiveCachedAccessTokenProvider.java), [DefaultCachedAccessTokenProvider](../../jwt-client-core/src/main/java/org/entur/jwt/client/DefaultCachedAccessTokenProvider.java), [RetryingAccessTokenProvider](../../jwt-client-core/src/main/java/org/entur/jwt/client/RetryingAccessTokenProvider.java), and the [preemptive provider scenarios](../../jwt-client-core/src/test/java/org/entur/jwt/client/PreemptivceCachedAccessTokenProviderTest.java).
+
+Continue with [eager preemptive refresh and errors](../eager-preemptive-refresh/README.md).

@@ -44,6 +44,11 @@ Since we're refreshing the cache before the token expires, there will normally n
 
 Eager refresh can also be enabled.
 
+Read the scenario guides, with Mermaid diagrams, in this order:
+
+1. [Preemptive refresh and errors](docs/preemptive-refresh/README.md): request-driven refresh, blocking reloads, retries, cooldowns, concurrency, and health checks.
+2. [Eager preemptive refresh and errors](docs/eager-preemptive-refresh/README.md): scheduled refresh without traffic, error recovery, replacement-token timing, and shutdown.
+
 ## Usage
 Create an instance of `AccessTokenProvider` per application-context (per Authorization Server). Instances of `AccessTokenProvider` cache og refresh access-tokens and are thread-safe. Example:
 
