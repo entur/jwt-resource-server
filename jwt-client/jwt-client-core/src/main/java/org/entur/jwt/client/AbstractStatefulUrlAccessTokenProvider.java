@@ -120,7 +120,7 @@ public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrl
                 this.refreshToken = null;
                 Long deadline = getRetryAfterDeadlineNanos();
                 if (deadline != null && deadline - nanoTime() > 0) {
-                    throw new AccessTokenRetryAfterException("Refresh token rejected; new session deferred until the retry deadline", e, deadline, true);
+                    throw new AccessTokenRetryAfterException("Refresh token rejected; new session deferred until the retry deadline", e, deadline);
                 }
                 token = requestToken(this::getToken);
             }

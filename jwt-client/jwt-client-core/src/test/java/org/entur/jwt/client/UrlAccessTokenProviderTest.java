@@ -96,22 +96,15 @@ public class UrlAccessTokenProviderTest extends AbstractUrlAccessTokenProviderTe
     @ParameterizedTest
     @ValueSource(ints = {429, 503})
     public void shouldHonorRetryAfterWithoutIssuingAnImmediateRetry(int status) throws Exception {
-        AccessTokenProvider provider = new RetryingAccessTokenProvider(providerForResource("/auth0ClientCredentialsResponse.json")) {
-            @Override
-            protected long nanoTime() {
-                return 0L;
-            }
-        };
+        AccessTokenProvider provider = new RetryingAccessTokenProvider(providerForResource("/auth0ClientCredentialsResponse.json"));
         when(urlConnection.getResponseCode()).thenReturn(status);
         when(urlConnection.getHeaderField("Retry-After")).thenReturn("120");
         AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
                 () -> provider.getAccessToken(false));
         assertThat(failure.getRetryAfterDeadlineNanos()).isEqualTo(TimeUnit.SECONDS.toNanos(120));
-        assertThat(failure.isRequestAttempted()).isTrue();
         AccessTokenRetryAfterException rejected = assertThrows(AccessTokenRetryAfterException.class,
                 () -> provider.getAccessToken(true));
         assertThat(rejected.getRetryAfterDeadlineNanos()).isEqualTo(failure.getRetryAfterDeadlineNanos());
-        assertThat(rejected.isRequestAttempted()).isFalse();
         verify(urlConnection, times(1)).getResponseCode();
         verify(urlConnection, times(1)).disconnect();
     }

@@ -316,16 +316,9 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
                      try {
                          PreemptiveCachedAccessTokenProvider.super.getAccessTokenBlocking(time, cache);
                      } catch (Exception e) {
-                         boolean deferred = e instanceof AccessTokenRetryAfterException retryAfter && !retryAfter.isRequestAttempted();
-                         if (!deferred) {
-                             lastPreemptiveFailureNanos = nanoTime();
-                         }
+                         lastPreemptiveFailureNanos = nanoTime();
                          refreshingCache.compareAndSet(cache, null);
-                         if (deferred) {
-                             LOGGER.debug("Preemptive access-token refresh deferred until the retry deadline", e);
-                         } else {
-                             LOGGER.warn("Preemptive access-token refresh failed", e);
-                         }
+                         LOGGER.warn("Preemptive access-token refresh failed", e);
                          if (scheduledExecutorService != null) {
                              // A rejected replacement may already have overwritten the old cache.
                              AccessTokenCacheItem current = this.cache;

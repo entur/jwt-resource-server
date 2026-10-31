@@ -134,7 +134,7 @@ Refresh coordination uses **cache-entry identity, not token expiry**:
 
 ## 5. Background failure and the 15-second cooldown
 
-An `Exception` thrown inside the worker's reload is logged. The failed attempt's in-flight marker is cleared without clearing a newer attempt's marker, and the failure completion time is recorded using a monotonic clock. This includes unavailable errors, other provider errors, unchecked exceptions, lock failures, and failed replacement validation. A structured rejection by an already-active HTTP deadline is different: it is logged at debug level and does **not** start another background-error cooldown.
+An `Exception` thrown inside the worker's reload is logged. The failed attempt's in-flight marker is cleared without clearing a newer attempt's marker, and the failure completion time is recorded using a monotonic clock. This includes Retry-After exceptions, other provider errors, unchecked exceptions, lock failures, and failed replacement validation. Known deadlines are checked before dispatch: skipping work at that gate does not start another background-error cooldown.
 
 The diagram below assumes failure **before replacing A**, so the old usable cache remains. `H` is the HTTP retry deadline, if any; `D = max(F + 15 seconds, H)`.
 
@@ -209,23 +209,26 @@ The optional `retrying` wrapper is enabled by default and sits **below the cache
 flowchart TD
     Start["One logical load"] --> First["First underlying provider invocation"]
     First -->|Success| Return["Return token"]
-    First -->|AccessTokenUnavailableException| Enabled{"retrying enabled?"}
-    Enabled -->|Yes| Deadline{"Active HTTP retry deadline<br/>on provider or exception?"}
-    Deadline -->|Yes| Fail
-    Deadline -->|No| Second["Invoke underlying provider once more<br/>immediately"]
+    First -->|AccessTokenRetryAfterException| Fail
+    First -->|Other AccessTokenUnavailableException| Enabled{"retrying enabled?"}
+    Enabled -->|Yes| Second["Invoke underlying provider once more<br/>immediately"]
     Enabled -->|No| Fail["Propagate failure to the cache layer"]
     First -->|Other exception| Fail
     Second -->|Success| Return
     Second -->|Any exception| Fail
 ```
 
-One logical foreground or background load can make two provider invocations **only when no HTTP deadline is active**. By default, built-in HTTP failures establish backoff, so the wrapper propagates the original exception instead of retrying immediately. A valid zero/past server delay, an elapsed deadline, or disabled backoff can still allow the second invocation. Only a failure escaping the wrapper reaches the cache's error handling.
+The wrapper **always rethrows `AccessTokenRetryAfterException` unchanged**. It does not inspect deadlines or decide when another attempt is allowed. This also applies to zero or already-elapsed deadlines: the current load fails, but a subsequent call can proceed as soon as the HTTP provider permits it.
+
+Other `AccessTokenUnavailableException` failures get at most one immediate retry. With `retry-after.enabled: false`, HTTP failures use that ordinary path. Setting only `fallback-delay: 0` removes the fallback wait, not the Retry-After exception. Only a failure escaping the wrapper reaches the cache's error handling.
 
 Cache lock timeouts and cache validation errors occur above this wrapper, so it does not immediately retry them. Other provider exceptions are not retried by this wrapper, but a failed background load still gets the local cooldown behavior from section 5.
 
 The built-in transports honor `Retry-After` on HTTP **429** and **503**, for both issuance and refresh. Nonnegative whole seconds and RFC-1123 HTTP-dates are supported. Dates are converted once to a monotonic deadline, so later wall-clock changes do not move it. Missing, blank, or malformed headers, and other token-request failures, use the configurable **15-second fallback**. Valid shorter delays override that fallback; very large delays saturate at the representable timer limit.
 
 The deadline belongs to one HTTP-provider instance and is exposed through wrappers. Calls rejected during the wait do not extend it; concurrent deadline updates cannot shorten it. Issuance and refresh share the gate. A throttled refresh retains its session instead of immediately trying a new client-credentials grant. A genuinely rejected refresh token is discarded, with fresh issuance deferred until the fallback ends.
+
+`AccessTokenRetryAfterException` carries the next-attempt deadline, without an attempted/deferred flag. The cache's background failure handler uses that deadline together with its local error cooldown. If backoff appears after dispatch, the failed worker still observes both waits; foreground callers receive the exception directly.
 
 ## 8. Health checks, disabled modes, and lifecycle
 
@@ -256,7 +259,7 @@ Caching shares a token across callers, identity-based coordination avoids duplic
 
 Use `retry-after.enabled: false` only to opt out deliberately; `retry-after.fallback-delay: 0` removes only the client fallback, not valid server directives. These properties sit beside `cache`, not inside it.
 
-This is failure backoff, **not a guarantee that a server can never be overloaded**. Reuse providers: independent instances and replicas do not share deadlines. Successful forced/uncached requests have no minimum interval, a successful HTTP response rejected by the cache does not start HTTP backoff, and a server can permit immediate retry with zero. Revocation, custom providers, and retries configured inside an HTTP client are outside this gate.
+This is failure backoff, **not a guarantee that a server can never be overloaded**. Reuse providers: independent instances and replicas do not share deadlines. Successful forced/uncached requests have no minimum interval, a successful HTTP response rejected by the cache does not start HTTP backoff, and a server can permit an immediate subsequent call with zero. Revocation, custom providers, and retries configured inside an HTTP client are outside this gate.
 
 ## Implementation references
 

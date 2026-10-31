@@ -1,8 +1,8 @@
 package org.entur.jwt.client;
 
 /**
- * Token unavailability with a fixed, JVM-local monotonic retry deadline.
- * Re-throwing this exception does not restart the wait.
+ * Token unavailability with a fixed, JVM-local monotonic deadline for the next attempt.
+ * Callers may use the deadline to defer subsequent work; rethrowing does not restart it.
  */
 public class AccessTokenRetryAfterException extends AccessTokenUnavailableException {
 
@@ -10,21 +10,17 @@ public class AccessTokenRetryAfterException extends AccessTokenUnavailableExcept
 
     /** Fixed deadline in the process-local nanoTime domain. */
     private final long retryAfterDeadlineNanos;
-    /** Whether the failure followed a token request rather than admission rejection. */
-    private final boolean requestAttempted;
 
     /**
      * Create a token failure or admission rejection with a fixed retry deadline.
      *
      * @param message failure description
-     * @param cause original failure, or null for a rejected request
+     * @param cause original failure, or null when none is available
      * @param retryAfterDeadlineNanos deadline in the {@link System#nanoTime()} time domain
-     * @param requestAttempted whether this invocation attempted a token request
      */
-    public AccessTokenRetryAfterException(String message, Throwable cause, long retryAfterDeadlineNanos, boolean requestAttempted) {
+    public AccessTokenRetryAfterException(String message, Throwable cause, long retryAfterDeadlineNanos) {
         super(message, cause);
         this.retryAfterDeadlineNanos = retryAfterDeadlineNanos;
-        this.requestAttempted = requestAttempted;
     }
 
     /**
@@ -36,12 +32,4 @@ public class AccessTokenRetryAfterException extends AccessTokenUnavailableExcept
         return retryAfterDeadlineNanos;
     }
 
-    /**
-     * Distinguish a failed request from rejection by an existing deadline.
-     *
-     * @return false when an existing deadline rejected the invocation before a token request
-     */
-    public boolean isRequestAttempted() {
-        return requestAttempted;
-    }
 }

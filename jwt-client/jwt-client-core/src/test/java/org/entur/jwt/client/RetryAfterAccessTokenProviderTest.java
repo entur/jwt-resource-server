@@ -3,6 +3,7 @@ package org.entur.jwt.client;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -26,7 +27,6 @@ class RetryAfterAccessTokenProviderTest {
         AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
                 () -> provider.getAccessToken(false));
         long deadline = failure.getRetryAfterDeadlineNanos();
-        assertThat(failure.isRequestAttempted()).isTrue();
         assertThat(deadline - provider.nowNanos).isEqualTo(TimeUnit.SECONDS.toNanos(120));
 
         provider.headerFailure = false;
@@ -35,7 +35,6 @@ class RetryAfterAccessTokenProviderTest {
             AccessTokenRetryAfterException rejected = assertThrows(AccessTokenRetryAfterException.class,
                     () -> provider.getAccessToken(true));
             assertThat(rejected.getRetryAfterDeadlineNanos()).isEqualTo(deadline);
-            assertThat(rejected.isRequestAttempted()).isFalse();
             assertThat(provider.calls).isEqualTo(1);
         }
         provider.advance(1, TimeUnit.SECONDS);
@@ -72,6 +71,26 @@ class RetryAfterAccessTokenProviderTest {
         provider.headerFailure = false;
         provider.advance(Long.parseLong(header.trim()), TimeUnit.SECONDS);
         assertThat(provider.getAccessToken(false).getValue()).isEqualTo("token");
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"0", "Sat, 31 Oct 2026 11:59:00 GMT"})
+    void shouldDeferZeroDelayFailuresToTheNextCallWithoutAddingAWait(String header) throws Exception {
+        TestProvider http = new TestProvider();
+        http.setRetryAfterFallbackMillis(0);
+        http.headerFailure = true;
+        http.header = header;
+        RetryingAccessTokenProvider provider = new RetryingAccessTokenProvider(http);
+
+        AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
+                () -> provider.getAccessToken(false));
+        assertThat(failure.getRetryAfterDeadlineNanos()).isEqualTo(http.nowNanos);
+        assertThat(http.calls).isEqualTo(1);
+
+        http.headerFailure = false;
+        assertThat(provider.getAccessToken(false).getValue()).isEqualTo("token");
+        assertThat(http.calls).isEqualTo(2);
     }
 
     @Test

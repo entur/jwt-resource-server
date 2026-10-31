@@ -122,7 +122,7 @@ Replacement validation still uses the time captured for the calling load. Schedu
 
 ## 4. Failed refresh: automatic retry after one minute
 
-A failed background attempt records one failure-completion timestamp, shared by both local gates. A rejection by an already-active HTTP deadline is not a new failure and does not restart either gate.
+A failed background attempt records one failure-completion timestamp, shared by both local gates. A callback deferred before dispatch is not a failed attempt and does not restart either gate. A Retry-After exception from an already-dispatched worker is handled as a failure, with both its deadline and the local cooldown respected.
 
 | Next trigger | Default local gate since the latest background failure |
 |--------------|-------------------------------------------------|
@@ -188,7 +188,7 @@ An early timer must not consume the only retry: it re-arms for the maximum remai
 
 Custom durations can reverse the order: an eager cooldown shorter than the traffic cooldown allows scheduled work first, once HTTP backoff also permits it. Setting either value to zero disables only that trigger's local gate. Eager error recovery retains a one-second floor even with a zero eager cooldown; a longer HTTP deadline still wins.
 
-The [immediate retry wrapper](../preemptive-refresh/README.md#7-immediate-retry-is-separate-from-cache-cooldowns) suppresses retries during an active HTTP deadline. With default cooldowns and negligible failure-processing time:
+The [immediate retry wrapper](../preemptive-refresh/README.md#7-immediate-retry-is-separate-from-cache-cooldowns) always propagates Retry-After exceptions, even with zero or elapsed deadlines. The cache/scheduler handles the wait. With default cooldowns and negligible failure-processing time:
 
 | HTTP failure delay | Earliest traffic-triggered background retry | Eager recovery target |
 |--------------------|---------------------------------------------|-----------------------|
@@ -196,7 +196,7 @@ The [immediate retry wrapper](../preemptive-refresh/README.md#7-immediate-retry-
 | `Retry-After: 30` | 30 seconds | 60 seconds |
 | `Retry-After: 120` | 120 seconds | 120 seconds |
 
-If another load establishes backoff after a worker passed its eligibility check, the source rejects that worker before HTTP. Its `requestAttempted=false` exception re-arms eager recovery for the remaining wait without adding a new 60-second cooldown.
+If another load establishes backoff after a worker passed its eligibility check, the source rejects that worker before HTTP. The exception carries only the deadline. The worker's failure handler starts its local cooldown and schedules recovery after the maximum of the remaining HTTP wait and the eager error cooldown. Early timer callbacks then re-arm without extending either deadline.
 
 ## 6. Successful replacements that do not extend expiry
 

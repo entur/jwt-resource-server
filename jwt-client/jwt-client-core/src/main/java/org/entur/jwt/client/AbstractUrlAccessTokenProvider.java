@@ -112,7 +112,7 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
         try {
             Long deadline = getRetryAfterDeadlineNanos();
             if (deadline != null && deadline - nanoTime() > 0) {
-                throw new AccessTokenRetryAfterException("Token request deferred until the retry deadline", null, deadline, false);
+                throw new AccessTokenRetryAfterException("Token request deferred until the retry deadline", null, deadline);
             }
             try {
                 return request.execute();
@@ -120,7 +120,7 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
                 if (retryAfterEnabled && !(e instanceof AccessTokenRetryAfterException)) {
                     long retryDeadline = deferTokenRequests(TimeUnit.MILLISECONDS.toNanos(retryAfterFallbackMillis));
                     if (e instanceof AccessTokenUnavailableException) {
-                        throw new AccessTokenRetryAfterException(e.getMessage(), e, retryDeadline, true);
+                        throw new AccessTokenRetryAfterException(e.getMessage(), e, retryDeadline);
                     }
                 }
                 throw e;
@@ -173,7 +173,7 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
                 LOGGER.warn("Invalid Retry-After header; using the configured fallback delay");
             }
         }
-        return new AccessTokenRetryAfterException(message, cause, deferTokenRequests(delay), true);
+        return new AccessTokenRetryAfterException(message, cause, deferTokenRequests(delay));
     }
 
     private synchronized long deferTokenRequests(long delayNanos) {

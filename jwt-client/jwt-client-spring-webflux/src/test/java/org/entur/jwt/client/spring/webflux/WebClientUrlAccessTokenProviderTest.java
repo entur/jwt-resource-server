@@ -73,16 +73,10 @@ public class WebClientUrlAccessTokenProviderTest {
                 return 0L;
             }
         };
-        RetryingAccessTokenProvider provider = new RetryingAccessTokenProvider(http) {
-            @Override
-            protected long nanoTime() {
-                return 0L;
-            }
-        };
+        RetryingAccessTokenProvider provider = new RetryingAccessTokenProvider(http);
         AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
                 () -> provider.getAccessToken(false));
         assertThat(failure.getRetryAfterDeadlineNanos()).isEqualTo(TimeUnit.SECONDS.toNanos(120));
-        assertThat(failure.isRequestAttempted()).isTrue();
         AccessTokenRetryAfterException rejected = assertThrows(AccessTokenRetryAfterException.class,
                 () -> provider.getAccessToken(true));
         assertThat(rejected.getRetryAfterDeadlineNanos()).isEqualTo(failure.getRetryAfterDeadlineNanos());

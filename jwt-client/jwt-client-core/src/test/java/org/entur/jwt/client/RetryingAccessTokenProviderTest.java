@@ -2,8 +2,8 @@ package org.entur.jwt.client;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -53,33 +53,14 @@ public class RetryingAccessTokenProviderTest extends AbstractDelegateProviderTes
         assertThat(provider.getProvider()).isSameInstanceAs(fallback);
     }
 
-    @Test
-    public void shouldNotRetryOrReplaceAnActiveRetryAfterFailure() throws Exception {
-        provider = new RetryingAccessTokenProvider(fallback) {
-            @Override
-            protected long nanoTime() {
-                return 100;
-            }
-        };
-        AccessTokenRetryAfterException failure = new AccessTokenRetryAfterException("HTTP 429", null, TimeUnit.SECONDS.toNanos(120), true);
+    @ParameterizedTest
+    @ValueSource(longs = {Long.MIN_VALUE, 0, Long.MAX_VALUE})
+    public void shouldAlwaysRethrowRetryAfterUnchanged(long deadline) throws Exception {
+        AccessTokenRetryAfterException failure = new AccessTokenRetryAfterException("HTTP 429", null, deadline);
         when(fallback.getAccessToken(false)).thenThrow(failure);
 
         assertThat(assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(false))).isSameInstanceAs(failure);
         verify(fallback, times(1)).getAccessToken(false);
     }
 
-    @Test
-    public void shouldRetryWhenTheRetryAfterDeadlineHasElapsed() throws Exception {
-        provider = new RetryingAccessTokenProvider(fallback) {
-            @Override
-            protected long nanoTime() {
-                return 100;
-            }
-        };
-        when(fallback.getAccessToken(false))
-                .thenThrow(new AccessTokenRetryAfterException("HTTP 503", null, 100, true)).thenReturn(accessToken);
-        when(fallback.getRetryAfterDeadlineNanos()).thenReturn(100L);
-        assertThat(provider.getAccessToken(false)).isSameInstanceAs(accessToken);
-        verify(fallback, times(2)).getAccessToken(false);
-    }
 }
