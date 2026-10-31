@@ -157,7 +157,15 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
     // a lookup in progress might be for another token, which does not look up unknown keys of this token.
     // So repeat until the keys contain the key, or are the result of a lookup for this token
     private Mono<Keys> keysFor(JWSHeader header) {
-        return lookup(header).flatMap(k -> k.contains(header) || k.isLookupFor(header) ? Mono.just(k) : keysFor(header));
+        return lookup(header).flatMap(k -> keysFor(header, k));
+    }
+
+    private Mono<Keys> keysFor(JWSHeader header, Keys keys) {
+        if (keys.contains(header) || keys.isLookupFor(header)) {
+            return Mono.just(keys);
+        }
+        // wait for the refresh of the lookup (which might already have finished) rather than start a new lookup
+        return keys.refresh != null ? keys.refresh.flatMap(k -> keysFor(header, k)) : keysFor(header);
     }
 
     private Mono<Keys> lookup(JWSHeader header) {
@@ -192,9 +200,9 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
             if (matcher != null && all.stream().noneMatch(matcher::matches)) {
                 // the keys at hand are enough for requests which do not need the unknown key (also those already waiting), so release
                 // them right away. Requests for the unknown key look up again, which waits for the refresh in progress
-                Keys known = new Keys(new JWKSet(all), time, null);
-                this.keys = known;
                 current = Sinks.one();
+                Keys known = new Keys(new JWKSet(all), time, null, current.asMono());
+                this.keys = known;
                 synchronized (lock) {
                     lookup = current;
                 }
@@ -207,7 +215,7 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
                     // use the keys at hand; any other failure is not hidden as an invalid token
                 }
             }
-            Keys result = new Keys(new JWKSet(all), time, header);
+            Keys result = new Keys(new JWKSet(all), time, header, null);
             this.keys = result;
             complete(current);
             current.tryEmitValue(result);
@@ -271,11 +279,14 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
         private final long time;
         // the token which the keys were looked up for, if any
         private final JWSHeader header;
+        // the keys after the refresh, if the keys are those at hand while the JWK source refreshes for an unknown key
+        private final Mono<Keys> refresh;
 
-        private Keys(JWKSet jwkSet, long time, JWSHeader header) {
+        private Keys(JWKSet jwkSet, long time, JWSHeader header, Mono<Keys> refresh) {
             this.jwkSet = new ImmutableJWKSet<>(jwkSet);
             this.time = time;
             this.header = header;
+            this.refresh = refresh;
         }
 
         private boolean isValid(long time) {

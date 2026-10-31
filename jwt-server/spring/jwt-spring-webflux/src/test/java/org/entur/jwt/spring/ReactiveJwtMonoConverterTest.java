@@ -619,6 +619,22 @@ class ReactiveJwtMonoConverterTest {
     }
 
     @Test
+    void shouldLookUpOnceWhenLookupCompletesBeforeRequestIsWaiting() throws Exception {
+        // i.e. the lookup has finished both phases when the request subscribes to it, as for a scheduler which is idle or runs the task directly
+        JwtReactiveAuthenticationManager manager = manager(new ReactiveJwtMonoConverter(processor(), selector(), Schedulers.immediate()));
+        authenticate(manager, token(key)).block(Duration.ofSeconds(10));
+        int lookups = source.threads.size();
+
+        source.refreshed = new JWKSet(List.of(key, otherKey));
+        authenticate(manager, token(otherKey)).block(Duration.ofSeconds(10));
+        assertThat(source.threads).hasSize(lookups + 3);
+
+        source.refreshed = new JWKSet(List.of(key, otherKey));
+        assertThatThrownBy(() -> authenticate(manager, token(thirdKey)).block(Duration.ofSeconds(10))).isInstanceOf(InvalidBearerTokenException.class);
+        assertThat(source.threads).hasSize(lookups + 6);
+    }
+
+    @Test
     void shouldUseClaimsVerifierOfJwtProcessor() {
         DefaultJWTProcessor<SecurityContext> processor = processor();
         processor.setJWTClaimsSetVerifier((claims, context) -> {
