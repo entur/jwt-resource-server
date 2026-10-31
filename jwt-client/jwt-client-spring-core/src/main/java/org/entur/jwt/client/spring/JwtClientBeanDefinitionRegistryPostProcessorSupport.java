@@ -103,6 +103,9 @@ public abstract class JwtClientBeanDefinitionRegistryPostProcessorSupport<T> {
         AccessTokenProviderBuilder builder = new AccessTokenProviderBuilder(accessTokenProvider);
 
         builder.retrying(properties.isRetrying());
+        if (properties.getRetryAfter() != null) {
+            builder.retryAfter(properties.getRetryAfter().getFallbackDelay(), TimeUnit.SECONDS);
+        }
 
         if (cache != null && cache.isEnabled()) {
             builder.cached(cache.getMinimumTimeToLive(), TimeUnit.SECONDS, cache.getRefreshTimeout(), TimeUnit.SECONDS);
@@ -110,6 +113,8 @@ public abstract class JwtClientBeanDefinitionRegistryPostProcessorSupport<T> {
             JwtPreemptiveRefresh preemptiveRefresh = cache.getPreemptiveRefresh();
             if (preemptiveRefresh != null && preemptiveRefresh.isEnabled()) {
                 builder.preemptiveCacheRefresh(preemptiveRefresh.getTimeToExpires(), TimeUnit.SECONDS, preemptiveRefresh.getExpiresConstraint(), preemptiveRefresh.getEager().isEnabled());
+                builder.preemptiveErrorCooldown(preemptiveRefresh.getErrorCooldown(), TimeUnit.SECONDS);
+                builder.eagerErrorCooldown(preemptiveRefresh.getEager().getErrorCooldown(), TimeUnit.SECONDS);
             } else {
                 builder.preemptiveCacheRefresh(false);
             }

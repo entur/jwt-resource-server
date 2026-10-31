@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.function.Function;
 
 /**
  * 
@@ -29,6 +30,10 @@ import java.util.Map.Entry;
 public class RestClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
 
     protected static final Logger LOGGER = LoggerFactory.getLogger(RestClientUrlAccessTokenProvider.class);
+
+    protected static Function<String, String> headerLookup(HttpHeaders headers) {
+        return headers == null ? null : headers::getFirst;
+    }
 
     protected static StringBuilder printResponseEntityHeadersIfPresent(HttpHeaders headers, String... headerNames) {
         StringBuilder builder = new StringBuilder();
@@ -90,10 +95,10 @@ public class RestClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProv
             int responseCode = e.getStatusCode().value();
             if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
             if (responseCode == 503) { // service unavailable
-                throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printResponseEntityHeadersIfPresent(e.getResponseHeaders(), "Retry-After"));
+                throw retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.", headerLookup(e.getResponseHeaders()), e);
             } else if (responseCode == 429) { // too many calls
                 // see for example https://auth0.com/docs/policies/rate-limits
-                throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests. " + printResponseEntityHeadersIfPresent(e.getResponseHeaders(), "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
+                throw retryAfterException("Authorization server responded with HTTP code 429 - too many requests.", headerLookup(e.getResponseHeaders()), e);
             }
             throw new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
         } catch(RestClientException e) {

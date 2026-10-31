@@ -28,12 +28,19 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
     protected long preemptiveRefreshTimeUnits = 30;
     protected boolean preemptiveRefreshEager = false;
     protected int preemptiveRefreshConstraint = 25;
+    protected long preemptiveErrorCooldown = 15;
+    protected TimeUnit preemptiveErrorCooldownUnit = TimeUnit.SECONDS;
+    protected long eagerErrorCooldown = 60;
+    protected TimeUnit eagerErrorCooldownUnit = TimeUnit.SECONDS;
 
     // health indicator support
     protected boolean health = true;
 
     // retrying
     protected boolean retrying = true;
+
+    /** Fallback delay in milliseconds, applied to built-in HTTP providers. */
+    protected long retryAfterFallbackMillis = AbstractUrlAccessTokenProvider.DEFAULT_RETRY_AFTER_FALLBACK_MILLIS;
 
     /**
      * Wrap a specific {@linkplain AccessTokenProvider}. Access to this instance
@@ -134,6 +141,50 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
         return (B) this;
     }
 
+    /**
+     * Configure the traffic-triggered cooldown after a failed preemptive refresh. Does not delay blocking cache reloads.
+     *
+     * @param cooldown cooldown duration; zero disables it
+     * @param unit cooldown unit
+     * @return the builder
+     */
+    @SuppressWarnings("unchecked")
+    public B preemptiveErrorCooldown(long cooldown, TimeUnit unit) {
+        this.preemptiveErrorCooldown = cooldown;
+        this.preemptiveErrorCooldownUnit = unit;
+        return (B) this;
+    }
+
+    /**
+     * Configure the eager cooldown after a failed preemptive refresh. Does not delay blocking cache reloads.
+     *
+     * @param cooldown cooldown duration; scheduled retries wait at least one second
+     * @param unit cooldown unit
+     * @return the builder
+     */
+    @SuppressWarnings("unchecked")
+    public B eagerErrorCooldown(long cooldown, TimeUnit unit) {
+        this.eagerErrorCooldown = cooldown;
+        this.eagerErrorCooldownUnit = unit;
+        return (B) this;
+    }
+
+    /**
+     * Configure failed-request backoff for a built-in HTTP provider; the default is 15 seconds and other providers ignore it.
+     *
+     * @param fallback delay after failure without a usable header; zero leaves such failures ordinary
+     * @param unit fallback delay unit
+     * @return this builder
+     */
+    @SuppressWarnings("unchecked")
+    public B retryAfter(long fallback, TimeUnit unit) {
+        if (fallback < 0) {
+            throw new IllegalArgumentException("Retry-After fallback must not be negative");
+        }
+        this.retryAfterFallbackMillis = unit.toMillis(fallback);
+        return (B) this;
+    }
+
     public AccessTokenProvider build() {
         return build(this.accessTokenProvider);
     }
@@ -143,6 +194,10 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
             throw new AccessTokenProviderBuilderException("Premptive cache refresh configured without caching");
         }
 
+        if (provider instanceof AbstractUrlAccessTokenProvider httpProvider) {
+            httpProvider.setRetryAfterFallbackMillis(retryAfterFallbackMillis);
+            provider = new ExclusiveAccessTokenProvider(provider);
+        }
         if (retrying) {
             provider = new RetryingAccessTokenProvider(provider);
         }
@@ -156,7 +211,9 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
             }
         }
         if (preemptiveRefresh) {
-            provider = new PreemptiveCachedAccessTokenProvider(provider, minimumTimeToLiveUnits, minimumTimeToLiveUnit, refreshExpiresIn, refreshExpiresUnit, preemptiveRefreshTimeUnits, preemptiveRefreshTimeUnit, preemptiveRefreshConstraint, preemptiveRefreshEager);
+            provider = new PreemptiveCachedAccessTokenProvider(provider,
+                    minimumTimeToLiveUnits, minimumTimeToLiveUnit, refreshExpiresIn, refreshExpiresUnit, preemptiveRefreshTimeUnits, preemptiveRefreshTimeUnit,
+                    preemptiveErrorCooldown, preemptiveErrorCooldownUnit, eagerErrorCooldown, eagerErrorCooldownUnit, preemptiveRefreshConstraint, preemptiveRefreshEager);
         } else if (cached) {
             provider = new DefaultCachedAccessTokenProvider(provider, minimumTimeToLiveUnits, minimumTimeToLiveUnit, refreshExpiresIn, refreshExpiresUnit);
         }
