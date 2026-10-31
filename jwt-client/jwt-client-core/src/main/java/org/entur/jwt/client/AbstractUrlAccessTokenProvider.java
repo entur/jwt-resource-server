@@ -166,7 +166,8 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
         }
     }
 
-    private synchronized long deferTokenRequests(long delayNanos) {
+    // not synchronized: token requests are serialized by ExclusiveAccessTokenProvider
+    private long deferTokenRequests(long delayNanos) {
         long now = nanoTime();
         Long current = retryAfterDeadlineNanos;
         if (current == null || delayNanos > current - now) {
