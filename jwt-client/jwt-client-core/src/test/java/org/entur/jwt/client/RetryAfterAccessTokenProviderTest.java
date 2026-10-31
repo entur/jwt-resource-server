@@ -230,7 +230,7 @@ class RetryAfterAccessTokenProviderTest {
             http.advance(600, TimeUnit.SECONDS);
             assertThat(cache.getCachedAccessToken(http.nowMillis)).isNull();
             assertThrows(AccessTokenRetryAfterException.class, () -> cache.getAccessToken(http.nowMillis, false));
-            assertThat(cache.getRetryAfterDeadlineNanos()).isEqualTo(deadline);
+            assertThat(http.getRetryAfterDeadlineNanos()).isEqualTo(deadline);
             assertThat(http.calls).isEqualTo(2);
             http.advance(600, TimeUnit.SECONDS);
             http.headerFailure = false;
@@ -258,13 +258,13 @@ class RetryAfterAccessTokenProviderTest {
         http.failure = new AccessTokenUnavailableException("connection failed");
         try (AccessTokenProvider provider = new AccessTokenProviderBuilder(http).cached(false).retrying(false).health(true).build()) {
             assertThat(provider.getHealth(true).isSuccess()).isFalse();
-            long deadline = provider.getRetryAfterDeadlineNanos();
+            long deadline = http.getRetryAfterDeadlineNanos();
             assertThat(deadline - http.nowNanos).isEqualTo(TimeUnit.SECONDS.toNanos(15));
             http.failure = null;
             assertThat(provider.getHealth(true).isSuccess()).isFalse();
             http.advance(14, TimeUnit.SECONDS);
             assertThat(provider.getHealth(true).isSuccess()).isFalse();
-            assertThat(provider.getRetryAfterDeadlineNanos()).isEqualTo(deadline);
+            assertThat(http.getRetryAfterDeadlineNanos()).isEqualTo(deadline);
             assertThat(http.calls).isEqualTo(1);
             http.advance(1, TimeUnit.SECONDS);
             assertThat(provider.getHealth(true).isSuccess()).isTrue();

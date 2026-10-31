@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -12,6 +13,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 
 /**
  * 
@@ -41,6 +43,7 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
     private final long preemptiveErrorCooldown; // milliseconds
     private final long eagerErrorCooldown; // milliseconds
     private volatile Long lastPreemptiveFailureNanos;
+    private volatile Supplier<Long> retryAfterDeadline = () -> null;
 
     private final ReentrantLock lazyLock = new ReentrantLock();
 
@@ -358,11 +361,21 @@ public class PreemptiveCachedAccessTokenProvider extends DefaultCachedAccessToke
             long cooldown = scheduledRefresh ? eagerErrorCooldown : preemptiveErrorCooldown;
             remaining = TimeUnit.MILLISECONDS.toNanos(cooldown) - (now - failureNanos);
         }
-        Long deadline = provider.getRetryAfterDeadlineNanos();
+        Long deadline = retryAfterDeadline.get();
         if (deadline != null) {
             remaining = Math.max(remaining, deadline - now);
         }
         return remaining;
+    }
+
+    /**
+     * Let background refresh skip work while the token source reports a retry deadline.
+     * Without a supplier, the deadline is learned only from {@linkplain AccessTokenRetryAfterException}.
+     *
+     * @param retryAfterDeadline JVM-local {@link System#nanoTime()} deadline, or null if none is known
+     */
+    public void setRetryAfterDeadline(Supplier<Long> retryAfterDeadline) {
+        this.retryAfterDeadline = Objects.requireNonNull(retryAfterDeadline);
     }
 
     protected long nanoTime() {

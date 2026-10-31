@@ -198,8 +198,9 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
             throw new AccessTokenProviderBuilderException("Premptive cache refresh configured without caching");
         }
 
+        AccessTokenProvider root = provider;
         if (retryAfterEnabled != null) {
-            if (!(provider instanceof AbstractUrlAccessTokenProvider httpProvider)) {
+            if (!(root instanceof AbstractUrlAccessTokenProvider httpProvider)) {
                 throw new AccessTokenProviderBuilderException("Retry-After configuration requires a built-in HTTP provider");
             }
             httpProvider.setRetryAfterFallbackMillis(retryAfterFallbackMillis);
@@ -219,8 +220,13 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
             }
         }
         if (preemptiveRefresh) {
-            provider = new PreemptiveCachedAccessTokenProvider(provider, minimumTimeToLiveUnits, minimumTimeToLiveUnit, refreshExpiresIn, refreshExpiresUnit, preemptiveRefreshTimeUnits, preemptiveRefreshTimeUnit,
+            PreemptiveCachedAccessTokenProvider preemptive = new PreemptiveCachedAccessTokenProvider(provider,
+                    minimumTimeToLiveUnits, minimumTimeToLiveUnit, refreshExpiresIn, refreshExpiresUnit, preemptiveRefreshTimeUnits, preemptiveRefreshTimeUnit,
                     preemptiveErrorCooldown, preemptiveErrorCooldownUnit, eagerErrorCooldown, eagerErrorCooldownUnit, preemptiveRefreshConstraint, preemptiveRefreshEager);
+            if (root instanceof AbstractUrlAccessTokenProvider httpProvider) {
+                preemptive.setRetryAfterDeadline(httpProvider::getRetryAfterDeadlineNanos);
+            }
+            provider = preemptive;
         } else if (cached) {
             provider = new DefaultCachedAccessTokenProvider(provider, minimumTimeToLiveUnits, minimumTimeToLiveUnit, refreshExpiresIn, refreshExpiresUnit);
         }

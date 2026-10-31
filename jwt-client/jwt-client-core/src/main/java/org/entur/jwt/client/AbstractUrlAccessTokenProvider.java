@@ -188,7 +188,12 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
         return retryAfterDeadlineNanos;
     }
 
-    @Override
+    /**
+     * Read the current token-request backoff without starting a request.
+     *
+     * @return JVM-local deadline in the {@link System#nanoTime()} time domain, or null if none is known;
+     *         the deadline may already have elapsed
+     */
     public Long getRetryAfterDeadlineNanos() {
         return retryAfterEnabled ? retryAfterDeadlineNanos : null;
     }

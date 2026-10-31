@@ -17,6 +17,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertNotNull;
@@ -212,7 +213,6 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
             provider.getAccessToken(justBeforeExpiry, false); // wants to update, but can't get lock
 
             verify(fallback).getAccessToken(false);
-            verify(fallback).getRetryAfterDeadlineNanos();
             verifyNoMoreInteractions(fallback);
         } finally {
             helper.close();
@@ -422,8 +422,10 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         TestPreemptiveProvider timed = newEagerProvider(directExecutor());
         provider = timed;
         long deadline = TimeUnit.SECONDS.toNanos(serverSeconds);
+        AtomicReference<Long> sourceDeadline = new AtomicReference<>();
+        timed.setRetryAfterDeadline(sourceDeadline::get);
         when(fallback.getAccessToken(false)).thenReturn(accessToken).thenAnswer(invocation -> {
-            when(fallback.getRetryAfterDeadlineNanos()).thenReturn(deadline);
+            sourceDeadline.set(deadline);
             throw new AccessTokenRetryAfterException("HTTP 429", null, deadline);
         }).thenReturn(refreshedAccessToken);
 
@@ -449,8 +451,10 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         TestPreemptiveProvider timed = newEagerProvider(directExecutor());
         provider = timed;
         long deadline = TimeUnit.SECONDS.toNanos(15);
+        AtomicReference<Long> sourceDeadline = new AtomicReference<>();
+        timed.setRetryAfterDeadline(sourceDeadline::get);
         when(fallback.getAccessToken(false)).thenReturn(accessToken).thenAnswer(invocation -> {
-            when(fallback.getRetryAfterDeadlineNanos()).thenReturn(deadline);
+            sourceDeadline.set(deadline);
             throw new AccessTokenRetryAfterException("Another load established backoff", null, deadline);
         }).thenReturn(refreshedAccessToken);
 

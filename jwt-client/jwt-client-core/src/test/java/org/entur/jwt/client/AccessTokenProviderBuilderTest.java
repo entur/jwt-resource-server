@@ -10,7 +10,11 @@ import java.util.concurrent.TimeUnit;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class AccessTokenProviderBuilderTest {
 
@@ -135,6 +139,22 @@ public class AccessTokenProviderBuilderTest {
         assertThat(accessTokenProviders.get(0)).isInstanceOf(PreemptiveCachedAccessTokenProvider.class);
         assertThat(accessTokenProviders.get(1)).isInstanceOf(RetryingAccessTokenProvider.class);
         assertThat(accessTokenProviders.get(2)).isInstanceOf(AccessTokenProvider.class);
+    }
+
+    @Test
+    public void shouldLetPreemptiveRefreshSeeTheHttpRetryDeadline() throws Exception {
+        AbstractUrlAccessTokenProvider http = mock(AbstractUrlAccessTokenProvider.class);
+        when(http.getAccessToken(false)).thenReturn(new AccessToken("a.b.c", "bearer", System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(20)));
+        when(http.getRetryAfterDeadlineNanos()).thenReturn(System.nanoTime() + TimeUnit.HOURS.toNanos(1));
+
+        try (AccessTokenProvider provider = new AccessTokenProviderBuilder(http).cached(1, TimeUnit.SECONDS, 1, TimeUnit.SECONDS)
+                .preemptiveCacheRefresh(30, TimeUnit.SECONDS, 0, false).health(false).retrying(false).build()) {
+            provider.getAccessToken(false);
+            provider.getAccessToken(false);
+
+            verify(http, times(1)).getAccessToken(false);
+            verify(http, atLeastOnce()).getRetryAfterDeadlineNanos();
+        }
     }
 
     private AccessTokenProviderBuilder builder() {

@@ -20,11 +20,6 @@ public abstract class BaseAccessTokenProvider implements AccessTokenProvider {
     }
 
     @Override
-    public Long getRetryAfterDeadlineNanos() {
-        return provider.getRetryAfterDeadlineNanos();
-    }
-
-    @Override
     public AccessTokenHealth getHealth(boolean refresh) {
         return provider.getHealth(refresh);
     }
