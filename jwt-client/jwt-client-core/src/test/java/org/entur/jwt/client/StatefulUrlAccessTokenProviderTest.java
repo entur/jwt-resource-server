@@ -83,6 +83,61 @@ public class StatefulUrlAccessTokenProviderTest extends AbstractUrlAccessTokenPr
     }
 
     @Test
+    public void shouldRetainNonRotatingRefreshTokenForRefreshAndRevoke() throws Exception {
+        StatefulUrlAccessTokenProvider provider = providerForResource("/keycloakClientCredentialsResponse.json");
+        provider.getAccessToken(1000L);
+        RefreshToken refreshToken = provider.getRefreshToken();
+
+        ByteArrayOutputStream firstRefresh = new ByteArrayOutputStream();
+        ByteArrayOutputStream secondRefresh = new ByteArrayOutputStream();
+        ByteArrayOutputStream revoke = new ByteArrayOutputStream();
+        when(urlConnection.getOutputStream()).thenReturn(firstRefresh, secondRefresh, revoke);
+        when(urlConnection.getInputStream()).thenAnswer(invocation -> getClass().getResourceAsStream("/auth0ClientCredentialsResponse.json"));
+
+        provider.getAccessToken(2000L);
+        assertThat(provider.getRefreshToken()).isNotNull();
+        assertThat(provider.getRefreshToken().getExpires()).isEqualTo(refreshToken.getExpires());
+        provider.getAccessToken(3000L);
+        assertThat(provider.getRefreshToken()).isNotNull();
+        assertThat(provider.getRefreshToken().getExpires()).isEqualTo(refreshToken.getExpires());
+        provider.close(4000L);
+
+        assertThat(firstRefresh.toString(StandardCharsets.UTF_8)).isEqualTo("grant_type=refresh_token&refresh_token=a.b.c");
+        assertThat(secondRefresh.toString(StandardCharsets.UTF_8)).isEqualTo("grant_type=refresh_token&refresh_token=a.b.c");
+        assertThat(revoke.toString(StandardCharsets.UTF_8)).isEqualTo("refresh_token=a.b.c");
+        assertThat(provider.getRefreshToken()).isNull();
+    }
+
+    @Test
+    public void shouldDiscardRejectedRefreshTokenWhenNewSessionHasNoRefreshToken() throws Exception {
+        StatefulUrlAccessTokenProvider provider = providerForResource("/keycloakClientCredentialsResponse.json");
+        provider.getAccessToken(1000L);
+
+        when(urlConnection.getResponseCode()).thenReturn(400, 200);
+        when(urlConnection.getInputStream()).thenReturn(getClass().getResourceAsStream("/auth0ClientCredentialsResponse.json"));
+
+        // the rejection discards the session and defers the new one until the fallback ends
+        assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(2000L));
+        assertThat(provider.getRefreshToken()).isNull();
+        nowNanos += TimeUnit.SECONDS.toNanos(15);
+
+        assertThat(provider.getAccessToken(3000L).getValue()).isEqualTo("x.y.z");
+        assertThat(provider.getRefreshToken()).isNull();
+    }
+
+    @Test
+    public void shouldDiscardExpiredRefreshTokenWhenNewSessionHasNoRefreshToken() throws Exception {
+        StatefulUrlAccessTokenProvider provider = providerForResource("/keycloakClientCredentialsResponse.json");
+        provider.getAccessToken(1000L);
+        long afterRefreshExpiry = provider.getRefreshToken().getExpires() + 1;
+
+        when(urlConnection.getInputStream()).thenReturn(getClass().getResourceAsStream("/auth0ClientCredentialsResponse.json"));
+
+        assertThat(provider.getAccessToken(afterRefreshExpiry).getValue()).isEqualTo("x.y.z");
+        assertThat(provider.getRefreshToken()).isNull();
+    }
+
+    @Test
     public void shouldUseClientCredentialsToRefreshExpiredRefreshToken() throws Exception {
         StatefulUrlAccessTokenProvider provider = providerForResource("/keycloakClientCredentialsResponse.json");
         AccessToken accessToken = provider.getAccessToken(false);

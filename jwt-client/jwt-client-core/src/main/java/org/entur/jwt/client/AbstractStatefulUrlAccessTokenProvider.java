@@ -9,9 +9,10 @@ import java.util.Map.Entry;
 /**
  * {@linkplain AccessTokenProvider} which handles refresh tokens. <br>
  * <br>
- * The refresh and revoke requests are authenticated the same way as the issue request (RFC 6749 section 6),
- * i.e. they carry the same headers (for example a basic authorization header) and the same client id and
- * secret body parameters (if any).
+ * The refresh and revoke requests are authenticated the same way as the issue
+ * request (RFC 6749 section 6), i.e. they carry the same headers (for example a
+ * basic authorization header) and the same client id and secret body parameters
+ * (if any).
  */
 
 public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
@@ -41,7 +42,7 @@ public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrl
 
     protected static Map<String, Object> getClientAuthenticationParameters(Map<String, Object> parameters) {
         Map<String, Object> clientAuthenticationParameters = new LinkedHashMap<>();
-        for (String key : new String[]{KEY_CLIENT_ID, KEY_CLIENT_SECRET}) {
+        for (String key : new String[] { KEY_CLIENT_ID, KEY_CLIENT_SECRET }) {
             Object value = parameters.get(key);
             if (value != null) {
                 clientAuthenticationParameters.put(key, value);
@@ -106,11 +107,14 @@ public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrl
         checkRetryDeadline(null);
 
         ClientCredentialsResponse token;
+        RefreshToken nextRefreshToken = null;
         try {
             RefreshToken threadSafeRefreshToken = this.refreshToken; // defensive copy
             if (threadSafeRefreshToken != null && threadSafeRefreshToken.isValid(time)) {
                 try {
                     token = getToken(threadSafeRefreshToken);
+                    // A successful refresh need not rotate the refresh token (RFC 6749 section 6).
+                    nextRefreshToken = threadSafeRefreshToken;
                 } catch (RefreshTokenException e) {
                     // assume current session has been revoked or expired
                     // open a new session and forget about the old one
@@ -137,10 +141,9 @@ public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrl
             } else {
                 expires = -1L;
             }
-            this.refreshToken = new RefreshToken(token.getRefreshToken(), expires);
-        } else {
-            this.refreshToken = null;
+            nextRefreshToken = new RefreshToken(token.getRefreshToken(), expires);
         }
+        this.refreshToken = nextRefreshToken;
 
         return new AccessToken(token.getAccessToken(), token.getTokenType(), time + token.getExpiresIn() * 1000);
     }
@@ -148,7 +151,7 @@ public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrl
     public RefreshToken getRefreshToken() {
         return refreshToken;
     }
-    
+
     @Override
     public boolean supportsHealth() {
         return false;
