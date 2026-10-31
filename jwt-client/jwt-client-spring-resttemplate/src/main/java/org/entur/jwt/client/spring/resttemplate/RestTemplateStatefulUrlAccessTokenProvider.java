@@ -113,10 +113,13 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
             if (responseCode != 200) {
                 if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to refresh token at {}", responseCode, refreshUrl);
                 if (responseCode == 503) { // service unavailable
-                    throw retryAfterException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(response, "Retry-After"), response.getHeaders().getFirst("Retry-After"));
+                    throw retryAfterException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(response, "Retry-After"),
+                            response.getHeaders().getFirst("Retry-After"));
                 } else if (responseCode == 429) { // too many calls
                     // see for example https://auth0.com/docs/policies/rate-limits
-                    throw retryAfterException("Authorization server responded with HTTP code 429 - too many requests. " + printHeadersIfPresent(response, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"), response.getHeaders().getFirst("Retry-After"));
+                    throw retryAfterException("Authorization server responded with HTTP code 429 - too many requests. "
+                            + printHeadersIfPresent(response, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"),
+                            response.getHeaders().getFirst("Retry-After"));
                 }
 
                 throw new RefreshTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
@@ -130,7 +133,8 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
             int responseCode = e.getStatusCode().value();
             if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to refresh token at {}", responseCode, refreshUrl);
             if (responseCode == 503 || responseCode == 429) { // service unavailable or too many calls
-                throw retryAfterException("Authorization server responded with HTTP code " + responseCode + " when refreshing token", e.getResponseHeaders() == null ? null : e.getResponseHeaders().getFirst("Retry-After"), e);
+                throw retryAfterException("Authorization server responded with HTTP code " + responseCode + " when refreshing token",
+                        e.getResponseHeaders() == null ? null : e.getResponseHeaders().getFirst("Retry-After"), e);
             }
             // assume current session has been revoked or expired
             throw new RefreshTokenException("Authorization server responded with HTTP unexpected response code " + responseCode + " when refreshing token", e);
@@ -164,10 +168,13 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
     protected AccessTokenException createUnexpectedResponseCodeException(int responseCode, HttpHeaders headers) {
         if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
         if (responseCode == 503) { // service unavailable
-            return retryAfterException("Authorization server responded with HTTP code 503 - service unavailable. " + RestTemplateUrlAccessTokenProvider.printHttpHeadersIfPresent(headers, "Retry-After"), headers == null ? null : headers.getFirst("Retry-After"));
+            return retryAfterException("Authorization server responded with HTTP code 503 - service unavailable. "
+                    + RestTemplateUrlAccessTokenProvider.printHttpHeadersIfPresent(headers, "Retry-After"), headers == null ? null : headers.getFirst("Retry-After"));
         } else if (responseCode == 429) { // too many calls
             // see for example https://auth0.com/docs/policies/rate-limits
-            return retryAfterException("Authorization server responded with HTTP code 429 - too many requests. " + RestTemplateUrlAccessTokenProvider.printHttpHeadersIfPresent(headers, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"), headers == null ? null : headers.getFirst("Retry-After"));
+            return retryAfterException("Authorization server responded with HTTP code 429 - too many requests. "
+                    + RestTemplateUrlAccessTokenProvider.printHttpHeadersIfPresent(headers, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"),
+                    headers == null ? null : headers.getFirst("Retry-After"));
         }
         return new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
     }

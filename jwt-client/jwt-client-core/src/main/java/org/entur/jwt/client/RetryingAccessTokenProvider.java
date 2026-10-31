@@ -3,8 +3,9 @@ package org.entur.jwt.client;
 /**
  * This provider implements a workaround for transient network problems. <br>
  * <br>
- * It retries getting the {@linkplain AccessToken} if the wrapped provider
- * throws a {@linkplain AccessTokenUnavailableException}.
+ * It retries getting the {@linkplain AccessToken} once after an
+ * {@linkplain AccessTokenUnavailableException}, unless the provider or
+ * exception reports an active retry deadline.
  */
 
 public class RetryingAccessTokenProvider extends BaseAccessTokenProvider {
@@ -18,12 +19,19 @@ public class RetryingAccessTokenProvider extends BaseAccessTokenProvider {
         try {
             return provider.getAccessToken(forceRefresh);
         } catch (AccessTokenUnavailableException e) {
-            long now = nanoTime();
-            Long deadline = provider.getRetryAfterDeadlineNanos();
-            if ((deadline != null && deadline - now > 0)
-                    || (e instanceof AccessTokenRetryAfterException retryAfter && retryAfter.getRetryAfterDeadlineNanos() - now > 0)) {
+            long nowNanos = nanoTime();
+            Long providerRetryDeadline = provider.getRetryAfterDeadlineNanos();
+            if (providerRetryDeadline != null && providerRetryDeadline - nowNanos > 0) {
                 throw e;
             }
+
+            if (e instanceof AccessTokenRetryAfterException retryAfter) {
+                long exceptionRetryDeadline = retryAfter.getRetryAfterDeadlineNanos();
+                if (exceptionRetryDeadline - nowNanos > 0) {
+                    throw e;
+                }
+            }
+
             // assume transient network issue, retry once
             return provider.getAccessToken(forceRefresh);
         }

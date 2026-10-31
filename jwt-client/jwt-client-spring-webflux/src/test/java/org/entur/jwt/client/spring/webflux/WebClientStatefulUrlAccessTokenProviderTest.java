@@ -58,7 +58,8 @@ public class WebClientStatefulUrlAccessTokenProviderTest {
                 })
                 .build();
 
-        provider = new WebClientStatefulUrlAccessTokenProvider(webClient, new URL(ISSUE_URL), Map.of("grant_type", "client_credentials"), Collections.emptyMap(), new URL(REFRESH_URL), new URL(REVOKE_URL)) {
+        provider = new WebClientStatefulUrlAccessTokenProvider(webClient, new URL(ISSUE_URL), Map.of("grant_type", "client_credentials"), Collections.emptyMap(),
+                new URL(REFRESH_URL), new URL(REVOKE_URL)) {
             @Override
             protected long nanoTime() {
                 return nowNanos;

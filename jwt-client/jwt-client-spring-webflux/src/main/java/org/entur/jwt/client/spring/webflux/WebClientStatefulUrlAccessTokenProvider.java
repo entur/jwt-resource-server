@@ -76,10 +76,12 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
                     .bodyValue(body)
                     .retrieve()
                     .onStatus(httpStatus -> httpStatus == HttpStatus.TOO_MANY_REQUESTS,
-                            response -> Mono.error(retryAfterException("Authorization server responded with HTTP code 429 - too many requests.", response.headers().asHttpHeaders().getFirst("Retry-After")))
+                            response -> Mono.error(retryAfterException("Authorization server responded with HTTP code 429 - too many requests.",
+                                    response.headers().asHttpHeaders().getFirst("Retry-After")))
                     )
                     .onStatus(httpStatus -> httpStatus == HttpStatus.SERVICE_UNAVAILABLE,
-                            response -> Mono.error(retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.", response.headers().asHttpHeaders().getFirst("Retry-After")))
+                            response -> Mono.error(retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.",
+                                    response.headers().asHttpHeaders().getFirst("Retry-After")))
                     )
                     .onStatus(httpStatus -> !httpStatus.is2xxSuccessful(),
                             response -> Mono.error(new AccessTokenException("Authorization server responded with HTTP unexpected response code " + response.statusCode()))
