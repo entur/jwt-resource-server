@@ -32,7 +32,10 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
     protected final byte[] issueBody;
     protected final Map<String, Object> issueHeaders;
 
-    private volatile long retryAfterFallbackMillis = 15_000;
+    /** Default delay after a failure without a usable Retry-After header, in milliseconds. */
+    public static final long DEFAULT_RETRY_AFTER_FALLBACK_MILLIS = 15_000;
+
+    private volatile long retryAfterFallbackMillis = DEFAULT_RETRY_AFTER_FALLBACK_MILLIS;
     private volatile Long retryAfterDeadlineNanos;
 
     /**

@@ -39,8 +39,8 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
     // retrying
     protected boolean retrying = true;
 
-    /** Optional fallback delay in milliseconds. */
-    protected Long retryAfterFallbackMillis;
+    /** Fallback delay in milliseconds, applied to built-in HTTP providers. */
+    protected long retryAfterFallbackMillis = AbstractUrlAccessTokenProvider.DEFAULT_RETRY_AFTER_FALLBACK_MILLIS;
 
     /**
      * Wrap a specific {@linkplain AccessTokenProvider}. Access to this instance
@@ -170,7 +170,7 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
     }
 
     /**
-     * Configure failed-request backoff for a built-in HTTP provider.
+     * Configure failed-request backoff for a built-in HTTP provider; the default is 15 seconds and other providers ignore it.
      *
      * @param fallback delay after failure without a usable header; zero leaves such failures ordinary
      * @param unit fallback delay unit
@@ -195,14 +195,8 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
         }
 
         AccessTokenProvider root = provider;
-        if (retryAfterFallbackMillis != null) {
-            if (!(root instanceof AbstractUrlAccessTokenProvider httpProvider)) {
-                throw new AccessTokenProviderBuilderException("Retry-After configuration requires a built-in HTTP provider");
-            }
+        if (root instanceof AbstractUrlAccessTokenProvider httpProvider) {
             httpProvider.setRetryAfterFallbackMillis(retryAfterFallbackMillis);
-        }
-
-        if (root instanceof AbstractUrlAccessTokenProvider) {
             provider = new ExclusiveAccessTokenProvider(provider);
         }
         if (retrying) {
