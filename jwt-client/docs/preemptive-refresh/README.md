@@ -33,12 +33,23 @@ The calculation uses milliseconds and integer arithmetic. The cache is usable at
 For a token loaded at `12:00:00` and expiring at `12:10:00`, the defaults give:
 
 ```mermaid
-flowchart LR
-    A["12:00:00<br/>Token loaded"] --> B["Before 12:09:30<br/>Serve cache only"]
-    B --> C["12:09:30 through 12:09:45<br/>Serve cache and consider<br/>a background refresh"]
-    C --> D["After 12:09:45<br/>Blocking reload required"]
-    D --> E["12:10:00<br/>Underlying token expires"]
+block-beta
+    columns 19
+    A["Token loaded<br/>Serve cache only"]:4 space
+    B["Refresh window opens<br/>Serve cache; consider<br/>background refresh"]:4 space
+    C["Last usable<br/>cache instant<br/>Later calls block"]:4 space
+    D["Underlying token<br/>expires"]:4
+    space:19
+    T0["12:00:00"]:4 space T1["12:09:30"]:4 space T2["12:09:45"]:4 space T3["12:10:00"]:4
+    A --> B
+    B --> C
+    C --> D
+    T0 --> T1
+    T1 --> T2
+    T2 --> T3
 ```
+
+The lower row is a separate time axis aligned with the behavior above it; spacing is not to scale.
 
 With a short lifetime or a long configured lead time, the percentage constraint pushes the refresh window later. If that would be later than usable cache expiry, the window is capped at `usableUntil`. This can leave almost no usable preemptive window; the configuration cannot create extra token lifetime.
 
@@ -162,13 +173,24 @@ Setting `preemptive-refresh.error-cooldown: 0` removes the traffic gate: the nex
 A provider response is not the same thing as a usable cache entry. An expired token, or one with insufficient remaining lifetime at validation, can already have replaced the old cache before validation fails.
 
 ```mermaid
-flowchart TD
-    A["Caller receives usable token A<br/>and triggers background refresh"] --> B["Provider returns token B"]
-    B --> Store["B replaces A in the cache"]
-    Store --> Reject["B fails minimum-lifetime validation"]
-    Reject --> Failure["Worker logs failure<br/>and starts the background-error cooldown"]
-    Failure --> Next["Next ordinary caller finds unusable B"]
-    Next --> Reload["Blocking reload immediately<br/>Cooldown does not apply"]
+sequenceDiagram
+    participant Caller
+    participant Cache
+    participant Worker
+    participant Provider as Underlying provider chain
+    Caller->>Cache: Request while A is usable and refreshable
+    Cache->>Worker: Submit refresh for A
+    Cache-->>Caller: Return A
+    Worker->>Provider: Fetch replacement through the serialized reload path
+    Provider-->>Worker: Return token B
+    Worker->>Cache: Install B before validating its lifetime
+    Worker->>Worker: B fails minimum-lifetime validation
+    Worker->>Cache: Log failure and start cooldown at completion time F
+    Note over Caller,Cache: Current cache is unusable B, with no fallback to A
+    Caller->>Cache: Next request, even before F plus 15 seconds
+    Cache->>Provider: Blocking reload immediately, without waiting for cooldown
+    Provider-->>Cache: Response or exception
+    Cache-->>Caller: Usable replacement token or exception
 ```
 
 The original caller can already have received A, but subsequent callers do **not** automatically fall back to A: the current cache is B. A foreground load encountering the same validation failure throws `AccessTokenUnavailableException` directly.

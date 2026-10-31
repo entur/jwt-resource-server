@@ -55,12 +55,26 @@ eagerDueAt = refreshableAt - refreshTimeout
 With the defaults and a token loaded at `12:00:00` that expires at `12:10:00`:
 
 ```mermaid
-flowchart LR
-    A["12:00:00<br/>Load token and arm timer"] --> B["12:09:15<br/>Eager refresh target"]
-    B --> C["12:09:30<br/>Traffic refresh window begins"]
-    C --> D["12:09:45<br/>Last usable cache instant"]
-    D --> E["12:10:00<br/>Token expiry"]
+block-beta
+    columns 24
+    A["Load token<br/>and arm timer"]:4 space
+    B["Eager refresh<br/>target"]:4 space
+    C["Traffic refresh<br/>window begins"]:4 space
+    D["Last usable<br/>cache instant"]:4 space
+    E["Token expiry"]:4
+    space:24
+    T0["12:00:00"]:4 space T1["12:09:15"]:4 space T2["12:09:30"]:4 space T3["12:09:45"]:4 space T4["12:10:00"]:4
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    T0 --> T1
+    T1 --> T2
+    T2 --> T3
+    T3 --> T4
 ```
+
+The lower row is a separate time axis aligned with the events above it; spacing is not to scale.
 
 The eager target is 15 seconds earlier than the traffic refresh window because `refresh-timeout` is subtracted. The percentage constraint determines `refreshableAt`; it is not an additional lower bound on this earlier scheduled target.
 
