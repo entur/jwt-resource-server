@@ -15,6 +15,7 @@ import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.JwtException;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSet>> {
 
@@ -36,7 +37,7 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
 
         return Mono.fromCallable(() -> {
             return createClaimsSet(source, null);
-        });
+        }).subscribeOn(Schedulers.boundedElastic());
     }
 
     private <C extends SecurityContext> JWTClaimsSet createClaimsSet(JWT parsedToken, C context) {
@@ -56,6 +57,5 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
         }
         return new JWKSelector(JWKMatcher.forJWSHeader(jwsHeader));
     }
-
 
 }
