@@ -109,13 +109,20 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
         }
         try {
             return request.execute();
-        } catch (AccessTokenException e) {
+        } catch (AccessTokenRetryAfterException e) {
+            // its deadline was already recorded
+            throw e;
+        } catch (AccessTokenUnavailableException e) {
             long fallbackMillis = retryAfterFallbackMillis;
-            if (fallbackMillis > 0 && !(e instanceof AccessTokenRetryAfterException)) {
-                long retryDeadline = deferTokenRequests(TimeUnit.MILLISECONDS.toNanos(fallbackMillis));
-                if (e instanceof AccessTokenUnavailableException) {
-                    throw new AccessTokenRetryAfterException(e.getMessage(), e, retryDeadline);
-                }
+            if (fallbackMillis == 0) {
+                throw e;
+            }
+            throw new AccessTokenRetryAfterException(e.getMessage(), e, deferTokenRequests(TimeUnit.MILLISECONDS.toNanos(fallbackMillis)));
+        } catch (AccessTokenException e) {
+            // other failures keep their type but still start the fallback backoff
+            long fallbackMillis = retryAfterFallbackMillis;
+            if (fallbackMillis > 0) {
+                deferTokenRequests(TimeUnit.MILLISECONDS.toNanos(fallbackMillis));
             }
             throw e;
         }
