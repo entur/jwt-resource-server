@@ -197,22 +197,23 @@ class RetryAfterAccessTokenProviderTest {
 
     @Test
     void shouldNotFanOutConcurrentUncachedRequestsOrBackOffAfterSuccess() throws Exception {
-        TestProvider provider = new TestProvider();
-        provider.started = new CountDownLatch(1);
-        provider.release = new CountDownLatch(1);
+        TestProvider http = new TestProvider();
+        http.started = new CountDownLatch(1);
+        http.release = new CountDownLatch(1);
+        AccessTokenProvider provider = new AccessTokenProviderBuilder(http).cached(false).retrying(false).health(false).build();
         try (var executor = Executors.newSingleThreadExecutor()) {
             var first = executor.submit(() -> provider.getAccessToken(false));
             try {
-                assertThat(provider.started.await(5, TimeUnit.SECONDS)).isTrue();
+                assertThat(http.started.await(5, TimeUnit.SECONDS)).isTrue();
                 assertThrows(AccessTokenUnavailableException.class, () -> provider.getAccessToken(false));
-                assertThat(provider.calls).isEqualTo(1);
+                assertThat(http.calls).isEqualTo(1);
             } finally {
-                provider.release.countDown();
+                http.release.countDown();
             }
             assertThat(first.get(5, TimeUnit.SECONDS).getValue()).isEqualTo("token");
         }
         assertThat(provider.getAccessToken(false).getValue()).isEqualTo("token");
-        assertThat(provider.getRetryAfterDeadlineNanos()).isNull();
+        assertThat(http.getRetryAfterDeadlineNanos()).isNull();
     }
 
     @Test
@@ -292,22 +293,23 @@ class RetryAfterAccessTokenProviderTest {
 
     @Test
     void shouldPreventAnotherGrantBeforeTheRefreshTokenIsPublished() throws Exception {
-        TestStatefulProvider provider = new TestStatefulProvider();
+        TestStatefulProvider http = new TestStatefulProvider();
+        AccessTokenProvider provider = new AccessTokenProviderBuilder(http).cached(false).retrying(false).health(false).build();
         try (var executor = Executors.newSingleThreadExecutor()) {
             var first = executor.submit(() -> provider.getAccessToken(false));
             try {
-                assertThat(provider.beforePublication.await(5, TimeUnit.SECONDS)).isTrue();
+                assertThat(http.beforePublication.await(5, TimeUnit.SECONDS)).isTrue();
                 assertThrows(AccessTokenUnavailableException.class, () -> provider.getAccessToken(false));
-                assertThat(provider.issueCalls).isEqualTo(1);
+                assertThat(http.issueCalls).isEqualTo(1);
             } finally {
-                provider.publish.countDown();
+                http.publish.countDown();
             }
             assertThat(first.get(5, TimeUnit.SECONDS).getValue()).isEqualTo("token");
         }
-        assertThat(provider.getRefreshToken().getValue()).isEqualTo("session");
+        assertThat(http.getRefreshToken().getValue()).isEqualTo("session");
         provider.getAccessToken(false);
-        assertThat(provider.issueCalls).isEqualTo(1);
-        assertThat(provider.refreshCalls).isEqualTo(1);
+        assertThat(http.issueCalls).isEqualTo(1);
+        assertThat(http.refreshCalls).isEqualTo(1);
     }
 
     private static class TestStatefulProvider extends AbstractStatefulUrlAccessTokenProvider {

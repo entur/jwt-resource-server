@@ -102,11 +102,6 @@ public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrl
     }
 
     public AccessToken getAccessToken(long time) throws AccessTokenException {
-        // Keep session selection and publication inside the same request lock.
-        return requestToken(() -> loadAccessToken(time));
-    }
-
-    private AccessToken loadAccessToken(long time) throws AccessTokenException {
         // note: force refresh is not relevant for whether to use refresh-token or not
         ClientCredentialsResponse token;
 

@@ -202,6 +202,9 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
             httpProvider.setRetryAfterFallbackMillis(retryAfterFallbackMillis);
         }
 
+        if (root instanceof AbstractUrlAccessTokenProvider) {
+            provider = new ExclusiveAccessTokenProvider(provider);
+        }
         if (retrying) {
             provider = new RetryingAccessTokenProvider(provider);
         }

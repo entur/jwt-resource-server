@@ -14,7 +14,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Abstract provider using URL. This simple abstraction exists so that the
@@ -33,7 +32,6 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
     protected final byte[] issueBody;
     protected final Map<String, Object> issueHeaders;
 
-    private final ReentrantLock tokenRequestLock = new ReentrantLock();
     private volatile long retryAfterFallbackMillis = 15_000;
     private volatile Long retryAfterDeadlineNanos;
 
@@ -97,7 +95,7 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
     protected abstract ClientCredentialsResponse getToken() throws AccessTokenException;
 
     /**
-     * Execute one token request without allowing concurrent calls or calls during backoff.
+     * Execute one token request unless the retry deadline is active, and record its failure.
      *
      * @param request issuance or refresh operation
      * @param <T> request result
@@ -105,28 +103,21 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
      * @throws AccessTokenException if the request fails or is deferred
      */
     protected <T> T requestToken(TokenRequest<T> request) throws AccessTokenException {
-        if (!tokenRequestLock.tryLock()) {
-            throw new AccessTokenUnavailableException("A token request is already in progress");
+        Long deadline = getRetryAfterDeadlineNanos();
+        if (deadline != null && deadline - nanoTime() > 0) {
+            throw new AccessTokenRetryAfterException("Token request deferred until the retry deadline", null, deadline);
         }
         try {
-            Long deadline = getRetryAfterDeadlineNanos();
-            if (deadline != null && deadline - nanoTime() > 0) {
-                throw new AccessTokenRetryAfterException("Token request deferred until the retry deadline", null, deadline);
-            }
-            try {
-                return request.execute();
-            } catch (AccessTokenException e) {
-                long fallbackMillis = retryAfterFallbackMillis;
-                if (fallbackMillis > 0 && !(e instanceof AccessTokenRetryAfterException)) {
-                    long retryDeadline = deferTokenRequests(TimeUnit.MILLISECONDS.toNanos(fallbackMillis));
-                    if (e instanceof AccessTokenUnavailableException) {
-                        throw new AccessTokenRetryAfterException(e.getMessage(), e, retryDeadline);
-                    }
+            return request.execute();
+        } catch (AccessTokenException e) {
+            long fallbackMillis = retryAfterFallbackMillis;
+            if (fallbackMillis > 0 && !(e instanceof AccessTokenRetryAfterException)) {
+                long retryDeadline = deferTokenRequests(TimeUnit.MILLISECONDS.toNanos(fallbackMillis));
+                if (e instanceof AccessTokenUnavailableException) {
+                    throw new AccessTokenRetryAfterException(e.getMessage(), e, retryDeadline);
                 }
-                throw e;
             }
-        } finally {
-            tokenRequestLock.unlock();
+            throw e;
         }
     }
 

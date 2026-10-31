@@ -203,7 +203,7 @@ Without eager refresh there is no recovery timer for B; another call is needed. 
 
 ## 7. Immediate retry is separate from cache cooldowns
 
-The optional `retrying` wrapper is enabled by default and sits **below the cache**. The usual builder chain is cache, optional health decorator, optional retry wrapper, then the underlying token provider.
+The optional `retrying` wrapper is enabled by default and sits **below the cache**. The usual builder chain is cache, optional health decorator, optional retry wrapper, an `ExclusiveAccessTokenProvider` around each built-in HTTP provider, then the underlying token provider.
 
 ```mermaid
 flowchart TD
@@ -255,7 +255,7 @@ On close, new preemptive work is skipped and an owned worker executor is shut do
 
 ## 9. Authorization-server load protection and its limits
 
-Caching shares a token across callers, identity-based coordination avoids duplicate refresh work, and the HTTP provider rejects concurrent token loads rather than queuing uncached fan-out. After a failed HTTP request, repeated traffic, forced reloads, health checks, and the retry wrapper cannot send another request before the fixed source deadline. Neither these rejections nor early timer callbacks restart the wait.
+Caching shares a token across callers, identity-based coordination avoids duplicate refresh work, and the builder-installed `ExclusiveAccessTokenProvider` rejects concurrent token loads rather than queuing uncached fan-out. After a failed HTTP request, repeated traffic, forced reloads, health checks, and the retry wrapper cannot send another request before the fixed source deadline. Neither these rejections nor early timer callbacks restart the wait.
 
 Use `retry-after.fallback-delay: 0` only to drop the client-chosen wait deliberately; valid server directives are still honored. These properties sit beside `cache`, not inside it.
 

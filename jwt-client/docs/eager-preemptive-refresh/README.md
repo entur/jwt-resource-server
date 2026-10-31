@@ -324,7 +324,7 @@ These recovery rules handle failures inside a dispatched token-load attempt; the
 
 ## 10. Authorization-server load protection
 
-The single scheduled callback, cache-entry identity checks, shared reload lock, and HTTP-provider admission gate prevent duplicate token loads for one provider. Failed HTTP requests establish a fixed server-directed delay or the default 15-second fallback; eager recovery additionally observes its local 60-second cooldown. Ordinary requests can keep using a valid token throughout that wait, but cannot bypass an active source deadline by forcing a reload.
+The single scheduled callback, cache-entry identity checks, shared reload lock, and the builder-installed `ExclusiveAccessTokenProvider` prevent duplicate token loads for one provider. Failed HTTP requests establish a fixed server-directed delay or the default 15-second fallback; eager recovery additionally observes its local 60-second cooldown. Ordinary requests can keep using a valid token throughout that wait, but cannot bypass an active source deadline by forcing a reload.
 
 Protection is per HTTP-provider instance, not per URL, JVM, or cluster. Reuse providers rather than creating one per request. Successful requests do not start backoff, including successful overdue replacements described in section 6; short normal deadlines, forced/uncached successes, explicit opt-out, and independent replicas are not globally rate-limited. See the first guide's [limits](../preemptive-refresh/README.md#9-authorization-server-load-protection-and-its-limits).
 
