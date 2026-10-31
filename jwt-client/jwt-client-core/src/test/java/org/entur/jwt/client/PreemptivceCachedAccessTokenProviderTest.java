@@ -17,7 +17,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertNotNull;
@@ -422,25 +421,16 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         TestPreemptiveProvider timed = newEagerProvider(directExecutor());
         provider = timed;
         long deadline = TimeUnit.SECONDS.toNanos(serverSeconds);
-        AtomicReference<Long> sourceDeadline = new AtomicReference<>();
-        timed.setRetryAfterDeadline(sourceDeadline::get);
-        when(fallback.getAccessToken(false)).thenReturn(accessToken).thenAnswer(invocation -> {
-            sourceDeadline.set(deadline);
-            throw new AccessTokenRetryAfterException("HTTP 429", null, deadline);
-        }).thenReturn(refreshedAccessToken);
+        when(fallback.getAccessToken(false)).thenReturn(accessToken).thenThrow(new AccessTokenRetryAfterException("HTTP 429", null, deadline))
+                .thenReturn(refreshedAccessToken);
 
         provider.getAccessToken(false);
         ((Runnable) provider.getEagerScheduledFuture()).run();
         long waitSeconds = Math.max(serverSeconds, 60);
         assertThat(provider.getEagerScheduledFuture().getDelay(TimeUnit.SECONDS)).isEqualTo(waitSeconds);
-
-        timed.advance(15, TimeUnit.SECONDS);
-        assertThat(provider.getAccessToken(provider.getRefreshable(1), false)).isSameInstanceAs(accessToken);
-        ((Runnable) provider.getEagerScheduledFuture()).run();
-        assertThat(provider.getEagerScheduledFuture().getDelay(TimeUnit.SECONDS)).isEqualTo(waitSeconds - 15);
         verify(fallback, times(2)).getAccessToken(false);
 
-        timed.advance(waitSeconds - 15, TimeUnit.SECONDS);
+        timed.advance(waitSeconds, TimeUnit.SECONDS);
         ((Runnable) provider.getEagerScheduledFuture()).run();
         assertThat(provider.getCachedAccessToken()).isSameInstanceAs(refreshedAccessToken);
         verify(fallback, times(3)).getAccessToken(false);
@@ -451,12 +441,8 @@ public class PreemptivceCachedAccessTokenProviderTest extends AbstractDelegatePr
         TestPreemptiveProvider timed = newEagerProvider(directExecutor());
         provider = timed;
         long deadline = TimeUnit.SECONDS.toNanos(15);
-        AtomicReference<Long> sourceDeadline = new AtomicReference<>();
-        timed.setRetryAfterDeadline(sourceDeadline::get);
-        when(fallback.getAccessToken(false)).thenReturn(accessToken).thenAnswer(invocation -> {
-            sourceDeadline.set(deadline);
-            throw new AccessTokenRetryAfterException("Another load established backoff", null, deadline);
-        }).thenReturn(refreshedAccessToken);
+        when(fallback.getAccessToken(false)).thenReturn(accessToken).thenThrow(new AccessTokenRetryAfterException("Another load established backoff", null, deadline))
+                .thenReturn(refreshedAccessToken);
 
         provider.getAccessToken(false);
         ((Runnable) provider.getEagerScheduledFuture()).run();

@@ -194,8 +194,7 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
             throw new AccessTokenProviderBuilderException("Premptive cache refresh configured without caching");
         }
 
-        AccessTokenProvider root = provider;
-        if (root instanceof AbstractUrlAccessTokenProvider httpProvider) {
+        if (provider instanceof AbstractUrlAccessTokenProvider httpProvider) {
             httpProvider.setRetryAfterFallbackMillis(retryAfterFallbackMillis);
             provider = new ExclusiveAccessTokenProvider(provider);
         }
@@ -212,13 +211,9 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
             }
         }
         if (preemptiveRefresh) {
-            PreemptiveCachedAccessTokenProvider preemptive = new PreemptiveCachedAccessTokenProvider(provider,
+            provider = new PreemptiveCachedAccessTokenProvider(provider,
                     minimumTimeToLiveUnits, minimumTimeToLiveUnit, refreshExpiresIn, refreshExpiresUnit, preemptiveRefreshTimeUnits, preemptiveRefreshTimeUnit,
                     preemptiveErrorCooldown, preemptiveErrorCooldownUnit, eagerErrorCooldown, eagerErrorCooldownUnit, preemptiveRefreshConstraint, preemptiveRefreshEager);
-            if (root instanceof AbstractUrlAccessTokenProvider httpProvider) {
-                preemptive.setRetryAfterDeadline(httpProvider::getRetryAfterDeadlineNanos);
-            }
-            provider = preemptive;
         } else if (cached) {
             provider = new DefaultCachedAccessTokenProvider(provider, minimumTimeToLiveUnits, minimumTimeToLiveUnit, refreshExpiresIn, refreshExpiresUnit);
         }

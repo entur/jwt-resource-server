@@ -69,7 +69,7 @@ flowchart TD
     Submit -->|Executor rejects submission| Error["Exception reaches caller"]
 ```
 
-Background work is skipped if the provider is closed, entry A has been replaced, A already has a refresh in flight, the local error cooldown or HTTP retry deadline is active, or the nonblocking dispatch lock cannot be acquired. Cache identity, the in-flight marker, and both time gates are checked again after acquiring that lock.
+Background work is skipped if the provider is closed, entry A has been replaced, A already has a refresh in flight, the local error cooldown is active, or the nonblocking dispatch lock cannot be acquired. Cache identity, the in-flight marker, and the cooldown are checked again after acquiring that lock. The cache does not read the HTTP retry deadline: an attempt dispatched during backoff is rejected by the HTTP provider itself, without HTTP.
 
 This dispatch lock is separate from the blocking reload lock. Ordinary callers using a usable cache do not wait for either lock to become available.
 
@@ -134,9 +134,9 @@ Refresh coordination uses **cache-entry identity, not token expiry**:
 
 ## 5. Background failure and the 15-second cooldown
 
-An `Exception` thrown inside the worker's reload is logged. The failed attempt's in-flight marker is cleared without clearing a newer attempt's marker, and the failure completion time is recorded using a monotonic clock. This includes Retry-After exceptions, other provider errors, unchecked exceptions, lock failures, and failed replacement validation. Known deadlines are checked before dispatch: skipping work at that gate does not start another background-error cooldown.
+An `Exception` thrown inside the worker's reload is logged. The failed attempt's in-flight marker is cleared without clearing a newer attempt's marker, and the failure completion time is recorded using a monotonic clock. This includes Retry-After exceptions, other provider errors, unchecked exceptions, lock failures, and failed replacement validation. Skipping work at the local cooldown gate does not start another background-error cooldown, but an attempt rejected by an active HTTP deadline is an ordinary failed attempt and does.
 
-The diagram below assumes failure **before replacing A**, so the old usable cache remains. `H` is the HTTP retry deadline, if any; `D = max(F + 15 seconds, H)`.
+The diagram below assumes failure **before replacing A**, so the old usable cache remains. `H` is the HTTP retry deadline, if any; the cache itself waits only until `D = F + 15 seconds`, and an attempt between `D` and `H` is rejected by the HTTP provider without HTTP.
 
 ```mermaid
 sequenceDiagram
@@ -164,11 +164,11 @@ sequenceDiagram
     end
 ```
 
-**The cooldown is a gate, not a timer.** With eager refresh disabled, no traffic means no background retry. The first eligible request after both deadlines starts another attempt; there is no automatic request exactly 15 seconds later. For example, `Retry-After: 120` keeps traffic-triggered refresh blocked for 120 seconds, not 15 or 135.
+**The cooldown is a gate, not a timer.** With eager refresh disabled, no traffic means no background retry. The first eligible request after the cooldown starts another attempt; there is no automatic request exactly 15 seconds later. During a longer `Retry-After`, for example 120 seconds, that attempt is rejected by the HTTP provider without HTTP and logged, which restarts the 15-second cooldown. The authorization server receives no request until 120 seconds have passed, not 15 or 135.
 
 The cooldown starts when the entire failed background attempt finishes, not when it starts or when its first HTTP request fails. Each subsequent failed background attempt restarts it. A successful response does not record a new failure, but it does not clear an already-active failure timestamp either.
 
-Setting `preemptive-refresh.error-cooldown: 0` removes only the local traffic gate: the source deadline still applies. It does not permit duplicate concurrent attempts for the same entry. A foreground HTTP failure starts source backoff, but does not itself start this background-error cooldown.
+Setting `preemptive-refresh.error-cooldown: 0` removes only the local traffic gate: the HTTP provider still rejects attempts during its deadline. It does not permit duplicate concurrent attempts for the same entry. A foreground HTTP failure starts source backoff, but does not itself start this background-error cooldown.
 
 ## 6. A replacement token is returned but rejected
 
@@ -226,9 +226,9 @@ Cache lock timeouts and cache validation errors occur above this wrapper, so it 
 
 The built-in transports honor `Retry-After` on HTTP **429** and **503**, for both issuance and refresh. Nonnegative whole seconds and RFC-1123 HTTP-dates are supported. Dates are converted once to a monotonic deadline, so later wall-clock changes do not move it. Missing, blank, or malformed headers, and other token-request failures, use the configurable **15-second fallback**. Valid shorter delays override that fallback; very large delays saturate at the representable timer limit.
 
-The deadline belongs to one HTTP-provider instance and is exposed through wrappers. Calls rejected during the wait do not extend it; concurrent deadline updates cannot shorten it. Issuance and refresh share the gate. A throttled refresh retains its session instead of immediately trying a new client-credentials grant. A genuinely rejected refresh token is discarded, with fresh issuance deferred until the fallback ends.
+The deadline belongs to one HTTP-provider instance and is enforced there. Calls rejected during the wait do not extend it; concurrent deadline updates cannot shorten it. Issuance and refresh share the gate. A throttled refresh retains its session instead of immediately trying a new client-credentials grant. A genuinely rejected refresh token is discarded, with fresh issuance deferred until the fallback ends.
 
-`AccessTokenRetryAfterException` carries the next-attempt deadline, without an attempted/deferred flag. The cache's background failure handler uses that deadline together with its local error cooldown. If backoff appears after dispatch, the failed worker still observes both waits; foreground callers receive the exception directly.
+`AccessTokenRetryAfterException` carries the next-attempt deadline, without an attempted/deferred flag. The cache never reads the HTTP provider's deadline directly: with eager refresh, the background failure handler learns it from this exception and waits for the maximum of it and the local cooldown. Other background attempts during backoff are rejected by the provider without HTTP and observe only the local cooldown. Foreground callers receive the exception directly.
 
 ## 8. Health checks, disabled modes, and lifecycle
 
