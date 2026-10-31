@@ -220,7 +220,7 @@ flowchart TD
 
 The wrapper **always rethrows `AccessTokenRetryAfterException` unchanged**. It does not inspect deadlines or decide when another attempt is allowed. This also applies to zero or already-elapsed deadlines: the current load fails, but a subsequent call can proceed as soon as the HTTP provider permits it.
 
-Other `AccessTokenUnavailableException` failures get at most one immediate retry. With `retry-after.enabled: false`, HTTP failures use that ordinary path. Setting only `fallback-delay: 0` removes the fallback wait, not the Retry-After exception. Only a failure escaping the wrapper reaches the cache's error handling.
+Other `AccessTokenUnavailableException` failures get at most one immediate retry. With `retry-after.fallback-delay: 0`, HTTP failures without a usable `Retry-After` header use that ordinary path; a valid header still produces `AccessTokenRetryAfterException`. Only a failure escaping the wrapper reaches the cache's error handling.
 
 Cache lock timeouts and cache validation errors occur above this wrapper, so it does not immediately retry them. Other provider exceptions are not retried by this wrapper, but a failed background load still gets the local cooldown behavior from section 5.
 
@@ -257,7 +257,7 @@ On close, new preemptive work is skipped and an owned worker executor is shut do
 
 Caching shares a token across callers, identity-based coordination avoids duplicate refresh work, and the HTTP provider rejects concurrent token loads rather than queuing uncached fan-out. After a failed HTTP request, repeated traffic, forced reloads, health checks, and the retry wrapper cannot send another request before the fixed source deadline. Neither these rejections nor early timer callbacks restart the wait.
 
-Use `retry-after.enabled: false` only to opt out deliberately; `retry-after.fallback-delay: 0` removes only the client fallback, not valid server directives. These properties sit beside `cache`, not inside it.
+Use `retry-after.fallback-delay: 0` only to drop the client-chosen wait deliberately; valid server directives are still honored. These properties sit beside `cache`, not inside it.
 
 This is failure backoff, **not a guarantee that a server can never be overloaded**. Reuse providers: independent instances and replicas do not share deadlines. Successful forced/uncached requests have no minimum interval, a successful HTTP response rejected by the cache does not start HTTP backoff, and a server can permit an immediate subsequent call with zero. Revocation, custom providers, and retries configured inside an HTTP client are outside this gate.
 

@@ -3,7 +3,6 @@ package org.entur.jwt.client;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
-import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -74,7 +73,6 @@ class RetryAfterAccessTokenProviderTest {
     }
 
     @ParameterizedTest
-    @NullSource
     @ValueSource(strings = {"0", "Sat, 31 Oct 2026 11:59:00 GMT"})
     void shouldDeferZeroDelayFailuresToTheNextCallWithoutAddingAWait(String header) throws Exception {
         TestProvider http = new TestProvider();
@@ -91,6 +89,31 @@ class RetryAfterAccessTokenProviderTest {
         http.headerFailure = false;
         assertThat(provider.getAccessToken(false).getValue()).isEqualTo("token");
         assertThat(http.calls).isEqualTo(2);
+    }
+
+    @Test
+    void shouldLeaveFailuresWithoutAUsableHeaderOrdinaryWhenTheFallbackIsZero() throws Exception {
+        TestProvider http = new TestProvider();
+        http.setRetryAfterFallbackMillis(0);
+        http.headerFailure = true;
+        RetryingAccessTokenProvider provider = new RetryingAccessTokenProvider(http);
+
+        assertThat(assertThrows(AccessTokenUnavailableException.class, () -> provider.getAccessToken(false)))
+                .isNotInstanceOf(AccessTokenRetryAfterException.class);
+        assertThat(http.calls).isEqualTo(2);
+        assertThat(http.getRetryAfterDeadlineNanos()).isNull();
+
+        http.headerFailure = false;
+        http.failure = new AccessTokenUnavailableException("down");
+        assertThat(assertThrows(AccessTokenUnavailableException.class, () -> http.getAccessToken(false)))
+                .isNotInstanceOf(AccessTokenRetryAfterException.class);
+        assertThat(http.getRetryAfterDeadlineNanos()).isNull();
+
+        http.headerFailure = true;
+        http.header = "120";
+        AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
+                () -> provider.getAccessToken(false));
+        assertThat(failure.getRetryAfterDeadlineNanos() - http.nowNanos).isEqualTo(TimeUnit.SECONDS.toNanos(120));
     }
 
     @Test
@@ -162,21 +185,13 @@ class RetryAfterAccessTokenProviderTest {
     }
 
     @Test
-    void shouldSupportOptOutAndConfiguredFallback() throws Exception {
+    void shouldSupportConfiguredFallback() throws Exception {
         TestProvider provider = new TestProvider();
         provider.setRetryAfterFallbackMillis(30_000);
         provider.headerFailure = true;
         AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
                 () -> provider.getAccessToken(false));
         assertThat(failure.getRetryAfterDeadlineNanos() - provider.nowNanos).isEqualTo(TimeUnit.SECONDS.toNanos(30));
-        provider.setRetryAfterEnabled(false);
-        provider.headerFailure = false;
-        assertThat(provider.getAccessToken(false).getValue()).isEqualTo("token");
-        provider.headerFailure = true;
-        provider.header = "120";
-        assertThat(assertThrows(AccessTokenUnavailableException.class, () -> provider.getAccessToken(false)))
-                .isNotInstanceOf(AccessTokenRetryAfterException.class);
-        assertThat(provider.getRetryAfterDeadlineNanos()).isNull();
         assertThrows(IllegalArgumentException.class, () -> provider.setRetryAfterFallbackMillis(-1));
     }
 
@@ -205,13 +220,16 @@ class RetryAfterAccessTokenProviderTest {
         TestProvider http = new TestProvider();
         http.headerFailure = true;
         AccessTokenProvider provider = new AccessTokenProviderBuilder(http).cached(false).retrying(false).health(false)
-                .retryAfter(true, 1, TimeUnit.MINUTES).build();
+                .retryAfter(1, TimeUnit.MINUTES).build();
         AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
                 () -> provider.getAccessToken(false));
         assertThat(failure.getRetryAfterDeadlineNanos() - http.nowNanos).isEqualTo(TimeUnit.MINUTES.toNanos(1));
-        new AccessTokenProviderBuilder(http).cached(false).retrying(false).health(false)
-                .retryAfter(false, 1, TimeUnit.MINUTES).build();
-        assertThat(assertThrows(AccessTokenUnavailableException.class, () -> provider.getAccessToken(false)))
+
+        TestProvider ordinary = new TestProvider();
+        ordinary.headerFailure = true;
+        AccessTokenProvider withoutFallback = new AccessTokenProviderBuilder(ordinary).cached(false).retrying(false).health(false)
+                .retryAfter(0, TimeUnit.SECONDS).build();
+        assertThat(assertThrows(AccessTokenUnavailableException.class, () -> withoutFallback.getAccessToken(false)))
                 .isNotInstanceOf(AccessTokenRetryAfterException.class);
     }
 

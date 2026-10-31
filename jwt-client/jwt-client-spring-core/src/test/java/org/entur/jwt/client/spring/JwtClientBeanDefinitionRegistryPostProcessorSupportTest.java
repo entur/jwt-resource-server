@@ -114,10 +114,8 @@ public class JwtClientBeanDefinitionRegistryPostProcessorSupportTest {
     @Test
     public void shouldConfigureRetryAfterWithoutCaching() throws Exception {
         CapturingSupport support = new CapturingSupport(bindKeycloak(Map.of(
-                "entur.jwt.clients.keycloak.myClient.retry-after.enabled", "false",
                 "entur.jwt.clients.keycloak.myClient.retry-after.fallback-delay", "90")));
         try (AccessTokenProvider provider = support.newKeycloakInstance("myClient")) {
-            verify(support.httpProvider).setRetryAfterEnabled(false);
             verify(support.httpProvider).setRetryAfterFallbackMillis(90_000L);
         }
     }

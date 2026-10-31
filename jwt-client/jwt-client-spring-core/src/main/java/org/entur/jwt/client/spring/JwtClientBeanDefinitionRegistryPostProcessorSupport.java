@@ -104,7 +104,7 @@ public abstract class JwtClientBeanDefinitionRegistryPostProcessorSupport<T> {
 
         builder.retrying(properties.isRetrying());
         if (properties.getRetryAfter() != null) {
-            builder.retryAfter(properties.getRetryAfter().isEnabled(), properties.getRetryAfter().getFallbackDelay(), TimeUnit.SECONDS);
+            builder.retryAfter(properties.getRetryAfter().getFallbackDelay(), TimeUnit.SECONDS);
         }
 
         if (cache != null && cache.isEnabled()) {

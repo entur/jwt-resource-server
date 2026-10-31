@@ -39,8 +39,6 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
     // retrying
     protected boolean retrying = true;
 
-    /** Optional override of the HTTP provider's backoff policy. */
-    protected Boolean retryAfterEnabled;
     /** Optional fallback delay in milliseconds. */
     protected Long retryAfterFallbackMillis;
 
@@ -174,18 +172,16 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
     /**
      * Configure failed-request backoff for a built-in HTTP provider.
      *
-     * @param enabled whether Retry-After and fallback backoff are enforced
-     * @param fallback delay after failure without a usable header; zero disables the fallback
+     * @param fallback delay after failure without a usable header; zero leaves such failures ordinary
      * @param unit fallback delay unit
      * @return this builder
      */
     @SuppressWarnings("unchecked")
-    public B retryAfter(boolean enabled, long fallback, TimeUnit unit) {
+    public B retryAfter(long fallback, TimeUnit unit) {
         if (fallback < 0) {
             throw new IllegalArgumentException("Retry-After fallback must not be negative");
         }
         this.retryAfterFallbackMillis = unit.toMillis(fallback);
-        this.retryAfterEnabled = enabled;
         return (B) this;
     }
 
@@ -199,12 +195,11 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
         }
 
         AccessTokenProvider root = provider;
-        if (retryAfterEnabled != null) {
+        if (retryAfterFallbackMillis != null) {
             if (!(root instanceof AbstractUrlAccessTokenProvider httpProvider)) {
                 throw new AccessTokenProviderBuilderException("Retry-After configuration requires a built-in HTTP provider");
             }
             httpProvider.setRetryAfterFallbackMillis(retryAfterFallbackMillis);
-            httpProvider.setRetryAfterEnabled(retryAfterEnabled);
         }
 
         if (retrying) {

@@ -34,7 +34,6 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
     protected final Map<String, Object> issueHeaders;
 
     private final ReentrantLock tokenRequestLock = new ReentrantLock();
-    private volatile boolean retryAfterEnabled = true;
     private volatile long retryAfterFallbackMillis = 15_000;
     private volatile Long retryAfterDeadlineNanos;
 
@@ -117,8 +116,9 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
             try {
                 return request.execute();
             } catch (AccessTokenException e) {
-                if (retryAfterEnabled && !(e instanceof AccessTokenRetryAfterException)) {
-                    long retryDeadline = deferTokenRequests(TimeUnit.MILLISECONDS.toNanos(retryAfterFallbackMillis));
+                long fallbackMillis = retryAfterFallbackMillis;
+                if (fallbackMillis > 0 && !(e instanceof AccessTokenRetryAfterException)) {
+                    long retryDeadline = deferTokenRequests(TimeUnit.MILLISECONDS.toNanos(fallbackMillis));
                     if (e instanceof AccessTokenUnavailableException) {
                         throw new AccessTokenRetryAfterException(e.getMessage(), e, retryDeadline);
                     }
@@ -135,7 +135,7 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
      *
      * @param message failure description
      * @param header Retry-After value, or null when absent
-     * @return unavailable exception carrying the fixed deadline when backoff is enabled
+     * @return unavailable exception carrying the fixed deadline, or an ordinary one when the header is unusable and the fallback is zero
      */
     protected AccessTokenUnavailableException retryAfterException(String message, String header) {
         return retryAfterException(message, header, null);
@@ -147,40 +147,45 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
      * @param message failure description
      * @param header Retry-After value, or null when absent
      * @param cause original HTTP failure, or null
-     * @return unavailable exception with retry metadata when backoff is enabled
+     * @return unavailable exception with a deadline, or an ordinary one when the header is unusable and the fallback is zero
      */
     protected AccessTokenUnavailableException retryAfterException(String message, String header, Throwable cause) {
-        if (!retryAfterEnabled) {
-            return new AccessTokenUnavailableException(message, cause);
-        }
-        long delay = TimeUnit.MILLISECONDS.toNanos(retryAfterFallbackMillis);
-        if (header != null && !header.isBlank()) {
-            String value = header.trim();
-            try {
-                if (value.matches("[0-9]+")) {
-                    try {
-                        delay = TimeUnit.SECONDS.toNanos(Long.parseLong(value));
-                    } catch (NumberFormatException e) {
-                        LOGGER.warn("Retry-After delay exceeds the supported range; using the maximum backoff");
-                        delay = Long.MAX_VALUE;
-                    }
-                } else {
-                    long millis = Math.subtractExact(ZonedDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME)
-                            .toInstant().toEpochMilli(), currentTimeMillis());
-                    delay = TimeUnit.MILLISECONDS.toNanos(Math.max(0L, millis));
-                }
-            } catch (DateTimeException | ArithmeticException e) {
-                LOGGER.warn("Invalid Retry-After header; using the configured fallback delay");
+        Long delay = parseRetryAfterNanos(header);
+        if (delay == null) {
+            long fallbackMillis = retryAfterFallbackMillis;
+            if (fallbackMillis == 0) {
+                return new AccessTokenUnavailableException(message, cause);
             }
+            delay = TimeUnit.MILLISECONDS.toNanos(fallbackMillis);
         }
         return new AccessTokenRetryAfterException(message, cause, deferTokenRequests(delay));
     }
 
+    private Long parseRetryAfterNanos(String header) {
+        if (header == null || header.isBlank()) {
+            return null;
+        }
+        String value = header.trim();
+        try {
+            if (value.matches("[0-9]+")) {
+                try {
+                    return TimeUnit.SECONDS.toNanos(Long.parseLong(value));
+                } catch (NumberFormatException e) {
+                    LOGGER.warn("Retry-After delay exceeds the supported range; using the maximum backoff");
+                    return Long.MAX_VALUE;
+                }
+            }
+            long millis = Math.subtractExact(ZonedDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME)
+                    .toInstant().toEpochMilli(), currentTimeMillis());
+            return TimeUnit.MILLISECONDS.toNanos(Math.max(0L, millis));
+        } catch (DateTimeException | ArithmeticException e) {
+            LOGGER.warn("Invalid Retry-After header ignored");
+            return null;
+        }
+    }
+
     private synchronized long deferTokenRequests(long delayNanos) {
         long now = nanoTime();
-        if (!retryAfterEnabled) {
-            return now;
-        }
         Long current = retryAfterDeadlineNanos;
         if (current == null || delayNanos > current - now) {
             retryAfterDeadlineNanos = now + delayNanos;
@@ -195,25 +200,13 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
      *         the deadline may already have elapsed
      */
     public Long getRetryAfterDeadlineNanos() {
-        return retryAfterEnabled ? retryAfterDeadlineNanos : null;
-    }
-
-    /**
-     * Enable backoff enforcement, or disable it and clear the current deadline.
-     *
-     * @param enabled whether server directives and fallback backoff are enforced
-     */
-    public synchronized void setRetryAfterEnabled(boolean enabled) {
-        retryAfterEnabled = enabled;
-        if (!enabled) {
-            retryAfterDeadlineNanos = null;
-        }
+        return retryAfterDeadlineNanos;
     }
 
     /**
      * Configure the fallback used when a failed request has no usable server delay.
      *
-     * @param millis fallback after failure without a usable header; zero disables only this fallback
+     * @param millis fallback after failure without a usable header; zero leaves such failures ordinary, so no deadline is recorded and the retry wrapper may retry once
      */
     public void setRetryAfterFallbackMillis(long millis) {
         checkArgument(millis >= 0, "Retry-After fallback must not be negative");
