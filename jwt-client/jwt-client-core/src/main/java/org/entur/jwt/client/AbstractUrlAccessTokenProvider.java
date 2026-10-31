@@ -8,8 +8,13 @@ import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.DateTimeException;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Abstract provider using URL. This simple abstraction exists so that the
@@ -27,6 +32,27 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
     protected final URL issueUrl;
     protected final byte[] issueBody;
     protected final Map<String, Object> issueHeaders;
+
+    private final ReentrantLock tokenRequestLock = new ReentrantLock();
+    private volatile boolean retryAfterEnabled = true;
+    private volatile long retryAfterFallbackMillis = 15_000;
+    private volatile Long retryAfterDeadlineNanos;
+
+    /**
+     * A token request and its associated state updates, excluding revocation.
+     *
+     * @param <T> request result
+     */
+    @FunctionalInterface
+    protected interface TokenRequest<T> {
+        /**
+         * Execute the guarded token operation.
+         *
+         * @return request result
+         * @throws AccessTokenException if the request fails
+         */
+        T execute() throws AccessTokenException;
+    }
 
     public AbstractUrlAccessTokenProvider(URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers) {
         super();
@@ -71,11 +97,145 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
 
     protected abstract ClientCredentialsResponse getToken() throws AccessTokenException;
 
+    /**
+     * Execute one token request without allowing concurrent calls or calls during backoff.
+     *
+     * @param request issuance or refresh operation
+     * @param <T> request result
+     * @return token response
+     * @throws AccessTokenException if the request fails or is deferred
+     */
+    protected <T> T requestToken(TokenRequest<T> request) throws AccessTokenException {
+        if (!tokenRequestLock.tryLock()) {
+            throw new AccessTokenUnavailableException("A token request is already in progress");
+        }
+        try {
+            Long deadline = getRetryAfterDeadlineNanos();
+            if (deadline != null && deadline - nanoTime() > 0) {
+                throw new AccessTokenRetryAfterException("Token request deferred until the retry deadline", null, deadline, false);
+            }
+            try {
+                return request.execute();
+            } catch (AccessTokenException e) {
+                if (retryAfterEnabled && !(e instanceof AccessTokenRetryAfterException)) {
+                    long retryDeadline = deferTokenRequests(TimeUnit.MILLISECONDS.toNanos(retryAfterFallbackMillis));
+                    if (e instanceof AccessTokenUnavailableException) {
+                        throw new AccessTokenRetryAfterException(e.getMessage(), e, retryDeadline, true);
+                    }
+                }
+                throw e;
+            }
+        } finally {
+            tokenRequestLock.unlock();
+        }
+    }
+
+    /**
+     * Record a failed HTTP response's Retry-After header, or the configured fallback.
+     *
+     * @param message failure description
+     * @param header Retry-After value, or null when absent
+     * @return unavailable exception carrying the fixed deadline when backoff is enabled
+     */
+    protected AccessTokenUnavailableException retryAfterException(String message, String header) {
+        return retryAfterException(message, header, null);
+    }
+
+    /**
+     * Record a failed HTTP response's retry deadline and retain its cause.
+     *
+     * @param message failure description
+     * @param header Retry-After value, or null when absent
+     * @param cause original HTTP failure, or null
+     * @return unavailable exception with retry metadata when backoff is enabled
+     */
+    protected AccessTokenUnavailableException retryAfterException(String message, String header, Throwable cause) {
+        if (!retryAfterEnabled) {
+            return new AccessTokenUnavailableException(message, cause);
+        }
+        long delay = TimeUnit.MILLISECONDS.toNanos(retryAfterFallbackMillis);
+        if (header != null && !header.isBlank()) {
+            String value = header.trim();
+            try {
+                if (value.matches("[0-9]+")) {
+                    try {
+                        delay = TimeUnit.SECONDS.toNanos(Long.parseLong(value));
+                    } catch (NumberFormatException e) {
+                        LOGGER.warn("Retry-After delay exceeds the supported range; using the maximum backoff");
+                        delay = Long.MAX_VALUE;
+                    }
+                } else {
+                    long millis = Math.subtractExact(ZonedDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME)
+                            .toInstant().toEpochMilli(), currentTimeMillis());
+                    delay = TimeUnit.MILLISECONDS.toNanos(Math.max(0L, millis));
+                }
+            } catch (DateTimeException | ArithmeticException e) {
+                LOGGER.warn("Invalid Retry-After header; using the configured fallback delay");
+            }
+        }
+        return new AccessTokenRetryAfterException(message, cause, deferTokenRequests(delay), true);
+    }
+
+    private synchronized long deferTokenRequests(long delayNanos) {
+        long now = nanoTime();
+        if (!retryAfterEnabled) {
+            return now;
+        }
+        Long current = retryAfterDeadlineNanos;
+        if (current == null || delayNanos > current - now) {
+            retryAfterDeadlineNanos = now + delayNanos;
+        }
+        return retryAfterDeadlineNanos;
+    }
+
+    @Override
+    public Long getRetryAfterDeadlineNanos() {
+        return retryAfterEnabled ? retryAfterDeadlineNanos : null;
+    }
+
+    /**
+     * Enable backoff enforcement, or disable it and clear the current deadline.
+     *
+     * @param enabled whether server directives and fallback backoff are enforced
+     */
+    public synchronized void setRetryAfterEnabled(boolean enabled) {
+        retryAfterEnabled = enabled;
+        if (!enabled) {
+            retryAfterDeadlineNanos = null;
+        }
+    }
+
+    /**
+     * Configure the fallback used when a failed request has no usable server delay.
+     *
+     * @param millis fallback after failure without a usable header; zero disables only this fallback
+     */
+    public void setRetryAfterFallbackMillis(long millis) {
+        checkArgument(millis >= 0, "Retry-After fallback must not be negative");
+        retryAfterFallbackMillis = millis;
+    }
+
+    /**
+     * Read the clock used for retry deadlines.
+     * @return current monotonic time, in nanoseconds
+     */
+    protected long nanoTime() {
+        return System.nanoTime();
+    }
+
+    /**
+     * Read the clock used to interpret HTTP-dates and token lifetimes.
+     * @return current wall-clock time, in milliseconds since the epoch
+     */
+    protected long currentTimeMillis() {
+        return System.currentTimeMillis();
+    }
+
     @Override
     public AccessToken getAccessToken(boolean forceRefresh) throws AccessTokenException {
-        long time = System.currentTimeMillis();
+        long time = currentTimeMillis();
 
-        ClientCredentialsResponse token = getToken();
+        ClientCredentialsResponse token = requestToken(this::getToken);
 
         return new AccessToken(token.getAccessToken(), token.getTokenType(), time + token.getExpiresIn() * 1000);
     }

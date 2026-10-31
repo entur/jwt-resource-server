@@ -103,6 +103,9 @@ public abstract class JwtClientBeanDefinitionRegistryPostProcessorSupport<T> {
         AccessTokenProviderBuilder builder = new AccessTokenProviderBuilder(accessTokenProvider);
 
         builder.retrying(properties.isRetrying());
+        if (properties.getRetryAfter() != null) {
+            builder.retryAfter(properties.getRetryAfter().isEnabled(), properties.getRetryAfter().getFallbackDelay(), TimeUnit.SECONDS);
+        }
 
         if (cache != null && cache.isEnabled()) {
             builder.cached(cache.getMinimumTimeToLive(), TimeUnit.SECONDS, cache.getRefreshTimeout(), TimeUnit.SECONDS);

@@ -69,7 +69,7 @@ flowchart TD
     Submit -->|Executor rejects submission| Error["Exception reaches caller"]
 ```
 
-Background work is skipped if the provider is closed, entry A has been replaced, A already has a refresh in flight, the error cooldown is active, or the nonblocking dispatch lock cannot be acquired. Cache identity, the in-flight marker, and the cooldown are checked again after acquiring that lock.
+Background work is skipped if the provider is closed, entry A has been replaced, A already has a refresh in flight, the local error cooldown or HTTP retry deadline is active, or the nonblocking dispatch lock cannot be acquired. Cache identity, the in-flight marker, and both time gates are checked again after acquiring that lock.
 
 This dispatch lock is separate from the blocking reload lock. Ordinary callers using a usable cache do not wait for either lock to become available.
 
@@ -83,7 +83,9 @@ flowchart TD
     Lock -->|Timeout or interruption| Unavailable["AccessTokenUnavailableException"]
     Lock -->|Acquired| Changed{"Another thread already<br/>replaced this cache entry?"}
     Changed -->|Yes| Reuse["Reuse that replacement"]
-    Changed -->|No| Fetch["Call the underlying provider chain"]
+    Changed -->|No| Gate{"HTTP retry deadline active?"}
+    Gate -->|Yes| Deferred["AccessTokenRetryAfterException<br/>No HTTP request"]
+    Gate -->|No| Fetch["Call the underlying provider chain"]
     Fetch -->|Exception| Failure["Propagate the exception<br/>Cache not replaced by this load"]
     Fetch -->|Token B returned| Store["Install cache entry B"]
     Reuse --> Validate{"Entry usable at the<br/>captured request time?"}
@@ -92,9 +94,9 @@ flowchart TD
     Validate -->|No| Unavailable
 ```
 
-A cold-load exception leaves the cache empty: the next caller must try again. If one waiting caller successfully replaces the cache, other waiters reuse that replacement. If a load fails without replacing the cache, a later waiter can make its own attempt. Waiting does not guarantee that every caller succeeds.
+A cold-load exception leaves the cache empty. A later caller can try again, but an active HTTP deadline rejects that load without HTTP. If one waiting caller successfully replaces the cache, other waiters reuse that replacement. Waiting does not guarantee that every caller succeeds. The HTTP gate is checked at the source even if a deadline appears after dispatch.
 
-**Neither error cooldown delays this path.** Expired-cache loads and public forced loads may contact the provider immediately, even after a recent background failure. A failed forced load propagates its error rather than falling back to the old token. An exception before replacement leaves that old entry available to other ordinary callers if it is still usable.
+**Neither background-error cooldown delays this path, but HTTP backoff still applies.** Expired-cache and public forced loads fail without HTTP while the source deadline is active; they do not sleep until it expires. A failed forced load propagates its error rather than falling back to the old token. An exception before replacement leaves that old entry available to ordinary callers if it is still usable.
 
 `getAccessToken(true)` forces the cache reload path, not necessarily a separate HTTP request: it can reuse another thread's replacement. The cache calls its delegate with `false`, so this is not a command to force a new authorization-server session instead of using a refresh token.
 
@@ -132,9 +134,9 @@ Refresh coordination uses **cache-entry identity, not token expiry**:
 
 ## 5. Background failure and the 15-second cooldown
 
-Any `Exception` thrown inside the worker's reload is logged. The failed attempt's in-flight marker is cleared without clearing a newer attempt's marker, and the failure completion time is recorded using a monotonic clock. This includes unavailable errors, other provider errors, unchecked exceptions, lock failures, and failed replacement validation.
+An `Exception` thrown inside the worker's reload is logged. The failed attempt's in-flight marker is cleared without clearing a newer attempt's marker, and the failure completion time is recorded using a monotonic clock. This includes unavailable errors, other provider errors, unchecked exceptions, lock failures, and failed replacement validation. A structured rejection by an already-active HTTP deadline is different: it is logged at debug level and does **not** start another background-error cooldown.
 
-The diagram below assumes the failure occurred **before replacing A**, so the old usable cache remains:
+The diagram below assumes failure **before replacing A**, so the old usable cache remains. `H` is the HTTP retry deadline, if any; `D = max(F + 15 seconds, H)`.
 
 ```mermaid
 sequenceDiagram
@@ -145,28 +147,28 @@ sequenceDiagram
     Caller->>Cache: Request in the refresh window
     Cache->>Worker: Submit refresh for A
     Cache-->>Caller: Return A
-    Worker->>Provider: Logical attempt, including optional immediate retry
+    Worker->>Provider: Logical attempt, respecting HTTP backoff
     Provider-->>Worker: Attempt fails
     Worker->>Cache: Log failure and record completion time F
-    Caller->>Cache: Request before F plus 15 seconds
+    Caller->>Cache: Request before D
     Cache-->>Caller: Return A if usable, no new background attempt
-    alt Cache still usable and refreshable at or after F plus 15 seconds
+    alt Cache still usable and refreshable at or after D
         Caller->>Cache: First eligible request after cooldown
         Cache->>Worker: Submit another background attempt
         Cache-->>Caller: Return A
     else Cache becomes unusable, or caller forces a reload
         Caller->>Cache: Request a token
-        Cache->>Provider: Blocking load, without waiting for cooldown
-        Provider-->>Cache: Token or exception
+        Cache->>Provider: Required load, bypassing only the local cooldown
+        Provider-->>Cache: Fail without HTTP if before H<br/>Otherwise token or exception
         Cache-->>Caller: Token or exception
     end
 ```
 
-**The cooldown is a gate, not a timer.** With eager refresh disabled, no traffic means no background retry. The first eligible request after the cooldown starts another attempt; there is no automatic request exactly 15 seconds later.
+**The cooldown is a gate, not a timer.** With eager refresh disabled, no traffic means no background retry. The first eligible request after both deadlines starts another attempt; there is no automatic request exactly 15 seconds later. For example, `Retry-After: 120` keeps traffic-triggered refresh blocked for 120 seconds, not 15 or 135.
 
 The cooldown starts when the entire failed background attempt finishes, not when it starts or when its first HTTP request fails. Each subsequent failed background attempt restarts it. A successful response does not record a new failure, but it does not clear an already-active failure timestamp either.
 
-Setting `preemptive-refresh.error-cooldown: 0` removes the traffic gate: the next eligible request can retry immediately after failure. It does not permit duplicate concurrent attempts for the same entry. A foreground load failure does not itself start this background-error cooldown.
+Setting `preemptive-refresh.error-cooldown: 0` removes only the local traffic gate: the source deadline still applies. It does not permit duplicate concurrent attempts for the same entry. A foreground HTTP failure starts source backoff, but does not itself start this background-error cooldown.
 
 ## 6. A replacement token is returned but rejected
 
@@ -188,12 +190,14 @@ sequenceDiagram
     Worker->>Cache: Log failure and start cooldown at completion time F
     Note over Caller,Cache: Current cache is unusable B, with no fallback to A
     Caller->>Cache: Next request, even before F plus 15 seconds
-    Cache->>Provider: Blocking reload immediately, without waiting for cooldown
+    Cache->>Provider: Blocking reload, subject to any HTTP retry deadline
     Provider-->>Cache: Response or exception
     Cache-->>Caller: Usable replacement token or exception
 ```
 
 The original caller can already have received A, but subsequent callers do **not** automatically fall back to A: the current cache is B. A foreground load encountering the same validation failure throws `AccessTokenUnavailableException` directly.
+
+An otherwise successful HTTP response does not establish source backoff merely because the cache rejects its remaining lifetime. The local background cooldown therefore does not prevent these foreground reloads.
 
 Without eager refresh there is no recovery timer for B; another call is needed. With eager refresh, [invalid-replacement recovery](../eager-preemptive-refresh/README.md#7-invalid-replacements-and-foreground-loads) is scheduled as well.
 
@@ -206,18 +210,22 @@ flowchart TD
     Start["One logical load"] --> First["First underlying provider invocation"]
     First -->|Success| Return["Return token"]
     First -->|AccessTokenUnavailableException| Enabled{"retrying enabled?"}
-    Enabled -->|Yes| Second["Invoke underlying provider once more<br/>immediately, with no cooldown delay"]
+    Enabled -->|Yes| Deadline{"Active HTTP retry deadline<br/>on provider or exception?"}
+    Deadline -->|Yes| Fail
+    Deadline -->|No| Second["Invoke underlying provider once more<br/>immediately"]
     Enabled -->|No| Fail["Propagate failure to the cache layer"]
     First -->|Other exception| Fail
     Second -->|Success| Return
     Second -->|Any exception| Fail
 ```
 
-This means one logical foreground or background load can make two provider invocations. Only a failure escaping the wrapper reaches the cache's error handling. If the second invocation succeeds and the cache accepts the result, no new background-error cooldown is started.
+One logical foreground or background load can make two provider invocations **only when no HTTP deadline is active**. By default, built-in HTTP failures establish backoff, so the wrapper propagates the original exception instead of retrying immediately. A valid zero/past server delay, an elapsed deadline, or disabled backoff can still allow the second invocation. Only a failure escaping the wrapper reaches the cache's error handling.
 
 Cache lock timeouts and cache validation errors occur above this wrapper, so it does not immediately retry them. Other provider exceptions are not retried by this wrapper, but a failed background load still gets the local cooldown behavior from section 5.
 
-The built-in transports classify HTTP **429** and **503** as unavailable errors. **`Retry-After` is not enforced**: some transports include it in an error message, but it does not control either the immediate retry or these local cooldowns. They are not a general HTTP rate-limit policy.
+The built-in transports honor `Retry-After` on HTTP **429** and **503**, for both issuance and refresh. Nonnegative whole seconds and RFC-1123 HTTP-dates are supported. Dates are converted once to a monotonic deadline, so later wall-clock changes do not move it. Missing, blank, or malformed headers, and other token-request failures, use the configurable **15-second fallback**. Valid shorter delays override that fallback; very large delays saturate at the representable timer limit.
+
+The deadline belongs to one HTTP-provider instance and is exposed through wrappers. Calls rejected during the wait do not extend it; concurrent deadline updates cannot shorten it. Issuance and refresh share the gate. A throttled refresh retains its session instead of immediately trying a new client-credentials grant. A genuinely rejected refresh token is discarded, with fresh issuance deferred until the fallback ends.
 
 ## 8. Health checks, disabled modes, and lifecycle
 
@@ -238,12 +246,20 @@ flowchart TD
 
 The default health decorator requests a token when its last recorded provider result is absent or failed. A usable cached token can mask a failed background refresh as healthy, and a previously successful provider result can remain healthy without another remote call. Thus health polling is **not a guarantee of proactive refresh**. An explicit refreshing health check can warm an empty cache or recover a failed provider, but it is not an unconditional forced reload.
 
-Disabling preemptive refresh leaves ordinary caching: usable entries are returned and empty, unusable, or forced loads block. Disabling caching removes these cache refresh mechanisms entirely.
+Disabling preemptive refresh leaves ordinary caching: usable entries are returned and empty, unusable, or forced loads use the reload path. Disabling caching removes the cache refresh mechanisms, **not HTTP backoff**. Health-triggered token loads use the same source gate.
 
 On close, new preemptive work is skipped and an owned worker executor is shut down. An already-submitted task can still finish; callers must stop using a closed provider. An externally managed executor must remain available while the provider is in use. In particular, worker submission rejection happens outside the worker's failure handler: it can escape to a traffic caller and does not itself establish the token-fetch cooldown/recovery behavior above.
 
+## 9. Authorization-server load protection and its limits
+
+Caching shares a token across callers, identity-based coordination avoids duplicate refresh work, and the HTTP provider rejects concurrent token loads rather than queuing uncached fan-out. After a failed HTTP request, repeated traffic, forced reloads, health checks, and the retry wrapper cannot send another request before the fixed source deadline. Neither these rejections nor early timer callbacks restart the wait.
+
+Use `retry-after.enabled: false` only to opt out deliberately; `retry-after.fallback-delay: 0` removes only the client fallback, not valid server directives. These properties sit beside `cache`, not inside it.
+
+This is failure backoff, **not a guarantee that a server can never be overloaded**. Reuse providers: independent instances and replicas do not share deadlines. Successful forced/uncached requests have no minimum interval, a successful HTTP response rejected by the cache does not start HTTP backoff, and a server can permit immediate retry with zero. Revocation, custom providers, and retries configured inside an HTTP client are outside this gate.
+
 ## Implementation references
 
-See [PreemptiveCachedAccessTokenProvider](../../jwt-client-core/src/main/java/org/entur/jwt/client/PreemptiveCachedAccessTokenProvider.java), [DefaultCachedAccessTokenProvider](../../jwt-client-core/src/main/java/org/entur/jwt/client/DefaultCachedAccessTokenProvider.java), [RetryingAccessTokenProvider](../../jwt-client-core/src/main/java/org/entur/jwt/client/RetryingAccessTokenProvider.java), and the [preemptive provider scenarios](../../jwt-client-core/src/test/java/org/entur/jwt/client/PreemptivceCachedAccessTokenProviderTest.java).
+See [PreemptiveCachedAccessTokenProvider](../../jwt-client-core/src/main/java/org/entur/jwt/client/PreemptiveCachedAccessTokenProvider.java), [DefaultCachedAccessTokenProvider](../../jwt-client-core/src/main/java/org/entur/jwt/client/DefaultCachedAccessTokenProvider.java), [RetryingAccessTokenProvider](../../jwt-client-core/src/main/java/org/entur/jwt/client/RetryingAccessTokenProvider.java), [HTTP deadline enforcement](../../jwt-client-core/src/main/java/org/entur/jwt/client/AbstractUrlAccessTokenProvider.java), and the [preemptive provider scenarios](../../jwt-client-core/src/test/java/org/entur/jwt/client/PreemptivceCachedAccessTokenProviderTest.java).
 
 Continue with [eager preemptive refresh and errors](../eager-preemptive-refresh/README.md).

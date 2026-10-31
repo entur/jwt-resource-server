@@ -33,7 +33,8 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@TestPropertySource(locations = "/application-auth0-single.properties")
+@TestPropertySource(locations = "/application-auth0-single.properties",
+        properties = "entur.jwt.clients.auth0.myClient.retry-after.fallback-delay=0")
 @DirtiesContext(classMode = ClassMode.BEFORE_EACH_TEST_METHOD)
 public class Auth0SingleClientTest extends AbstractActuatorTest {
 
@@ -84,7 +85,7 @@ public class Auth0SingleClientTest extends AbstractActuatorTest {
     }
     
     @Test
-    public void testActuator() throws Exception {
+    public void testActuatorWithZeroFailureFallback() throws Exception {
         // down
         // a 404 is not a transient error, so it is not retried
         mockServer.expect(ExpectedCount.once(), requestTo(new URI("https://my.entur.org/oauth/token"))).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.NOT_FOUND));

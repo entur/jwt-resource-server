@@ -4,9 +4,12 @@ import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.entur.jwt.client.AccessTokenUnavailableException;
+import org.entur.jwt.client.AccessTokenRetryAfterException;
 import org.entur.jwt.client.AuthorizationHeaderUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
@@ -26,6 +29,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -43,6 +47,7 @@ public class WebClientStatefulUrlAccessTokenProviderTest {
     private final List<URI> requests = new ArrayList<>();
 
     private WebClientStatefulUrlAccessTokenProvider provider;
+    private long nowNanos;
 
     @BeforeEach
     public void beforeEach() throws Exception {
@@ -53,7 +58,12 @@ public class WebClientStatefulUrlAccessTokenProviderTest {
                 })
                 .build();
 
-        provider = new WebClientStatefulUrlAccessTokenProvider(webClient, new URL(ISSUE_URL), Map.of("grant_type", "client_credentials"), Collections.emptyMap(), new URL(REFRESH_URL), new URL(REVOKE_URL));
+        provider = new WebClientStatefulUrlAccessTokenProvider(webClient, new URL(ISSUE_URL), Map.of("grant_type", "client_credentials"), Collections.emptyMap(), new URL(REFRESH_URL), new URL(REVOKE_URL)) {
+            @Override
+            protected long nanoTime() {
+                return nowNanos;
+            }
+        };
     }
 
     private void respond(HttpStatus status, String json) {
@@ -74,6 +84,9 @@ public class WebClientStatefulUrlAccessTokenProviderTest {
         assertThat(provider.getAccessToken(false).getValue()).isEqualTo("x.y.z");
         assertThat(provider.getRefreshToken().getValue()).isEqualTo("a.b.c");
 
+        assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(true));
+        assertThat(provider.getRefreshToken()).isNull();
+        nowNanos += TimeUnit.SECONDS.toNanos(15);
         assertThat(provider.getAccessToken(true).getValue()).isEqualTo("a1.b1.c1");
         assertThat(provider.getRefreshToken().getValue()).isEqualTo("a2.b2.c2");
 
@@ -94,6 +107,31 @@ public class WebClientStatefulUrlAccessTokenProviderTest {
         assertThat(provider.getRefreshToken().getValue()).isEqualTo("a.b.c");
 
         assertThat(requests).containsExactly(URI.create(ISSUE_URL), URI.create(REFRESH_URL)).inOrder();
+    }
+
+    @ParameterizedTest
+    @CsvSource({"429,false", "503,false", "429,true", "503,true"})
+    public void shouldHonorRetryAfterForIssueAndRefresh(int status, boolean refreshing) throws Exception {
+        if (refreshing) {
+            respond(HttpStatus.OK, ISSUE_RESPONSE);
+            provider.getAccessToken(false);
+        }
+        responses.add(ClientResponse.create(HttpStatus.valueOf(status)).header("Retry-After", "120").build());
+        var original = provider.getRefreshToken();
+        AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
+                () -> provider.getAccessToken(false));
+        assertThat(failure.getRetryAfterDeadlineNanos() - nowNanos).isEqualTo(TimeUnit.SECONDS.toNanos(120));
+        assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(true));
+        assertThat(provider.getRefreshToken()).isSameInstanceAs(original);
+        assertThat(requests).hasSize(refreshing ? 2 : 1);
+        assertThat(requests.get(requests.size() - 1)).isEqualTo(URI.create(refreshing ? REFRESH_URL : ISSUE_URL));
+        nowNanos = TimeUnit.SECONDS.toNanos(15);
+        assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(false));
+        nowNanos = TimeUnit.SECONDS.toNanos(120);
+        respond(HttpStatus.OK, REISSUE_RESPONSE);
+        assertThat(provider.getAccessToken(false).getValue()).isEqualTo("a1.b1.c1");
+        assertThat(requests).hasSize(refreshing ? 3 : 2);
+        assertThat(requests.get(requests.size() - 1)).isEqualTo(URI.create(refreshing ? REFRESH_URL : ISSUE_URL));
     }
 
     @Test

@@ -39,6 +39,11 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
     // retrying
     protected boolean retrying = true;
 
+    /** Optional override of the HTTP provider's backoff policy. */
+    protected Boolean retryAfterEnabled;
+    /** Optional fallback delay in milliseconds. */
+    protected Long retryAfterFallbackMillis;
+
     /**
      * Wrap a specific {@linkplain AccessTokenProvider}. Access to this instance
      * will be cached according to the configuration of this builder.
@@ -166,6 +171,24 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
         return (B) this;
     }
 
+    /**
+     * Configure failed-request backoff for a built-in HTTP provider.
+     *
+     * @param enabled whether Retry-After and fallback backoff are enforced
+     * @param fallback delay after failure without a usable header; zero disables the fallback
+     * @param unit fallback delay unit
+     * @return this builder
+     */
+    @SuppressWarnings("unchecked")
+    public B retryAfter(boolean enabled, long fallback, TimeUnit unit) {
+        if (fallback < 0) {
+            throw new IllegalArgumentException("Retry-After fallback must not be negative");
+        }
+        this.retryAfterFallbackMillis = unit.toMillis(fallback);
+        this.retryAfterEnabled = enabled;
+        return (B) this;
+    }
+
     public AccessTokenProvider build() {
         return build(this.accessTokenProvider);
     }
@@ -173,6 +196,14 @@ public abstract class AbstractAccessTokenProvidersBuilder<B extends AbstractAcce
     protected AccessTokenProvider build(AccessTokenProvider provider) {
         if (!cached && preemptiveRefresh) {
             throw new AccessTokenProviderBuilderException("Premptive cache refresh configured without caching");
+        }
+
+        if (retryAfterEnabled != null) {
+            if (!(provider instanceof AbstractUrlAccessTokenProvider httpProvider)) {
+                throw new AccessTokenProviderBuilderException("Retry-After configuration requires a built-in HTTP provider");
+            }
+            httpProvider.setRetryAfterFallbackMillis(retryAfterFallbackMillis);
+            httpProvider.setRetryAfterEnabled(retryAfterEnabled);
         }
 
         if (retrying) {

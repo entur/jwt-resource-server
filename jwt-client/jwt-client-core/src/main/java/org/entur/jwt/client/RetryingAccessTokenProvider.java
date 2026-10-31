@@ -18,9 +18,23 @@ public class RetryingAccessTokenProvider extends BaseAccessTokenProvider {
         try {
             return provider.getAccessToken(forceRefresh);
         } catch (AccessTokenUnavailableException e) {
+            long now = nanoTime();
+            Long deadline = provider.getRetryAfterDeadlineNanos();
+            if ((deadline != null && deadline - now > 0)
+                    || (e instanceof AccessTokenRetryAfterException retryAfter && retryAfter.getRetryAfterDeadlineNanos() - now > 0)) {
+                throw e;
+            }
             // assume transient network issue, retry once
             return provider.getAccessToken(forceRefresh);
         }
+    }
+
+    /**
+     * Read the clock used to check retry deadlines.
+     * @return current monotonic time, in nanoseconds
+     */
+    protected long nanoTime() {
+        return System.nanoTime();
     }
 
 }
