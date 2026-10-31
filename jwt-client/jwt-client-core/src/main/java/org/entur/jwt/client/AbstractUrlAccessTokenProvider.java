@@ -45,7 +45,8 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
     private static final String RATE_LIMIT_RESET_HEADER_HYPHENATED = "X-Rate-Limit-Reset";
     private static final List<String> CONTEXT_HEADERS = List.of(RETRY_AFTER_HEADER,
             "X-RateLimit-Limit", "X-RateLimit-Remaining", RATE_LIMIT_RESET_HEADER,
-            "X-Rate-Limit-Limit", "X-Rate-Limit-Remaining", RATE_LIMIT_RESET_HEADER_HYPHENATED);
+            "X-Rate-Limit-Limit", "X-Rate-Limit-Remaining", RATE_LIMIT_RESET_HEADER_HYPHENATED,
+            "Auth0-Client-Quota-Limit", "Auth0-Organization-Quota-Limit");
 
     private volatile long retryAfterFallbackMillis = DEFAULT_RETRY_AFTER_FALLBACK_MILLIS;
     private volatile Long retryAfterDeadlineNanos;

@@ -208,6 +208,22 @@ class RetryAfterAccessTokenProviderTest {
     }
 
     @Test
+    void shouldKeepAuth0QuotaHeadersAsContextOnTheException() throws Exception {
+        TestProvider provider = new TestProvider();
+        provider.headerFailure = true;
+        provider.header = "30";
+        provider.otherHeaders.put("Auth0-Organization-Quota-Limit", "b=per_hour;q=100;r=0;t=30");
+        provider.otherHeaders.put("Auth0-Client-Quota-Limit", "b=per_hour;q=1000;r=0;t=30,b=per_day;q=5000;r=120;t=7200");
+        AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
+                () -> provider.getAccessToken(false));
+        assertThat(failure.getHeaders()).containsExactly(
+                "Retry-After", "30",
+                "Auth0-Client-Quota-Limit", "b=per_hour;q=1000;r=0;t=30,b=per_day;q=5000;r=120;t=7200",
+                "Auth0-Organization-Quota-Limit", "b=per_hour;q=100;r=0;t=30").inOrder();
+        assertThat(failure).hasMessageThat().contains("Auth0-Client-Quota-Limit:b=per_hour;q=1000;r=0;t=30,b=per_day;q=5000;r=120;t=7200");
+    }
+
+    @Test
     void shouldNotAddContextWhenThereAreNoRateLimitHeaders() throws Exception {
         TestProvider provider = new TestProvider();
         provider.headerFailure = true;
