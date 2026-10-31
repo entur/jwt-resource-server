@@ -79,8 +79,8 @@ public class ReactiveEnturOauth2ResourceServerCustomizer implements Customizer<S
 
             JWSVerificationKeySelector verificationKeySelector = new JWSVerificationKeySelector(JWSAlgorithm.Family.SIGNATURE, jwkSource);
 
+            // the JWS key selector is set by the converter
             DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
-            jwtProcessor.setJWSKeySelector(verificationKeySelector);
             // the claims (including expiry) are validated by the JWT validators
             jwtProcessor.setJWTClaimsSetVerifier((claims, context) -> {
             });

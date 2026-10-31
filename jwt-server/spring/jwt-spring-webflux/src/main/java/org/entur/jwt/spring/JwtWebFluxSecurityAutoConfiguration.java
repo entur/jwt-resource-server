@@ -91,7 +91,8 @@ public class JwtWebFluxSecurityAutoConfiguration {
         return new DefaultJwtAuthorityEnricher();
     }
 
-    // not a default candidate, so that it does not interfere with Scheduler injection points of the application.
+    // for JWK lookups, at most one per tenant at a time (see ReactiveJwtMonoConverter).
+    // Not a default candidate, so that it does not interfere with Scheduler injection points of the application.
     // Daemon threads (with the default time to live of 60 seconds), so that a stalled JWK request does not keep the JVM alive.
     @Bean(destroyMethod = "dispose", defaultCandidate = false)
     @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
