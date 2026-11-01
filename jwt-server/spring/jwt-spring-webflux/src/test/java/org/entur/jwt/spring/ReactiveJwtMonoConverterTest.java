@@ -565,6 +565,58 @@ class ReactiveJwtMonoConverterTest {
     }
 
     @Test
+    void shouldUseRefreshedKeyOfUnknownJwkSourceWithoutReadingAllKeysAgain() throws Exception {
+        AtomicInteger reads = new AtomicInteger();
+        // i.e. a wrapper which fails (or reaches a stale replica) for the read after the refresh
+        JWKSource<SecurityContext> wrapper = (selector, context) -> {
+            if (reads.incrementAndGet() == 4) {
+                throw new KeySourceException("Unavailable");
+            }
+            return source.get(selector, context);
+        };
+        JWSVerificationKeySelector<SecurityContext> selector = new JWSVerificationKeySelector<>(JWSAlgorithm.HS256, wrapper);
+        JwtReactiveAuthenticationManager manager = manager(new ReactiveJwtMonoConverter(processor(), selector, jwtScheduler));
+        authenticate(manager, token(key)).block(Duration.ofSeconds(10));
+
+        source.refreshed = new JWKSet(List.of(key, otherKey));
+        assertThat(authenticate(manager, token(otherKey)).block(Duration.ofSeconds(10)).isAuthenticated()).isTrue();
+        // the keys and the unknown key, which refreshes
+        assertThat(reads.get()).isEqualTo(3);
+    }
+
+    @Test
+    void shouldNotWaitForRefreshOfUnknownKeyWhenKeyIsKnownAndKeysAreNotReused() throws Exception {
+        // i.e. a wrapper, so the keys are not reused after the lookup
+        JWKSource<SecurityContext> wrapper = (selector, context) -> source.get(selector, context);
+        JWSVerificationKeySelector<SecurityContext> selector = new JWSVerificationKeySelector<>(JWSAlgorithm.HS256, wrapper);
+        ReactiveJwtMonoConverter converter = new ReactiveJwtMonoConverter(processor(), selector, jwtScheduler);
+
+        CountDownLatch refreshing = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        source.refreshed = new JWKSet(List.of(key, otherKey));
+        source.refreshing = refreshing;
+        source.refreshBlocked = release;
+        try {
+            CompletableFuture<JWTClaimsSet> unknown = converter.convert(SignedJWT.parse(token(otherKey))).toFuture();
+            assertThat(refreshing.await(10, TimeUnit.SECONDS)).isTrue();
+
+            // the keys of the lookup in progress are used, without waiting for the refresh
+            assertThat(converter.convert(SignedJWT.parse(token(key))).toFuture().get(5, TimeUnit.SECONDS).getSubject()).isEqualTo("test-subject");
+            assertThat(unknown).isNotDone();
+
+            release.countDown();
+            assertThat(unknown.get(10, TimeUnit.SECONDS).getSubject()).isEqualTo("test-subject");
+        } finally {
+            release.countDown();
+        }
+
+        // but not after the lookup
+        int reads = source.threads.size();
+        converter.convert(SignedJWT.parse(token(key))).block(Duration.ofSeconds(10));
+        assertThat(source.threads).hasSize(reads + 1);
+    }
+
+    @Test
     void shouldNotWaitForRefreshOfUnknownKeyWhenKeyIsKnownAndRequestWaitsForLookup() throws Exception {
         TimedConverter converter = new TimedConverter(processor(), selector(), jwtScheduler);
         converter.convert(SignedJWT.parse(token(key))).block(Duration.ofSeconds(10));

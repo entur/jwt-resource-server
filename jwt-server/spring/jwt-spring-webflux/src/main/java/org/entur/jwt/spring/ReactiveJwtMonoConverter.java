@@ -34,6 +34,7 @@ import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
 import java.security.Key;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.RejectedExecutionException;
@@ -50,7 +51,8 @@ import java.util.concurrent.TimeUnit;
  * The keys of a lookup are used for at most 10 seconds, and never for longer than the time-to-live of the JWK source cache
  * (so a removed key might be accepted for up to 10 seconds longer than the JWK source cache alone would). If the JWK source does not cache
  * (i.e. it fetches the keys on every call), or is not known to cache (i.e. it is not built by the JWK source builder of Nimbus), the keys are
- * not reused, so that only concurrent requests share a lookup.
+ * not reused, so that only concurrent requests share a lookup, and a refresh for an unknown key adds the refreshed keys to the keys
+ * at hand instead of reading all keys once more.
  * <br><br>
  * The JWK source is read with a selector for all keys, and the keys for a token are then selected from the result. A JWK source which
  * restricts the keys by the criteria of the selector is therefore not supported.
@@ -139,7 +141,8 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
         return Mono.defer(() -> {
             Keys current = this.keys;
             long time = nanoTime();
-            if (current != null && current.isValid(time) && current.contains(jwsHeader)) {
+            // the keys of a lookup in progress are shared by requests, also if the keys are not reused after the lookup
+            if (current != null && current.contains(jwsHeader) && (current.isValid(time) || isRefreshing(current))) {
                 if (current.isRefreshable(time)) {
                     // in the background
                     lookup(null);
@@ -165,7 +168,16 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
             return Mono.just(keys);
         }
         // wait for the refresh of the lookup (which might already have finished) rather than start a new lookup
-        return keys.refresh != null ? keys.refresh.flatMap(k -> keysFor(header, k)) : keysFor(header);
+        return keys.refresh != null ? keys.refresh.asMono().flatMap(k -> keysFor(header, k)) : keysFor(header);
+    }
+
+    private boolean isRefreshing(Keys keys) {
+        if (keys.refresh == null) {
+            return false;
+        }
+        synchronized (lock) {
+            return lookup == keys.refresh;
+        }
     }
 
     private Mono<Keys> lookup(JWSHeader header) {
@@ -201,7 +213,7 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
                 // the keys at hand are enough for requests which do not need the unknown key (also those already waiting), so release
                 // them right away. Requests for the unknown key look up again, which waits for the refresh in progress
                 current = Sinks.one();
-                Keys known = new Keys(new JWKSet(all), time, null, current.asMono());
+                Keys known = new Keys(new JWKSet(all), time, null, current);
                 this.keys = known;
                 synchronized (lock) {
                     lookup = current;
@@ -209,8 +221,10 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
                 sink.tryEmitValue(known);
                 try {
                     // unknown key, so that the JWK source refreshes its keys
-                    jwkSource.get(new JWKSelector(matcher), null);
-                    all = jwkSource.get(ALL_KEYS, null);
+                    List<JWK> refreshed = jwkSource.get(new JWKSelector(matcher), null);
+                    // keys which are reused replace the keys at hand, as a key might have been removed. Keys which are not reused are
+                    // only for the requests of this lookup, so add the refreshed keys instead of reading all keys once more
+                    all = keysTimeToLive > 0 ? jwkSource.get(ALL_KEYS, null) : merge(all, refreshed);
                 } catch (RateLimitReachedException e) {
                     // use the keys at hand; any other failure is not hidden as an invalid token
                 }
@@ -267,6 +281,16 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
         return System.nanoTime();
     }
 
+    private static List<JWK> merge(List<JWK> keys, List<JWK> refreshed) {
+        List<JWK> merged = new ArrayList<>(keys);
+        for (JWK key : refreshed) {
+            if (!merged.contains(key)) {
+                merged.add(key);
+            }
+        }
+        return merged;
+    }
+
     private static boolean contains(List<JWK> keys, JWSHeader header) {
         JWKMatcher matcher = JWKMatcher.forJWSHeader(header);
         return matcher != null && keys.stream().anyMatch(matcher::matches);
@@ -280,9 +304,9 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
         // the token which the keys were looked up for, if any
         private final JWSHeader header;
         // the keys after the refresh, if the keys are those at hand while the JWK source refreshes for an unknown key
-        private final Mono<Keys> refresh;
+        private final Sinks.One<Keys> refresh;
 
-        private Keys(JWKSet jwkSet, long time, JWSHeader header, Mono<Keys> refresh) {
+        private Keys(JWKSet jwkSet, long time, JWSHeader header, Sinks.One<Keys> refresh) {
             this.jwkSet = new ImmutableJWKSet<>(jwkSet);
             this.time = time;
             this.header = header;
