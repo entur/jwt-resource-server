@@ -280,13 +280,47 @@ class RetryAfterAccessTokenProviderTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"9223372036854775807", "999999999999999999999999"})
-    void shouldSaturateVeryLongServerDelaysWithoutBecomingImmediatelyRetryable(String header) throws Exception {
+    @ValueSource(strings = {"3601", "99999999999", "9223372036854775807", "999999999999999999999999"})
+    void shouldCapVeryLongServerDelaysAtOneHour(String header) throws Exception {
         TestProvider provider = new TestProvider();
         provider.retryAfterException("long response", Map.of("Retry-After", header)::get);
-        assertThat(provider.getRetryAfterDeadlineNanos() - provider.nowNanos).isEqualTo(Long.MAX_VALUE);
+        assertThat(provider.getRetryAfterDeadlineNanos() - provider.nowNanos).isEqualTo(TimeUnit.HOURS.toNanos(1));
         assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(false));
         assertThat(provider.calls).isEqualTo(0);
+
+        provider.advance(1, TimeUnit.HOURS);
+        assertThat(provider.getAccessToken(false).getValue()).isEqualTo("token");
+        assertThat(provider.calls).isEqualTo(1);
+    }
+
+    @Test
+    void shouldHonorServerDelaysUpToTheCap() throws Exception {
+        TestProvider provider = new TestProvider();
+        provider.retryAfterException("long response", Map.of("Retry-After", "3600")::get);
+        assertThat(provider.getRetryAfterDeadlineNanos() - provider.nowNanos).isEqualTo(TimeUnit.HOURS.toNanos(1));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"X-RateLimit-Reset", "X-Rate-Limit-Reset"})
+    void shouldCapFarFutureRateLimitResetTimestampsAtOneHour(String name) throws Exception {
+        TestProvider provider = new TestProvider();
+        provider.retryAfterException("long response", Map.of(name, Long.toString(provider.nowMillis / 1000 + TimeUnit.DAYS.toSeconds(365)))::get);
+        assertThat(provider.getRetryAfterDeadlineNanos() - provider.nowNanos).isEqualTo(TimeUnit.HOURS.toNanos(1));
+    }
+
+    @Test
+    void shouldCapFarFutureHttpDatesAtOneHour() throws Exception {
+        TestProvider provider = new TestProvider();
+        provider.retryAfterException("long response", Map.of("Retry-After", "Sun, 31 Oct 2027 12:00:00 GMT")::get);
+        assertThat(provider.getRetryAfterDeadlineNanos() - provider.nowNanos).isEqualTo(TimeUnit.HOURS.toNanos(1));
+    }
+
+    @Test
+    void shouldNotCapTheConfiguredFallback() throws Exception {
+        TestProvider provider = new TestProvider();
+        provider.setRetryAfterFallbackMillis(TimeUnit.HOURS.toMillis(2));
+        provider.retryAfterException("no header", Map.<String, String>of()::get);
+        assertThat(provider.getRetryAfterDeadlineNanos() - provider.nowNanos).isEqualTo(TimeUnit.HOURS.toNanos(2));
     }
 
     @Test
