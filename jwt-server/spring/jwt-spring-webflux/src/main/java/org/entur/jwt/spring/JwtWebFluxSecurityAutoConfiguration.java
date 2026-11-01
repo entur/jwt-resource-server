@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -41,6 +42,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.header.XXssProtectionServerHttpHeadersWriter;
 import org.springframework.security.web.server.savedrequest.NoOpServerRequestCache;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -88,6 +91,16 @@ public class JwtWebFluxSecurityAutoConfiguration {
         return new DefaultJwtAuthorityEnricher();
     }
 
+    // for JWK lookups, at most one per tenant at a time (see ReactiveJwtMonoConverter).
+    // Not a default candidate, so that it does not interfere with Scheduler injection points of the application.
+    // Daemon threads (with the default time to live of 60 seconds), so that a stalled JWK request does not keep the JVM alive.
+    @Bean(destroyMethod = "dispose", defaultCandidate = false)
+    @ConditionalOnProperty(name = {"entur.jwt.enabled"}, havingValue = "true", matchIfMissing = true)
+    @ConditionalOnMissingBean(name = "jwtProcessingScheduler")
+    public Scheduler jwtProcessingScheduler() {
+        return Schedulers.newBoundedElastic(Schedulers.DEFAULT_BOUNDED_ELASTIC_SIZE, Schedulers.DEFAULT_BOUNDED_ELASTIC_QUEUESIZE, "jwt-processing", 60, true);
+    }
+
     @Configuration
     @ConditionalOnMissingBean(SecurityWebFilterChain.class)
     @ConditionalOnExpression("${entur.authorization.enabled:true} || ${entur.jwt.enabled:true}")
@@ -129,7 +142,8 @@ public class JwtWebFluxSecurityAutoConfiguration {
                 JwkSourceMap jwkSourceMap,
                 List<JwtAuthorityEnricher> jwtAuthorityEnrichers,
                 EnturJwtValidators enturJwtValidators,
-                ObjectProvider<OAuth2TokenValidator<Jwt>> jwtValidators
+                ObjectProvider<OAuth2TokenValidator<Jwt>> jwtValidators,
+                @Qualifier("jwtProcessingScheduler") Scheduler jwtProcessingScheduler
         ) throws Exception {
 
             log.info("Configure with JWT");
@@ -167,7 +181,7 @@ public class JwtWebFluxSecurityAutoConfiguration {
                 // validator beans are used in addition to (not instead of) the library validators
                 List<OAuth2TokenValidator<Jwt>> validators = JwtDecoderValidators.combine(enturJwtValidators, jwtValidators.orderedStream(), jwt.getClaims());
 
-                http.oauth2ResourceServer(new ReactiveEnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers, validators, securityProperties.getJwt().getDecode(), jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider));
+                http.oauth2ResourceServer(new ReactiveEnturOauth2ResourceServerCustomizer(jwkSourceMap.getJwkSources(), jwtAuthorityEnrichers, validators, securityProperties.getJwt().getDecode(), jwtHeaderToIssuerMapper, jwtHeaderToIssuerMapperDecider, jwtProcessingScheduler));
             }
 
             MdcProperties mdc = jwt.getMdc();
