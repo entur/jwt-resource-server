@@ -677,6 +677,37 @@ class ReactiveJwtMonoConverterTest {
     }
 
     @Test
+    void shouldNotUseKeysRemovedByRefreshForRequestsWhichWaitedForStalledRefresh() throws Exception {
+        // i.e. a wrapper, so the keys are not reused after the lookup
+        JWKSource<SecurityContext> wrapper = (selector, context) -> source.get(selector, context);
+        JWSVerificationKeySelector<SecurityContext> selector = new JWSVerificationKeySelector<>(JWSAlgorithm.HS256, wrapper);
+        TimedConverter converter = new TimedConverter(processor(), selector, jwtScheduler);
+
+        CountDownLatch refreshing = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        // i.e. key rotation, which removes the key
+        source.refreshed = new JWKSet(otherKey);
+        source.refreshing = refreshing;
+        source.refreshBlocked = release;
+        try {
+            CompletableFuture<JWTClaimsSet> unknown = converter.convert(SignedJWT.parse(token(otherKey))).toFuture();
+            assertThat(refreshing.await(10, TimeUnit.SECONDS)).isTrue();
+
+            // the refresh stalls, so the request waits for it
+            converter.advance(11, TimeUnit.SECONDS);
+            CompletableFuture<JWTClaimsSet> removed = converter.convert(SignedJWT.parse(token(key))).toFuture();
+            assertThat(removed).isNotDone();
+
+            release.countDown();
+            assertThat(unknown.get(10, TimeUnit.SECONDS).getSubject()).isEqualTo("test-subject");
+            // the keys at hand are not replaced by the refresh, so the removed key must not be used
+            assertThatThrownBy(() -> removed.get(10, TimeUnit.SECONDS)).hasCauseInstanceOf(JwtException.class);
+        } finally {
+            release.countDown();
+        }
+    }
+
+    @Test
     void shouldShareLookupOfJwkSourceWithoutCacheBetweenRequestsForDifferentUnknownKeys() throws Exception {
         AtomicInteger fetches = new AtomicInteger();
         CountDownLatch fetching = new CountDownLatch(1);
