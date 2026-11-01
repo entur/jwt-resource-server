@@ -24,14 +24,24 @@ Constructing an eager provider does not itself fetch a token or schedule its fir
 
 ```mermaid
 flowchart TD
-    New["Construct eager provider<br/>Empty cache, no refresh timer"] --> Trigger["First token request or warmup"]
-    Trigger --> Load["Blocking initial load"]
-    Load -->|Provider throws before returning a token| Empty["Cache stays empty<br/>No eager retry timer exists"]
-    Empty --> Later["A later request or warmup must retry<br/>HTTP backoff still applies"]
-    Later --> Load
-    Load -->|Token returned| Cache["Install cache entry"]
-    Cache --> Schedule["Schedule using its current usability<br/>and refresh deadline"]
-    Cache --> Validate["Validate for the calling load<br/>Return token or throw"]
+    New["Construct eager provider<br/>Empty cache, no refresh timer"]
+    New --> Request["Token request"]
+    New --> Health["Refreshing health check<br/>that reaches the cache"]
+    New --> Listener["Spring startup listener<br/>on ContextStartedEvent"]
+    Request --> Load["Blocking initial load"]
+    Health --> Load
+    Listener --> Load
+
+    Load -->|Token returned| Install["Install cache entry"]
+    Install --> Schedule["Schedule the first eager timer<br/>see sections 3 and 7"]
+    Install --> Validate["Validate for the calling load<br/>Return token or throw"]
+
+    Load -->|Provider throws<br/>before returning a token| Empty["Cache stays empty<br/>No eager timer exists"]
+
+    classDef ok stroke:#2e7d32,stroke-width:2px
+    classDef failed stroke:#c62828,stroke-width:2px
+    class Schedule ok
+    class Empty failed
 ```
 
 Spring's `EagerContextStartedListener` calls `getAccessToken(false)` on `ContextStartedEvent`. Publish that event explicitly, for example:
@@ -96,7 +106,7 @@ sequenceDiagram
 
 The scheduled callback uses an **internal force flag** to bypass the ordinary refresh-window check. It does not bypass closed-state checks, cache identity, in-flight deduplication, the dispatch lock, or the eager error cooldown, which includes any remembered Retry-After deadline. The HTTP provider also rejects an attempt without HTTP during a deadline the cache has not seen. It is different from public `getAccessToken(true)`, which takes the foreground blocking path without either background-error gate, but still obeys HTTP backoff.
 
-A timer is a scheduling target, not a guarantee that HTTP work starts at that instant: executor availability, lock contention, and an active cooldown can delay the actual load.
+A timer is a scheduling target, not a guarantee that HTTP work starts at that instant: a busy executor, lock contention, and an active cooldown can delay the actual load.
 
 ## 3. Choosing the next deadline after any replacement
 
@@ -300,7 +310,7 @@ Eager refresh does not require health support. With health enabled, the eager he
 
 The Spring indicator first calls `getHealth(false)` and only requests refreshing checks for unhealthy providers, as shown in the [health diagram](../preemptive-refresh/README.md#8-health-checks-disabled-modes-and-lifecycle). Consequently, visiting a health endpoint is not the same as running every eager timer or resetting its cooldown. Healthy cached state can mask a failed refresh.
 
-## 9. Shutdown and executor failures
+## 9. Shutdown
 
 ```mermaid
 sequenceDiagram
@@ -318,9 +328,7 @@ sequenceDiagram
     Cache->>Timer: Shut down scheduled executor
 ```
 
-Scheduling and closing share the same monitor, so an in-flight completion cannot establish another eager timer after close. Closing also closes the underlying provider; a caller-supplied worker executor is shut down only when its ownership flag requests that. Do not use the provider after close or assume cancellation can stop every in-flight HTTP operation.
-
-These recovery rules handle failures inside a dispatched token-load attempt; they are not a replacement for functioning executors. Worker submission rejection is outside that attempt's error handler. A scheduled callback logs such an exception, but does not automatically re-arm itself for it. Scheduler submission failure can also interrupt replacement processing without guaranteeing a new future. Keep externally managed executors alive for the provider's lifetime.
+Scheduling and closing share the same monitor, so an in-flight completion cannot establish another eager timer after close. Closing also closes the underlying provider; a caller-supplied worker executor is shut down only when its ownership flag requests that. Do not use the provider after close or assume cancellation can stop every in-flight HTTP operation. This guide assumes that executors accept every submitted task, so an externally managed executor must remain available while the provider is in use.
 
 ## 10. Authorization-server load protection
 
