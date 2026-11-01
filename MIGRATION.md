@@ -56,6 +56,11 @@ Roles from other clients must be granted on the configured client in Keycloak, o
 
 The package `org.entur.jwt.spring.grpc.netty` keeps its name. The deprecated entry points did not support the decoded JWT cache.
 
+### WebFlux: custom JWT processors are rejected
+The public `ReactiveJwtMonoConverter` constructors throw `IllegalArgumentException` for a subclass of `JWSVerificationKeySelector` or `DefaultJWTProcessor`, a different JWS key selector on the processor, or a claims-aware key selector. The converter selects keys from keys looked up in advance, so custom key selection (an allowlist, a revocation check) would have been bypassed silently. Applications using the auto-configuration are unaffected.
+
+JWK lookups now run on a dedicated `jwtProcessingScheduler` bean (daemon threads, not a default `Scheduler` candidate) instead of on the request thread. Define a bean with that name to replace it, or pass a `Scheduler` to the new seven-argument `ReactiveEnturOauth2ResourceServerCustomizer` constructor. See the [server README](jwt-server/README.md).
+
 ### Behaviour changes (not breaking, but visible)
  * Startup fails if two enabled tenants have the same issuer.
  * Web: error dispatches are permitted, so errors from permit-all endpoints keep their status (400, 404, 415, 500, ...) for requests without a token, instead of 401 (403 with `entur.jwt.enabled=false`). Requests rejected by the Spring Security firewall now get 400 instead of 401.
@@ -89,6 +94,18 @@ No API changes. The fixes below apply.
  * RestTemplate: HTTP 4xx/5xx are no longer all reported (and retried) as `AccessTokenUnavailableException`. Only 429 and 503 are, other codes throw `AccessTokenException` and are not retried, like the other clients. Handle exceptions accordingly.
  * HttpURLConnection: connections are always disconnected, so keep-alive is no longer used between token requests.
  * Any 2xx response to a revoke request is accepted (Keycloak answers 204).
+
+### Backoff after failed token requests
+Built-in HTTP providers (HttpURLConnection, RestClient, WebClient, RestTemplate) now back off after a failed token request, also without a cache:
+
+ * On HTTP 429/503 the `Retry-After` header decides the wait (seconds or HTTP-date); without it, the `X-RateLimit-Reset` (Auth0) or `X-Rate-Limit-Reset` (Okta) timestamp is converted to the equivalent delay. Delays taken from a response are capped at one hour.
+ * Other failures, and headers which are missing or malformed, wait 15 seconds (`retry-after.fallback-delay`, or `retryAfter(fallback, unit)` on the builders). Set it to `0` to keep the old behavior of retrying immediately.
+ * Until then, calls which need a new token throw `AccessTokenRetryAfterException` (an `AccessTokenUnavailableException`) without calling the server; `getHeaders()` exposes the rate limit headers, including Auth0's `Auth0-Client-Quota-Limit` and `Auth0-Organization-Quota-Limit`, for logging. Handle it like other `AccessTokenUnavailableException`s. Cached tokens remain usable.
+ * A failure with a server error (HTTP 5xx) while refreshing keeps the refresh token.
+ * Concurrent uncached token requests no longer queue up: the second one fails fast with `AccessTokenUnavailableException`, as `ExclusiveAccessTokenProvider` now sits above every built-in HTTP provider. Wrap providers which you compose by hand in it too.
+ * Failed background refreshes with a cache now wait before trying again, by `cache.preemptive-refresh.error-cooldown` (15 seconds) and `cache.preemptive-refresh.eager.error-cooldown` (60 seconds, scheduled refreshes, which now recover on their own). The builders have `preemptiveErrorCooldown(..)` and `eagerErrorCooldown(..)`.
+
+See the [client README](jwt-client/README.md#http-failure-backoff-and-authorization-server-protection).
 
 ## Test
 Applies to `jwt-junit5-core` (non-Spring), `jwt-junit5-spring` and `jwt-junit5-entur`.
