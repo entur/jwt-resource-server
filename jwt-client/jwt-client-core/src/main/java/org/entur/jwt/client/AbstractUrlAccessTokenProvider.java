@@ -40,6 +40,9 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
     /** Default delay after a failure without a usable Retry-After header, in milliseconds. */
     public static final long DEFAULT_RETRY_AFTER_FALLBACK_MILLIS = 15_000;
 
+    /** Longest delay taken from the response of a failed request, in milliseconds. Longer delays are shortened, so that one bad response cannot disable the provider until restart. */
+    public static final long MAX_RETRY_AFTER_MILLIS = 3_600_000;
+
     private static final String RETRY_AFTER_HEADER = "Retry-After";
     // Auth0 and Okta respectively; both are UNIX timestamps in seconds
     private static final String RATE_LIMIT_RESET_HEADER = "X-RateLimit-Reset";
@@ -162,6 +165,10 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
         if (delay == null) {
             delay = parseResetNanos(context.get(RATE_LIMIT_RESET_HEADER_HYPHENATED));
         }
+        if (delay != null && delay > TimeUnit.MILLISECONDS.toNanos(MAX_RETRY_AFTER_MILLIS)) {
+            LOGGER.warn("The response asks for a longer delay than {} seconds; using that instead", TimeUnit.MILLISECONDS.toSeconds(MAX_RETRY_AFTER_MILLIS));
+            delay = TimeUnit.MILLISECONDS.toNanos(MAX_RETRY_AFTER_MILLIS);
+        }
         if (delay == null) {
             long fallbackMillis = retryAfterFallbackMillis;
             if (fallbackMillis == 0) {
@@ -208,7 +215,7 @@ public abstract class AbstractUrlAccessTokenProvider implements AccessTokenProvi
                 try {
                     return TimeUnit.SECONDS.toNanos(Long.parseLong(value));
                 } catch (NumberFormatException e) {
-                    LOGGER.warn("Retry-After delay exceeds the supported range; using the maximum backoff");
+                    // beyond the range of a long; shortened to the maximum delay by the caller
                     return Long.MAX_VALUE;
                 }
             }
