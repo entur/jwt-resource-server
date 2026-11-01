@@ -5,7 +5,6 @@ import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.entur.jwt.client.ClientCredentialsResponse;
 import org.entur.jwt.client.RefreshToken;
-import org.entur.jwt.client.RefreshTokenException;
 import org.entur.jwt.client.UrlAccessTokenProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +19,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import static org.entur.jwt.client.spring.restclient.RestClientUrlAccessTokenProvider.headerLookup;
 import static org.entur.jwt.client.spring.restclient.RestClientUrlAccessTokenProvider.printResponseEntityHeadersIfPresent;
 /**
  * 
@@ -109,13 +109,13 @@ public class RestClientStatefulUrlAccessTokenProvider extends AbstractStatefulUr
             int responseCode = e.getStatusCode().value();
             if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to refresh token at {}", responseCode, refreshUrl);
             if (responseCode == 503) { // service unavailable
-                throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable when refreshing token. " + printResponseEntityHeadersIfPresent(e.getResponseHeaders(), "Retry-After"));
+                throw retryAfterException("Authorization server responded with HTTP code 503 - service unavailable when refreshing token.", headerLookup(e.getResponseHeaders()), e);
             } else if (responseCode == 429) { // too many calls
                 // see for example https://auth0.com/docs/policies/rate-limits
-                throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests when refreshing token. " + printResponseEntityHeadersIfPresent(e.getResponseHeaders(), "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
+                throw retryAfterException("Authorization server responded with HTTP code 429 - too many requests when refreshing token.", headerLookup(e.getResponseHeaders()), e);
             }
             // assume current session has been revoked or expired
-            throw new RefreshTokenException("Authorization server responded with HTTP unexpected response code " + responseCode + " when refreshing token", e);
+            throw refreshFailure(responseCode, "Authorization server responded with HTTP unexpected response code " + responseCode + " when refreshing token", e);
         } catch(RestClientException e) {
             throw new AccessTokenUnavailableException(e);
         }
@@ -130,10 +130,10 @@ public class RestClientStatefulUrlAccessTokenProvider extends AbstractStatefulUr
             int responseCode = e.getStatusCode().value();
             if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
             if (responseCode == 503) { // service unavailable
-                throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printResponseEntityHeadersIfPresent(e.getResponseHeaders(), "Retry-After"));
+                throw retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.", headerLookup(e.getResponseHeaders()), e);
             } else if (responseCode == 429) { // too many calls
                 // see for example https://auth0.com/docs/policies/rate-limits
-                throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests. " + printResponseEntityHeadersIfPresent(e.getResponseHeaders(), "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
+                throw retryAfterException("Authorization server responded with HTTP code 429 - too many requests.", headerLookup(e.getResponseHeaders()), e);
             }
             throw new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
         } catch(RestClientException e) {

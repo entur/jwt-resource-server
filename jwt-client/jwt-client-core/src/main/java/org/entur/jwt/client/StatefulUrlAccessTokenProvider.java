@@ -59,10 +59,10 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
             if (responseCode != 200) {
                 if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
                 if (responseCode == 503) { // service unavailable
-                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(response, "Retry-After"));
+                    throw retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.", response::getHeaderField);
                 } else if (responseCode == 429) { // too many calls
                     // see for example https://auth0.com/docs/policies/rate-limits
-                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests. " + printHeadersIfPresent(response, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
+                    throw retryAfterException("Authorization server responded with HTTP code 429 - too many requests.", response::getHeaderField);
                 }
                 throw new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
             }
@@ -143,13 +143,13 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
             if (responseCode != 200) {
                 if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to refresh token at {}", responseCode, refreshUrl);
                 if (responseCode == 503) { // service unavailable
-                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHeadersIfPresent(request, "Retry-After"));
+                    throw retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.", request::getHeaderField);
                 } else if (responseCode == 429) { // too many calls
                     // see for example https://auth0.com/docs/policies/rate-limits
-                    throw new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests. " + printHeadersIfPresent(request, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
+                    throw retryAfterException("Authorization server responded with HTTP code 429 - too many requests.", request::getHeaderField);
                 }
 
-                throw new RefreshTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
+                throw refreshFailure(responseCode, "Authorization server responded with HTTP unexpected response code " + responseCode, null);
             }
             try (InputStream inputStream = request.getInputStream()) {
                 ClientCredentialsResponse clientCredentialsResponse = reader.readValue(inputStream);

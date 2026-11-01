@@ -13,6 +13,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.ResponseExtractor;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -23,6 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.function.Function;
 
 /**
  * 
@@ -35,6 +37,10 @@ import java.util.Map.Entry;
 public class RestTemplateUrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RestTemplateUrlAccessTokenProvider.class);
+
+    protected static Function<String, String> headerLookup(HttpHeaders headers) {
+        return headers == null ? null : headers::getFirst;
+    }
 
     protected static StringBuilder printResponseEntityHeadersIfPresent(ResponseEntity<?> c, String... headerNames) {
         return printHttpHeadersIfPresent(c.getHeaders(), headerNames);
@@ -66,6 +72,21 @@ public class RestTemplateUrlAccessTokenProvider extends AbstractUrlAccessTokenPr
 
     protected final RestTemplate restTemplate;
 
+    /**
+     * Post a token request. Only a 200 response body is converted, so an unreadable error body cannot hide the headers of a 429 or 503 response.
+     *
+     * @param restTemplate rest template
+     * @param uri request URI
+     * @param request request body and headers
+     * @return the response, without a body unless the status is 200
+     */
+    protected static ResponseEntity<ClientCredentialsResponse> postTokenRequest(RestTemplate restTemplate, URI uri, HttpEntity<byte[]> request) {
+        ResponseExtractor<ResponseEntity<ClientCredentialsResponse>> extractor = restTemplate.responseEntityExtractor(ClientCredentialsResponse.class);
+        return restTemplate.execute(uri, HttpMethod.POST, restTemplate.httpEntityCallback(request, ClientCredentialsResponse.class),
+                response -> response.getStatusCode().value() == 200 ? extractor.extractData(response)
+                        : ResponseEntity.status(response.getStatusCode()).headers(response.getHeaders()).build());
+    }
+
     public RestTemplateUrlAccessTokenProvider(RestTemplate restTemplate, URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers) {
         super(issueUrl, parameters, headers); // timeouts are baked into the resttemplate
 
@@ -85,7 +106,7 @@ public class RestTemplateUrlAccessTokenProvider extends AbstractUrlAccessTokenPr
             HttpEntity<byte[]> request = new HttpEntity<>(issueBody, headers);
 
             URI uri = issueUrl.toURI();
-            ResponseEntity<ClientCredentialsResponse> response = restTemplate.exchange(uri, HttpMethod.POST, request, ClientCredentialsResponse.class);
+            ResponseEntity<ClientCredentialsResponse> response = postTokenRequest(restTemplate, uri, request);
 
             int responseCode = response.getStatusCode().value();
             if (responseCode != 200) {
@@ -108,10 +129,10 @@ public class RestTemplateUrlAccessTokenProvider extends AbstractUrlAccessTokenPr
     protected AccessTokenException createUnexpectedResponseCodeException(int responseCode, HttpHeaders headers) {
         if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
         if (responseCode == 503) { // service unavailable
-            return new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable. " + printHttpHeadersIfPresent(headers, "Retry-After"));
+            return retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.", headerLookup(headers));
         } else if (responseCode == 429) { // too many calls
             // see for example https://auth0.com/docs/policies/rate-limits
-            return new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests. " + printHttpHeadersIfPresent(headers, "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
+            return retryAfterException("Authorization server responded with HTTP code 429 - too many requests.", headerLookup(headers));
         }
         return new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
     }

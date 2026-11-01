@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -21,7 +22,9 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
 
 /**
  * WebClient access-token provider. Using {@linkplain UrlAccessTokenProvider}
@@ -41,13 +44,14 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
     }
 
     protected ClientCredentialsResponse getToken() throws AccessTokenException {
+        CompletableFuture<ClientCredentialsResponse> future = request(issueUrl, issueBody, issueHeaders).toFuture();
         try {
-            Mono<ClientCredentialsResponse> response = request(issueUrl, issueBody, issueHeaders);
-
-            ClientCredentialsResponse clientCredentialsResponse = response.toFuture().get();
+            ClientCredentialsResponse clientCredentialsResponse = future.get();
             validate(clientCredentialsResponse);
             return clientCredentialsResponse;
         } catch (InterruptedException e) {
+            // cancel the request, so that it does not continue after the exclusive lock above is released
+            future.cancel(true);
             Thread.currentThread().interrupt();
             throw new AccessTokenUnavailableException(e);
         } catch (ExecutionException e) {
@@ -60,6 +64,10 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
     }
 
     protected Mono<ClientCredentialsResponse> request(URL url, byte[] body, Map<String, Object> map) {
+        return request(url, body, map, status -> new AccessTokenException("Authorization server responded with HTTP unexpected response code " + status));
+    }
+
+    protected Mono<ClientCredentialsResponse> request(URL url, byte[] body, Map<String, Object> map, Function<HttpStatusCode, AccessTokenException> unexpectedResponse) {
         HttpHeaders headers = new HttpHeaders();
 
         for (Entry<String, Object> entry : map.entrySet()) {
@@ -76,13 +84,15 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
                     .bodyValue(body)
                     .retrieve()
                     .onStatus(httpStatus -> httpStatus == HttpStatus.TOO_MANY_REQUESTS,
-                            response -> Mono.error(new AccessTokenUnavailableException("Authorization server responded with HTTP code 429 - too many requests."))
+                            response -> Mono.error(retryAfterException("Authorization server responded with HTTP code 429 - too many requests.",
+                                    response.headers().asHttpHeaders()::getFirst))
                     )
                     .onStatus(httpStatus -> httpStatus == HttpStatus.SERVICE_UNAVAILABLE,
-                            response -> Mono.error(new AccessTokenUnavailableException("Authorization server responded with HTTP code 503 - service unavailable."))
+                            response -> Mono.error(retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.",
+                                    response.headers().asHttpHeaders()::getFirst))
                     )
                     .onStatus(httpStatus -> !httpStatus.is2xxSuccessful(),
-                            response -> Mono.error(new AccessTokenException("Authorization server responded with HTTP unexpected response code " + response.statusCode()))
+                            response -> Mono.error(unexpectedResponse.apply(response.statusCode()))
                     )
                     .bodyToMono(ClientCredentialsResponse.class);
         } catch (URISyntaxException e) {
@@ -131,19 +141,24 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
     protected ClientCredentialsResponse getToken(RefreshToken refreshToken) throws AccessTokenException {
         byte[] refreshBody = createRefreshBody(refreshToken);
 
+        CompletableFuture<ClientCredentialsResponse> future = request(refreshUrl, refreshBody, refreshHeaders,
+                status -> refreshFailure(status.value(), "Authorization server responded with HTTP unexpected response code " + status + " when refreshing token", null)).toFuture();
         try {
-            Mono<ClientCredentialsResponse> response = request(refreshUrl, refreshBody, refreshHeaders);
-
-            ClientCredentialsResponse clientCredentialsResponse = response.toFuture().get();
+            ClientCredentialsResponse clientCredentialsResponse = future.get();
             validate(clientCredentialsResponse);
             return clientCredentialsResponse;
         } catch (InterruptedException e) {
+            // cancel the request, so that it does not continue after the exclusive lock above is released
+            future.cancel(true);
             Thread.currentThread().interrupt();
             throw new AccessTokenUnavailableException(e);
         } catch (ExecutionException e) {
             Throwable cause = e.getCause();
             if(cause instanceof AccessTokenUnavailableException a) {
                 throw a;
+            }
+            if(cause instanceof RefreshTokenException r) {
+                throw r;
             }
             if(cause instanceof AccessTokenException a) {
                 // assume current session has been revoked or expired

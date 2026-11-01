@@ -2,6 +2,8 @@ package org.entur.jwt.client;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -50,4 +52,15 @@ public class RetryingAccessTokenProviderTest extends AbstractDelegateProviderTes
     public void shouldGetBaseProvider() throws Exception {
         assertThat(provider.getProvider()).isSameInstanceAs(fallback);
     }
+
+    @ParameterizedTest
+    @ValueSource(longs = {Long.MIN_VALUE, 0, Long.MAX_VALUE})
+    public void shouldAlwaysRethrowRetryAfterUnchanged(long deadline) throws Exception {
+        AccessTokenRetryAfterException failure = new AccessTokenRetryAfterException("HTTP 429", null, deadline);
+        when(fallback.getAccessToken(false)).thenThrow(failure);
+
+        assertThat(assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(false))).isSameInstanceAs(failure);
+        verify(fallback, times(1)).getAccessToken(false);
+    }
+
 }

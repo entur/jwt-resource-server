@@ -3,8 +3,9 @@ package org.entur.jwt.client;
 /**
  * This provider implements a workaround for transient network problems. <br>
  * <br>
- * It retries getting the {@linkplain AccessToken} if the wrapped provider
- * throws a {@linkplain AccessTokenUnavailableException}.
+ * It retries getting the {@linkplain AccessToken} once after an
+ * {@linkplain AccessTokenUnavailableException}, except that
+ * {@linkplain AccessTokenRetryAfterException} is always propagated unchanged.
  */
 
 public class RetryingAccessTokenProvider extends BaseAccessTokenProvider {
@@ -17,6 +18,8 @@ public class RetryingAccessTokenProvider extends BaseAccessTokenProvider {
     public AccessToken getAccessToken(boolean forceRefresh) throws AccessTokenException {
         try {
             return provider.getAccessToken(forceRefresh);
+        } catch (AccessTokenRetryAfterException e) {
+            throw e;
         } catch (AccessTokenUnavailableException e) {
             // assume transient network issue, retry once
             return provider.getAccessToken(forceRefresh);
