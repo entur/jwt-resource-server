@@ -97,6 +97,18 @@ public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrl
 
     protected abstract ClientCredentialsResponse getToken(RefreshToken response) throws AccessTokenException;
 
+    /**
+     * Failure for an unexpected response code to a refresh request. A server error is transient and says nothing about the
+     * session, so the refresh token is kept. Any other response is assumed to mean that the session has been revoked or expired.
+     */
+
+    protected AccessTokenException refreshFailure(int responseCode, String message, Throwable cause) {
+        if (responseCode >= 500) {
+            return new AccessTokenUnavailableException(message, cause);
+        }
+        return new RefreshTokenException(message, cause);
+    }
+
     @Override
     public AccessToken getAccessToken(boolean forceRefresh) throws AccessTokenException {
         return getAccessToken(currentTimeMillis());

@@ -5,7 +5,6 @@ import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.entur.jwt.client.ClientCredentialsResponse;
 import org.entur.jwt.client.RefreshToken;
-import org.entur.jwt.client.RefreshTokenException;
 import org.entur.jwt.client.UrlAccessTokenProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,7 +120,7 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
                     throw retryAfterException("Authorization server responded with HTTP code 429 - too many requests.", headerLookup(response.getHeaders()));
                 }
 
-                throw new RefreshTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
+                throw refreshFailure(responseCode, "Authorization server responded with HTTP unexpected response code " + responseCode, null);
             }
             ClientCredentialsResponse clientCredentialsResponse = response.getBody();
             validate(clientCredentialsResponse);
@@ -135,7 +134,7 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
                 throw retryAfterException("Authorization server responded with HTTP code " + responseCode + " when refreshing token", headerLookup(e.getResponseHeaders()), e);
             }
             // assume current session has been revoked or expired
-            throw new RefreshTokenException("Authorization server responded with HTTP unexpected response code " + responseCode + " when refreshing token", e);
+            throw refreshFailure(responseCode, "Authorization server responded with HTTP unexpected response code " + responseCode + " when refreshing token", e);
         } catch (RestClientException e) {
             throw new AccessTokenUnavailableException(e);
         }

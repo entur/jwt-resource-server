@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatusCode;
@@ -103,6 +104,24 @@ public class RestClientStatefulUrlAccessTokenProviderTest {
         });
         // keep the session for the next attempt
         assertThat(provider.getRefreshToken().getValue()).isEqualTo("a.b.c");
+
+        mockServer.verify();
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {500, 502, 504})
+    public void shouldKeepRefreshTokenWhenRefreshFailsWithServerError(int status) throws Exception {
+        expect(ISSUE_URL, withSuccess(ISSUE_RESPONSE, MediaType.APPLICATION_JSON));
+        expect(REFRESH_URL, withStatus(HttpStatusCode.valueOf(status)));
+        expect(REFRESH_URL, withSuccess(REISSUE_RESPONSE, MediaType.APPLICATION_JSON));
+
+        provider.getAccessToken(false);
+
+        assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(true));
+        // a server error says nothing about the session
+        assertThat(provider.getRefreshToken().getValue()).isEqualTo("a.b.c");
+        nowNanos += TimeUnit.SECONDS.toNanos(15);
+        assertThat(provider.getAccessToken(true).getValue()).isEqualTo("a1.b1.c1");
 
         mockServer.verify();
     }

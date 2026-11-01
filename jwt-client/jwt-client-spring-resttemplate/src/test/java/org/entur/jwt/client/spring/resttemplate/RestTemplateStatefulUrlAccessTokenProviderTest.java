@@ -115,6 +115,27 @@ public class RestTemplateStatefulUrlAccessTokenProviderTest {
     }
 
     @ParameterizedTest
+    @CsvSource({"500,false", "502,false", "504,false", "500,true", "502,true", "504,true"})
+    public void shouldKeepRefreshTokenWhenRefreshFailsWithServerError(int status, boolean noOpErrorHandler) throws Exception {
+        if (noOpErrorHandler) {
+            restTemplate.setErrorHandler(new NoOpResponseErrorHandler());
+        }
+        expect(ISSUE_URL, withSuccess(ISSUE_RESPONSE, MediaType.APPLICATION_JSON));
+        expect(REFRESH_URL, withStatus(HttpStatusCode.valueOf(status)));
+        expect(REFRESH_URL, withSuccess(REISSUE_RESPONSE, MediaType.APPLICATION_JSON));
+
+        provider.getAccessToken(false);
+
+        assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(true));
+        // a server error says nothing about the session
+        assertThat(provider.getRefreshToken().getValue()).isEqualTo("a.b.c");
+        nowNanos += TimeUnit.SECONDS.toNanos(15);
+        assertThat(provider.getAccessToken(true).getValue()).isEqualTo("a1.b1.c1");
+
+        mockServer.verify();
+    }
+
+    @ParameterizedTest
     @CsvSource({"429,false,false", "503,false,false", "429,true,false", "503,true,false",
             "429,false,true", "503,false,true", "429,true,true", "503,true,true"})
     public void shouldHonorRetryAfterForIssueAndRefreshWithEitherErrorHandler(int status, boolean refreshing, boolean noOpErrorHandler) throws Exception {

@@ -114,6 +114,24 @@ public class WebClientStatefulUrlAccessTokenProviderTest {
     }
 
     @ParameterizedTest
+    @ValueSource(ints = {500, 502, 504})
+    public void shouldKeepRefreshTokenWhenRefreshFailsWithServerError(int status) throws Exception {
+        respond(HttpStatus.OK, ISSUE_RESPONSE);
+        respond(HttpStatus.valueOf(status), null);
+        respond(HttpStatus.OK, REISSUE_RESPONSE);
+
+        provider.getAccessToken(false);
+
+        assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(true));
+        // a server error says nothing about the session
+        assertThat(provider.getRefreshToken().getValue()).isEqualTo("a.b.c");
+        nowNanos += TimeUnit.SECONDS.toNanos(15);
+        assertThat(provider.getAccessToken(true).getValue()).isEqualTo("a1.b1.c1");
+
+        assertThat(requests).containsExactly(URI.create(ISSUE_URL), URI.create(REFRESH_URL), URI.create(REFRESH_URL)).inOrder();
+    }
+
+    @ParameterizedTest
     @CsvSource({"429,false", "503,false", "429,true", "503,true"})
     public void shouldHonorRetryAfterForIssueAndRefresh(int status, boolean refreshing) throws Exception {
         if (refreshing) {
