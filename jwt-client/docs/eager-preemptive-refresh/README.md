@@ -187,7 +187,7 @@ flowchart TD
     Traffic -->|Traffic attempt succeeds| New["Install replacement and compute its next timer<br/>Existing failure timestamp is retained"]
     New --> Callback["Next eager callback runs"]
     Callback --> Gate{"Eager cooldown or remembered<br/>Retry-After deadline active?"}
-    Gate -->|Yes| Defer["Re-arm for the remaining wait<br/>Round up to milliseconds"]
+    Gate -->|Yes| Defer["Re-arm for the remaining wait"]
     Gate -->|No| Attempt["Attempt refresh if other guards allow"]
     Defer --> Callback
     Eager --> Callback
