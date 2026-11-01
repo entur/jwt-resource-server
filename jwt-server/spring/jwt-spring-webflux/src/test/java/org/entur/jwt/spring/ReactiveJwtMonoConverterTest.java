@@ -648,6 +648,72 @@ class ReactiveJwtMonoConverterTest {
     }
 
     @Test
+    void shouldNotShareKeysOfLookupInProgressForLongerThanKeysAreUsed() throws Exception {
+        // i.e. a wrapper, so the keys are not reused after the lookup
+        JWKSource<SecurityContext> wrapper = (selector, context) -> source.get(selector, context);
+        JWSVerificationKeySelector<SecurityContext> selector = new JWSVerificationKeySelector<>(JWSAlgorithm.HS256, wrapper);
+        TimedConverter converter = new TimedConverter(processor(), selector, jwtScheduler);
+
+        CountDownLatch refreshing = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        source.refreshed = new JWKSet(List.of(key, otherKey));
+        source.refreshing = refreshing;
+        source.refreshBlocked = release;
+        try {
+            CompletableFuture<JWTClaimsSet> unknown = converter.convert(SignedJWT.parse(token(otherKey))).toFuture();
+            assertThat(refreshing.await(10, TimeUnit.SECONDS)).isTrue();
+
+            // the refresh stalls, so the keys at hand are too old to be shared
+            converter.advance(11, TimeUnit.SECONDS);
+            CompletableFuture<JWTClaimsSet> known = converter.convert(SignedJWT.parse(token(key))).toFuture();
+            assertThat(known).isNotDone();
+
+            release.countDown();
+            assertThat(known.get(10, TimeUnit.SECONDS).getSubject()).isEqualTo("test-subject");
+            assertThat(unknown.get(10, TimeUnit.SECONDS).getSubject()).isEqualTo("test-subject");
+        } finally {
+            release.countDown();
+        }
+    }
+
+    @Test
+    void shouldShareLookupOfJwkSourceWithoutCacheBetweenRequestsForDifferentUnknownKeys() throws Exception {
+        AtomicInteger fetches = new AtomicInteger();
+        CountDownLatch fetching = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        ResourceRetriever retriever = url -> {
+            fetches.incrementAndGet();
+            fetching.countDown();
+            try {
+                release.await(10, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return new Resource(new JWKSet(key).toString(false), "application/json");
+        };
+        JWKSource<SecurityContext> jwkSource = JWKSourceBuilder.<SecurityContext>create(URI.create(JWKS_URL).toURL(), retriever)
+                .rateLimited(false).retrying(false).outageTolerant(false).refreshAheadCache(false).cache(false).build();
+        JWSVerificationKeySelector<SecurityContext> selector = new JWSVerificationKeySelector<>(JWSAlgorithm.HS256, jwkSource);
+        ReactiveJwtMonoConverter converter = new ReactiveJwtMonoConverter(processor(), selector, jwtScheduler);
+
+        try {
+            CompletableFuture<JWTClaimsSet> first = converter.convert(SignedJWT.parse(token(key))).toFuture();
+            assertThat(fetching.await(10, TimeUnit.SECONDS)).isTrue();
+            // the keys were fetched on every call, so the result is conclusive also for requests which wait for it
+            CompletableFuture<JWTClaimsSet> second = converter.convert(SignedJWT.parse(token(otherKey))).toFuture();
+            CompletableFuture<JWTClaimsSet> third = converter.convert(SignedJWT.parse(token(thirdKey))).toFuture();
+            release.countDown();
+
+            assertThat(first.get(10, TimeUnit.SECONDS).getSubject()).isEqualTo("test-subject");
+            assertThatThrownBy(() -> second.get(10, TimeUnit.SECONDS)).hasCauseInstanceOf(JwtException.class);
+            assertThatThrownBy(() -> third.get(10, TimeUnit.SECONDS)).hasCauseInstanceOf(JwtException.class);
+            assertThat(fetches.get()).isEqualTo(1);
+        } finally {
+            release.countDown();
+        }
+    }
+
+    @Test
     void shouldLookUpAgainWhenLookupForAnotherTokenIsJoined() throws Exception {
         TimedConverter converter = new TimedConverter(processor(), selector(), jwtScheduler);
         converter.convert(SignedJWT.parse(token(key))).block(Duration.ofSeconds(10));
