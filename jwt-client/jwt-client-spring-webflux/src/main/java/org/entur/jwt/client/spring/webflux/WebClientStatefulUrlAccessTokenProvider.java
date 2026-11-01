@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -23,6 +24,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
 
 /**
  * WebClient access-token provider. Using {@linkplain UrlAccessTokenProvider}
@@ -62,6 +64,10 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
     }
 
     protected Mono<ClientCredentialsResponse> request(URL url, byte[] body, Map<String, Object> map) {
+        return request(url, body, map, status -> new AccessTokenException("Authorization server responded with HTTP unexpected response code " + status));
+    }
+
+    protected Mono<ClientCredentialsResponse> request(URL url, byte[] body, Map<String, Object> map, Function<HttpStatusCode, AccessTokenException> unexpectedResponse) {
         HttpHeaders headers = new HttpHeaders();
 
         for (Entry<String, Object> entry : map.entrySet()) {
@@ -86,7 +92,7 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
                                     response.headers().asHttpHeaders()::getFirst))
                     )
                     .onStatus(httpStatus -> !httpStatus.is2xxSuccessful(),
-                            response -> Mono.error(new AccessTokenException("Authorization server responded with HTTP unexpected response code " + response.statusCode()))
+                            response -> Mono.error(unexpectedResponse.apply(response.statusCode()))
                     )
                     .bodyToMono(ClientCredentialsResponse.class);
         } catch (URISyntaxException e) {
@@ -135,7 +141,8 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
     protected ClientCredentialsResponse getToken(RefreshToken refreshToken) throws AccessTokenException {
         byte[] refreshBody = createRefreshBody(refreshToken);
 
-        CompletableFuture<ClientCredentialsResponse> future = request(refreshUrl, refreshBody, refreshHeaders).toFuture();
+        CompletableFuture<ClientCredentialsResponse> future = request(refreshUrl, refreshBody, refreshHeaders,
+                status -> refreshFailure(status.value(), "Authorization server responded with HTTP unexpected response code " + status + " when refreshing token", null)).toFuture();
         try {
             ClientCredentialsResponse clientCredentialsResponse = future.get();
             validate(clientCredentialsResponse);
@@ -149,6 +156,9 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
             Throwable cause = e.getCause();
             if(cause instanceof AccessTokenUnavailableException a) {
                 throw a;
+            }
+            if(cause instanceof RefreshTokenException r) {
+                throw r;
             }
             if(cause instanceof AccessTokenException a) {
                 // assume current session has been revoked or expired

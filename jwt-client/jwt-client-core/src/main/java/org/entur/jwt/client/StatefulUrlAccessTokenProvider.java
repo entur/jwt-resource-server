@@ -149,7 +149,7 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
                     throw retryAfterException("Authorization server responded with HTTP code 429 - too many requests.", request::getHeaderField);
                 }
 
-                throw new RefreshTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
+                throw refreshFailure(responseCode, "Authorization server responded with HTTP unexpected response code " + responseCode, null);
             }
             try (InputStream inputStream = request.getInputStream()) {
                 ClientCredentialsResponse clientCredentialsResponse = reader.readValue(inputStream);

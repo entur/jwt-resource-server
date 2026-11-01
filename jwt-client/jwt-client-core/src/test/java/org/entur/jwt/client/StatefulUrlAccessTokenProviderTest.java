@@ -3,6 +3,7 @@ package org.entur.jwt.client;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
 import java.io.ByteArrayInputStream;
@@ -106,6 +107,30 @@ public class StatefulUrlAccessTokenProviderTest extends AbstractUrlAccessTokenPr
         assertThat(secondRefresh.toString(StandardCharsets.UTF_8)).isEqualTo("grant_type=refresh_token&refresh_token=a.b.c");
         assertThat(revoke.toString(StandardCharsets.UTF_8)).isEqualTo("refresh_token=a.b.c");
         assertThat(provider.getRefreshToken()).isNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {500, 502, 504})
+    public void shouldRetainRefreshTokenWhenRefreshFailsWithServerError(int status) throws Exception {
+        StatefulUrlAccessTokenProvider provider = providerForResource("/keycloakClientCredentialsResponse.json");
+        provider.getAccessToken(1000L);
+        RefreshToken original = provider.getRefreshToken();
+        assertThat(original).isNotNull();
+
+        ByteArrayOutputStream failedRefresh = new ByteArrayOutputStream();
+        ByteArrayOutputStream retriedRefresh = new ByteArrayOutputStream();
+        when(urlConnection.getOutputStream()).thenReturn(failedRefresh, retriedRefresh);
+        when(urlConnection.getResponseCode()).thenReturn(status, 200);
+        when(urlConnection.getInputStream()).thenAnswer(invocation -> getClass().getResourceAsStream("/keycloakClientCredentialsResponse.json"));
+
+        // a transient server error says nothing about the session, so it is kept
+        assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(2000L));
+        assertThat(provider.getRefreshToken()).isSameInstanceAs(original);
+        nowNanos += TimeUnit.SECONDS.toNanos(15);
+
+        provider.getAccessToken(3000L);
+        assertThat(failedRefresh.toString(StandardCharsets.UTF_8)).isEqualTo("grant_type=refresh_token&refresh_token=a.b.c");
+        assertThat(retriedRefresh.toString(StandardCharsets.UTF_8)).isEqualTo("grant_type=refresh_token&refresh_token=a.b.c");
     }
 
     @Test
