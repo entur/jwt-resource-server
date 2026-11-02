@@ -6,8 +6,11 @@ import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.entur.jwt.client.AccessTokenRetryAfterException;
 import org.entur.jwt.client.RetryingAccessTokenProvider;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -52,6 +55,24 @@ public class WebClientUrlAccessTokenProviderTest {
 
         assertThat(accessToken.getValue()).isEqualTo("x.y.z");
         assertThat(accessToken.getType()).isEqualTo("Bearer");
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    public void shouldLogUnexpectedStatusWhenIssuing(CapturedOutput output) throws Exception {
+        assertThrows(AccessTokenException.class,
+                () -> provider(ClientResponse.create(HttpStatus.UNAUTHORIZED).build()).getAccessToken(false));
+
+        assertThat(output.getAll()).contains("Got unexpected response code 401 when trying to issue token at " + ISSUE_URL);
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    public void shouldLogUnexpectedStatusWhenThrottled(CapturedOutput output) throws Exception {
+        assertThrows(AccessTokenUnavailableException.class,
+                () -> provider(ClientResponse.create(HttpStatus.TOO_MANY_REQUESTS).build()).getAccessToken(false));
+
+        assertThat(output.getAll()).contains("Got unexpected response code 429 when trying to issue token at " + ISSUE_URL);
     }
 
     @Test

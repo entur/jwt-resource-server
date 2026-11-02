@@ -82,6 +82,28 @@ public class WebClientStatefulUrlAccessTokenProviderTest {
     }
 
     @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    public void shouldLogUnexpectedStatusWhenIssuing(CapturedOutput output) throws Exception {
+        respond(HttpStatus.UNAUTHORIZED, null);
+
+        assertThrows(AccessTokenException.class, () -> provider.getAccessToken(false));
+
+        assertThat(output.getAll()).contains("Got unexpected response code 401 when trying to issue token at " + ISSUE_URL);
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    public void shouldLogUnexpectedStatusWhenRefreshing(CapturedOutput output) throws Exception {
+        respond(HttpStatus.OK, ISSUE_RESPONSE);
+        respond(HttpStatus.BAD_REQUEST, "{\"error\":\"invalid_grant\"}");
+        provider.getAccessToken(false);
+
+        assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(true));
+
+        assertThat(output.getAll()).contains("Got unexpected response code 400 when trying to refresh token at " + REFRESH_URL);
+    }
+
+    @Test
     public void shouldAttachHttpExceptionWhenIssueIsRejected() throws Exception {
         respond(HttpStatus.UNAUTHORIZED, null);
 

@@ -85,6 +85,7 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
                     .retrieve()
                     .onStatus(httpStatus -> httpStatus == HttpStatus.TOO_MANY_REQUESTS,
                             response -> {
+                                logUnexpectedStatus(url, response.statusCode().value());
                                 HttpHeaders responseHeaders = response.headers().asHttpHeaders();
                                 return WebClientUrlAccessTokenProvider.httpError(response, exception -> retryAfterException(
                                         "Authorization server responded with HTTP code 429 - too many requests.",
@@ -93,6 +94,7 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
                     )
                     .onStatus(httpStatus -> httpStatus == HttpStatus.SERVICE_UNAVAILABLE,
                             response -> {
+                                logUnexpectedStatus(url, response.statusCode().value());
                                 HttpHeaders responseHeaders = response.headers().asHttpHeaders();
                                 return WebClientUrlAccessTokenProvider.httpError(response, exception -> retryAfterException(
                                         "Authorization server responded with HTTP code 503 - service unavailable.",
@@ -100,12 +102,26 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
                             }
                     )
                     .onStatus(httpStatus -> !httpStatus.is2xxSuccessful(),
-                            response -> WebClientUrlAccessTokenProvider.httpError(response,
-                                    exception -> unexpectedResponse.apply(response.statusCode(), exception))
+                            response -> {
+                                logUnexpectedStatus(url, response.statusCode().value());
+                                return WebClientUrlAccessTokenProvider.httpError(response,
+                                        exception -> unexpectedResponse.apply(response.statusCode(), exception));
+                            }
                     )
                     .bodyToMono(ClientCredentialsResponse.class);
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException(e);
+        }
+    }
+
+    private void logUnexpectedStatus(URL url, int responseCode) {
+        if (!LOGGER.isInfoEnabled()) {
+            return;
+        }
+        if (issueUrl.equals(url)) {
+            LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, url);
+        } else {
+            LOGGER.info("Got unexpected response code {} when trying to refresh token at {}", responseCode, url);
         }
     }
 
