@@ -1,9 +1,13 @@
 package org.entur.jwt.spring;
 
+import com.nimbusds.jose.EncryptionMethod;
 import com.nimbusds.jose.JOSEObjectType;
+import com.nimbusds.jose.JWEAlgorithm;
+import com.nimbusds.jose.JWEHeader;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.KeySourceException;
+import com.nimbusds.jose.crypto.DirectEncrypter;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSelector;
@@ -22,6 +26,7 @@ import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jose.util.Resource;
 import com.nimbusds.jose.util.ResourceRetriever;
+import com.nimbusds.jwt.EncryptedJWT;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.nimbusds.jwt.proc.BadJWTException;
@@ -804,6 +809,16 @@ class ReactiveJwtMonoConverterTest {
         assertThatThrownBy(() -> authenticate(manager, token(key)).block(Duration.ofSeconds(10))).isInstanceOf(InvalidBearerTokenException.class);
     }
 
+    @Test
+    void shouldRejectEncryptedJwtAsInvalidBearerToken() throws Exception {
+        JwtReactiveAuthenticationManager manager = manager(new ReactiveJwtMonoConverter(processor(), selector(), jwtScheduler));
+
+        // an encrypted JWT is not signed, so it is an invalid token rather than a failed cast
+        assertThatThrownBy(() -> authenticate(manager, encryptedToken(key)).block(Duration.ofSeconds(10)))
+                .isInstanceOf(InvalidBearerTokenException.class)
+                .hasMessageContaining("Unsupported algorithm of dir");
+    }
+
     // wait for the lookup to publish its result, so that it does not interfere with what follows
     private void awaitFinishedLookups(int count) throws InterruptedException {
         long deadline = System.currentTimeMillis() + 10_000;
@@ -846,6 +861,13 @@ class ReactiveJwtMonoConverterTest {
         SignedJWT token = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.HS256).keyID(key.getKeyID()).build(),
                 new JWTClaimsSet.Builder().subject("test-subject").issueTime(Date.from(NOW.minusSeconds(1))).expirationTime(Date.from(NOW.plusSeconds(60))).build());
         token.sign(new MACSigner(key));
+        return token.serialize();
+    }
+
+    private static String encryptedToken(OctetSequenceKey key) throws Exception {
+        EncryptedJWT token = new EncryptedJWT(new JWEHeader.Builder(JWEAlgorithm.DIR, EncryptionMethod.A256GCM).keyID(key.getKeyID()).build(),
+                new JWTClaimsSet.Builder().subject("test-subject").issueTime(Date.from(NOW.minusSeconds(1))).expirationTime(Date.from(NOW.plusSeconds(60))).build());
+        token.encrypt(new DirectEncrypter(key.toByteArray()));
         return token.serialize();
     }
 }
