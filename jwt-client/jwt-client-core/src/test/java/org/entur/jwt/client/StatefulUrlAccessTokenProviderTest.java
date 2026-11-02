@@ -171,6 +171,8 @@ public class StatefulUrlAccessTokenProviderTest extends AbstractUrlAccessTokenPr
         AccessTokenException failure = assertThrows(AccessTokenException.class, () -> provider.getAccessToken(2000L));
         assertThat(failure.getClass()).isEqualTo(AccessTokenException.class);
         assertThat(provider.getRefreshToken()).isSameInstanceAs(original);
+        // the fallback deadline defers the next attempt without HTTP
+        assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(2500L));
         nowNanos += TimeUnit.SECONDS.toNanos(15);
 
         provider.getAccessToken(3000L);

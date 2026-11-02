@@ -219,7 +219,7 @@ flowchart TD
 
 The wrapper **always rethrows `AccessTokenRetryAfterException` unchanged**. It does not inspect deadlines or decide when another attempt is allowed. This also applies to zero or already-elapsed deadlines: the current load fails, but a subsequent call can proceed as soon as the HTTP provider permits it.
 
-Other `AccessTokenUnavailableException` failures get at most one immediate retry. With `retry-after.fallback-delay: 0`, HTTP failures without a usable `Retry-After` header use that ordinary path; a valid header still produces `AccessTokenRetryAfterException`. Only a failure escaping the wrapper reaches the cache's error handling.
+Other `AccessTokenUnavailableException` failures get at most one immediate retry. With `retry-after.fallback-delay: 0`, HTTP 429/503 responses without a usable `Retry-After` header use that ordinary path; a valid header still produces `AccessTokenRetryAfterException`. Other HTTP errors, including server errors (5xx) other than 503, are `AccessTokenException`s, which are not retried. Only a failure escaping the wrapper reaches the cache's error handling.
 
 Cache lock timeouts and cache validation errors occur above this wrapper, so it does not immediately retry them. Other provider exceptions are not retried by this wrapper, but a failed background load still gets the local cooldown behavior from section 5.
 

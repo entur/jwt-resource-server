@@ -101,11 +101,18 @@ public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrl
      * Failure for an unexpected response code to a refresh request. A server error is an {@link AccessTokenException},
      * as for issuance: the refresh token is kept. Any other response is assumed to mean that the session has been
      * revoked or expired.
+     * <p>
+     * HTTP 429 and 503 must be handled by the caller first, with {@link #retryAfterException}, as only the caller has the
+     * response headers. A 503 passed to this method is treated as any other server error, which loses its <code>Retry-After</code> delay.
+     *
+     * @param responseCode HTTP status code of the failed refresh, other than 429 and 503
+     * @param message failure description
+     * @param cause original failure, or null
+     * @return {@linkplain AccessTokenException} for a server error, otherwise {@linkplain RefreshTokenException}
      */
 
     protected AccessTokenException refreshFailure(int responseCode, String message, Throwable cause) {
         if (responseCode >= 500) {
-            // note: 503 and 429 already handled
             return new AccessTokenException(message, cause);
         }
         return new RefreshTokenException(message, cause);
