@@ -87,18 +87,21 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
                             response -> {
                                 logUnexpectedStatus(url, response.statusCode().value());
                                 HttpHeaders responseHeaders = response.headers().asHttpHeaders();
-                                return WebClientUrlAccessTokenProvider.httpError(response, exception -> retryAfterException(
+                                // Headers are available now; body capture below may be cancelled.
+                                AccessTokenException recorded = retryAfterException(
                                         "Authorization server responded with HTTP code 429 - too many requests.",
-                                        responseHeaders::getFirst, exception));
+                                        responseHeaders::getFirst);
+                                return WebClientUrlAccessTokenProvider.httpError(response, recorded);
                             }
                     )
                     .onStatus(httpStatus -> httpStatus == HttpStatus.SERVICE_UNAVAILABLE,
                             response -> {
                                 logUnexpectedStatus(url, response.statusCode().value());
                                 HttpHeaders responseHeaders = response.headers().asHttpHeaders();
-                                return WebClientUrlAccessTokenProvider.httpError(response, exception -> retryAfterException(
+                                AccessTokenException recorded = retryAfterException(
                                         "Authorization server responded with HTTP code 503 - service unavailable.",
-                                        responseHeaders::getFirst, exception));
+                                        responseHeaders::getFirst);
+                                return WebClientUrlAccessTokenProvider.httpError(response, recorded);
                             }
                     )
                     .onStatus(httpStatus -> !httpStatus.is2xxSuccessful(),

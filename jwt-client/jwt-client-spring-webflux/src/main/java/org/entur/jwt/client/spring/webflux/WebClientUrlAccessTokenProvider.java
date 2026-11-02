@@ -2,6 +2,7 @@ package org.entur.jwt.client.spring.webflux;
 
 import org.entur.jwt.client.AbstractUrlAccessTokenProvider;
 import org.entur.jwt.client.AccessTokenException;
+import org.entur.jwt.client.AccessTokenRetryAfterException;
 import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.entur.jwt.client.ClientCredentialsResponse;
 import org.entur.jwt.client.UrlAccessTokenProvider;
@@ -37,9 +38,27 @@ public class WebClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProvi
 
     /**
      * Read the error response into a {@link WebClientResponseException} and attach it as the cause.
+     * <p>
+     * Body capture is asynchronous and may be cancelled. Do not record a retry deadline here.
      */
     protected static Mono<Throwable> httpError(ClientResponse response, Function<WebClientResponseException, AccessTokenException> failure) {
         return response.createException().flatMap(exception -> Mono.error(failure.apply(exception)));
+    }
+
+    /**
+     * Attach the HTTP exception to a failure already recorded from the response headers.
+     * <p>
+     * The deadline is kept if body capture is cancelled before this completes.
+     */
+    protected static Mono<Throwable> httpError(ClientResponse response, AccessTokenException recorded) {
+        return response.createException().flatMap(exception -> Mono.error(withHttpCause(recorded, exception)));
+    }
+
+    private static AccessTokenException withHttpCause(AccessTokenException recorded, WebClientResponseException cause) {
+        if (recorded instanceof AccessTokenRetryAfterException retry) {
+            return new AccessTokenRetryAfterException(retry.getMessage(), cause, retry.getRetryAfterDeadlineNanos(), retry.getHeaders());
+        }
+        return new AccessTokenUnavailableException(recorded.getMessage(), cause);
     }
 
     private void logUnexpectedStatus(int responseCode) {
@@ -74,16 +93,19 @@ public class WebClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProvi
                         response -> {
                             logUnexpectedStatus(response.statusCode().value());
                             HttpHeaders headers = response.headers().asHttpHeaders();
-                            return httpError(response, exception -> retryAfterException("Authorization server responded with HTTP code 429 - too many requests.",
-                                    headers::getFirst, exception));
+                            // Headers are available now; body capture below may be cancelled.
+                            AccessTokenException recorded = retryAfterException("Authorization server responded with HTTP code 429 - too many requests.",
+                                    headers::getFirst);
+                            return httpError(response, recorded);
                         }
                 )
                 .onStatus(httpStatus -> httpStatus == HttpStatus.SERVICE_UNAVAILABLE,
                         response -> {
                             logUnexpectedStatus(response.statusCode().value());
                             HttpHeaders headers = response.headers().asHttpHeaders();
-                            return httpError(response, exception -> retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.",
-                                    headers::getFirst, exception));
+                            AccessTokenException recorded = retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.",
+                                    headers::getFirst);
+                            return httpError(response, recorded);
                         }
                 )
                 .onStatus(httpStatus -> !httpStatus.is2xxSuccessful(),

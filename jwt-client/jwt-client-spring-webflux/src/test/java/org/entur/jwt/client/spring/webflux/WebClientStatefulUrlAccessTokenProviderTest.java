@@ -16,12 +16,14 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
@@ -35,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -245,6 +248,63 @@ public class WebClientStatefulUrlAccessTokenProviderTest {
         assertThat(caller.isAlive()).isFalse();
         assertThat(cancelled.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(failure.get()).isInstanceOf(AccessTokenUnavailableException.class);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"429,false", "503,false", "429,true", "503,true"})
+    public void shouldRecordRetryAfterWhenCancelledAfterHeaders(int status, boolean refreshing) throws Exception {
+        CountDownLatch bodyRead = new CountDownLatch(1);
+        CountDownLatch bodyCancelled = new CountDownLatch(1);
+        ClientResponse issued = ClientResponse.create(HttpStatus.OK)
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .body(ISSUE_RESPONSE)
+                .build();
+        ClientResponse stalled = ClientResponse.create(HttpStatus.valueOf(status))
+                .header("Retry-After", "120")
+                .body(Flux.<DataBuffer>never()
+                        .doOnSubscribe(subscription -> bodyRead.countDown())
+                        .doOnCancel(bodyCancelled::countDown))
+                .build();
+        AtomicInteger requests = new AtomicInteger();
+        WebClient client = WebClient.builder().exchangeFunction(request -> {
+            requests.incrementAndGet();
+            if (refreshing && ISSUE_URL.equals(request.url().toString())) {
+                return Mono.just(issued);
+            }
+            return Mono.just(stalled);
+        }).build();
+        WebClientStatefulUrlAccessTokenProvider http = new WebClientStatefulUrlAccessTokenProvider(client, new URL(ISSUE_URL), Map.of(), Map.of(),
+                new URL(REFRESH_URL), new URL(REVOKE_URL)) {
+            @Override
+            protected long nanoTime() {
+                return 0L;
+            }
+        };
+        http.setRetryAfterFallbackMillis(1_000);
+        if (refreshing) {
+            http.getAccessToken(false);
+        }
+        var refreshToken = http.getRefreshToken();
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Thread caller = new Thread(() -> {
+            try {
+                http.getAccessToken(false);
+            } catch (Throwable e) {
+                failure.set(e);
+            }
+        });
+        caller.start();
+        assertThat(bodyRead.await(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(http.getRetryAfterDeadlineNanos()).isEqualTo(TimeUnit.SECONDS.toNanos(120));
+        caller.interrupt();
+        caller.join(10_000);
+        assertThat(caller.isAlive()).isFalse();
+        assertThat(bodyCancelled.await(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(failure.get()).isInstanceOf(AccessTokenRetryAfterException.class);
+        assertThat(((AccessTokenRetryAfterException) failure.get()).getRetryAfterDeadlineNanos()).isEqualTo(TimeUnit.SECONDS.toNanos(120));
+        assertThat(http.getRefreshToken()).isSameInstanceAs(refreshToken);
+        assertThrows(AccessTokenRetryAfterException.class, () -> http.getAccessToken(false));
+        assertThat(requests.get()).isEqualTo(refreshing ? 2 : 1);
     }
 
     @Test
