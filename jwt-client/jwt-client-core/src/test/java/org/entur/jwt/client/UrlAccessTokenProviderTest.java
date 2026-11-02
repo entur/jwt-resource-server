@@ -6,6 +6,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.SocketTimeoutException;
 import java.net.URL;
@@ -73,6 +74,42 @@ public class UrlAccessTokenProviderTest extends AbstractUrlAccessTokenProviderTe
         assertThrows(AccessTokenException.class, () -> {
             provider.getAccessToken(false);
         });
+    }
+
+    @Test
+    public void shouldAcceptOther2xxAndParseTheBody() throws Exception {
+        AccessTokenProvider provider = providerForResource("/auth0ClientCredentialsResponse.json");
+        when(urlConnection.getResponseCode()).thenReturn(201);
+
+        AccessToken accessToken = provider.getAccessToken(false);
+
+        assertNotNull(accessToken);
+        assertNotNull(accessToken.getValue());
+    }
+
+    @Test
+    public void shouldAttachHttpExceptionWhenIssueIsRejected() throws Exception {
+        AccessTokenProvider provider = providerForResource("/auth0ClientCredentialsResponse.json");
+        when(urlConnection.getResponseCode()).thenReturn(401);
+
+        AccessTokenException failure = assertThrows(AccessTokenException.class, () -> provider.getAccessToken(false));
+
+        assertThat(failure).isNotInstanceOf(AccessTokenUnavailableException.class);
+        assertThat(failure.getCause()).isInstanceOf(IOException.class);
+        assertThat(failure.getCause()).hasMessageThat().contains("401");
+        assertThat(failure.getCause()).hasMessageThat().contains("mock://localhost");
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {429, 503})
+    public void shouldAttachHttpExceptionWhenIssueIsThrottled(int status) throws Exception {
+        AccessTokenProvider provider = providerForResource("/auth0ClientCredentialsResponse.json");
+        when(urlConnection.getResponseCode()).thenReturn(status);
+
+        AccessTokenUnavailableException failure = assertThrows(AccessTokenUnavailableException.class, () -> provider.getAccessToken(false));
+
+        assertThat(failure.getCause()).isInstanceOf(IOException.class);
+        assertThat(failure.getCause()).hasMessageThat().contains(Integer.toString(status));
     }
 
     @Test

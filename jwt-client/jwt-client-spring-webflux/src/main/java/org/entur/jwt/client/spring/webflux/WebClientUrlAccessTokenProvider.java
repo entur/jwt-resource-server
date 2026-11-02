@@ -2,14 +2,18 @@ package org.entur.jwt.client.spring.webflux;
 
 import org.entur.jwt.client.AbstractUrlAccessTokenProvider;
 import org.entur.jwt.client.AccessTokenException;
+import org.entur.jwt.client.AccessTokenRetryAfterException;
 import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.entur.jwt.client.ClientCredentialsResponse;
 import org.entur.jwt.client.UrlAccessTokenProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
 import java.net.URISyntaxException;
@@ -18,6 +22,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
 
 /**
  * WebClient access-token provider. Using {@linkplain UrlAccessTokenProvider}
@@ -30,6 +35,37 @@ public class WebClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProvi
     protected final WebClient webClient;
 
     protected static final Logger logger = LoggerFactory.getLogger(WebClientUrlAccessTokenProvider.class);
+
+    /**
+     * Read the error response into a {@link WebClientResponseException} and attach it as the cause.
+     * <p>
+     * Body capture is asynchronous and may be cancelled. Do not record a retry deadline here.
+     */
+    protected static Mono<Throwable> httpError(ClientResponse response, Function<WebClientResponseException, AccessTokenException> failure) {
+        return response.createException().flatMap(exception -> Mono.error(failure.apply(exception)));
+    }
+
+    /**
+     * Attach the HTTP exception to a failure already recorded from the response headers.
+     * <p>
+     * The deadline is kept if body capture is cancelled before this completes.
+     */
+    protected static Mono<Throwable> httpError(ClientResponse response, AccessTokenException recorded) {
+        return response.createException().flatMap(exception -> Mono.error(withHttpCause(recorded, exception)));
+    }
+
+    private static AccessTokenException withHttpCause(AccessTokenException recorded, WebClientResponseException cause) {
+        if (recorded instanceof AccessTokenRetryAfterException retry) {
+            return new AccessTokenRetryAfterException(retry.getMessage(), cause, retry.getRetryAfterDeadlineNanos(), retry.getHeaders());
+        }
+        return new AccessTokenUnavailableException(recorded.getMessage(), cause);
+    }
+
+    private void logUnexpectedStatus(int responseCode) {
+        if (logger.isInfoEnabled()) {
+            logger.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
+        }
+    }
 
     public WebClientUrlAccessTokenProvider(WebClient webClient, URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers) {
         super(issueUrl, parameters, headers);
@@ -54,15 +90,30 @@ public class WebClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProvi
                 .bodyValue(issueBody)
                 .retrieve()
                 .onStatus(httpStatus -> httpStatus == HttpStatus.TOO_MANY_REQUESTS,
-                        response -> Mono.error(retryAfterException("Authorization server responded with HTTP code 429 - too many requests.",
-                                response.headers().asHttpHeaders()::getFirst))
+                        response -> {
+                            logUnexpectedStatus(response.statusCode().value());
+                            HttpHeaders headers = response.headers().asHttpHeaders();
+                            // Headers are available now; body capture below may be cancelled.
+                            AccessTokenException recorded = retryAfterException("Authorization server responded with HTTP code 429 - too many requests.",
+                                    headers::getFirst);
+                            return httpError(response, recorded);
+                        }
                 )
                 .onStatus(httpStatus -> httpStatus == HttpStatus.SERVICE_UNAVAILABLE,
-                        response -> Mono.error(retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.",
-                                response.headers().asHttpHeaders()::getFirst))
+                        response -> {
+                            logUnexpectedStatus(response.statusCode().value());
+                            HttpHeaders headers = response.headers().asHttpHeaders();
+                            AccessTokenException recorded = retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.",
+                                    headers::getFirst);
+                            return httpError(response, recorded);
+                        }
                 )
                 .onStatus(httpStatus -> !httpStatus.is2xxSuccessful(),
-                        response -> Mono.error(new AccessTokenException("Authorization server responded with HTTP unexpected response code " + response.statusCode()))
+                        response -> {
+                            logUnexpectedStatus(response.statusCode().value());
+                            return httpError(response, exception -> new AccessTokenException(
+                                    "Authorization server responded with HTTP unexpected response code " + response.statusCode(), exception));
+                        }
                 )
                 .bodyToMono(ClientCredentialsResponse.class);
             future = mono.toFuture();

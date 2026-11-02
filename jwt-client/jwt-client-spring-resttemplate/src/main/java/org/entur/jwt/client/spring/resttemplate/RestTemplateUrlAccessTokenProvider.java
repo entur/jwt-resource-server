@@ -10,12 +10,18 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResponseExtractor;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.UnknownHttpStatusCodeException;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -40,6 +46,26 @@ public class RestTemplateUrlAccessTokenProvider extends AbstractUrlAccessTokenPr
 
     protected static Function<String, String> headerLookup(HttpHeaders headers) {
         return headers == null ? null : headers::getFirst;
+    }
+
+    /**
+     * HTTP failure to retain as the cause when the error handler does not throw.
+     * The body is not read, so an unreadable error body cannot hide the headers of a 429 or 503 response.
+     */
+    protected static RestClientResponseException httpStatusException(int statusCode, HttpHeaders headers, URI uri) {
+        HttpStatusCode status = HttpStatusCode.valueOf(statusCode);
+        HttpStatus resolved = HttpStatus.resolve(statusCode);
+        String statusText = resolved != null ? resolved.getReasonPhrase() : "";
+        HttpHeaders responseHeaders = headers != null ? headers : new HttpHeaders();
+        String message = statusCode + " " + statusText + " on POST request for \"" + uri + "\": [no body]";
+        byte[] body = new byte[0];
+        if (status.is4xxClientError()) {
+            return HttpClientErrorException.create(message, status, statusText, responseHeaders, body, null);
+        }
+        if (status.is5xxServerError()) {
+            return HttpServerErrorException.create(message, status, statusText, responseHeaders, body, null);
+        }
+        return new UnknownHttpStatusCodeException(message, statusCode, statusText, responseHeaders, body, null);
     }
 
     protected static StringBuilder printResponseEntityHeadersIfPresent(ResponseEntity<?> c, String... headerNames) {
@@ -73,17 +99,17 @@ public class RestTemplateUrlAccessTokenProvider extends AbstractUrlAccessTokenPr
     protected final RestTemplate restTemplate;
 
     /**
-     * Post a token request. Only a 200 response body is converted, so an unreadable error body cannot hide the headers of a 429 or 503 response.
+     * Post a token request. A 2xx response body is converted. A non-2xx body is not, so an unreadable error body cannot hide the headers of a 429 or 503 response.
      *
      * @param restTemplate rest template
      * @param uri request URI
      * @param request request body and headers
-     * @return the response, without a body unless the status is 200
+     * @return the response, without a body unless the status is 2xx
      */
     protected static ResponseEntity<ClientCredentialsResponse> postTokenRequest(RestTemplate restTemplate, URI uri, HttpEntity<byte[]> request) {
         ResponseExtractor<ResponseEntity<ClientCredentialsResponse>> extractor = restTemplate.responseEntityExtractor(ClientCredentialsResponse.class);
         return restTemplate.execute(uri, HttpMethod.POST, restTemplate.httpEntityCallback(request, ClientCredentialsResponse.class),
-                response -> response.getStatusCode().value() == 200 ? extractor.extractData(response)
+                response -> response.getStatusCode().is2xxSuccessful() ? extractor.extractData(response)
                         : ResponseEntity.status(response.getStatusCode()).headers(response.getHeaders()).build());
     }
 
@@ -109,8 +135,9 @@ public class RestTemplateUrlAccessTokenProvider extends AbstractUrlAccessTokenPr
             ResponseEntity<ClientCredentialsResponse> response = postTokenRequest(restTemplate, uri, request);
 
             int responseCode = response.getStatusCode().value();
-            if (responseCode != 200) {
-                throw createUnexpectedResponseCodeException(responseCode, response.getHeaders());
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw createUnexpectedResponseCodeException(responseCode, response.getHeaders(),
+                        httpStatusException(responseCode, response.getHeaders(), uri));
             }
 
             ClientCredentialsResponse clientCredentialsResponse = response.getBody();
@@ -120,21 +147,21 @@ public class RestTemplateUrlAccessTokenProvider extends AbstractUrlAccessTokenPr
             throw new IllegalArgumentException(e);
         } catch (HttpStatusCodeException e) {
             // the default error handler throws for 4xx and 5xx response codes
-            throw createUnexpectedResponseCodeException(e.getStatusCode().value(), e.getResponseHeaders());
+            throw createUnexpectedResponseCodeException(e.getStatusCode().value(), e.getResponseHeaders(), e);
         } catch(RestClientException e) {
             throw new AccessTokenUnavailableException(e);
         }
     }
 
-    protected AccessTokenException createUnexpectedResponseCodeException(int responseCode, HttpHeaders headers) {
+    protected AccessTokenException createUnexpectedResponseCodeException(int responseCode, HttpHeaders headers, Throwable cause) {
         if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
         if (responseCode == 503) { // service unavailable
-            return retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.", headerLookup(headers));
+            return retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.", headerLookup(headers), cause);
         } else if (responseCode == 429) { // too many calls
             // see for example https://auth0.com/docs/policies/rate-limits
-            return retryAfterException("Authorization server responded with HTTP code 429 - too many requests.", headerLookup(headers));
+            return retryAfterException("Authorization server responded with HTTP code 429 - too many requests.", headerLookup(headers), cause);
         }
-        return new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
+        return new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode, cause);
     }
 
     protected StringBuilder printHeadersIfPresent(ResponseEntity<ClientCredentialsResponse> c, String... headerNames) {

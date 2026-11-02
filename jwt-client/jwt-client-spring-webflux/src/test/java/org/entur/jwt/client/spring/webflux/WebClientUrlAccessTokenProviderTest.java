@@ -1,17 +1,24 @@
 package org.entur.jwt.client.spring.webflux;
 
 import org.entur.jwt.client.AccessToken;
+import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.entur.jwt.client.AccessTokenRetryAfterException;
 import org.entur.jwt.client.RetryingAccessTokenProvider;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.net.URL;
@@ -50,6 +57,46 @@ public class WebClientUrlAccessTokenProviderTest {
 
         assertThat(accessToken.getValue()).isEqualTo("x.y.z");
         assertThat(accessToken.getType()).isEqualTo("Bearer");
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    public void shouldLogUnexpectedStatusWhenIssuing(CapturedOutput output) throws Exception {
+        assertThrows(AccessTokenException.class,
+                () -> provider(ClientResponse.create(HttpStatus.UNAUTHORIZED).build()).getAccessToken(false));
+
+        assertThat(output.getAll()).contains("Got unexpected response code 401 when trying to issue token at " + ISSUE_URL);
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    public void shouldLogUnexpectedStatusWhenThrottled(CapturedOutput output) throws Exception {
+        assertThrows(AccessTokenUnavailableException.class,
+                () -> provider(ClientResponse.create(HttpStatus.TOO_MANY_REQUESTS).build()).getAccessToken(false));
+
+        assertThat(output.getAll()).contains("Got unexpected response code 429 when trying to issue token at " + ISSUE_URL);
+    }
+
+    @Test
+    public void shouldAttachHttpExceptionWhenIssueIsRejected() throws Exception {
+        AccessTokenException failure = assertThrows(AccessTokenException.class,
+                () -> provider(ClientResponse.create(HttpStatus.UNAUTHORIZED).build()).getAccessToken(false));
+
+        assertThat(failure).isNotInstanceOf(AccessTokenUnavailableException.class);
+        assertThat(failure.getCause()).isInstanceOf(WebClientResponseException.class);
+        assertThat(((WebClientResponseException) failure.getCause()).getStatusCode().value()).isEqualTo(401);
+    }
+
+    @Test
+    public void shouldAttachHttpExceptionWhenIssueIsThrottled() throws Exception {
+        ClientResponse response = ClientResponse.create(HttpStatus.TOO_MANY_REQUESTS).header("Retry-After", "120").build();
+
+        AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
+                () -> provider(response).getAccessToken(false));
+
+        assertThat(failure.getCause()).isInstanceOf(WebClientResponseException.class);
+        assertThat(((WebClientResponseException) failure.getCause()).getStatusCode().value()).isEqualTo(429);
+        assertThat(failure.getHeaders()).containsExactly("Retry-After", "120");
     }
 
     @Test
@@ -109,5 +156,49 @@ public class WebClientUrlAccessTokenProviderTest {
         assertThat(caller.isAlive()).isFalse();
         assertThat(cancelled.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(failure.get()).isInstanceOf(AccessTokenUnavailableException.class);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {429, 503})
+    public void shouldRecordRetryAfterWhenCancelledAfterHeaders(int status) throws Exception {
+        CountDownLatch bodyRead = new CountDownLatch(1);
+        CountDownLatch bodyCancelled = new CountDownLatch(1);
+        ClientResponse response = ClientResponse.create(HttpStatus.valueOf(status))
+                .header("Retry-After", "120")
+                .body(Flux.<DataBuffer>never()
+                        .doOnSubscribe(subscription -> bodyRead.countDown())
+                        .doOnCancel(bodyCancelled::countDown))
+                .build();
+        AtomicInteger requests = new AtomicInteger();
+        WebClient client = WebClient.builder().exchangeFunction(request -> {
+            requests.incrementAndGet();
+            return Mono.just(response);
+        }).build();
+        WebClientUrlAccessTokenProvider http = new WebClientUrlAccessTokenProvider(client, new URL(ISSUE_URL), Map.of(), Map.of()) {
+            @Override
+            protected long nanoTime() {
+                return 0L;
+            }
+        };
+        http.setRetryAfterFallbackMillis(1_000);
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Thread caller = new Thread(() -> {
+            try {
+                http.getAccessToken(false);
+            } catch (Throwable e) {
+                failure.set(e);
+            }
+        });
+        caller.start();
+        assertThat(bodyRead.await(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(http.getRetryAfterDeadlineNanos()).isEqualTo(TimeUnit.SECONDS.toNanos(120));
+        caller.interrupt();
+        caller.join(10_000);
+        assertThat(caller.isAlive()).isFalse();
+        assertThat(bodyCancelled.await(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(failure.get()).isInstanceOf(AccessTokenRetryAfterException.class);
+        assertThat(((AccessTokenRetryAfterException) failure.get()).getRetryAfterDeadlineNanos()).isEqualTo(TimeUnit.SECONDS.toNanos(120));
+        assertThrows(AccessTokenRetryAfterException.class, () -> http.getAccessToken(false));
+        assertThat(requests.get()).isEqualTo(1);
     }
 }
