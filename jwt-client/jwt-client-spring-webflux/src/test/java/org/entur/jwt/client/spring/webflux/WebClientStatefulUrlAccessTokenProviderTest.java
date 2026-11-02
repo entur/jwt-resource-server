@@ -202,9 +202,12 @@ public class WebClientStatefulUrlAccessTokenProviderTest {
 
         provider.getAccessToken(false);
 
-        assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(true));
-        // a server error says nothing about the session
+        // a server error is an AccessTokenException, as for issuance; the session is kept
+        AccessTokenException failure = assertThrows(AccessTokenException.class, () -> provider.getAccessToken(true));
+        assertThat(failure.getClass()).isEqualTo(AccessTokenException.class);
         assertThat(provider.getRefreshToken().getValue()).isEqualTo("a.b.c");
+        // the fallback deadline defers the next attempt without HTTP
+        assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(true));
         nowNanos += TimeUnit.SECONDS.toNanos(15);
         assertThat(provider.getAccessToken(true).getValue()).isEqualTo("a1.b1.c1");
 
