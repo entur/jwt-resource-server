@@ -105,6 +105,7 @@ public abstract class AbstractStatefulUrlAccessTokenProvider extends AbstractUrl
 
     protected AccessTokenException refreshFailure(int responseCode, String message, Throwable cause) {
         if (responseCode >= 500) {
+            // note: 503 and 429 already handled
             return new AccessTokenException(message, cause);
         }
         return new RefreshTokenException(message, cause);
