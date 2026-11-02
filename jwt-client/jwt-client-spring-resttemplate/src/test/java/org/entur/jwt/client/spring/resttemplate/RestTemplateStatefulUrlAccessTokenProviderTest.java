@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.test.web.client.ResponseCreator;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 
@@ -202,8 +203,41 @@ public class RestTemplateStatefulUrlAccessTokenProviderTest {
 
         assertThat(failure.getRetryAfterDeadlineNanos() - nowNanos).isEqualTo(TimeUnit.SECONDS.toNanos(120));
         assertThat(failure.getHeaders()).containsExactly("Retry-After", "120");
+        assertThat(httpCause(failure).getStatusCode().value()).isEqualTo(status);
         assertThat(provider.getRefreshToken()).isSameInstanceAs(original);
         mockServer.verify();
+    }
+
+    @ParameterizedTest
+    @CsvSource({"401,false,false", "429,false,false", "500,false,false", "503,false,false",
+            "400,true,false", "429,true,false", "500,true,false", "503,true,false",
+            "401,false,true", "429,false,true", "500,false,true", "503,false,true",
+            "400,true,true", "429,true,true", "500,true,true", "503,true,true"})
+    public void shouldAttachHttpExceptionWithEitherErrorHandler(int status, boolean refreshing, boolean noOpErrorHandler) throws Exception {
+        if (noOpErrorHandler) {
+            restTemplate.setErrorHandler(new NoOpResponseErrorHandler());
+        }
+        if (refreshing) {
+            expect(ISSUE_URL, withSuccess(ISSUE_RESPONSE, MediaType.APPLICATION_JSON));
+        }
+        expect(refreshing ? REFRESH_URL : ISSUE_URL, withStatus(HttpStatusCode.valueOf(status)).header("Retry-After", "120"));
+        if (refreshing) {
+            provider.getAccessToken(false);
+        }
+
+        AccessTokenException failure = assertThrows(AccessTokenException.class, () -> provider.getAccessToken(false));
+
+        assertThat(httpCause(failure).getStatusCode().value()).isEqualTo(status);
+        mockServer.verify();
+    }
+
+    private static HttpStatusCodeException httpCause(Throwable failure) {
+        Throwable current = failure;
+        while (current != null && !(current instanceof HttpStatusCodeException)) {
+            current = current.getCause();
+        }
+        assertThat(current).isInstanceOf(HttpStatusCodeException.class);
+        return (HttpStatusCodeException) current;
     }
 
     @Test
