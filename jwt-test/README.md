@@ -123,6 +123,8 @@ In order to configure specific token validation backends, a `ServiceLoader` is u
 
 For example, register `PropertiesFileResourceServerConfigurationEnricher` and `PropertiesFileAuthorizationServerConfigurationResolver` to write and read the properties file `target/jwt.junit5.properties`, with the JWK location and issuer of each authorization server (`entur.jwt.tenants.<id>.jwk.location` and `entur.jwt.tenants.<id>.issuer`, with id `mock` for an authorization server without id). The JWKs are written to a file per tenant, next to the properties file. Each test class replaces these files, while its `@Nested` test classes add their authorization servers (an overriding authorization server with the same id publishes its keys at the same location, so a resource server which reloads the keys gets them). As the files are shared, test classes using `PropertiesFileResourceServerConfigurationEnricher` do not run in parallel with each other (using a JUnit resource lock); other test classes, i.e. Spring tests, are not affected.
 
+Alternatively, register `SystemPropertiesResourceServerConfigurationEnricher` to set the JWK location of each authorization server as system properties (`entur.jwt.tenants.<id>.jwk.location`) for the duration of the test class. As system properties are JVM-wide, test classes using `SystemPropertiesResourceServerConfigurationEnricher` do not run in parallel with each other, or with other tests locking `Resources.SYSTEM_PROPERTIES` (using a JUnit resource lock).
+
 Implementations included in this library:
 
  * [jwt-junit5-spring]

@@ -9,6 +9,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Sets the properties of the authorization servers as system properties for the duration of a test class. Test classes
+ * using this enricher do not run in parallel with each other, see {@link SystemPropertiesResourceLocksProvider}.
+ */
+
 public class SystemPropertiesResourceServerConfigurationEnricher extends AbstractPropertiesResourceServerConfigurationEnricher {
 
     // previous values, null if the property was not set
