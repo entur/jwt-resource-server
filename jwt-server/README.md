@@ -128,6 +128,23 @@ MVC matchers are in general __broader than Ant matchers__:
 * antMatchers("/unprotected") matches only the exact `/unprotected` URL
 * mvcMatchers("/unprotected") matches `/unprotected` as well as `/unprotected/`, `/unprotected.html`, `/unprotected.xyz`
 
+For Spring Web, set `type: ant` on the matcher to match the patterns using plain Ant-style path patterns (`PathPatternRequestMatcher`) instead of the default matcher of Spring Security (which is also used for any `PathPatternRequestMatcher.Builder` bean). The type can also be set per HTTP method, and then takes precedence over that of the matcher:
+
+```yaml
+entur:
+  authorization:
+    permit-all:
+      matcher:
+        type: ant # default or ant
+        patterns:
+          - /unprotected/**
+        method:
+          get:
+            type: default
+            patterns:
+              - /some/path/{myVariable}
+```
+
 Also note that if the JWT filter knows there is no permit-all (while `entur.authorization.enabled=true`), it will reject
 requests without JWT earlier in the chain.
 

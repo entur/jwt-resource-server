@@ -12,6 +12,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 
 /**
  * Default authorization. Extracted into its own class to allow for customization / override.
@@ -89,6 +90,9 @@ public class EnturAuthorizeHttpRequestsCustomizer implements Customizer<Authoriz
         switch (type) {
             case DEFAULT:
                 registry.requestMatchers(verb, pattern).permitAll();
+                break;
+            case ANT:
+                registry.requestMatchers(PathPatternRequestMatcher.withDefaults().matcher(verb, pattern)).permitAll();
                 break;
             default:
                 throw new IllegalArgumentException("Unknown matcher type '" + type + "'.");
