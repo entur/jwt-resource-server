@@ -342,6 +342,8 @@ entur:
         to: issuer
 ```
 
+Both `from` and `to` are required for each mapping; startup fails if either is missing or blank.
+
 MDC mappings are not supported for WebFlux; startup fails if `entur.jwt.mdc.mappings` are configured (unless `entur.jwt.mdc.enabled=false`).
 
 ### Cross-Origin Resource Sharing (CORS)
