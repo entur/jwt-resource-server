@@ -14,6 +14,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 
@@ -61,6 +62,20 @@ public class RestTemplateUrlAccessTokenProviderTest {
         mockServer.expect(requestTo(ISSUE_URL))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess(ISSUE_RESPONSE, MediaType.APPLICATION_JSON));
+
+        AccessToken accessToken = provider.getAccessToken(false);
+
+        assertThat(accessToken.getValue()).isEqualTo("x.y.z");
+        assertThat(accessToken.getType()).isEqualTo("Bearer");
+
+        mockServer.verify();
+    }
+
+    @Test
+    public void shouldAcceptOther2xxAndParseTheBody() throws Exception {
+        mockServer.expect(requestTo(ISSUE_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatusCode.valueOf(201)).contentType(MediaType.APPLICATION_JSON).body(ISSUE_RESPONSE));
 
         AccessToken accessToken = provider.getAccessToken(false);
 
@@ -173,6 +188,31 @@ public class RestTemplateUrlAccessTokenProviderTest {
 
         assertThat(failure.getRetryAfterDeadlineNanos()).isEqualTo(TimeUnit.SECONDS.toNanos(120));
         assertThat(failure.getHeaders()).containsExactly("Retry-After", "120");
+        assertThat(httpCause(failure).getStatusCode().value()).isEqualTo(status);
         mockServer.verify();
+    }
+
+    @ParameterizedTest
+    @CsvSource({"401,false", "429,false", "500,false", "503,false", "401,true", "429,true", "500,true", "503,true"})
+    public void shouldAttachHttpExceptionWithEitherErrorHandler(int status, boolean noOpErrorHandler) {
+        if (noOpErrorHandler) {
+            restTemplate.setErrorHandler(new NoOpResponseErrorHandler());
+        }
+        mockServer.expect(requestTo(ISSUE_URL))
+                .andRespond(withStatus(HttpStatusCode.valueOf(status)).header("Retry-After", "120"));
+
+        AccessTokenException failure = assertThrows(AccessTokenException.class, () -> provider.getAccessToken(false));
+
+        assertThat(httpCause(failure).getStatusCode().value()).isEqualTo(status);
+        mockServer.verify();
+    }
+
+    private static HttpStatusCodeException httpCause(Throwable failure) {
+        Throwable current = failure;
+        while (current != null && !(current instanceof HttpStatusCodeException)) {
+            current = current.getCause();
+        }
+        assertThat(current).isInstanceOf(HttpStatusCodeException.class);
+        return (HttpStatusCodeException) current;
     }
 }

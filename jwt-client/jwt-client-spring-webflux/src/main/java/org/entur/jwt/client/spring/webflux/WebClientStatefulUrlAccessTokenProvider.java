@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 /**
  * WebClient access-token provider. Using {@linkplain UrlAccessTokenProvider}
@@ -64,10 +64,13 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
     }
 
     protected Mono<ClientCredentialsResponse> request(URL url, byte[] body, Map<String, Object> map) {
-        return request(url, body, map, status -> new AccessTokenException("Authorization server responded with HTTP unexpected response code " + status));
+        return request("issue", url, body, map, (status, cause) -> new AccessTokenException("Authorization server responded with HTTP unexpected response code " + status, cause));
     }
 
-    protected Mono<ClientCredentialsResponse> request(URL url, byte[] body, Map<String, Object> map, Function<HttpStatusCode, AccessTokenException> unexpectedResponse) {
+    /**
+     * @param action what the request does, <code>issue</code> or <code>refresh</code>; used for logging, as the issue and refresh URLs may be equal
+     */
+    protected Mono<ClientCredentialsResponse> request(String action, URL url, byte[] body, Map<String, Object> map, BiFunction<HttpStatusCode, Throwable, AccessTokenException> unexpectedResponse) {
         HttpHeaders headers = new HttpHeaders();
 
         for (Entry<String, Object> entry : map.entrySet()) {
@@ -84,19 +87,42 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
                     .bodyValue(body)
                     .retrieve()
                     .onStatus(httpStatus -> httpStatus == HttpStatus.TOO_MANY_REQUESTS,
-                            response -> Mono.error(retryAfterException("Authorization server responded with HTTP code 429 - too many requests.",
-                                    response.headers().asHttpHeaders()::getFirst))
+                            response -> {
+                                logUnexpectedStatus(action, url, response.statusCode().value());
+                                HttpHeaders responseHeaders = response.headers().asHttpHeaders();
+                                // Headers are available now; body capture below may be cancelled.
+                                AccessTokenException recorded = retryAfterException(
+                                        "Authorization server responded with HTTP code 429 - too many requests.",
+                                        responseHeaders::getFirst);
+                                return WebClientUrlAccessTokenProvider.httpError(response, recorded);
+                            }
                     )
                     .onStatus(httpStatus -> httpStatus == HttpStatus.SERVICE_UNAVAILABLE,
-                            response -> Mono.error(retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.",
-                                    response.headers().asHttpHeaders()::getFirst))
+                            response -> {
+                                logUnexpectedStatus(action, url, response.statusCode().value());
+                                HttpHeaders responseHeaders = response.headers().asHttpHeaders();
+                                AccessTokenException recorded = retryAfterException(
+                                        "Authorization server responded with HTTP code 503 - service unavailable.",
+                                        responseHeaders::getFirst);
+                                return WebClientUrlAccessTokenProvider.httpError(response, recorded);
+                            }
                     )
                     .onStatus(httpStatus -> !httpStatus.is2xxSuccessful(),
-                            response -> Mono.error(unexpectedResponse.apply(response.statusCode()))
+                            response -> {
+                                logUnexpectedStatus(action, url, response.statusCode().value());
+                                return WebClientUrlAccessTokenProvider.httpError(response,
+                                        exception -> unexpectedResponse.apply(response.statusCode(), exception));
+                            }
                     )
                     .bodyToMono(ClientCredentialsResponse.class);
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException(e);
+        }
+    }
+
+    private void logUnexpectedStatus(String action, URL url, int responseCode) {
+        if (LOGGER.isInfoEnabled()) {
+            LOGGER.info("Got unexpected response code {} when trying to {} token at {}", responseCode, action, url);
         }
     }
 
@@ -141,8 +167,8 @@ public class WebClientStatefulUrlAccessTokenProvider extends AbstractStatefulUrl
     protected ClientCredentialsResponse getToken(RefreshToken refreshToken) throws AccessTokenException {
         byte[] refreshBody = createRefreshBody(refreshToken);
 
-        CompletableFuture<ClientCredentialsResponse> future = request(refreshUrl, refreshBody, refreshHeaders,
-                status -> refreshFailure(status.value(), "Authorization server responded with HTTP unexpected response code " + status + " when refreshing token", null)).toFuture();
+        CompletableFuture<ClientCredentialsResponse> future = request("refresh", refreshUrl, refreshBody, refreshHeaders,
+                (status, cause) -> refreshFailure(status.value(), "Authorization server responded with HTTP unexpected response code " + status + " when refreshing token", cause)).toFuture();
         try {
             ClientCredentialsResponse clientCredentialsResponse = future.get();
             validate(clientCredentialsResponse);
