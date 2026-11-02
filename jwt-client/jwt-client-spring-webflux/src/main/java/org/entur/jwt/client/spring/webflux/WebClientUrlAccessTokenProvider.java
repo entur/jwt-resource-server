@@ -7,9 +7,12 @@ import org.entur.jwt.client.ClientCredentialsResponse;
 import org.entur.jwt.client.UrlAccessTokenProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
 import java.net.URISyntaxException;
@@ -18,6 +21,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
 
 /**
  * WebClient access-token provider. Using {@linkplain UrlAccessTokenProvider}
@@ -30,6 +34,13 @@ public class WebClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProvi
     protected final WebClient webClient;
 
     protected static final Logger logger = LoggerFactory.getLogger(WebClientUrlAccessTokenProvider.class);
+
+    /**
+     * Read the error response into a {@link WebClientResponseException} and attach it as the cause.
+     */
+    protected static Mono<Throwable> httpError(ClientResponse response, Function<WebClientResponseException, AccessTokenException> failure) {
+        return response.createException().flatMap(exception -> Mono.error(failure.apply(exception)));
+    }
 
     public WebClientUrlAccessTokenProvider(WebClient webClient, URL issueUrl, Map<String, Object> parameters, Map<String, Object> headers) {
         super(issueUrl, parameters, headers);
@@ -54,15 +65,22 @@ public class WebClientUrlAccessTokenProvider extends AbstractUrlAccessTokenProvi
                 .bodyValue(issueBody)
                 .retrieve()
                 .onStatus(httpStatus -> httpStatus == HttpStatus.TOO_MANY_REQUESTS,
-                        response -> Mono.error(retryAfterException("Authorization server responded with HTTP code 429 - too many requests.",
-                                response.headers().asHttpHeaders()::getFirst))
+                        response -> {
+                            HttpHeaders headers = response.headers().asHttpHeaders();
+                            return httpError(response, exception -> retryAfterException("Authorization server responded with HTTP code 429 - too many requests.",
+                                    headers::getFirst, exception));
+                        }
                 )
                 .onStatus(httpStatus -> httpStatus == HttpStatus.SERVICE_UNAVAILABLE,
-                        response -> Mono.error(retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.",
-                                response.headers().asHttpHeaders()::getFirst))
+                        response -> {
+                            HttpHeaders headers = response.headers().asHttpHeaders();
+                            return httpError(response, exception -> retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.",
+                                    headers::getFirst, exception));
+                        }
                 )
                 .onStatus(httpStatus -> !httpStatus.is2xxSuccessful(),
-                        response -> Mono.error(new AccessTokenException("Authorization server responded with HTTP unexpected response code " + response.statusCode()))
+                        response -> httpError(response, exception -> new AccessTokenException(
+                                "Authorization server responded with HTTP unexpected response code " + response.statusCode(), exception))
                 )
                 .bodyToMono(ClientCredentialsResponse.class);
             future = mono.toFuture();

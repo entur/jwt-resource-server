@@ -3,9 +3,11 @@ package org.entur.jwt.client.spring.webflux;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
+import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.entur.jwt.client.AccessTokenRetryAfterException;
 import org.entur.jwt.client.AuthorizationHeaderUtil;
+import org.entur.jwt.client.RefreshTokenException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -19,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
@@ -76,6 +79,41 @@ public class WebClientStatefulUrlAccessTokenProviderTest {
             builder.header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE).body(json);
         }
         responses.add(builder.build());
+    }
+
+    @Test
+    public void shouldAttachHttpExceptionWhenIssueIsRejected() throws Exception {
+        respond(HttpStatus.UNAUTHORIZED, null);
+
+        AccessTokenException failure = assertThrows(AccessTokenException.class, () -> provider.getAccessToken(false));
+
+        assertThat(failure.getCause()).isInstanceOf(WebClientResponseException.class);
+        assertThat(((WebClientResponseException) failure.getCause()).getStatusCode().value()).isEqualTo(401);
+    }
+
+    @Test
+    public void shouldAttachHttpExceptionWhenRefreshIsRejected() throws Exception {
+        respond(HttpStatus.OK, ISSUE_RESPONSE);
+        respond(HttpStatus.BAD_REQUEST, "{\"error\":\"invalid_grant\"}");
+        provider.getAccessToken(false);
+
+        AccessTokenRetryAfterException deferred = assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(true));
+
+        assertThat(deferred.getCause()).isInstanceOf(RefreshTokenException.class);
+        assertThat(deferred.getCause().getCause()).isInstanceOf(WebClientResponseException.class);
+        assertThat(((WebClientResponseException) deferred.getCause().getCause()).getStatusCode().value()).isEqualTo(400);
+    }
+
+    @Test
+    public void shouldAttachHttpExceptionWhenRefreshIsUnavailable() throws Exception {
+        respond(HttpStatus.OK, ISSUE_RESPONSE);
+        respond(HttpStatus.SERVICE_UNAVAILABLE, null);
+        provider.getAccessToken(false);
+
+        AccessTokenUnavailableException failure = assertThrows(AccessTokenUnavailableException.class, () -> provider.getAccessToken(true));
+
+        assertThat(failure.getCause()).isInstanceOf(WebClientResponseException.class);
+        assertThat(((WebClientResponseException) failure.getCause()).getStatusCode().value()).isEqualTo(503);
     }
 
     @Test

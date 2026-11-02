@@ -111,7 +111,7 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
             ResponseEntity<ClientCredentialsResponse> response = request(refreshUrl, refreshBody, refreshHeaders);
 
             int responseCode = response.getStatusCode().value();
-            if (responseCode != 200) {
+            if (!response.getStatusCode().is2xxSuccessful()) {
                 if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to refresh token at {}", responseCode, refreshUrl);
                 if (responseCode == 503) { // service unavailable
                     throw retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.", headerLookup(response.getHeaders()));
@@ -145,7 +145,7 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
             ResponseEntity<ClientCredentialsResponse> response = request(issueUrl, issueBody, issueHeaders);
 
             int responseCode = response.getStatusCode().value();
-            if (responseCode != 200) {
+            if (!response.getStatusCode().is2xxSuccessful()) {
                 throw createUnexpectedResponseCodeException(responseCode, response.getHeaders());
             }
 

@@ -8,6 +8,7 @@ import org.mockito.ArgumentCaptor;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -63,6 +64,49 @@ public class StatefulUrlAccessTokenProviderTest extends AbstractUrlAccessTokenPr
     public void shouldReturnAccessToken() throws Exception {
         AccessTokenProvider provider = providerForResource("/keycloakClientCredentialsResponse.json");
         assertThat(provider.getAccessToken(false)).isNotNull();
+    }
+
+    @Test
+    public void shouldAcceptOther2xxAndParseTheBody() throws Exception {
+        StatefulUrlAccessTokenProvider provider = providerForResource("/keycloakClientCredentialsResponse.json");
+        when(urlConnection.getResponseCode()).thenReturn(201);
+
+        assertThat(provider.getAccessToken(1000L)).isNotNull();
+    }
+
+    @Test
+    public void shouldAcceptOther2xxWhenRefreshing() throws Exception {
+        StatefulUrlAccessTokenProvider provider = providerForResource("/keycloakClientCredentialsResponse.json");
+        provider.getAccessToken(1000L);
+        when(urlConnection.getResponseCode()).thenReturn(201);
+        when(urlConnection.getInputStream()).thenAnswer(invocation -> getClass().getResourceAsStream("/keycloakClientCredentialsResponse.json"));
+
+        assertThat(provider.getAccessToken(2000L)).isNotNull();
+    }
+
+    @Test
+    public void shouldAttachHttpExceptionWhenIssueIsRejected() throws Exception {
+        StatefulUrlAccessTokenProvider provider = providerForResource("/keycloakClientCredentialsResponse.json");
+        when(urlConnection.getResponseCode()).thenReturn(401);
+
+        AccessTokenException failure = assertThrows(AccessTokenException.class, () -> provider.getAccessToken(1000L));
+
+        assertThat(failure).isNotInstanceOf(AccessTokenUnavailableException.class);
+        assertThat(failure.getCause()).isInstanceOf(IOException.class);
+        assertThat(failure.getCause()).hasMessageThat().contains("401");
+    }
+
+    @Test
+    public void shouldAttachHttpExceptionWhenRefreshIsRejected() throws Exception {
+        StatefulUrlAccessTokenProvider provider = providerForResource("/keycloakClientCredentialsResponse.json");
+        provider.getAccessToken(1000L);
+        when(urlConnection.getResponseCode()).thenReturn(400);
+
+        AccessTokenRetryAfterException deferred = assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(2000L));
+
+        assertThat(deferred.getCause()).isInstanceOf(RefreshTokenException.class);
+        assertThat(deferred.getCause().getCause()).isInstanceOf(IOException.class);
+        assertThat(deferred.getCause().getCause()).hasMessageThat().contains("400");
     }
 
     @Test

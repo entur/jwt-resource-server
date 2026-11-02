@@ -73,17 +73,17 @@ public class RestTemplateUrlAccessTokenProvider extends AbstractUrlAccessTokenPr
     protected final RestTemplate restTemplate;
 
     /**
-     * Post a token request. Only a 200 response body is converted, so an unreadable error body cannot hide the headers of a 429 or 503 response.
+     * Post a token request. A 2xx response body is converted. A non-2xx body is not, so an unreadable error body cannot hide the headers of a 429 or 503 response.
      *
      * @param restTemplate rest template
      * @param uri request URI
      * @param request request body and headers
-     * @return the response, without a body unless the status is 200
+     * @return the response, without a body unless the status is 2xx
      */
     protected static ResponseEntity<ClientCredentialsResponse> postTokenRequest(RestTemplate restTemplate, URI uri, HttpEntity<byte[]> request) {
         ResponseExtractor<ResponseEntity<ClientCredentialsResponse>> extractor = restTemplate.responseEntityExtractor(ClientCredentialsResponse.class);
         return restTemplate.execute(uri, HttpMethod.POST, restTemplate.httpEntityCallback(request, ClientCredentialsResponse.class),
-                response -> response.getStatusCode().value() == 200 ? extractor.extractData(response)
+                response -> response.getStatusCode().is2xxSuccessful() ? extractor.extractData(response)
                         : ResponseEntity.status(response.getStatusCode()).headers(response.getHeaders()).build());
     }
 
@@ -109,7 +109,7 @@ public class RestTemplateUrlAccessTokenProvider extends AbstractUrlAccessTokenPr
             ResponseEntity<ClientCredentialsResponse> response = postTokenRequest(restTemplate, uri, request);
 
             int responseCode = response.getStatusCode().value();
-            if (responseCode != 200) {
+            if (!response.getStatusCode().is2xxSuccessful()) {
                 throw createUnexpectedResponseCodeException(responseCode, response.getHeaders());
             }
 

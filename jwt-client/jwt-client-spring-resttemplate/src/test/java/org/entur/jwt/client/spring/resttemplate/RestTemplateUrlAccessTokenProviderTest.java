@@ -71,6 +71,20 @@ public class RestTemplateUrlAccessTokenProviderTest {
     }
 
     @Test
+    public void shouldAcceptOther2xxAndParseTheBody() throws Exception {
+        mockServer.expect(requestTo(ISSUE_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatusCode.valueOf(201)).contentType(MediaType.APPLICATION_JSON).body(ISSUE_RESPONSE));
+
+        AccessToken accessToken = provider.getAccessToken(false);
+
+        assertThat(accessToken.getValue()).isEqualTo("x.y.z");
+        assertThat(accessToken.getType()).isEqualTo("Bearer");
+
+        mockServer.verify();
+    }
+
+    @Test
     public void shouldThrowAccessTokenUnavailableExceptionWhenResponseIsEmpty() {
         mockServer.expect(requestTo(ISSUE_URL))
                 .andExpect(method(HttpMethod.POST))

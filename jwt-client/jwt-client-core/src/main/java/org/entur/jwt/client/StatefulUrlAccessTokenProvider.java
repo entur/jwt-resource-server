@@ -56,15 +56,16 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
             response = request(issueUrl, issueBody, issueHeaders);
 
             int responseCode = response.getResponseCode();
-            if (responseCode != 200) {
+            if (!UrlAccessTokenProvider.isHttpSuccess(responseCode)) {
                 if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
+                IOException httpFailure = UrlAccessTokenProvider.httpResponseException(responseCode, issueUrl);
                 if (responseCode == 503) { // service unavailable
-                    throw retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.", response::getHeaderField);
+                    throw retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.", response::getHeaderField, httpFailure);
                 } else if (responseCode == 429) { // too many calls
                     // see for example https://auth0.com/docs/policies/rate-limits
-                    throw retryAfterException("Authorization server responded with HTTP code 429 - too many requests.", response::getHeaderField);
+                    throw retryAfterException("Authorization server responded with HTTP code 429 - too many requests.", response::getHeaderField, httpFailure);
                 }
-                throw new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
+                throw new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode, httpFailure);
             }
             try (InputStream inputStream = response.getInputStream()) {
                 ClientCredentialsResponse clientCredentialsResponse = reader.readValue(inputStream);
@@ -140,16 +141,17 @@ public class StatefulUrlAccessTokenProvider extends AbstractStatefulUrlAccessTok
             request = request(refreshUrl, refreshBody, refreshHeaders);
 
             int responseCode = request.getResponseCode();
-            if (responseCode != 200) {
+            if (!UrlAccessTokenProvider.isHttpSuccess(responseCode)) {
                 if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to refresh token at {}", responseCode, refreshUrl);
+                IOException httpFailure = UrlAccessTokenProvider.httpResponseException(responseCode, refreshUrl);
                 if (responseCode == 503) { // service unavailable
-                    throw retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.", request::getHeaderField);
+                    throw retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.", request::getHeaderField, httpFailure);
                 } else if (responseCode == 429) { // too many calls
                     // see for example https://auth0.com/docs/policies/rate-limits
-                    throw retryAfterException("Authorization server responded with HTTP code 429 - too many requests.", request::getHeaderField);
+                    throw retryAfterException("Authorization server responded with HTTP code 429 - too many requests.", request::getHeaderField, httpFailure);
                 }
 
-                throw refreshFailure(responseCode, "Authorization server responded with HTTP unexpected response code " + responseCode, null);
+                throw refreshFailure(responseCode, "Authorization server responded with HTTP unexpected response code " + responseCode, httpFailure);
             }
             try (InputStream inputStream = request.getInputStream()) {
                 ClientCredentialsResponse clientCredentialsResponse = reader.readValue(inputStream);

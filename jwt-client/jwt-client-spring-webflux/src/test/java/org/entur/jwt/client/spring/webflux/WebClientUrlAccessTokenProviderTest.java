@@ -1,6 +1,7 @@
 package org.entur.jwt.client.spring.webflux;
 
 import org.entur.jwt.client.AccessToken;
+import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.entur.jwt.client.AccessTokenRetryAfterException;
 import org.entur.jwt.client.RetryingAccessTokenProvider;
@@ -12,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
 import java.net.URL;
@@ -50,6 +52,28 @@ public class WebClientUrlAccessTokenProviderTest {
 
         assertThat(accessToken.getValue()).isEqualTo("x.y.z");
         assertThat(accessToken.getType()).isEqualTo("Bearer");
+    }
+
+    @Test
+    public void shouldAttachHttpExceptionWhenIssueIsRejected() throws Exception {
+        AccessTokenException failure = assertThrows(AccessTokenException.class,
+                () -> provider(ClientResponse.create(HttpStatus.UNAUTHORIZED).build()).getAccessToken(false));
+
+        assertThat(failure).isNotInstanceOf(AccessTokenUnavailableException.class);
+        assertThat(failure.getCause()).isInstanceOf(WebClientResponseException.class);
+        assertThat(((WebClientResponseException) failure.getCause()).getStatusCode().value()).isEqualTo(401);
+    }
+
+    @Test
+    public void shouldAttachHttpExceptionWhenIssueIsThrottled() throws Exception {
+        ClientResponse response = ClientResponse.create(HttpStatus.TOO_MANY_REQUESTS).header("Retry-After", "120").build();
+
+        AccessTokenRetryAfterException failure = assertThrows(AccessTokenRetryAfterException.class,
+                () -> provider(response).getAccessToken(false));
+
+        assertThat(failure.getCause()).isInstanceOf(WebClientResponseException.class);
+        assertThat(((WebClientResponseException) failure.getCause()).getStatusCode().value()).isEqualTo(429);
+        assertThat(failure.getHeaders()).containsExactly("Retry-After", "120");
     }
 
     @Test

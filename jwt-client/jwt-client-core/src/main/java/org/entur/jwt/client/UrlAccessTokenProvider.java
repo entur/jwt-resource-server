@@ -43,6 +43,17 @@ public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
         }
     }
 
+    protected static boolean isHttpSuccess(int responseCode) {
+        return responseCode >= 200 && responseCode <= 299;
+    }
+
+    /**
+     * HTTP failure to retain as the cause. {@link HttpURLConnection} reports an error status instead of throwing.
+     */
+    protected static IOException httpResponseException(int responseCode, URL url) {
+        return new IOException("Server returned HTTP response code: " + responseCode + " for URL: " + url);
+    }
+
     protected final int connectTimeout;
     protected final int readTimeout;
 
@@ -84,15 +95,16 @@ public class UrlAccessTokenProvider extends AbstractUrlAccessTokenProvider {
             }
 
             int responseCode = connection.getResponseCode();
-            if (responseCode != 200) {
+            if (!isHttpSuccess(responseCode)) {
                 if(LOGGER.isInfoEnabled()) LOGGER.info("Got unexpected response code {} when trying to issue token at {}", responseCode, issueUrl);
+                IOException httpFailure = httpResponseException(responseCode, issueUrl);
                 if (responseCode == 503) { // service unavailable
-                    throw retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.", connection::getHeaderField);
+                    throw retryAfterException("Authorization server responded with HTTP code 503 - service unavailable.", connection::getHeaderField, httpFailure);
                 } else if (responseCode == 429) { // too many calls
                     // see for example https://auth0.com/docs/policies/rate-limits
-                    throw retryAfterException("Authorization server responded with HTTP code 429 - too many requests.", connection::getHeaderField);
+                    throw retryAfterException("Authorization server responded with HTTP code 429 - too many requests.", connection::getHeaderField, httpFailure);
                 }
-                throw new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode);
+                throw new AccessTokenException("Authorization server responded with HTTP unexpected response code " + responseCode, httpFailure);
             }
             try (InputStream inputStream = connection.getInputStream()) {
                 ClientCredentialsResponse clientCredentialsResponse = reader.readValue(inputStream);

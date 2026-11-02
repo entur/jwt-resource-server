@@ -80,6 +80,27 @@ public class RestTemplateStatefulUrlAccessTokenProviderTest {
     }
 
     @Test
+    public void shouldAcceptOther2xxAndParseTheBody() throws Exception {
+        expect(ISSUE_URL, withStatus(HttpStatusCode.valueOf(201)).contentType(MediaType.APPLICATION_JSON).body(ISSUE_RESPONSE));
+
+        assertThat(provider.getAccessToken(false).getValue()).isEqualTo("x.y.z");
+
+        mockServer.verify();
+    }
+
+    @Test
+    public void shouldAcceptOther2xxWhenRefreshing() throws Exception {
+        expect(ISSUE_URL, withSuccess(ISSUE_RESPONSE, MediaType.APPLICATION_JSON));
+        expect(REFRESH_URL, withStatus(HttpStatusCode.valueOf(201)).contentType(MediaType.APPLICATION_JSON).body(REISSUE_RESPONSE));
+
+        provider.getAccessToken(false);
+
+        assertThat(provider.getAccessToken(true).getValue()).isEqualTo("a1.b1.c1");
+
+        mockServer.verify();
+    }
+
+    @Test
     public void shouldIssueNewTokenWhenRefreshTokenIsRejected() throws Exception {
         expect(ISSUE_URL, withSuccess(ISSUE_RESPONSE, MediaType.APPLICATION_JSON));
         // i.e. the session has been revoked or has expired
