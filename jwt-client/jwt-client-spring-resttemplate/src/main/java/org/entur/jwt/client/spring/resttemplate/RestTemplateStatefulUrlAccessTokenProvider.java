@@ -133,7 +133,6 @@ public class RestTemplateStatefulUrlAccessTokenProvider extends AbstractStateful
             if (responseCode == 503 || responseCode == 429) { // service unavailable or too many calls
                 throw retryAfterException("Authorization server responded with HTTP code " + responseCode + " when refreshing token", headerLookup(e.getResponseHeaders()), e);
             }
-            // assume current session has been revoked or expired
             throw refreshFailure(responseCode, "Authorization server responded with HTTP unexpected response code " + responseCode + " when refreshing token", e);
         } catch (RestClientException e) {
             throw new AccessTokenUnavailableException(e);

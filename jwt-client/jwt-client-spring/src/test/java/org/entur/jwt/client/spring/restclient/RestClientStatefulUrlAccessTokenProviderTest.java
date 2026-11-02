@@ -1,5 +1,6 @@
 package org.entur.jwt.client.spring.restclient;
 
+import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.entur.jwt.client.AccessTokenRetryAfterException;
 import org.entur.jwt.client.AuthorizationHeaderUtil;
@@ -117,8 +118,9 @@ public class RestClientStatefulUrlAccessTokenProviderTest {
 
         provider.getAccessToken(false);
 
-        assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(true));
-        // a server error says nothing about the session
+        // a server error is an AccessTokenException, as for issuance; the session is kept
+        AccessTokenException failure = assertThrows(AccessTokenException.class, () -> provider.getAccessToken(true));
+        assertThat(failure.getClass()).isEqualTo(AccessTokenException.class);
         assertThat(provider.getRefreshToken().getValue()).isEqualTo("a.b.c");
         nowNanos += TimeUnit.SECONDS.toNanos(15);
         assertThat(provider.getAccessToken(true).getValue()).isEqualTo("a1.b1.c1");

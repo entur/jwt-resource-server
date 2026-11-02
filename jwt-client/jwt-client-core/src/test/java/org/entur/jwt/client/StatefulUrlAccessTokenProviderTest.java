@@ -123,8 +123,9 @@ public class StatefulUrlAccessTokenProviderTest extends AbstractUrlAccessTokenPr
         when(urlConnection.getResponseCode()).thenReturn(status, 200);
         when(urlConnection.getInputStream()).thenAnswer(invocation -> getClass().getResourceAsStream("/keycloakClientCredentialsResponse.json"));
 
-        // a transient server error says nothing about the session, so it is kept
-        assertThrows(AccessTokenRetryAfterException.class, () -> provider.getAccessToken(2000L));
+        // a server error is an AccessTokenException, as for issuance; the session is kept
+        AccessTokenException failure = assertThrows(AccessTokenException.class, () -> provider.getAccessToken(2000L));
+        assertThat(failure.getClass()).isEqualTo(AccessTokenException.class);
         assertThat(provider.getRefreshToken()).isSameInstanceAs(original);
         nowNanos += TimeUnit.SECONDS.toNanos(15);
 

@@ -114,7 +114,6 @@ public class RestClientStatefulUrlAccessTokenProvider extends AbstractStatefulUr
                 // see for example https://auth0.com/docs/policies/rate-limits
                 throw retryAfterException("Authorization server responded with HTTP code 429 - too many requests when refreshing token.", headerLookup(e.getResponseHeaders()), e);
             }
-            // assume current session has been revoked or expired
             throw refreshFailure(responseCode, "Authorization server responded with HTTP unexpected response code " + responseCode + " when refreshing token", e);
         } catch(RestClientException e) {
             throw new AccessTokenUnavailableException(e);
