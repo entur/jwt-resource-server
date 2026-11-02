@@ -135,7 +135,10 @@ public class ReactiveJwtMonoConverter implements Converter<JWT, Mono<JWTClaimsSe
 
     @Override
     public Mono<JWTClaimsSet> convert(JWT source) {
-        JWSHeader jwsHeader = (JWSHeader) source.getHeader();
+        // an encrypted or otherwise unsigned JWT is an invalid token, not a failed cast
+        if (!(source.getHeader() instanceof JWSHeader jwsHeader)) {
+            throw new BadJwtException("Unsupported algorithm of " + source.getHeader().getAlgorithm());
+        }
         if (!selector.isAllowed(jwsHeader.getAlgorithm())) {
             throw new BadJwtException("Unsupported algorithm of " + jwsHeader.getAlgorithm());
         }
