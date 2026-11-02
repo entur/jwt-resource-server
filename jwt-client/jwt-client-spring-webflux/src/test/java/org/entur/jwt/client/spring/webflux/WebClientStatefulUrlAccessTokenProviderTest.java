@@ -107,6 +107,23 @@ public class WebClientStatefulUrlAccessTokenProviderTest {
     }
 
     @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    public void shouldLogRefreshWhenRefreshUrlEqualsIssueUrl(CapturedOutput output) throws Exception {
+        WebClient webClient = WebClient.builder()
+                .exchangeFunction(request -> Mono.just(responses.removeFirst()))
+                .build();
+        WebClientStatefulUrlAccessTokenProvider keycloakLike = new WebClientStatefulUrlAccessTokenProvider(webClient, new URL(ISSUE_URL),
+                Map.of("grant_type", "client_credentials"), Collections.emptyMap(), new URL(ISSUE_URL), new URL(REVOKE_URL));
+        respond(HttpStatus.OK, ISSUE_RESPONSE);
+        respond(HttpStatus.BAD_REQUEST, "{\"error\":\"invalid_grant\"}");
+        keycloakLike.getAccessToken(false);
+
+        assertThrows(AccessTokenRetryAfterException.class, () -> keycloakLike.getAccessToken(true));
+
+        assertThat(output.getAll()).contains("Got unexpected response code 400 when trying to refresh token at " + ISSUE_URL);
+    }
+
+    @Test
     public void shouldAttachHttpExceptionWhenIssueIsRejected() throws Exception {
         respond(HttpStatus.UNAUTHORIZED, null);
 
