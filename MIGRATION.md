@@ -69,7 +69,10 @@ JWK lookups now run on a dedicated `jwtProcessingScheduler` bean (daemon threads
  * gRPC: the MDC interceptor now runs after authentication by default (`entur.jwt.mdc.grpc.interceptor-order`, previously `0`, which is before authentication).
 
 ## Client
-Applies to `jwt-client-core` and the Spring modules (RestClient, WebClient, RestTemplate). The RestTemplate module is kept.
+Applies to `jwt-client-core` and the Spring modules (RestClient, WebClient).
+
+### RestTemplate module removed
+`jwt-client-spring-resttemplate` is removed. Depend on `jwt-client-spring` (RestClient) or `jwt-client-spring-webflux` (WebClient) instead; the `entur.jwt.clients` configuration is the same.
 
 ### Keycloak: context path defaults to `/`
 Token requests now go to `/realms/<realm>/protocol/openid-connect/token`, the default of Keycloak 17 and later. For Keycloak before 17, or installations with `http-relative-path` set to `/auth`:
@@ -92,12 +95,11 @@ or `KeycloakClientCredentialsBuilder.withContextPath("/auth")` (`KeycloakClientC
 No API changes. The fixes below apply.
 
 ### All flavours
- * RestTemplate: HTTP 4xx/5xx are no longer all reported (and retried) as `AccessTokenUnavailableException`. Only 429 and 503 are, other codes throw `AccessTokenException` and are not retried, like the other clients. Handle exceptions accordingly.
  * HttpURLConnection: connections are always disconnected, so keep-alive is no longer used between token requests.
  * Any 2xx response to a revoke request is accepted (Keycloak answers 204).
 
 ### Backoff after failed token requests
-Built-in HTTP providers (HttpURLConnection, RestClient, WebClient, RestTemplate) now back off after a failed token request, also without a cache:
+Built-in HTTP providers (HttpURLConnection, RestClient, WebClient) now back off after a failed token request, also without a cache:
 
  * On HTTP 429/503 the `Retry-After` header decides the wait (seconds or HTTP-date); without it, the `X-RateLimit-Reset` (Auth0) or `X-Rate-Limit-Reset` (Okta) timestamp is converted to the equivalent delay. Delays taken from a response are capped at one hour.
  * Other failures, and headers which are missing or malformed, wait 15 seconds (`retry-after.fallback-delay`, or `retryAfter(fallback, unit)` on the builders). Set it to `0` to keep the old behavior of retrying immediately.
