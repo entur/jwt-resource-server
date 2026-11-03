@@ -1,6 +1,7 @@
 package org.entur.jwt.client.spring.restclient;
 
 import org.entur.jwt.client.AccessToken;
+import org.entur.jwt.client.AccessTokenException;
 import org.entur.jwt.client.AccessTokenUnavailableException;
 import org.entur.jwt.client.AccessTokenRetryAfterException;
 import org.entur.jwt.client.RetryingAccessTokenProvider;
@@ -12,6 +13,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
 
 import java.net.URL;
@@ -72,6 +74,19 @@ public class RestClientUrlAccessTokenProviderTest {
             provider.getAccessToken(false);
         });
 
+        mockServer.verify();
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {401, 429, 500, 503})
+    public void shouldRetainHttpFailureAsCauseWhenIssueFails(int status) {
+        mockServer.expect(requestTo(ISSUE_URL))
+                .andRespond(withStatus(HttpStatusCode.valueOf(status)));
+
+        AccessTokenException failure = assertThrows(AccessTokenException.class, () -> provider.getAccessToken(false));
+
+        assertThat(failure.getCause()).isInstanceOf(HttpStatusCodeException.class);
+        assertThat(((HttpStatusCodeException) failure.getCause()).getStatusCode().value()).isEqualTo(status);
         mockServer.verify();
     }
 

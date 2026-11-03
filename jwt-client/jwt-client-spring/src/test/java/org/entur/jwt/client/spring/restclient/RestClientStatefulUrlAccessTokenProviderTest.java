@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.test.web.client.ResponseCreator;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
 
 import java.net.URL;
@@ -106,6 +107,18 @@ public class RestClientStatefulUrlAccessTokenProviderTest {
         // keep the session for the next attempt
         assertThat(provider.getRefreshToken().getValue()).isEqualTo("a.b.c");
 
+        mockServer.verify();
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {401, 429, 500, 503})
+    public void shouldRetainHttpFailureAsCauseWhenIssueFails(int status) {
+        expect(ISSUE_URL, withStatus(HttpStatusCode.valueOf(status)));
+
+        AccessTokenException failure = assertThrows(AccessTokenException.class, () -> provider.getAccessToken(false));
+
+        assertThat(failure.getCause()).isInstanceOf(HttpStatusCodeException.class);
+        assertThat(((HttpStatusCodeException) failure.getCause()).getStatusCode().value()).isEqualTo(status);
         mockServer.verify();
     }
 
