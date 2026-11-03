@@ -114,6 +114,9 @@ Applies to `jwt-junit5-core` (non-Spring), `jwt-junit5-spring` and `jwt-junit5-e
 ### Package renamed
 `org.entur.jwt.junit5.extention` is now `org.entur.jwt.junit5.extension`. Update the imports of `AuthorizationServerExtension`, `AuthorizationServerTestContext` and `AuthorizationServerTestManager`.
 
+### Removed enrichers
+`SystemPropertiesResourceServerConfigurationEnricher` and `ExtensionContextStoreResourceServerConfigurationEnricher` are removed. Neither was used by this library; if you registered one, implement `ResourceServerConfigurationEnricher` yourself.
+
 ### Generic claim annotations are written as given
  * `@IntegerClaim`, `@JsonClaim`, `@MapClaim` and so on for `exp` or `iat` are absolute times in seconds, no longer relative to the current time. For relative times use `@ExpiresAt` / `@IssuedAt`, or `@AccessToken(expiresAt = .., issuedAt = ..)`.
  * The standard claims (`iss`, `sub`, `aud`, `exp`, `nbf`, `iat`, `jti`) are no longer converted by the JWT library. Numeric or ISO-8601 strings in `exp`, `nbf` and `iat` are written as strings (use a numeric claim), and empty values (for example `@Subject("")`) are written instead of omitted (use `@MissingClaim`). This makes it possible to create tokens with malformed standard claims for negative tests.
