@@ -66,7 +66,7 @@ JWK lookups now run on a dedicated `jwtProcessingScheduler` bean (daemon threads
  * Web: error dispatches are permitted, so errors from permit-all endpoints keep their status (400, 404, 415, 500, ...) for requests without a token, instead of 401 (403 with `entur.jwt.enabled=false`). Requests rejected by the Spring Security firewall now get 400 instead of 401.
  * Required claims of type `double` accept any number, and type `integer` any whole number.
  * `OAuth2TokenValidator` beans are added to the default validators instead of replacing them.
- * gRPC: MDC mappings now take effect. The MDC interceptor, enabled by mappings and a `GrpcMdcAdapter` bean, was not registered with the gRPC server, so no values were set. It is now registered and runs after authentication by default (`entur.jwt.mdc.grpc.interceptor-order`, previously `0`, which is before authentication), and the values are removed from the adapter when the call ends. Remove the property unless you need a specific order after the authentication interceptor.
+ * gRPC: MDC mappings now take effect. The MDC interceptor, enabled by mappings and a `GrpcMdcAdapter` bean, was not registered with the gRPC server, so no values were set. It is now registered and runs after authentication by default (`entur.jwt.mdc.grpc.interceptor-order`, previously `0`, which is before authentication). Remove the property unless you need a specific order after the authentication interceptor.
 
 ## Client
 Applies to `jwt-client-core` and the Spring modules (RestClient, WebClient, RestTemplate). The RestTemplate module is kept.
