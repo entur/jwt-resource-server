@@ -62,4 +62,14 @@ entur:
         to: azp
 ```
 
-also implement a bean of type `GrpcMdcAdapter`.
+also implement a bean of type `GrpcMdcAdapter`, which receives the mapped values (for example by delegating to your logging framework's MDC).
+
+The JWT is only available to interceptors running after the authentication interceptor, so the MDC interceptor is ordered right after the Spring gRPC security interceptors by default. Use `entur.jwt.mdc.grpc.interceptor-order` to change the order (interceptors with a lower value run first); an order that is not above `GrpcSecurity.AUTHENTICATION_PROCESS_ORDER` results in no values at all.
+
+```
+entur:
+  jwt:
+    mdc:
+      grpc:
+        interceptor-order: 100
+```
