@@ -27,7 +27,7 @@ import java.util.function.BiFunction;
 
 /**
  * WebClient access-token provider. Using {@linkplain UrlAccessTokenProvider}
- * would strictly be sufficient, but using RestTemplate is more convenient for
+ * would strictly be sufficient, but using WebClient is more convenient for
  * mocking.
  */
 

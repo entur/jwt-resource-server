@@ -35,7 +35,6 @@ MODULES=(
 	jwt-client/jwt-client-core
 	jwt-client/jwt-client-spring-core
 	jwt-client/jwt-client-spring
-	jwt-client/jwt-client-spring-resttemplate
 	jwt-client/jwt-client-spring-webflux
 	jwt-client/jwt-client-grpc
 	jwt-server/spring/jwt-spring-web

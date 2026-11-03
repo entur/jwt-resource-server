@@ -2,7 +2,7 @@
 
 [Client configuration](../../README.md) | Next: [Eager preemptive refresh and errors](../eager-preemptive-refresh/README.md)
 
-This guide describes **traffic-triggered preemptive refresh**: caching and preemptive refresh enabled, eager refresh disabled. These are the defaults. The behavior is shared by generic, Auth0, and Keycloak clients using URLConnection, RestClient, WebClient, or the legacy RestTemplate transport.
+This guide describes **traffic-triggered preemptive refresh**: caching and preemptive refresh enabled, eager refresh disabled. These are the defaults. The behavior is shared by generic, Auth0, and Keycloak clients using URLConnection, RestClient, or WebClient transport.
 
 A normal call is `getAccessToken(false)`. A usable cached token is returned without waiting for a background token fetch. An empty cache, an unusable token, or `getAccessToken(true)` takes the blocking path. This API is not nonblocking/reactive simply because the selected HTTP transport is WebClient.
 
