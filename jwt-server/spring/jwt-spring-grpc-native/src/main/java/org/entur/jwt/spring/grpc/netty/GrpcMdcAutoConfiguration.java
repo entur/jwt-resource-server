@@ -13,7 +13,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.grpc.server.autoconfigure.security.GrpcServerOAuth2ResourceServerAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.grpc.server.GlobalServerInterceptor;
 import org.springframework.grpc.server.security.GrpcSecurity;
 
 @Configuration
@@ -26,7 +25,6 @@ public class GrpcMdcAutoConfiguration {
     static final int DEFAULT_INTERCEPTOR_ORDER = GrpcSecurity.CONTEXT_FILTER_ORDER + 1;
 
     @Bean
-    @GlobalServerInterceptor
     @ConditionalOnBean(GrpcMdcAdapter.class)
     @ConditionalOnExpression("${entur.jwt.mdc.enabled:true}")
     public GrpcMdcAuthorizationServerInterceptor mdcAuthorizationInterceptor(GrpcMdcAdapter adapter, MdcProperties mdcProperties, GrpcMdcProperties properties) {

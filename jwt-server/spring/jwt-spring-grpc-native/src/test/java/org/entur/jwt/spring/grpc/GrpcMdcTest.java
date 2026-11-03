@@ -1,8 +1,10 @@
 package org.entur.jwt.spring.grpc;
 
+import io.grpc.ServerInterceptor;
 import org.entur.jwt.junit5.AccessToken;
 import org.entur.jwt.junit5.AuthorizationServer;
 import org.entur.jwt.junit5.claim.StringClaim;
+import org.entur.jwt.spring.grpc.netty.GrpcMdcAuthorizationServerInterceptor;
 import org.entur.jwt.spring.grpc.test.GreetingResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.grpc.server.GlobalServerInterceptor;
 import org.springframework.test.annotation.DirtiesContext;
 
 import java.util.Map;
@@ -34,6 +37,12 @@ public class GrpcMdcTest extends AbstractGrpcTest {
         @Bean
         public RecordingGrpcMdcAdapter grpcMdcAdapter() {
             return new RecordingGrpcMdcAdapter();
+        }
+
+        @Bean
+        @GlobalServerInterceptor
+        public ServerInterceptor registeredMdcInterceptor(GrpcMdcAuthorizationServerInterceptor interceptor) {
+            return interceptor;
         }
     }
 
