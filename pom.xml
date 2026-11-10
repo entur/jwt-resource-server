@@ -54,7 +54,6 @@
 		<!-- align dependencies to Spring as much as possible -->
 		<!-- https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-dependencies  -->
 
-		<commons-io.version>2.22.0</commons-io.version>
 		<google-truth.version>1.4.5</google-truth.version>
 		<junit.version>6.1.3</junit.version>
 		<mockito.version>5.24.0</mockito.version>
@@ -63,8 +62,6 @@
 		<nimbus-jose-jwt.version>10.10</nimbus-jose-jwt.version>
 		<jackson.version>3.2.4</jackson.version>
 		<jackson-2-bom.version>2.22.4</jackson-2-bom.version>
-		<jackson-annotations.version>2.21</jackson-annotations.version>
-		<jadler.version>1.3.1</jadler.version>
 		<spring-boot.version>4.1.2</spring-boot.version>
 		<httpclient.version>5.6.5</httpclient.version>
 		<!-- added due to security issue -->
@@ -80,8 +77,6 @@
 		<!-- transient dependencies added due to security patching -->
 		<tomcat.version>11.0.27</tomcat.version>
 		<netty.version>4.2.20.Final</netty.version>
-
-		<json-smart.version>2.6.0</json-smart.version>
 
 		<!-- plugins -->
 		<jacoco-maven-plugin.version>0.8.16</jacoco-maven-plugin.version>
@@ -111,11 +106,6 @@
 			<dependency>
 				<groupId>${project.groupId}</groupId>
 				<artifactId>jwt-junit5-core</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>jwt-core</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>
@@ -315,11 +305,6 @@
             </dependency>
             <dependency>
                 <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-starter-restclient</artifactId>
-                <version>${spring-boot.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-resttestclient</artifactId>
                 <version>${spring-boot.version}</version>
             </dependency>
@@ -357,11 +342,6 @@
 
 			<!-- test dependencies -->
 			<dependency>
-				<groupId>commons-io</groupId>
-				<artifactId>commons-io</artifactId>
-				<version>${commons-io.version}</version>
-			</dependency>
-			<dependency>
 				<groupId>org.junit</groupId>
 				<artifactId>junit-bom</artifactId>
 				<version>${junit.version}</version>
@@ -375,19 +355,9 @@
 				<scope>test</scope>
 			</dependency>
 			<dependency>
-				<groupId>com.google.truth.extensions</groupId>
-				<artifactId>truth-java8-extension</artifactId>
-				<version>${google-truth.version}</version>
-			</dependency>
-			<dependency>
 				<groupId>org.mockito</groupId>
 				<artifactId>mockito-core</artifactId>
 				<version>${mockito.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>net.jadler</groupId>
-				<artifactId>jadler-all</artifactId>
-				<version>${jadler.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>io.rest-assured</groupId>
