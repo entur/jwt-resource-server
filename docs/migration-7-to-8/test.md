@@ -20,10 +20,25 @@ Because `entur.jwt.claims.audiences` is required, configure it in the test confi
 ```
 
 ## Spring tests and `JwtDecoder` beans
-Test configurations with a mocked `JwtDecoder` bean now fail at startup. Remove the mock (use `@AuthorizationServer` and `@AccessToken` instead), or set `entur.jwt.decode.fail-on-jwt-decoder-bean=false` in the test.
+Test configurations with a mocked `JwtDecoder` bean now fail at startup (see [server-programmatic.md](server-programmatic.md#your-own-jwtdecoder-beans)). Remove the mock (use `@AuthorizationServer` and `@AccessToken` instead), or set `entur.jwt.decode.fail-on-jwt-decoder-bean=false` in the test.
+
+## Spring tests without `@AuthorizationServer`
+Test classes without `@AuthorizationServer` no longer disable the tenants configured in `entur.jwt.tenants.*`. Previously such a context failed with "No configured tenants" when JWT was enabled. Test classes with the same authorization servers now also share the Spring application context, so check tests which relied on getting a fresh context.
+
+## Token contents
+ * `@AccessToken(expiresAt = .., issuedAt = ..)` relative times are in seconds, as documented. They used to be multiplied by 1000, so the default token lived for about 6.9 days; it now expires after 10 minutes. Tests which keep tokens for a long time, or assert on `exp` / `iat`, may fail.
+ * `@AccessToken(scope = ..)` is written as a space-delimited string, like `@Scope`, instead of an array.
+ * Repeated `@Audience` and `@Scope` annotations are combined; previously only one was used.
+ * `@NullClaim` writes the claim with a `null` value. Previously the claim was omitted, as with `@MissingClaim`.
+ * `@MissingClaim` and `@NullClaim` on `exp` or `iat` no longer throw `NullPointerException`, and `@MapClaim` with an empty path adds its entries to the root of the claims.
+ * `@JsonClaim` values are parsed to plain maps and lists.
+ * Tokens are signed with a key which matches `@AlgorithmHeader`, so RS384, RS512, PS* and ES256/ES384/ES512 tokens are now accepted by the resource server modules. The JWKs have an RSA key without `alg`, plus an elliptic curve key per ES algorithm. EdDSA is not supported.
 
 ## Entur module
 `jwt-junit5-entur` (`@PartnerAuth0AuthorizationServer`, `@PartnerAuth0Token`) is kept.
+
+ * Partner Auth0 tokens no longer namespace the `scope` and `azp` claims.
+ * Tokens from `@ExpiredPartnerAuth0Token` are expired; previously their expiry overflowed to the current time.
 
 ## Authorization servers in composed annotations and `@Nested` classes
  * Claims of a `@PartnerAuth0AuthorizationServer` inside a composed annotation are now namespaced (`https://entur.io/organisationID`), as for a directly annotated class.
@@ -32,5 +47,4 @@ Test configurations with a mocked `JwtDecoder` bean now fail at startup. Remove 
  * Tokens for `@BeforeAll` methods and per-class test instance constructors get the correct issuer.
  * `PropertiesFileResourceServerConfigurationEnricher` and `PropertiesFileAuthorizationServerConfigurationResolver` now work together.
  * Test classes using the properties file enricher get a JUnit resource lock, so they do not run in parallel with each other.
- * Test classes using the system-properties enricher lock system properties, and the previous system property values are restored after tests.
  * Subclasses of `AuthorizationServerExtension`: the field-based hooks `getAuthorizationServerImplementation(String)` and `getProperty(String, String)` are deprecated (not removed in 8.0.0); override `getAuthorizationServerImplementation(ExtensionContext, String)` and `getConfiguration(ExtensionContext)` instead.
