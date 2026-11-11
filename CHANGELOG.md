@@ -1,5 +1,5 @@
 # CHANGELOG
- - 8.0.0: See [MIGRATION.md](MIGRATION.md). Breaking changes:
+ - 8.0.0: See [the 7 to 8 migration guide](docs/migration-7-to-8/README.md). Breaking changes:
    - Backend: `entur.jwt.claims.audiences` is required when JWT is enabled with at least one enabled tenant (unless the application provides its own `EnturJwtValidators` bean).
    - Backend: `entur.jwt.decode.fail-on-jwt-decoder-bean` now defaults to `true`: startup fails if there is a `JwtDecoder` (or `ReactiveJwtDecoder`) bean, which is ignored by this library. Set it to `false` for the old behavior.
    - Backend: Keycloak client roles (`resource_access`) are only mapped to `ROLE_` authorities for the client configured in `entur.jwt.flavours.keycloak.client-id`. `KeycloakJwtAuthorityEnricher` takes the client id in its constructor.

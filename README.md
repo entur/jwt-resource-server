@@ -49,7 +49,7 @@ Async is not yet supported.
 
 See documentation contained in each folder to get started. Or skip right to the [examples](examples). 
 
-Upgrading to 8.0.0? See [MIGRATION.md](MIGRATION.md).
+Upgrading to 8.0.0? See [the 7 to 8 migration guide](docs/migration-7-to-8/README.md).
 
 ## Spring Boot compatibility matrix
 
