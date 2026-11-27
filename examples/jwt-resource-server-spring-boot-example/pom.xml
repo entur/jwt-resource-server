@@ -16,7 +16,9 @@
 
 	<properties>
 		<java.version>25</java.version>
+
 		<truth.version>1.4.5</truth.version>
+
         <rest-assured.version>6.3.0</rest-assured.version>
 	</properties>
 
