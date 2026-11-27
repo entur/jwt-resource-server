@@ -62,11 +62,11 @@
 		<nimbus-jose-jwt.version>10.10</nimbus-jose-jwt.version>
 		<jackson.version>3.2.4</jackson.version>
 		<jackson-2-bom.version>2.23.0</jackson-2-bom.version>
-		<spring-boot.version>4.1.2</spring-boot.version>
+		<spring-boot.version>4.2.0</spring-boot.version>
 		<httpclient.version>5.6.5</httpclient.version>
 		<!-- added due to security issue -->
-		<spring-security.version>7.1.2</spring-security.version>
-		<spring.version>7.0.10</spring.version>
+		<spring-security.version>7.2.0</spring-security.version>
+		<spring.version>7.1.0</spring.version>
 		<rest-assured.version>6.3.0</rest-assured.version>
 		<okhttp.version>5.5.1</okhttp.version>
 

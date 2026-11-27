@@ -1,6 +1,6 @@
 # Migrating from 7.x to 8.0.0
 
-Version 8.0.0 removes code deprecated in 7.2.x and fixes several unsafe defaults. Spring Boot stays at 4.1.x. See also the [CHANGELOG](../../CHANGELOG.md).
+Version 8.0.0 removes code deprecated in 7.2.x and fixes several unsafe defaults. It requires Spring Boot 4.2.x (Spring Framework 7.1, Spring Security 7.2). See also the [CHANGELOG](../../CHANGELOG.md).
 
 Pick the guides which match how your application uses the library:
 
